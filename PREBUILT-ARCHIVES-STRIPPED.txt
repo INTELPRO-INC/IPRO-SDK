@@ -1,0 +1,11 @@
+The prebuilt archives listed below had their debug information removed when this SDK was
+packaged, so that they link with a binutils older than 2.41: the R_RISCV_SET_ULEB128 and
+R_RISCV_SUB_ULEB128 relocations in their DWARF 5 location lists are unknown to older linkers.
+Code, symbols and headers are unchanged; source-level debugging inside these libraries is not
+possible from this copy.
+
+bsp/hal/lp_framework/ipro7/lib/liblp_framework.a
+components/3rdparty/liblc3/lib/libliblc3.a
+components/ai/lib/libai.a
+components/isp_algorithm/lib/libisp_algorithm.a
+components/wireless/rf/ipro7_rf/lib/libipro7_rf.a

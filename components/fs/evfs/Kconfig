@@ -1,0 +1,97 @@
+# EVFS - Embedded Virtual Filesystem Configuration
+
+menuconfig EVFS
+    bool "Enable EVFS (Embedded Virtual Filesystem)"
+    default n
+    help
+      Enable the EVFS virtual filesystem layer.
+      EVFS provides a unified API for multiple filesystem backends
+      including FatFs, LittleFS, and Romfs.
+
+if EVFS
+
+config EVFS_USE_FATFS
+    bool "Enable FatFs backend"
+    default y
+    help
+      Enable FatFs filesystem support in EVFS.
+
+config EVFS_USE_FATFS_IMAGE
+    bool "Enable FatFs image mounting"
+    depends on EVFS_USE_FATFS
+    default n
+    help
+      Enable mounting FatFs images from other filesystems.
+
+config EVFS_USE_LITTLEFS
+    bool "Enable LittleFS backend"
+    default y
+    help
+      Enable LittleFS filesystem support in EVFS.
+
+config EVFS_USE_LITTLEFS_IMAGE
+    bool "Enable LittleFS image mounting"
+    depends on EVFS_USE_LITTLEFS
+    default n
+    help
+      Enable mounting LittleFS images from other filesystems.
+
+config EVFS_USE_ROMFS
+    bool "Enable Romfs backend"
+    default n
+    help
+      Enable Romfs (read-only filesystem) support in EVFS.
+
+config EVFS_USE_TAR
+    bool "Enable Tar filesystem"
+    default n
+    help
+      Enable uncompressed tar archive access as a filesystem.
+
+config EVFS_USE_TAR_RSRC
+    bool "Enable Tar resource filesystem"
+    depends on EVFS_USE_TAR
+    default n
+    help
+      Enable tar resource filesystem variant.
+
+config EVFS_USE_SEMIHOST
+    bool "Enable Semihosting filesystem backend"
+    default y if SEMIHOSTING_FILEIO
+    depends on SEMIHOSTING_FILEIO
+    help
+      Enable semihosting filesystem support in EVFS.
+      This allows accessing host files through debugger semihosting
+      interface. Files are mounted at /host/ mount point.
+
+config EVFS_POSIX
+    bool "Enable POSIX compatibility layer"
+    default y
+    help
+      Enable POSIX-like file I/O API (open, read, write, close, etc.)
+      using EVFS as the backend. This provides a familiar interface
+      for applications that use standard POSIX file operations.
+
+menu "EVFS Shim Layers"
+
+config EVFS_USE_SHIM_TRACE
+    bool "Enable trace shim"
+    default n
+    help
+      Enable tracing shim for debugging filesystem operations.
+
+config EVFS_USE_SHIM_JAIL
+    bool "Enable jail shim"
+    default n
+    help
+      Enable jail shim to restrict filesystem access to a subdirectory.
+
+config EVFS_USE_SHIM_ROTATE
+    bool "Enable rotate shim"
+    default n
+    help
+      Enable log rotation shim for managing log files.
+
+endmenu
+
+endif # EVFS

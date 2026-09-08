@@ -1,0 +1,26 @@
+# EasyFlash4 sub-options (main config is in parent Kconfig)
+
+config EASYFLASH4_CLI
+    bool "Enable EasyFlash CLI commands"
+    default y
+    depends on COMPONENTS_CLI_CMD_ENABLE
+    help
+      Enable CLI commands for EasyFlash (psm_set, psm_unset, psm_dump, psm_erase, psm_test).
+
+config EASYFLASH4_FIXED_PARTITION
+    bool "Use an application-provided fixed PSM partition"
+    default n
+    help
+      Use a fixed flash offset and size instead of obtaining the PSM partition
+      from the Boot2 hand-off table. This is intended for platforms whose
+      Boot2 ABI does not export the partition table to the application.
+
+config EASYFLASH4_FIXED_PARTITION_OFFSET
+    hex "Fixed PSM partition flash offset"
+    default 0x0
+    depends on EASYFLASH4_FIXED_PARTITION
+
+config EASYFLASH4_FIXED_PARTITION_SIZE
+    hex "Fixed PSM partition size"
+    default 0x0
+    depends on EASYFLASH4_FIXED_PARTITION

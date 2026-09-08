@@ -1,0 +1,214 @@
+/*
+ * This file is part of the OpenMV project.
+ * Copyright (c) 2013/2014 Ibrahim Abdelkader <i.abdalkader@gmail.com>
+ * This work is licensed under the MIT license, see the file LICENSE for details.
+ *
+ * bf30a2 driver.
+ *
+ */
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "sensor.h"
+#include "sccb.h"
+#include "camera.h"
+//#include "bf30a2.h"
+
+static const uint8_t bf30a2_reglist[][2] =
+{
+    {0xf2, 0x01},//
+    {0x12, 0x20},//MTK:20 ZX:10 RDA:40
+    {0x15, 0x00},//0x80
+    {0x6b, 0x77},//Bit[1]: 1'b0: no ahead 1'b1: CKGATE ahead 0.5 SCLK, Bit[0] 0: continuous clock 1: GATED clock. 0x73 0x77
+    {0x0b, 0x07},//Bit[4]:1'b1: DAT counter delay one sclk, Bit[3:0]: skip frame counter 0x07
+    {0x04, 0x00},
+    {0x06, 0x26},
+    {0x08, 0x07},
+    {0x1c, 0x12},
+    {0x1e, 0x26},
+    {0x1f, 0x01},
+    {0x20, 0x20},
+    {0x21, 0x20},
+    {0x34, 0x02},
+    {0x35, 0x02},
+    {0x36, 0x21},
+    {0x37, 0x13},
+    {0xca, 0x03},//bit[5:4]: VCLK delay2 select, bit[0]: system clock frequency select 0x03 (fps down)
+    {0xcb, 0x22},
+    {0xcc, 0xC9},//bit[7:6]:LDO output control 0x89
+    {0xcd, 0x4c},
+    {0xce, 0x6b},
+    {0xcf, 0xb0}, //standby, 90,b0,d0,f0
+    {0xa0, 0x8e},
+    {0x01, 0x1b},
+    {0x02, 0x1d},
+    {0x13, 0x08},
+    {0x87, 0x13},
+    {0x8a, 0x33},
+    {0x8b, 0x08},
+    {0x70, 0x1f},
+    {0x71, 0x40},
+    {0x72, 0x0a},
+    {0x73, 0x62},
+    {0x74, 0xa2},
+    {0x75, 0xbf},
+    {0x76, 0x02},
+    {0x77, 0xcc},
+    {0x40, 0x32},
+    {0x41, 0x28},
+    {0x42, 0x26},
+    {0x43, 0x1d},
+    {0x44, 0x1a},
+    {0x45, 0x14},
+    {0x46, 0x11},
+    {0x47, 0x0f},
+    {0x48, 0x0e},
+    {0x49, 0x0d},
+    {0x4B, 0x0c},
+    {0x4C, 0x0b},
+    {0x4E, 0x0a},
+    {0x4F, 0x09},
+    {0x50, 0x09},
+    {0x24, 0x50},
+    {0x25, 0x36},
+    {0x80, 0x00},
+    {0x81, 0x20},
+    {0x82, 0x40},
+    {0x83, 0x30},
+    {0x84, 0x50},
+    {0x85, 0x30},
+    {0x86, 0xD8},
+    {0x89, 0x45},
+    {0x8f, 0x81},
+    {0x91, 0xff},
+    {0x92, 0x08},
+    {0x94,0x82},
+    {0x95,0xfd},
+    {0x9a,0x20},
+    {0x9e,0xbc},
+    {0xf0,0x8f},
+    {0x51,0x06},
+    {0x52,0x25},
+    {0x53,0x2b},
+    {0x54,0x0F},
+    {0x57,0x2A},
+    {0x58,0x22},
+    {0x59,0x2c},
+    {0x23,0x33},
+    {0xa0,0x8f},
+    {0xa1,0x93},
+    {0xa2,0x0f},
+    {0xa3,0x2a},
+    {0xa4,0x08},
+    {0xa5,0x26},
+    {0xa7,0x80},
+    {0xa8,0x80},
+    {0xa9,0x1e},
+    {0xaa,0x19},
+    {0xab,0x18},
+    {0xae,0x50},
+    {0xaf,0x04},
+    {0xc8,0x10},
+    {0xc9,0x15},
+    {0xd3,0x0c},
+    {0xd4,0x16},
+    {0xee,0x06},
+    {0xef,0x04},
+    {0x55,0x34},
+    {0x56,0x9c},
+    {0xb1,0x98},
+    {0xb2,0x98},
+    {0xb3,0xc4},
+    {0xb4,0x0C},
+    {0x00,0x40},
+    {0x13,0x07},
+};
+
+//TODO use data section
+//static const uint8_t addr_list[] = 
+//{
+//    0x21
+//};
+
+//0X6e
+#define BF30A2_ADDR 0x6e // salve address
+//#define VER_ADDR 0x21
+#define PIDH_ADDR 0x22
+#define PIDL_ADDR 0x23
+//#define VER 0xfh
+#define PIDH 0x3b
+#define PIDL 0x02
+
+int bf30a2_probe(void)
+{
+    //uint8_t version = 0;
+	uint8_t id_h = 0;
+	uint8_t id_l = 0;
+	//SCCB_Read(VER_ADDR, 0xfb, &version, 1);
+    SCCB_Read(BF30A2_ADDR, 0xfc, &id_h, 1);
+	SCCB_Read(BF30A2_ADDR, 0xfd, &id_l, 1);
+    printf("-----------camera id %02x %02x\r\n", id_h, id_l);
+
+    if (PIDH == id_h  && PIDL == id_l) {
+        printf("ID matched\r\n");
+        return 0;
+    } else {
+        printf("NOT matched\r\n");
+        return -1;
+    }
+}
+
+
+/*void gpio_pwdn_on(void)
+{
+   printf("pwdn_on!!!\r\n");  // sensor stop
+    gp1.port = 29;
+    gp1.config = OUTPUT_OPEN_DRAIN_NO_PULL;
+    hosal_gpio_init(&gp1);
+    hosal_gpio_output_set(&gp1, 1);
+	
+}
+
+void gpio_pwdn_off(void)
+{
+   printf("pwdn_off!!!\r\n");  // sensor start
+    gp1.port = 29;
+    gp1.config = OUTPUT_OPEN_DRAIN_NO_PULL;
+    hosal_gpio_init(&gp1);
+    hosal_gpio_output_set(&gp1, 0);
+}*/
+
+int bf30a2_reset(void)
+{
+	//uint8_t value;
+
+    for (int i = 0; i < sizeof(bf30a2_reglist)/sizeof(bf30a2_reglist[0]); i++){
+       SCCB_Write(BF30A2_ADDR, bf30a2_reglist[i][0], (uint8_t*)&bf30a2_reglist[i][1]);            
+    }
+	/*for(int j = 0; j < sizeof(bf30a2_reglist)/sizeof(bf30a2_reglist[0]); j++){
+	   SCCB_Read(BF30A2_ADDR, bf30a2_reglist[j][0], &value, 1); 	   
+       printf("addr: %x, after value: %x\r\n", bf30a2_reglist[j][0], value);
+	}*/
+
+    return 0;
+}
+
+const rt_camera_desc __rt_camera_bf30a2_desc __attribute__((section(".camera_desc"))) =
+{
+    .name = "__rti_name_bf30a2",
+    .addr = BF30A2_ADDR,
+    .frm_vld_high = 1,
+    .probe = bf30a2_probe,
+    .reset = bf30a2_reset,
+    .width = 240,
+    .height = 320,
+};
+
+int bf30a2_init(void)
+{
+    // TODO
+    return 0;
+}
+

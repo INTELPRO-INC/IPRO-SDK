@@ -1,0 +1,2 @@
+# ipronet_host has no sub-options; COMPONENTS_IPRONET_HOST_ENABLE is defined
+# in components/network/Kconfig.

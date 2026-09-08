@@ -1,0 +1,33 @@
+config DEBUG_CONSOLE_USB
+    bool "Debug console over USB CDC-ACM (printf TX mirror + shell RX)"
+    depends on COMPONENTS_CHERRYUSB_ENABLE && CHERRYUSB_DEVICE && CHERRYUSB_DEVICE_CDC && FREERTOS
+    default n
+    help
+      Mirror firmware printf/log output to a USB CDC-ACM IN endpoint and source
+      FinSH shell input from its OUT endpoint, in addition to the debug UART.
+      When disabled, only the UART console is used and behavior is unchanged.
+      USB needs the WIFIPLL up (BROM leaves it up at boot) + heap/FreeRTOS, so
+      usb_console_init() is called from the app after the scheduler starts.
+
+config DEBUG_CONSOLE_USB_OWN_DISPATCHER
+    bool "usb_console provides the usbd_event_handler dispatcher"
+    depends on DEBUG_CONSOLE_USB
+    default n
+    help
+      Compile usb_console's own strong usbd_event_handler shim. Leave =n (the
+      default) when the app already links a dispatcher (usb_demo's
+      usbd_event_common.c or the OTA shim): usb_console registers through it, and
+      =y would collide on a duplicate usbd_event_handler /
+      usbd_event_register_callback. Set =y ONLY for an app that links no other
+      usbd_event_handler.
+
+config DEBUG_CONSOLE_USB_ATTACH
+    bool "Attach console into the app's own composite USB device"
+    depends on DEBUG_CONSOLE_USB
+    default n
+    help
+      The console does not own the USB device: the app registers a composite
+      descriptor carrying a second CDC-ACM (interfaces 2/3, EP 0x84/0x05/0x86),
+      calls usb_console_attach() before its own usbd_initialize(), and chains
+      events to usb_console_notify_event(). One cable then carries both the
+      app's data channel and the shell console.

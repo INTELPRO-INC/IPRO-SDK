@@ -1,0 +1,34 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_IPRO7
+
+config SOC
+	default "ipro/ipro7"
+
+config KERNEL_ENTRY
+	default "__reset"
+
+config NUM_IRQS
+	default 128
+
+config CPU_HAS_FPU
+	default y
+
+config 2ND_LVL_ISR_TBL_OFFSET
+	default 12
+
+config 2ND_LVL_INTR_00_OFFSET
+	default 11
+
+config MAX_IRQ_PER_AGGREGATOR
+	default 128
+
+config RISCV_MCAUSE_EXCEPTION_MASK
+	hex
+	default 0x7FFFFFFF
+
+config RISCV_MACHINE_TIMER_SYSTEM_CLOCK_DIVIDER
+	default 1
+
+endif # SOC_IPRO7

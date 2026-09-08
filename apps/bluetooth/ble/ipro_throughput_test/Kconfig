@@ -1,0 +1,20 @@
+mainmenu "IPRO Throughput Test Application"
+
+config THROUGHPUT_TEST_ENABLE
+    bool "Enable throughput test application"
+    default y
+    help
+      Enable the BLE throughput test application
+
+config THROUGHPUT_DEFAULT_PACKET_SIZE
+    int "Default packet size for throughput test"
+    default 200
+    range 20 244
+    help
+      Default packet size in bytes for throughput testing
+
+config THROUGHPUT_DEFAULT_DURATION
+    int "Default test duration in seconds"
+    default 10
+    help
+      Default test duration. Set to 0 for continuous testing.

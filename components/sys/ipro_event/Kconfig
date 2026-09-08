@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2025 IPRO Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig IPRO_EVENT
+    bool "IPRO Event Loop Library"
+    default y
+    help
+        Enable IPRO Event Loop Library.
+        A lightweight, FreeRTOS-native event loop framework.
+
+if IPRO_EVENT
+
+config IPRO_EVENT_DEFAULT_QUEUE_SIZE
+    int "Default event queue size"
+    default 32
+    range 8 256
+    help
+        Default size of the event queue for the default event loop.
+
+config IPRO_EVENT_DEFAULT_TASK_STACK
+    int "Default task stack size"
+    default 2048
+    range 1024 8192
+    help
+        Stack size for the default event loop task (in bytes).
+
+config IPRO_EVENT_DEFAULT_TASK_PRIORITY
+    int "Default task priority"
+    default 5
+    range 1 32
+    help
+        Priority for the default event loop task.
+
+config IPRO_EVENT_POST_FROM_ISR
+    bool "Enable posting events from ISR"
+    default y
+    help
+        Enable the ability to post events from interrupt handlers.
+        When enabled, ipro_event_isr_post() can be used from ISR context.
+
+endif # IPRO_EVENT

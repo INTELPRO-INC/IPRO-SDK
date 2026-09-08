@@ -1,0 +1,1867 @@
+# ============================================================================
+# BLE Stack Configuration
+# ============================================================================
+# Configuration for ipro_ble_controller + ipro_bt_host (Zephyr 4.4).
+# The btblecontroller/blestack stack was removed; see the git tag
+# legacy-bt-stack-before-removal.
+#
+# Categories:
+# 1. Controller Variant Selection
+# 2. BLE Roles and Connections
+# 3. BLE Features
+# 4. Host Stack Options
+# 5. BLE Mesh Configuration
+# 6. Debug and Testing
+# ============================================================================
+
+# ============================================================================
+# CONTROLLER VARIANT SELECTION
+# ============================================================================
+
+menu "Controller Configuration"
+
+    config BT_CTLR_IPRO
+        bool "Use ipro_ble_controller (pristine RivieraWaves v14.0.2 + byte-stream HCI)"
+        default n
+        help
+          Build the BLE controller from components/wireless/bluetooth/ipro_ble_controller/
+          instead of the removed btblecontroller/.
+
+          ipro_ble_controller keeps the RivieraWaves v14.0.2 sources pristine (upstream/ is
+          read-only) and confines all IPRO7-specific code to plf/ipro7/. The
+          host/controller boundary is a true H4 byte stream over a shared ring
+          buffer, so no RivieraWaves structures or Exchange Memory offsets cross
+          it.
+
+          Supported customer-library resource and feature profiles are selected
+          below. LE Audio runs in the host; ISO/CIS/BIS capability is selected
+          by the controller feature profile.
+
+          When enabled, the Controller Variant choice below is ignored, and the
+          host builds src/hci_ipro_ble_ctlr/hci_driver_ipro_ble_ctlr.c instead of
+          src/hci_onchip/hci_driver.c.
+
+    config BT_CTLR_BTCTRL2
+        bool
+        select BT_CTLR_IPRO
+        help
+          Deprecated compatibility selector. Use BT_CTLR_IPRO.
+
+    choice IPRO_BLE_CTLR_VARIANT
+        depends on BT_CTLR_IPRO
+        prompt "ipro_ble_controller Library Variant"
+        default IPRO_BLE_CTLR_LINK1_PERIPH
+
+        config IPRO_BLE_CTLR_LINK1_PERIPH
+            bool "1 Link (Peripheral Only, validated)"
+
+        config IPRO_BLE_CTLR_LINK1
+            bool "1 Link (All Roles)"
+
+        config IPRO_BLE_CTLR_LINK2
+            bool "2 Links (All Roles)"
+
+        config IPRO_BLE_CTLR_LINK4
+            bool "4 Links (All Roles)"
+    endchoice
+
+    config IPRO_BLE_CTLR_LIB
+        string
+        default "link1_periph" if IPRO_BLE_CTLR_LINK1_PERIPH
+        default "link1" if IPRO_BLE_CTLR_LINK1
+        default "link2" if IPRO_BLE_CTLR_LINK2
+        default "link4" if IPRO_BLE_CTLR_LINK4
+
+    choice IPRO_BLE_CTLR_FEATURE_PROFILE
+        depends on BT_CTLR_IPRO
+        prompt "ipro_ble_controller Feature Profile"
+        default IPRO_BLE_CTLR_FEATURE_BT52
+
+        config IPRO_BLE_CTLR_FEATURE_BT52
+            bool "Bluetooth 5.2 base (validated low power)"
+
+        config IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+            bool "Bluetooth 5.4 + Extended/Periodic Adv + PAwR + 2 ISO streams"
+            help
+              Enables the controller sources for Bluetooth 5.3 connection
+              subrating/channel classification, Bluetooth 5.4 PAwR, PAST,
+              CIS, BIS, ISOAL and ISO data over HCI. This profile has separate
+              prebuilt archives and must be RF-qualified before production use.
+    endchoice
+
+    config IPRO_BLE_CTLR_FEATURE
+        string
+        default "bt52" if IPRO_BLE_CTLR_FEATURE_BT52
+        default "bt54_iso2" if IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+
+    config IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        bool "Force ipro_ble_controller source build"
+        depends on BT_CTLR_IPRO
+        default n
+        help
+          Ignore a matching prebuilt archive and compile the controller source.
+
+    config IPRO_BLE_CTLR_CFG_DBG
+        bool "Build ipro_ble_controller with RivieraWaves CFG_DBG"
+        depends on BT_CTLR_IPRO
+        default n
+        help
+          Keep this disabled for customer-release controller builds unless a
+          debug-only workaround or trace run explicitly requires CFG_DBG.
+          CFG_DBG maps to RivieraWaves RW_DEBUG/RW_SWDIAG/KE_PROFILING and
+          IPRO PLF_DEBUG, so it is a controller behavior/profile selector, not
+          just extra log text. Debug applications and diagnostic library
+          variants must opt in explicitly.
+
+    config IPRO_BLE_CTLR_TRACE_BUFFERS
+        bool "Keep large ipro_ble_controller post-PDS trace buffers"
+        depends on BT_CTLR_IPRO
+        default n
+        help
+          Allocate the large in-RAM CCI/VCD diagnostic buffers used while
+          debugging post-PDS connection timing. Keep this disabled for normal
+          host/profile work and customer-release builds; UART counters remain
+          available without these buffers.
+
+    config IPRO_BLE_CTLR_TRACE_DEPTH
+        int "Controller diagnostic trace depth"
+        depends on IPRO_BLE_CTLR_TRACE_BUFFERS
+        range 256 32768
+        default 256
+        help
+          Number of controller trace records retained in PSRAM. Increase this
+          only in a dedicated diagnostic application that needs a longer
+          CIS/PDS capture; normal customer builds do not allocate the buffer.
+
+    config IPRO_BLE_CTLR_CIS_RXWIN_DIAG_EXTRA_US
+        int "Extra CIS RX sync-window margin for diagnostics (us)"
+        depends on BT_CTLR_IPRO && IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+        default 0
+        help
+          Adds a fixed diagnostic-only margin to CIS peripheral RX windows.
+          Keep this at 0 for functional qualification and customer-release
+          builds. Non-zero values are allowed only for RF/timing isolation runs
+          where the report explicitly records that RXWIN was widened.
+
+    config IPRO_BLE_CTLR_CIS_DIAG
+        bool "Enable ipro_ble_controller CIS UART/PSRAM diagnostics"
+        depends on BT_CTLR_IPRO && IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+        default n
+        help
+          Enable verbose CIS RX/ISO counters, UART dumps and retained trace
+          buffers used during LE Audio bring-up. Keep disabled for normal
+          controller/host qualification and customer-release builds; these
+          diagnostics add hot-path work in CIS RX handling and can perturb
+          timing-sensitive media tests.
+
+    config IPRO_BLE_CTLR_NATIVE_SLEEP_DEFAULT
+        bool "Enable RivieraWaves native BLE-IP deep sleep by default"
+        depends on BT_CTLR_IPRO
+        default n
+        help
+          Controls the reset-time PARAM_ID_SLEEP_ENABLE value passed to RWIP
+          and the controller runtime native-sleep gate default.
+
+          Leave disabled for the current customer/function baseline: IPRO7
+          keeps connections on the active XTAL32M timing domain when the
+          application/FreeRTOS policy has not granted low power, and the native
+          BLE-IP deep sleep path still requires separate platform validation.
+          Bring-up applications may enable this explicitly to qualify the
+          sleep-clock and DEEPSL counter path.
+
+    config IPRO_BLE_CTLR_32K_FORCE_RC32K
+        bool "Force ipro_ble_controller low-power clock to calibrated RC32K"
+        depends on BT_CTLR_IPRO
+        default n
+        help
+          Keep disabled for the default controller policy: the controller first
+          qualifies XTAL32K against XTAL32M and falls back to calibrated RC32K
+          only when the crystal is absent or outside the allowed 500 ppm limit.
+
+          Enable this in board/application configurations that are known to
+          have no XTAL32K populated. The controller then skips the XTAL probe
+          and directly selects/calibrates RC32K, reducing long-interval PDS
+          validation noise without changing other applications.
+
+    config IPRO_BLE_CTLR_32K_CORRECTED_DRIFT_PPM
+        int "Published LPCLK drift after RC32K residual compensation (ppm)"
+        depends on BT_CTLR_IPRO
+        default 0
+        range 0 500
+        help
+          APP-selected override for PARAM_ID_LPCLK_DRIFT after the platform has
+          calibrated RC32K and compensates the signed residual in the BLE
+          timebase conversion path.
+
+          Keep 0 for the controller default: publish the measured 32 kHz
+          accuracy bound.  RC32K-only products that use platform PDS and have
+          verified the compensated wake timing may set a smaller post-
+          compensation uncertainty, for example 100 ppm.  This prevents RW from
+          opening multi-millisecond RX windows at long connection intervals and
+          creating false-sync/CRC failures.
+
+    choice BTBLECONTROLLER_VARIANT
+        depends on !BT_CTLR_IPRO && !BTDM_ENABLE
+        prompt "Controller Variant"
+        default BTBLECONTROLLER_LINK1
+        help
+          Select the BLE controller variant based on connection requirements.
+
+          All variants use a unified connection pool architecture that supports
+          any combination of central and peripheral roles (up to the link limit).
+          Higher connection counts use more memory.
+
+          DEPRECATED naming (m0s1/m1s1/m2s1/m4s1/m8s1) has been replaced with
+          linkN naming to better reflect the unified architecture.
+
+        config BTBLECONTROLLER_LINK1_PERIPH
+            bool "1 Link (Peripheral Only)"
+            help
+              Minimal configuration: peripheral role only, 1 connection.
+              Smallest memory footprint. Suitable for simple beacons,
+              sensors, or peripheral-only devices.
+
+              Legacy name: m0s1
+
+        config BTBLECONTROLLER_LINK1
+            bool "1 Link (All Roles)"
+            help
+              Full featured: central + peripheral + observer + broadcaster.
+              Single connection with all roles enabled.
+              Balanced memory usage for most single-connection applications.
+
+              Legacy name: m1s1
+
+        config BTBLECONTROLLER_LINK2
+            bool "2 Links (All Roles)"
+            help
+              Full featured with 2 simultaneous connections.
+              Unified pool supports any role combination (2 central, 2 peripheral,
+              or 1 central + 1 peripheral).
+
+              Legacy name: m2s1
+
+        config BTBLECONTROLLER_LINK4
+            bool "4 Links (All Roles)"
+            help
+              Full featured with 4 simultaneous connections.
+              Unified pool supports any role combination up to 4 total connections.
+              Suitable for gateway or multi-device hub applications.
+
+              Legacy name: m4s1
+
+        config BTBLECONTROLLER_LINK8
+            bool "8 Links (All Roles)"
+            help
+              High connection count: 8 simultaneous connections.
+              Unified pool supports any role combination up to 8 total connections.
+              Largest memory footprint (64KB EM). Suitable for complex gateway
+              or mesh applications with many concurrent devices.
+
+              Legacy name: m8s1
+
+        config BTBLECONTROLLER_UARTHCI
+            bool "HCI Controller Only (UART/USB CDC)"
+            select BLE_HOST_DISABLE
+            help
+              Controller-only mode for HCI transport via UART or USB CDC.
+              No host stack included. Use with external host (PC, Linux, etc).
+              Supports 2 connections, all roles, extended advertising.
+
+    endchoice
+
+    config BTBLECONTROLLER_LIB
+        string
+        # New linkN naming (maps to actual library names)
+        default "link1_periph" if BTBLECONTROLLER_LINK1_PERIPH
+        default "link1" if BTBLECONTROLLER_LINK1
+        default "link2" if BTBLECONTROLLER_LINK2
+        default "link4" if BTBLECONTROLLER_LINK4
+        default "link8" if BTBLECONTROLLER_LINK8
+        default "uarthci" if BTBLECONTROLLER_UARTHCI
+        # Legacy m*s* naming removed - use linkN variants above
+
+    config BTBLECONTROLLER_LE_AUDIO
+        bool "LE Audio Support (GAF/CIS/BIS)"
+        default n
+        depends on !BTBLECONTROLLER_LINK1_PERIPH
+        help
+          Select prebuilt controller with LE Audio (GAF) support.
+          Enables CIS, BIS, and GAF optimizations in the controller.
+          Not available for link1_periph (peripheral-only) variant.
+
+    config BTBLECONTROLLER_BT_53
+        bool "BLE 5.3 Support"
+        default n
+        depends on !BTBLECONTROLLER_LINK1_PERIPH
+        help
+          Select prebuilt controller with BLE 5.3 features.
+          Not available for link1_periph (peripheral-only) variant.
+
+    config BTBLECONTROLLER_BT_54
+        bool "BLE 5.4 Support"
+        default n
+        depends on !BTBLECONTROLLER_LINK1_PERIPH
+        select BTBLECONTROLLER_BT_53
+        help
+          Select prebuilt controller with BLE 5.4 features.
+          Implies BLE 5.3 support.
+          Not available for link1_periph (peripheral-only) variant.
+
+    config BLE_FORCE_SOURCE_BUILD
+        bool "Force Controller Source Build (Development)"
+        default n
+        help
+          Force building the BLE controller from source instead of using
+          prebuilt libraries. Use this during development when you need to
+          modify controller source code (e.g., hci_onchip.c, isoohci, lld).
+
+          When disabled (default), the build system uses prebuilt .a files
+          from the variant directory if available, which is faster.
+
+          When enabled, the full controller is compiled from source,
+          allowing code changes to take effect.
+
+    config EM_SIZE
+        int "Exchange Memory Size (KB)"
+        range 16 128
+        default 64 if BTBLECONTROLLER_LINK8 || BTBLECONTROLLER_UARTHCI
+        default 32
+        help
+          Size of Exchange Memory for BLE controller data buffering.
+          Higher connection counts typically require more EM.
+
+endmenu
+
+# ============================================================================
+# BLE ROLES AND CONNECTIONS
+# ============================================================================
+
+menu "BLE Roles and Connections"
+
+    config BT_CONN
+        int "Maximum Connections"
+        range 1 8
+        default 1 if BTBLECONTROLLER_LINK1_PERIPH || BTBLECONTROLLER_LINK1
+        default 2 if BTBLECONTROLLER_LINK2
+        default 4 if BTBLECONTROLLER_LINK4
+        default 8 if BTBLECONTROLLER_LINK8
+        help
+          Maximum number of simultaneous BLE connections.
+          Should match the selected controller variant's link capacity.
+
+    config BT_CENTRAL
+        bool "Central Role"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable central (master/scanner) role for initiating connections.
+          Not available in link1_periph (peripheral-only) variant.
+
+    config BT_PERIPHERAL
+        bool "Peripheral Role"
+        default y
+        help
+          Enable peripheral (slave/advertiser) role.
+          Always available in all variants.
+
+    config BT_OBSERVER
+        bool "Observer Role"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable observer role for passive scanning.
+          Not available in link1_periph (peripheral-only) variant.
+
+    config BT_BROADCASTER
+        bool "Broadcaster Role"
+        default y
+        help
+          Enable broadcaster role for advertising.
+          Always available in all variants.
+
+endmenu
+
+# ============================================================================
+# BLE FEATURES
+# ============================================================================
+
+menu "BLE Features"
+
+    config ADV_EXTENSION
+        bool "Extended Advertising"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable BLE 5.0 extended advertising features.
+          Not available in link1_periph (peripheral-only) variant.
+
+    config CIS
+        bool "Connected Isochronous Streams (CIS)"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable CIS for unicast audio (LE Audio foundation).
+          Requires BLE 5.2+ controller support.
+
+    config BIS
+        bool "Broadcast Isochronous Streams (BIS)"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable BIS for broadcast audio (Auracast foundation).
+          Requires BLE 5.2+ controller support.
+
+    config LE_PWR_CTRL
+        bool "LE Power Control"
+        default n if BTBLECONTROLLER_LINK1_PERIPH
+        default y
+        help
+          Enable LE power control for range optimization.
+          Not available in link1_periph (peripheral-only) variant.
+
+    config CTE
+        bool "Constant Tone Extension (Direction Finding)"
+        default n
+        help
+          Enable CTE for AoA/AoD direction finding.
+
+    config BT_DF
+        bool "Host Direction Finding API"
+        default n
+        depends on BT_HOST_IPRO_V44 && CTE
+        help
+          Compile the Bluetooth 5.1 Host APIs for CTE configuration and IQ
+          reports. Select the connectionless and/or connected roles below.
+
+    if BT_DF
+
+    config BT_DF_CONNECTIONLESS_CTE_RX
+        bool "Connectionless CTE receiver"
+        default n
+        depends on BT_PER_ADV_SYNC
+
+    config BT_DF_CONNECTIONLESS_CTE_TX
+        bool "Connectionless CTE transmitter"
+        default n
+        depends on BT_PER_ADV
+
+    config BT_DF_CONNECTION_CTE_RX
+        bool "Connected CTE receiver"
+        default n
+        depends on BT_CONN
+
+    config BT_DF_CONNECTION_CTE_TX
+        bool "Connected CTE transmitter"
+        default n
+        depends on BT_CONN
+
+    config BT_DF_CONNECTION_CTE_REQ
+        bool "Connected CTE request procedure"
+        default n
+        depends on BT_DF_CONNECTION_CTE_RX
+
+    config BT_DF_CONNECTION_CTE_RSP
+        bool "Connected CTE response procedure"
+        default n
+        depends on BT_DF_CONNECTION_CTE_TX
+
+    config BT_DF_CTE_RX_AOA
+        bool "AoA antenna switching during CTE reception"
+        default y
+        depends on BT_DF_CONNECTIONLESS_CTE_RX || BT_DF_CONNECTION_CTE_RX
+
+    config BT_DF_CTE_TX_AOD
+        bool "AoD antenna switching during CTE transmission"
+        default y
+        depends on BT_DF_CONNECTIONLESS_CTE_TX || BT_DF_CONNECTION_CTE_TX
+
+    endif # BT_DF
+
+    config PHY_UPDATE
+        bool "PHY Update"
+        default y
+        help
+          Enable PHY update procedure (1M/2M/Coded PHY).
+
+    config BT_DATA_LEN_UPDATE
+        bool "Data Length Extension"
+        default n
+        help
+          Enable BLE 4.2 Data Length Extension.
+
+    config BT_AUTO_DATA_LEN_UPDATE
+        bool "Automatically request maximum data length"
+        default n
+        depends on BT_DATA_LEN_UPDATE
+
+    config BT_PER_ADV
+        bool "Periodic advertiser"
+        default n
+        depends on BT_EXT_ADV && BT_BROADCASTER
+
+    config BT_PER_ADV_SYNC
+        bool "Periodic advertising synchronization"
+        default n
+        depends on BT_EXT_ADV && BT_OBSERVER
+
+    config BT_PER_ADV_SYNC_MAX
+        int "Maximum periodic advertising synchronizations"
+        range 1 8
+        default 1
+        depends on BT_PER_ADV_SYNC
+
+    config BT_PER_ADV_SYNC_BUF_SIZE
+        int "Periodic report reassembly buffer size"
+        range 0 1650
+        default 0
+        depends on BT_PER_ADV_SYNC
+
+    config BT_PER_ADV_SYNC_TRANSFER_SENDER
+        bool "Periodic Advertising Sync Transfer sender"
+        default n
+        depends on BT_PER_ADV_SYNC && BT_CENTRAL
+
+    config BT_PER_ADV_SYNC_TRANSFER_RECEIVER
+        bool "Periodic Advertising Sync Transfer receiver"
+        default n
+        depends on BT_PER_ADV_SYNC && BT_PERIPHERAL
+
+    config BT_EATT
+        bool "Enhanced ATT bearers"
+        default n
+        depends on BT_SMP && BT_L2CAP_DYNAMIC_CHANNEL
+        help
+          Enable parallel ATT transactions over encrypted LE credit-based
+          L2CAP channels. The peer must support EATT.
+
+    config BT_EATT_MAX
+        int "Maximum EATT bearers per connection"
+        range 1 8
+        default 3
+        depends on BT_EATT
+
+    config BT_EATT_AUTO_CONNECT
+        bool "Automatically establish EATT bearers"
+        default n
+        depends on BT_EATT
+
+endmenu
+
+# ============================================================================
+# HOST STACK OPTIONS
+# ============================================================================
+
+menu "Host Stack Options"
+
+    config BT_HOST_IPRO_V44
+        bool "IPRO unified Zephyr 4.4 Bluetooth host (migration)"
+        default n
+        depends on !BLE_HOST_DISABLE
+        help
+          Select the pinned Zephyr v4.4.0 based unified BT + BLE host. The
+          legacy hosts remain the default until board qualification completes.
+
+    config BT_EXT_ADV
+        bool "Zephyr host extended advertising/scanning API"
+        default n
+        depends on BT_HOST_IPRO_V44
+        help
+          Compile Zephyr host support for LE extended advertising and extended
+          scanning commands. Keep this separate from the controller
+          ADV_EXTENSION capability so an app can use a controller that supports
+          extended advertising while still forcing legacy scan/advertise during
+          interoperability bring-up.
+
+    choice BT_AUTO_PHY_CENTRAL
+        prompt "Zephyr host automatic PHY preference for central role"
+        default BT_AUTO_PHY_CENTRAL_NONE
+        depends on BT_HOST_IPRO_V44 && BT_CENTRAL && PHY_UPDATE
+        help
+          Select whether the host should automatically initiate a PHY update
+          after a central-role connection is established. Keep the default at
+          none so baseline connection validation is not coupled to a PHY LLCP;
+          apps can still call bt_conn_le_phy_update() or use their own shell
+          command when PHY validation is intended.
+
+        config BT_AUTO_PHY_CENTRAL_NONE
+            bool "No automatic central PHY update"
+
+        config BT_AUTO_PHY_CENTRAL_1M
+            bool "Prefer 1M PHY automatically"
+
+        config BT_AUTO_PHY_CENTRAL_2M
+            bool "Prefer 2M PHY automatically"
+
+        config BT_AUTO_PHY_CENTRAL_CODED
+            bool "Prefer coded PHY automatically"
+    endchoice
+
+    choice BT_AUTO_PHY_PERIPHERAL
+        prompt "Zephyr host automatic PHY preference for peripheral role"
+        default BT_AUTO_PHY_PERIPHERAL_NONE
+        depends on BT_HOST_IPRO_V44 && BT_PERIPHERAL && PHY_UPDATE
+        help
+          Select whether the host should automatically initiate a PHY update
+          after a peripheral-role connection is established. The default is
+          none; explicit app policy or shell commands should own PHY changes.
+
+        config BT_AUTO_PHY_PERIPHERAL_NONE
+            bool "No automatic peripheral PHY update"
+
+        config BT_AUTO_PHY_PERIPHERAL_1M
+            bool "Prefer 1M PHY automatically"
+
+        config BT_AUTO_PHY_PERIPHERAL_2M
+            bool "Prefer 2M PHY automatically"
+
+        config BT_AUTO_PHY_PERIPHERAL_CODED
+            bool "Prefer coded PHY automatically"
+    endchoice
+
+    config IPRO_BT_HOST_HCI_TRACE
+        bool "Enable IPRO Zephyr-host HCI trace"
+        default n
+        depends on BT_HOST_IPRO_V44
+        help
+          Print selected HCI command, event, ACL/SMP and ISO packet summaries
+          at the IPRO H4 adapter boundary. Keep disabled for customer-release,
+          performance and power measurements because the UART output can
+          perturb timing-sensitive LE Audio and low-power tests.
+
+    config IPRO_BT_HOST_SMP_TRACE
+        bool "Enable IPRO Zephyr-host SMP/settings trace"
+        default n
+        depends on BT_HOST_IPRO_V44 && BT_SMP
+        help
+          Print pairing, key-storage and address-resolution breadcrumbs used
+          while validating bonding with Android. Keep disabled for normal
+          release builds.
+
+    config IPRO_BT_HOST_SKIP_SET_PRIVACY_MODE
+        bool "Skip LE Set Privacy Mode in IPRO Zephyr host"
+        default n
+        depends on BT_HOST_IPRO_V44 && BT_SMP
+        help
+          Work around controllers that expose resolving-list privacy support
+          but do not implement HCI LE Set Privacy Mode correctly. This affects
+          Android bonding/reconnect behavior and must be recorded in validation
+          reports when enabled.
+
+    config BLE_HOST_DISABLE
+        bool "Disable Host Stack (Controller-only mode)"
+        default n
+        help
+          Disable the BLE host stack for controller-only mode.
+          Use this for HCI transport applications where an external
+          host is connected via UART/USB.
+
+    config BT_SMP
+        bool "Security Manager Protocol"
+        default y
+        depends on !BLE_HOST_DISABLE
+        help
+          Enable SMP for pairing and encryption.
+
+    config BT_BONDABLE
+        bool "Allow bonding"
+        default y
+        depends on BT_SMP
+
+    config BT_FIXED_PASSKEY
+        bool "Allow application fixed passkey"
+        default n
+        depends on BT_SMP
+
+    config BT_SIGNING
+        bool "ATT data signing"
+        default y
+        depends on BT_SMP
+
+    config BT_ECC
+        bool "Secure Connections ECC"
+        default y
+        depends on BT_SMP
+        help
+          Enable the IPRO TRNG/TinyCrypt P-256 host implementation used by LE
+          Secure Connections and BR/EDR Secure Simple Pairing.
+
+    config BT_PRIVACY
+        bool "Host privacy and resolvable private addresses"
+        default n
+        depends on BT_SMP
+
+    config BT_HOST_RESOLVING
+        bool "Resolve private addresses in the Host"
+        default y if BT_PRIVACY
+        depends on BT_PRIVACY
+
+    config BT_KEYS_OVERWRITE_OLDEST
+        bool "Overwrite oldest bond when key storage is full"
+        default n
+        depends on BT_SMP
+
+    config BT_MAX_PAIRED
+        int "Maximum paired devices"
+        range 1 16
+        default 1
+        depends on BT_SMP
+
+    config BT_ID_MAX
+        int "Maximum local identities"
+        range 1 8
+        default 1
+
+    config BT_L2CAP_TX_BUF_COUNT
+        int "Host L2CAP TX buffer count"
+        range 1 64
+        default 10
+
+    config BT_CONN_TX_MAX
+        int "Maximum pending connection TX contexts"
+        range 1 64
+        default 10
+
+    config BT_BUF_ACL_RX_SIZE
+        int "Maximum Host ACL RX payload"
+        range 27 1021
+        default 1021 if BT_BREDR
+        default 255
+
+    config BT_BUF_ACL_TX_COUNT
+        int "Host ACL TX buffer count"
+        range 1 64
+        default 7
+
+    config BT_BUF_EVT_RX_COUNT
+        int "Host HCI event RX buffer count"
+        range 2 65
+        default 8
+
+    config BT_GATT_CLIENT
+        bool "GATT Client"
+        default y
+        depends on !BLE_HOST_DISABLE
+        help
+          Enable GATT client role for service discovery.
+
+    config BT_GATT_DYNAMIC_DB
+        bool "Dynamic GATT database"
+        default n
+        depends on !BLE_HOST_DISABLE
+
+    config BT_GATT_AUTO_UPDATE_MTU
+        bool "Automatically exchange ATT MTU after connection"
+        default n
+        depends on BT_GATT_CLIENT
+
+    config BT_GATT_AUTO_DISCOVER_CCC
+        bool "Automatically discover GATT CCC descriptors"
+        default n
+        depends on BT_GATT_CLIENT
+
+    config BT_L2CAP_DYNAMIC_CHANNEL
+        bool "Dynamic L2CAP channels"
+        default y if BT_BREDR
+        help
+          Enable connection-oriented L2CAP channels. LE Credit Based and
+          Enhanced Credit Based channels use this for CoC/EATT, while SDP and
+          Classic profiles use the BR/EDR signaling implementation.
+
+    config BT_L2CAP_ECRED
+        bool "LE Enhanced Credit Based Flow Control"
+        default y if BT_EATT
+        depends on BT_L2CAP_DYNAMIC_CHANNEL
+        help
+          Enable the Enhanced Credit Based L2CAP procedures required by EATT.
+
+    config BT_L2CAP_CONN_RTX_TIMEOUT
+        int "L2CAP signaling response timeout (seconds)"
+        range 1 60
+        default 40
+        depends on BT_L2CAP_DYNAMIC_CHANNEL
+
+    config BT_SETTINGS
+        bool "Persistent Settings"
+        default n
+        help
+          Enable persistent storage for bonding info and settings.
+
+    config BT_STACK_CLI
+        bool "Stack CLI Commands"
+        default y
+        help
+          Enable shell commands for BLE stack debugging.
+
+    config BLE_STACK_DBG_PRINT
+        bool "Stack Debug Print"
+        default y
+        help
+          Enable debug print output from BLE stack.
+
+    config BLE_MULTI_ADV
+        bool "Multi Advertising"
+        default n
+        help
+          Enable multiple advertising sets.
+
+    config BT_BREDR
+        bool "BR/EDR (Classic Bluetooth)"
+        default n
+        depends on IPRO6
+        help
+          Enable Classic Bluetooth (BR/EDR) support.
+          Only available on IPRO6 (BL616L-based) which has a full
+          BR/EDR + BLE combo controller.
+
+endmenu
+
+# ============================================================================
+# BR/EDR CLASSIC BLUETOOTH PROFILES
+# ============================================================================
+
+menu "Classic Bluetooth Profiles"
+    depends on BT_BREDR && BT_HOST_IPRO_V44
+
+    config BT_L2CAP_ENH_RET
+        bool "BR/EDR L2CAP Enhanced Retransmission Mode"
+        default n
+        depends on BT_L2CAP_DYNAMIC_CHANNEL
+
+    config BT_L2CAP_RET_FC
+        bool
+        default y if BT_L2CAP_ENH_RET
+
+    config BT_L2CAP_MPS
+        int "BR/EDR L2CAP retransmission MPS"
+        range 48 1021
+        default 48
+        depends on BT_L2CAP_RET_FC
+
+    config BT_L2CAP_MAX_WINDOW_SIZE
+        int "BR/EDR L2CAP retransmission window"
+        range 1 32
+        default 1
+        depends on BT_L2CAP_RET_FC
+
+    config BT_RFCOMM
+        bool "RFCOMM protocol"
+        default n
+        select BT_L2CAP_DYNAMIC_CHANNEL
+        help
+          Enable the RFCOMM protocol implementation. Profiles such as SPP,
+          HFP and GOEP select this automatically.
+
+    config BT_RFCOMM_L2CAP_MTU
+        int "RFCOMM L2CAP MTU"
+        depends on BT_RFCOMM
+        range 23 4096
+        default 1021
+
+    config BT_RFCOMM_TX_MAX
+        int "RFCOMM pending TX buffers"
+        depends on BT_RFCOMM
+        range 1 255
+        default 7
+
+    config BT_AVDTP
+        bool "AVDTP protocol"
+        default n
+        select BT_L2CAP_DYNAMIC_CHANNEL
+
+    config BT_AVDTP_RTP_VERSION
+        int "AVDTP RTP version"
+        depends on BT_AVDTP
+        range 2 2
+        default 2
+
+    config BT_AVDTP_SIGNAL_SDU_MAX
+        int "Maximum AVDTP signaling SDU"
+        depends on BT_AVDTP
+        range 48 65535
+        default 512
+
+    config BT_A2DP
+        bool "A2DP (Advanced Audio Distribution Profile)"
+        default n
+        select BT_AVDTP
+        help
+          Enable A2DP profile for audio streaming.
+
+    if BT_A2DP
+
+    config BT_A2DP_SOURCE
+        bool "A2DP Source"
+        default n
+        help
+          Enable the media Source role. The application supplies encoded
+          media frames through the A2DP stream API.
+
+    config BT_A2DP_SINK
+        bool "A2DP Sink"
+        default n
+        help
+          Enable the media Sink role and deliver received encoded media frames
+          to the application. Codec decode and audio rendering remain APP
+          policy and are independently selectable.
+
+    endif # BT_A2DP
+
+    config BT_AVCTP
+        bool "AVCTP protocol"
+        default n
+        select BT_L2CAP_DYNAMIC_CHANNEL
+
+    config BT_AVRCP
+        bool "AVRCP (Audio/Video Remote Control Profile)"
+        default n
+        select BT_AVCTP
+        help
+          Enable AVRCP profile for remote control of A/V equipment.
+
+    if BT_AVRCP
+
+    config BT_AVRCP_CONTROLLER
+        bool "AVRCP Controller role"
+        default n
+
+    config BT_AVRCP_TARGET
+        bool "AVRCP Target role"
+        default n
+
+    config BT_AVRCP_VD_RX_SIZE
+        int "AVRCP vendor-dependent RX buffer size"
+        range 512 32767
+        default 1024
+
+    config BT_AVRCP_BROWSING
+        bool "AVRCP browsing channel"
+        default n
+        select BT_L2CAP_ENH_RET
+
+    config BT_AVRCP_BROWSING_L2CAP_MTU
+        int "AVRCP browsing L2CAP MTU"
+        depends on BT_AVRCP_BROWSING
+        range 339 4096
+        default 339
+
+    config BT_AVRCP_TG_COVER_ART
+        bool "AVRCP Target cover art"
+        depends on BT_AVRCP_TARGET
+        default n
+        select BT_BIP
+
+    config BT_AVRCP_CT_COVER_ART
+        bool "AVRCP Controller cover art"
+        depends on BT_AVRCP_CONTROLLER
+        default n
+        select BT_BIP
+
+    endif # BT_AVRCP
+
+    config BT_HFP
+        bool "HFP (Hands-Free Profile)"
+        default n
+        select BT_RFCOMM
+        help
+          Enable HFP for hands-free audio (headset/handsfree).
+
+    if BT_HFP
+
+    config BT_HFP_HF
+        bool "HFP Hands-Free role"
+        default n
+
+    config BT_HFP_AG
+        bool "HFP Audio Gateway role"
+        default n
+
+    config BT_HFP_HF_CODEC_NEG
+        bool "HFP HF codec negotiation"
+        depends on BT_HFP_HF
+        default n
+
+    config BT_HFP_HF_CODEC_MSBC
+        bool "HFP HF mSBC codec"
+        depends on BT_HFP_HF_CODEC_NEG
+        default n
+
+    config BT_HFP_HF_CODEC_LC3_SWB
+        bool "HFP HF LC3-SWB codec"
+        depends on BT_HFP_HF_CODEC_NEG
+        default n
+
+    config BT_HFP_AG_CODEC_NEG
+        bool "HFP AG codec negotiation"
+        depends on BT_HFP_AG
+        default n
+
+    config BT_HFP_AG_CODEC_MSBC
+        bool "HFP AG mSBC codec"
+        depends on BT_HFP_AG_CODEC_NEG
+        default n
+
+    config BT_HFP_AG_CODEC_LC3_SWB
+        bool "HFP AG LC3-SWB codec"
+        depends on BT_HFP_AG_CODEC_NEG
+        default n
+
+    endif # BT_HFP
+
+    config BT_SPP
+        bool "SPP (Serial Port Profile)"
+        default n
+        select BT_RFCOMM
+        help
+          Enable the RFCOMM transport needed by an APP-owned Serial Port
+          Profile service and SDP record.
+
+    config BT_DID
+        bool "Device ID Profile"
+        default n
+
+    config BT_DEVICE_VENDOR_ID
+        hex "Device ID vendor ID"
+        depends on BT_DID
+        range 0x0000 0xffff
+        default 0x0000
+
+    config BT_DEVICE_PRODUCT_ID
+        hex "Device ID product ID"
+        depends on BT_DID
+        range 0x0000 0xffff
+        default 0x0000
+
+    config BT_DEVICE_VERSION
+        hex "Device ID version"
+        depends on BT_DID
+        range 0x0000 0xffff
+        default 0x0000
+
+    config BT_GOEP
+        bool "Generic Object Exchange Profile"
+        default n
+        select BT_RFCOMM
+        select BT_L2CAP_ENH_RET
+
+    config BT_GOEP_RFCOMM_MTU
+        int "GOEP RFCOMM MTU"
+        depends on BT_GOEP
+        range 264 4096
+        default 1021
+
+    config BT_GOEP_L2CAP_MTU
+        int "GOEP L2CAP MTU"
+        depends on BT_GOEP
+        range 265 4096
+        default 1021
+
+    config BT_BIP
+        bool "Basic Imaging Profile"
+        default n
+        select BT_GOEP
+
+endmenu
+
+# ============================================================================
+# HCI TRANSPORT CONFIGURATION (Controller-only mode)
+# ============================================================================
+
+menu "HCI Transport Configuration"
+    depends on BLE_HOST_DISABLE
+
+    comment "HCI transport is used when host stack is disabled"
+
+    choice HCI_TRANSPORT
+        prompt "HCI Transport Type"
+        default BLE_HCI_USB_CDC if CHERRYUSB_DEVICE_CDC
+        default BLE_HCI_UART
+        help
+          Select HCI transport layer for external host communication.
+
+        config BLE_HCI_UART
+            bool "UART (H4 Protocol)"
+            help
+              Use UART with H4 protocol for HCI transport.
+              Standard HCI UART interface for external host.
+
+        config BLE_HCI_USB_CDC
+            bool "USB CDC ACM"
+            depends on CHERRYUSB_DEVICE_CDC
+            help
+              Use USB CDC ACM for HCI transport.
+              Provides virtual COM port for external host.
+
+    endchoice
+
+    config LP_HCIUART
+        bool "Low Power HCI UART"
+        default n
+        depends on BLE_HCI_UART
+        help
+          Enable low power mode for HCI UART transport.
+          Supports sleep/wakeup handshaking.
+
+    config HCI_UART_BAUDRATE
+        int "HCI UART Baudrate"
+        default 115200
+        depends on BLE_HCI_UART
+        help
+          Baudrate for HCI UART transport.
+
+    config HCI_UART_FLOW_CTRL
+        bool "HCI UART Hardware Flow Control"
+        default y
+        depends on BLE_HCI_UART
+        help
+          Enable CTS/RTS hardware flow control for HCI UART.
+
+endmenu
+
+# ============================================================================
+# BLE MESH CONFIGURATION
+# ============================================================================
+
+menu "BLE Mesh Configuration"
+
+    config BT_MESH
+        bool "Enable BLE Mesh"
+        default n
+        help
+          Enable BLE Mesh networking support.
+
+    if BT_MESH
+
+        menu "Mesh Provisioning"
+
+            config BT_MESH_PB_ADV
+                bool "Provisioning over Advertising (PB-ADV)"
+                default y
+                help
+                  Enable provisioning over advertising bearer.
+
+            config BT_MESH_PB_GATT
+                bool "Provisioning over GATT (PB-GATT)"
+                default y
+                help
+                  Enable provisioning over GATT bearer.
+
+        endmenu
+
+        menu "Mesh Features"
+
+            config BT_MESH_RELAY
+                bool "Relay"
+                default y
+                help
+                  Enable mesh message relay.
+
+            config BT_MESH_PROXY
+                bool "Proxy"
+                default y
+                help
+                  Enable mesh proxy feature.
+
+            config BT_MESH_GATT_PROXY
+                bool "GATT Proxy"
+                default y
+                depends on BT_MESH_PROXY
+                help
+                  Enable GATT-based proxy connections.
+
+            config BT_MESH_FRIEND
+                bool "Friend Node"
+                default n
+                help
+                  Enable Friend Node support for Low Power Nodes.
+
+            config BT_MESH_LOW_POWER
+                bool "Low Power Node"
+                default n
+                help
+                  Enable Low Power Node (LPN) mode.
+
+            config BT_MESH_CDB
+                bool "Configuration Database"
+                default n
+                help
+                  Enable Configuration Database for provisioner role.
+
+        endmenu
+
+        menu "Mesh Models"
+
+            config BT_MESH_MODEL
+                bool "SIG Mesh Models"
+                default y
+                help
+                  Enable SIG Mesh model implementations:
+                  - Generic (OnOff, Level, Power, DTT)
+                  - Lighting (Lightness, CTL, HSL)
+                  - Sensor
+                  - Time and Scene
+
+            config BT_MESH_MODEL_GEN_SRV
+                bool "Built-in Generic Server"
+                default n
+                depends on !BT_MESH_MODEL
+                help
+                  Enable built-in generic server models when
+                  full blemesh_model is not used.
+
+        endmenu
+
+        config BT_MESH_CLI
+            bool "Mesh CLI Commands"
+            default y
+            help
+              Enable shell commands for mesh debugging.
+
+    endif # BT_MESH
+
+endmenu
+
+# ============================================================================
+# DEBUG AND TESTING
+# ============================================================================
+
+menu "Debug and Testing"
+
+    config BT_DEBUG
+        bool "Enable Debug Features"
+        default n
+        help
+          Master switch for debug functionality.
+
+    config BT_DEBUG_MONITOR
+        bool "HCI Monitor"
+        default n
+        depends on BT_DEBUG
+        help
+          Enable HCI monitor output for protocol analysis.
+
+    config BLE_MFG
+        bool "Manufacturing Test Mode"
+        default n
+        help
+          Enable manufacturing test mode for RF testing.
+
+    config BLE_MFG_HCI_CMD
+        bool "Manufacturing HCI Commands"
+        default n
+        depends on BLE_MFG
+        help
+          Enable HCI commands for manufacturing tests.
+
+endmenu
+
+# ============================================================================
+# LE AUDIO CONFIGURATION (BLE 5.2+)
+# ============================================================================
+
+menu "LE Audio Configuration"
+
+    config BT_ISO
+        bool "Enable Host isochronous channels"
+        default n
+        help
+          Compile the HCI ISO data path and ISO channel management. Select a
+          matching bt54_iso2 (or later qualified) controller profile.
+
+    if BT_ISO
+
+    config BT_ISO_RX
+        bool "ISO receive data path"
+        default y
+
+    config BT_ISO_TX
+        bool "ISO transmit data path"
+        default n
+
+    config BT_ISO_CENTRAL
+        bool "CIG/CIS central role"
+        default n
+        depends on BT_CENTRAL
+        select BT_ISO_TX
+        help
+          Enable CIG creation and CIS central procedures. The Zephyr Host keeps
+          central QoS validation with its ISO TX support, so this role also
+          builds the transmit data path even for receive-only applications.
+
+    config BT_ISO_PERIPHERAL
+        bool "CIS peripheral role"
+        default y if BT_PERIPHERAL
+        depends on BT_PERIPHERAL
+
+    config BT_ISO_UNICAST
+        bool "Connected Isochronous Streams"
+        default n
+
+    config BT_ISO_BROADCAST
+        bool "Broadcast Isochronous Streams"
+        default n
+
+    config BT_ISO_BROADCASTER
+        bool "BIG broadcaster role"
+        default n
+        depends on BT_ISO_BROADCAST && BT_BROADCASTER
+
+    config BT_ISO_SYNC_RECEIVER
+        bool "BIG synchronized receiver role"
+        default n
+        depends on BT_ISO_BROADCAST && BT_PER_ADV_SYNC
+
+    config BT_ISO_MAX_CHAN
+        int "Maximum ISO channels"
+        range 1 16
+        default 2
+
+    config BT_ISO_MAX_CIG
+        int "Maximum CIGs"
+        range 0 8
+        default 1
+
+    config BT_ISO_MAX_BIG
+        int "Maximum BIGs"
+        range 0 8
+        default 1
+
+    config BT_ISO_TX_BUF_COUNT
+        int "ISO TX buffers"
+        range 1 64
+        default 5
+
+    config BT_ISO_TX_MTU
+        int "ISO TX MTU"
+        range 40 4095
+        default 251
+
+    config BT_ISO_RX_BUF_COUNT
+        int "ISO RX buffers"
+        range 1 64
+        default 4
+
+    config BT_ISO_RX_MTU
+        int "ISO RX MTU"
+        range 40 4095
+        default 251
+
+    endif # BT_ISO
+
+    config BT_AUDIO
+        bool "Enable LE Audio"
+        default n
+        select BT_ZEPHYR_COMPAT
+        help
+          Enable LE Audio (BLE 5.2+) support.
+          This includes BAP, VCP, MICP, CSIP, MCS, TBS, and HAS profiles.
+          Requires CIS and BIS controller support.
+
+    config BT_ZEPHYR_COMPAT
+        bool "Zephyr Compatibility Layer"
+        default n
+        help
+          Enable Zephyr kernel API compatibility layer for FreeRTOS.
+          Required for LE Audio and extended BLE 5.4 features.
+
+    if BT_AUDIO
+
+        config BT_AUDIO_RX
+            bool "Application receives audio"
+            default y
+
+        config BT_AUDIO_TX
+            bool "Application transmits audio"
+            default n
+
+        config BT_AUDIO_CODEC_CFG_MAX_DATA_SIZE
+            int "Maximum codec configuration LTV bytes"
+            range 19 255
+            default 19
+
+        config BT_AUDIO_CODEC_CFG_MAX_METADATA_SIZE
+            int "Maximum codec configuration metadata bytes"
+            range 4 255
+            default 16
+
+        config BT_AUDIO_CODEC_CAP_MAX_DATA_SIZE
+            int "Maximum codec capability LTV bytes"
+            range 19 255
+            default 19
+
+        config BT_AUDIO_CODEC_CAP_MAX_METADATA_SIZE
+            int "Maximum codec capability metadata bytes"
+            range 4 255
+            default 16
+
+        menu "Basic Audio Profile (BAP)"
+
+            config BT_BAP_UNICAST_SERVER
+                bool "BAP Unicast Server"
+                default y
+                select BT_ISO
+                select BT_ISO_UNICAST
+                help
+                  Enable BAP Unicast Server for receiving/sending audio.
+                  Required for headsets, earbuds, hearing aids.
+
+            config BT_BAP_UNICAST_CLIENT
+                bool "BAP Unicast Client"
+                default n
+                select BT_ISO
+                select BT_ISO_UNICAST
+                help
+                  Enable BAP Unicast Client for controlling audio.
+                  Required for phones, media players.
+
+            config BT_BAP_BROADCAST_SOURCE
+                bool "BAP Broadcast Source"
+                default n
+                select BT_ISO
+                select BT_ISO_TX
+                select BT_ISO_BROADCAST
+                select BT_ISO_BROADCASTER
+                help
+                  Enable BAP Broadcast Source for Auracast transmitter.
+
+            config BT_BAP_BROADCAST_SINK
+                bool "BAP Broadcast Sink"
+                default n
+                select BT_ISO
+                select BT_ISO_RX
+                select BT_ISO_BROADCAST
+                select BT_ISO_SYNC_RECEIVER
+                help
+                  Enable BAP Broadcast Sink for Auracast receiver.
+
+            config BT_BAP_SCAN_DELEGATOR
+                bool "BAP Scan Delegator"
+                default n
+                help
+                  Enable BAP Scan Delegator for broadcast assistant.
+
+            config BT_BAP_BROADCAST_ASSISTANT
+                bool "BAP Broadcast Assistant"
+                default n
+                help
+                  Enable BAP Broadcast Assistant role.
+
+            config BT_BAP_UNICAST_CLIENT_GROUP_COUNT
+                int "Maximum unicast client groups"
+                range 1 8
+                default 1
+                depends on BT_BAP_UNICAST_CLIENT
+
+            config BT_BAP_UNICAST_CLIENT_GROUP_STREAM_COUNT
+                int "Maximum streams per unicast client group"
+                range 1 16
+                default 2
+                depends on BT_BAP_UNICAST_CLIENT
+
+            config BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT
+                int "Client sink ASE count"
+                range 0 16
+                default 2
+                depends on BT_BAP_UNICAST_CLIENT
+
+            config BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT
+                int "Client source ASE count"
+                range 0 16
+                default 0
+                depends on BT_BAP_UNICAST_CLIENT
+
+            config BT_ASCS_MAX_ASE_SNK_COUNT
+                int "Server sink ASE count"
+                range 0 16
+                default 2
+                depends on BT_BAP_UNICAST_SERVER
+
+            config BT_ASCS_MAX_ASE_SRC_COUNT
+                int "Server source ASE count"
+                range 0 16
+                default 0
+                depends on BT_BAP_UNICAST_SERVER
+
+            config BT_ASCS_MAX_ACTIVE_ASES
+                int "Maximum simultaneously active ASEs"
+                range 1 16
+                default 2
+                depends on BT_BAP_UNICAST_SERVER
+
+        endmenu
+
+        menu "Volume Control (VCP)"
+
+            config BT_VCP_VOL_REND
+                bool "VCP Volume Renderer"
+                default y
+                help
+                  Enable VCP Volume Renderer (audio sink).
+
+            config BT_VCP_VOL_CTLR
+                bool "VCP Volume Controller"
+                default n
+                help
+                  Enable VCP Volume Controller (audio source).
+
+            config BT_VCP_VOL_REND_VOCS_INSTANCE_COUNT
+                int "Renderer VOCS instances"
+                range 0 8
+                default 0
+                depends on BT_VCP_VOL_REND
+
+            config BT_VCP_VOL_REND_AICS_INSTANCE_COUNT
+                int "Renderer AICS instances"
+                range 0 8
+                default 0
+                depends on BT_VCP_VOL_REND
+
+            config BT_VCP_VOL_CTLR_MAX_VOCS_INST
+                int "Controller VOCS instances"
+                range 0 8
+                default 0
+                depends on BT_VCP_VOL_CTLR
+
+            config BT_VCP_VOL_CTLR_MAX_AICS_INST
+                int "Controller AICS instances"
+                range 0 8
+                default 0
+                depends on BT_VCP_VOL_CTLR
+
+            config BT_VOCS
+                bool "Volume Offset Control Service"
+                default n
+
+            config BT_VOCS_CLIENT
+                bool "Volume Offset Control client"
+                default n
+
+            config BT_AICS
+                bool "Audio Input Control Service"
+                default n
+
+            config BT_AICS_CLIENT
+                bool "Audio Input Control client"
+                default n
+
+        endmenu
+
+        menu "Microphone Control (MICP)"
+
+            config BT_MICP_MIC_DEV
+                bool "MICP Microphone Device"
+                default y
+                help
+                  Enable MICP Microphone Device.
+
+            config BT_MICP_MIC_CTLR
+                bool "MICP Microphone Controller"
+                default n
+                help
+                  Enable MICP Microphone Controller.
+
+            config BT_MICP_MIC_DEV_AICS_INSTANCE_COUNT
+                int "Microphone device AICS instances"
+                range 0 8
+                default 0
+                depends on BT_MICP_MIC_DEV
+
+            config BT_MICP_MIC_CTLR_MAX_AICS_INST
+                int "Microphone controller AICS instances"
+                range 0 8
+                default 0
+                depends on BT_MICP_MIC_CTLR
+
+        endmenu
+
+        menu "Coordinated Set (CSIP)"
+
+            config BT_CSIP_SET_MEMBER
+                bool "CSIP Set Member"
+                default y
+                help
+                  Enable CSIP Set Member for coordinated earbuds.
+
+            config BT_CSIP_SET_COORDINATOR
+                bool "CSIP Set Coordinator"
+                default n
+                help
+                  Enable CSIP Set Coordinator.
+
+        endmenu
+
+        menu "Common Audio Profile (CAP)"
+
+            config BT_CAP_ACCEPTOR
+                bool "CAP Acceptor"
+                default y
+                help
+                  Enable CAP Acceptor role.
+
+            config BT_CAP_INITIATOR
+                bool "CAP Initiator"
+                default n
+                help
+                  Enable CAP Initiator role.
+
+            config BT_CAP_COMMANDER
+                bool "CAP Commander"
+                default n
+                help
+                  Enable CAP Commander role.
+
+            config BT_CAP_ACCEPTOR_SET_MEMBER
+                bool "CAP acceptor coordinated-set member"
+                default n
+                depends on BT_CAP_ACCEPTOR
+                select BT_CSIP_SET_MEMBER
+
+            config BT_CAP_HANDOVER
+                bool "CAP connection handover"
+                default n
+                depends on BT_CAP_INITIATOR
+
+        endmenu
+
+        menu "Media Control (MCS/MCP)"
+
+            config BT_MCS
+                bool "Media Control Server"
+                default n
+                help
+                  Enable Media Control Server.
+
+            config BT_MCC
+                bool "Media Control Client"
+                default n
+                help
+                  Enable Media Control Client.
+
+            config BT_MPL
+                bool "Media Player"
+                default n
+                help
+                  Enable the local media-player implementation used by MCS.
+
+            config BT_MPL_OBJECTS
+                bool "Media Player objects"
+                depends on BT_MPL
+                default n
+                select BT_MCS
+                select BT_OTS
+                help
+                  Expose media-player metadata and track content through OTS.
+
+            config BT_MCC_OTS
+                bool "Media Control Client OTS support"
+                depends on BT_MCC
+                default n
+                select BT_OTS_CLIENT
+                help
+                  Allow MCC to read Media Control Service objects.
+
+        endmenu
+
+        menu "Call Control (TBS/CCP)"
+
+            config BT_TBS
+                bool "Telephone Bearer Server"
+                default n
+                help
+                  Enable Telephone Bearer Server.
+
+            config BT_TBS_CLIENT_GTBS
+                bool "Generic Telephone Bearer Service client"
+                default n
+                help
+                  Enable the GTBS-oriented Call Control client.
+
+            config BT_TBS_CLIENT_TBS
+                bool "Telephone Bearer Service client"
+                default n
+                help
+                  Enable discovery of individual TBS bearer instances.
+
+            config BT_TBS_CLIENT
+                bool
+                default y if BT_TBS_CLIENT_GTBS || BT_TBS_CLIENT_TBS
+
+            config BT_CCP_CALL_CONTROL_SERVER
+                bool "Call Control Profile server"
+                default n
+                select BT_TBS
+
+            config BT_CCP_CALL_CONTROL_CLIENT
+                bool "Call Control Profile client"
+                default n
+                select BT_TBS_CLIENT_GTBS
+
+        endmenu
+
+        menu "Object Transfer Service (OTS)"
+
+            config BT_OTS
+                bool "Object Transfer Service server"
+                default n
+                help
+                  Enable the OTS server and its L2CAP Object Transfer Channel.
+
+            config BT_OTS_CLIENT
+                bool "Object Transfer Service client"
+                default n
+                help
+                  Enable the OTS client and GATT discovery support.
+
+            config BT_OTS_DIR_LIST_OBJ
+                bool "OTS Directory Listing Object"
+                depends on BT_OTS
+                default n
+
+            config BT_OTS_MAX_INST_CNT
+                int "Maximum OTS server instances"
+                depends on BT_OTS
+                range 1 1
+                default 1
+
+            config BT_OTS_MAX_OBJ_CNT
+                hex "Maximum objects per OTS instance"
+                depends on BT_OTS || BT_OTS_CLIENT
+                range 0x01 0x7fffffff
+                default 0x05
+
+            config BT_OTS_L2CAP_CHAN_TX_MTU
+                int "OTS Object Transfer Channel TX MTU"
+                depends on BT_OTS || BT_OTS_CLIENT
+                range 21 65533
+                default 256
+
+            config BT_OTS_L2CAP_CHAN_RX_MTU
+                int "OTS Object Transfer Channel RX MTU"
+                depends on BT_OTS || BT_OTS_CLIENT
+                range 21 1021
+                default 251
+
+            config BT_OTS_OBJ_MAX_NAME_LEN
+                int "Maximum OTS object name length"
+                depends on BT_OTS || BT_OTS_CLIENT
+                range 1 120
+                default 120
+
+        endmenu
+
+        menu "Hearing Access (HAS)"
+
+            config BT_HAS
+                bool "Hearing Access Server"
+                default n
+                help
+                  Enable Hearing Access Service Server.
+
+            config BT_HAS_CLIENT
+                bool "Hearing Access Client"
+                default n
+                help
+                  Enable Hearing Access Service Client.
+
+        endmenu
+
+        menu "Telephony and Media Audio (TMAP)"
+
+            config BT_TMAP
+                bool "TMAP Profile"
+                default n
+                help
+                  Enable Telephony and Media Audio Profile.
+
+            config BT_GMAP
+                bool "Gaming Audio Profile"
+                default n
+
+            config BT_PBP
+                bool "Public Broadcast Profile"
+                default n
+
+        endmenu
+
+    endif # BT_AUDIO
+
+endmenu
+
+# ============================================================================
+# BLE 5.4 FEATURES (PAwR / ESL)
+# ============================================================================
+
+menu "BLE 5.4 Features"
+
+    config BT_PER_ADV_RSP
+        bool "Periodic Advertising with Responses (PAwR)"
+        default n
+        help
+          Enable PAwR support for ESL Access Point.
+          Requires BLE 5.4 controller support.
+
+    config BT_PER_ADV_SYNC_RSP
+        bool "PAwR Sync with Responses"
+        default n
+        help
+          Enable PAwR Sync for ESL Tag devices.
+
+    config BT_ESL
+        bool "Electronic Shelf Label (ESL)"
+        default n
+        select BT_PER_ADV_RSP
+        help
+          Enable ESL profile support.
+          Requires PAwR controller support.
+
+endmenu
+
+# ============================================================================
+# SERVICES
+# ============================================================================
+
+menu "GATT Services"
+
+    config BT_BAS_SERVER
+        bool "Battery Service"
+        default n
+        help
+          Enable Battery Service server.
+
+    config BT_DIS_SERVER
+        bool "Device Information Service"
+        default n
+        help
+          Enable Device Information Service server.
+
+    config BT_SPP_SERVER
+        bool "Serial Port Profile (SPP-like)"
+        default n
+        help
+          Enable SPP-like service over GATT.
+
+    config HOGP_SERVER
+        bool "HID over GATT"
+        default n
+        help
+          Enable HID over GATT Profile.
+
+    config BT_OAD_SERVER
+        bool "OAD (Over-Air Download) Server"
+        default n
+        help
+          Enable firmware update over BLE.
+
+    config BT_OAD_CLIENT
+        bool "OAD Client"
+        default n
+        help
+          Enable OAD client for updating remote devices.
+
+    config BLE_TP_SERVER
+        bool "Throughput Test Service"
+        default n
+        help
+          Enable throughput testing service.
+
+endmenu

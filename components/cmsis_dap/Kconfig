@@ -1,0 +1,6 @@
+config COMPONENTS_CMSIS_DAP_ENABLE
+    bool "Enable CMSIS-DAP debug-probe core (ARM reference)"
+    default n
+    help
+      Vendored ARM CMSIS-DAP command processor (DAP.c). The board layer
+      (DAP_config.h + JTAG/SWD transport) is provided by the application.

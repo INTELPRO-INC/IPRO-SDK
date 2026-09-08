@@ -1,0 +1,30 @@
+# ATBM6162 (Altobeam OCEANUS) external Wi-Fi 6 over SDIO
+
+config WIFI_ATBM6162
+    bool "Enable ATBM6162 (Altobeam OCEANUS) Wi-Fi 6 over SDIO"
+    default n
+    help
+      External Altobeam ATBM6162 (OCEANUS family) Wi-Fi 6 + BLE combo module,
+      driven by IPRO7 as SDIO host (bsp/hal/hal_sdio.c). Phase 0 brings up the
+      SDIO transport, firmware download and chip handshake (WiFi-only subset).
+
+      The WiFi firmware (~164 KB) is stored as rodata in the 2 MB internal flash.
+      BLE coexist and the wpa_supplicant data path are added in later phases.
+
+if WIFI_ATBM6162
+
+config WIFI_ATBM6162_SDIO
+    bool
+    default y
+    help
+      Transport selection. Only SDIO is supported on IPRO7 (USB variant
+      deliberately omitted from the port).
+
+config WIFI_ATBM6162_BLE_COEXIST
+    bool "Enable ATBM Wi-Fi + BLE coexist (Phase 4)"
+    default n
+    help
+      Pull in the ATBM combo firmware and the nimble BLE host for Wi-Fi/BLE
+      coexistence. Not implemented in Phase 0 — leave disabled.
+
+endif # WIFI_ATBM6162

@@ -1,0 +1,9 @@
+# IPRO OSAL Configuration
+
+config IPRO_OSAL
+    bool "Enable IPRO OS Abstraction Layer"
+    default y
+    help
+      Enable the IPRO OS Abstraction Layer (OSAL).
+      Provides a unified API for OS primitives like mutex, semaphore,
+      task, queue, timer, and memory management.

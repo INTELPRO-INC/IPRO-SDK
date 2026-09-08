@@ -1,0 +1,8 @@
+CMSIS-DAP command processor (DAP.c, DAP_vendor.c, DAP.h) vendored verbatim from:
+
+  Upstream: https://github.com/ARM-software/CMSIS-DAP
+  Commit:   1fd47bed772ea40923472c90dfe11516e76033ee (tag v2.1.2)
+  License:  Apache-2.0 (see LICENSE)
+
+The board layer (DAP_config.h + JTAG/SWD transport) is provided by the
+application and is NOT part of this vendored upstream snapshot.

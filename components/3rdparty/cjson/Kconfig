@@ -1,0 +1,6 @@
+config COMPONENTS_CJSON_ENABLE
+    bool "Enable cJSON (lightweight JSON parser)"
+    default n
+    help
+      Enable cJSON, a lightweight JSON parser written in ANSI C.
+      MIT License, ~30KB flash.

@@ -1,0 +1,6 @@
+config COMPONENTS_TINYCBOR_ENABLE
+    bool "Enable TinyCBOR (binary serialization)"
+    default n
+    help
+      Enable TinyCBOR, a compact CBOR encoder/decoder from Intel.
+      MIT License, ~10KB flash.

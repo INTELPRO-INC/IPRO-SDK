@@ -1,0 +1,161 @@
+# Variant B: Bluetooth LE + LE Audio + camera + display + audio + SD.
+# No AI/NPU - see README for why the two cannot coexist.
+# This is the file .config is currently a copy of.
+CONFIG_IPRO7=y
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+CONFIG_IPRO7AI_EVK=y
+CONFIG_BOARD="IPRO7AI_EVK"
+CONFIG_LINK_FLASH=y
+CONFIG_ENABLE_FRAME_POINTER=y
+CONFIG_USE_PSRAM=y
+# AI/NPU. Deliberately NOT setting CONFIG_AI_CPU_NN_OPS: it pulls in
+# forward_YOLO, which references symbols that only exist under
+# CONFIG_AI_LEGACY_YOLO, and the two have no depends-on. Pure-NPU models
+# do not need it and it costs ~24 KB.
+CONFIG_AI_SUPPORT=y
+CONFIG_DISABLE_EM_TCM_RET=y
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+CONFIG_IPRO_OSAL=y
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+CONFIG_IPRO_LOG_ENABLE=y
+CONFIG_LOG_BUFFER_SIZE=256
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_OUTPUT_UART=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_MAIN_TASK_STACK_SIZE=4096
+CONFIG_MM_SUPPORT=y
+CONFIG_COMPONENTS_SENSOR_ENABLE=y
+CONFIG_AUDIO_OUTPUT=y
+# --- USB Audio Class sink -------------------------------------------------
+# Lets the LE Audio sink send decoded PCM to the host instead of the speaker
+# (`bt sink uac`).  audio_output_uac.c inside components/audio provides the
+# device; AUDIO_OUTPUT_UAC_EXCLUDE stays off because this app has no UAC
+# implementation of its own to collide with the class's fixed-name callbacks.
+CONFIG_COMPONENTS_CHERRYUSB_ENABLE=y
+CONFIG_CHERRYUSB_DEVICE=y
+CONFIG_CHERRYUSB_DEVICE_AUDIO=y
+CONFIG_BSP_USING_USB=y
+
+CONFIG_DMA_CHANNEL_ALLOCATOR=y
+# SD card. FatFS's port layer includes vfs_inode.h, so EVFS has to come
+# with it - CONFIG_COMPONENTS_FATFS_ENABLE alone does not build.
+CONFIG_EVFS=y
+CONFIG_EVFS_USE_FATFS=y
+CONFIG_EVFS_POSIX=y
+CONFIG_COMPONENTS_FATFS_ENABLE=y
+CONFIG_FATFS_CODE_PAGE_437=y
+CONFIG_FATFS_CODE_PAGE_VALUE=437
+
+# --- Bluetooth LE: new controller (ipro_ble_controller, RivieraWaves v14.0.2
+# built from source) + new host (upstream Zephyr v4.4.0, ipro_bt_host).
+# EM_SIZE=32 reserves the controller's Exchange Memory at the top of OCRAM.
+# NVDS: flash-layout builds default it OFF, and the controller hard-references
+# __nvds_start/__nvds_end and bt_nvds_cli_link_anchor, so both keys are needed.
+CONFIG_EM_SIZE=32
+# The controller only stores a handful of small tags (BD_ADDRESS,
+# LPCLK_DRIFT, ACTCLK_DRIFT, SCA, wakeup times, SLEEP_ENABLE). The 4 KB
+# default is a flash-sector convention; .nvds is pinned to OCRAM, which
+# is only 48 KB once AI+MM+EM are all on, so take the space back.
+CONFIG_ENABLE_NVDS=y
+CONFIG_NVDS_SIZE=1024
+# Put NVDS in PSRAM: with AI+MM+EM all on, the OCRAM region is only
+# 48 KB and NVDS does not fit. Safe because the generated script
+# anchors the PSRAM heap past .nvds with MAX().
+CONFIG_NVDS_IN_PSRAM=y
+CONFIG_CFG_NVDS=y
+CONFIG_BLUETOOTH_LE_ENABLE=y
+CONFIG_BT_CTLR_IPRO=y
+CONFIG_IPRO_BLE_CTLR_LIB="link1"
+CONFIG_IPRO_BLE_CTLR_FEATURE="bt54_iso2"
+CONFIG_BT_HOST_IPRO_V44=y
+# Host thread stacks. The Zephyr defaults are tuned for a build without LE
+# Audio; with BAP/PACS/ASCS in the picture the workqueues run deeper and
+# bt_work overflowed during bt_enable() (right after the first HCI_Reset).
+# All four are K_THREAD_STACK_DEFINE arrays, i.e. .bss - which lands in PSRAM
+# in this build, so being generous here costs PSRAM, not the 48 KB of OCRAM.
+CONFIG_BT_RX_STACK_SIZE=4096
+CONFIG_BT_TX_PROCESSOR_STACK_SIZE=3072
+CONFIG_BT_CONN=1
+CONFIG_BT_MAX_CONN=1
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_BROADCASTER=y
+CONFIG_BT_OBSERVER=y
+CONFIG_BT_EXT_ADV=y
+CONFIG_BT_SMP=y
+CONFIG_BT_BONDABLE=y
+CONFIG_BT_MAX_PAIRED=2
+CONFIG_BT_DATA_LEN_UPDATE=y
+CONFIG_BT_GATT_CLIENT=y
+
+# --- LE Audio: unicast SINK (headset role). PACS publishes the LC3 sink
+# capability, ASCS/BAP let a phone configure and start a stream to us.
+CONFIG_BT_AUDIO=y
+CONFIG_BT_AUDIO_RX=y
+CONFIG_BT_AUDIO_CODEC_CFG_MAX_METADATA_SIZE=16
+CONFIG_BT_AUDIO_CODEC_CAP_MAX_METADATA_SIZE=16
+CONFIG_BT_ISO=y
+CONFIG_BT_ISO_PERIPHERAL=y
+CONFIG_BT_ISO_UNICAST=y
+CONFIG_BT_ISO_RX=y
+# ISO buffers. Without RX buffers the CIS cannot deliver anything and never
+# establishes - the ASE then sits in Enabling, the phone times it out and
+# releases, and configure/qos/enable repeats until it gives up. Values from
+# the working ipro_le_audio_headset reference.
+CONFIG_BT_ISO_RX_BUF_COUNT=8
+CONFIG_BT_ISO_TX_BUF_COUNT=5
+CONFIG_BT_ASCS_MAX_ACTIVE_ASES=2
+CONFIG_BT_BAP_UNICAST=y
+CONFIG_BT_BAP_UNICAST_SERVER=y
+CONFIG_BT_BAP_STREAM=y
+CONFIG_BT_PACS=y
+CONFIG_BT_PAC_SNK=y
+CONFIG_BT_PAC_SNK_LOC=y
+CONFIG_BT_ASCS=y
+CONFIG_BT_ASCS_MAX_ASE_SNK_COUNT=1
+CONFIG_BT_ASCS_MAX_ASE_SRC_COUNT=0
+CONFIG_BT_VCP_VOL_REND=y
+CONFIG_BT_CAP_ACCEPTOR=y
+# Persistent bonding. CONFIG_BT_SETTINGS on its own is not enough: the host's
+# settings backend (ipro_bt_host/port/settings_ipro.c) is compiled entirely
+# behind CONFIG_EASYFLASH4, and without it settings_backend_ready() returns
+# -ENOTSUP (-134), which fails settings_subsys_init() and takes bt_enable()
+# down with it. EasyFlash4 needs a flash partition table, hence CONFIG_PARTITION.
+CONFIG_BT_SETTINGS=y
+CONFIG_PARTITION=y
+CONFIG_EASYFLASH4=y
+
+# --- OCRAM budget: AI + BLE together leave only a 48 KB OCRAM region
+# (ipro7_flash.cmake Case 2), so two large consumers are trimmed.
+# Timer service task: 4096 words (16 KB) is 4x the IDLE task's size and far
+# more than it needs; 1024 words matches configMINIMAL_STACK_SIZE.
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=1024
+# BLE controller PDS register dumps are CCI debugging aids, ~8.7 KB of OCRAM.
+CONFIG_IPRO_BLE_PDS_SMALL_CR_DUMP=y
+
+# --- LE Audio playback: liblc3 decoder for the BAP sink -------------------
+CONFIG_COMPONENTS_LC3_ENABLE=y
+
+# The peripheral never requested a PHY update - BT_AUTO_PHY_PERIPHERAL defaults
+# to NONE, which makes the host pass phy=0 and log "PHY 0x00 not supported", so
+# the ACL stayed on 1M. The ACL shares the radio with the CIS, and a 1M packet
+# occupies twice the air time of the same payload at 2M.
+CONFIG_BT_AUTO_PHY_PERIPHERAL_2M=y
+
+# Start the SD card watcher at boot: insert a card and it mounts and plays.
+# Off by default - the clip buffer takes most of the PSRAM heap, which the
+# camera also draws from.
+# CONFIG_EVK_VIDEO_AUTOPLAY is not set
+# CONFIG_EVK_WAIT_VBUS is not set

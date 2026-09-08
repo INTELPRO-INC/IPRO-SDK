@@ -1,0 +1,96 @@
+menu "Third-Party Components"
+
+config COMPONENTS_AGORA_ENABLE
+    bool "Enable Agora Module (AOSL + RTC SDK)"
+    default n
+    depends on FREERTOS
+    select LWIP_SUPPORT
+    help
+      Enable the Agora module which includes:
+      - AOSL: Platform abstraction layer (threads, memory, networking)
+      - Agora RTC SDK: Real-time audio/video communication (prebuilt)
+
+# Backward compatibility alias
+config COMPONENTS_AOSL_ENABLE
+    bool
+    default COMPONENTS_AGORA_ENABLE
+
+config COMPONENTS_OPUS_ENABLE
+    bool "Enable OPUS Codec Support"
+    default n
+    help
+      Enable support for the OPUS audio codec.
+      OPUS is a versatile audio codec used for interactive speech and music transmission.
+
+config COMPONENTS_XZ_ENABLE
+    bool "Enable XZ Compression Support"
+    default n
+    help
+      Enable support for XZ compression format (LZMA2-based),
+      useful for handling compressed files or firmware updates.
+
+config COMPONENTS_ZMODEM_ENABLE
+    bool "Enable ZMODEM Protocol Support"
+    default n
+    help
+      Enable support for the ZMODEM file transfer protocol,
+      typically used in serial communication file transfers.
+
+config COMPONENTS_IPERF_ENABLE
+    bool "Enable iPerf Network Testing Tool"
+    depends on COMPONENTS_LWIP_ENABLE
+    default n
+    help
+      Enable support for iPerf, a tool for active measurements of
+      the maximum achievable bandwidth on IP networks.
+
+config COMPONENTS_LC3_ENABLE
+    bool "Enable LC3 Audio Codec Support"
+    default n
+    help
+      Enable support for the LC3 (Low Complexity Communication Codec).
+      LC3 is the mandatory codec for Bluetooth LE Audio, providing
+      high-quality audio at low bitrates with low latency.
+      Based on Google's liblc3 implementation (Apache 2.0 License).
+
+# LVGL Graphics Library
+osource "components/3rdparty/lvgl/Kconfig"
+
+# cJSON
+osource "components/3rdparty/cjson/Kconfig"
+
+# TinyCBOR
+osource "components/3rdparty/tinycbor/Kconfig"
+
+# llhttp
+osource "components/3rdparty/llhttp/Kconfig"
+
+# TJpgDec - Tiny JPEG Decompressor
+osource "components/3rdparty/tjpgdec/Kconfig"
+
+# FlashDB - Key-Value & Time-Series Database
+osource "components/3rdparty/flashdb/Kconfig"
+
+# TinyMaix - Lightweight Neural Network Inference
+osource "components/3rdparty/tinymaix/Kconfig"
+
+# NMSIS-NN - Nuclei RISC-V Neural Network Kernels
+osource "components/3rdparty/nmsis_nn/Kconfig"
+
+# TFLM - TensorFlow Lite for Microcontrollers
+osource "components/3rdparty/tflm/Kconfig"
+
+# Nanopb - Embedded Protocol Buffers
+osource "components/3rdparty/nanopb/Kconfig"
+
+# wslay - WebSocket Library
+osource "components/3rdparty/wslay/Kconfig"
+
+# protobuf-c - Protocol Buffers runtime
+osource "components/3rdparty/protobuf-c/Kconfig"
+
+# esp_hosted - ESP-Hosted SPI Wi-Fi co-processor (vendored from
+# espressif/esp-hosted-mcu)
+osource "components/3rdparty/esp_hosted/Kconfig"
+
+endmenu

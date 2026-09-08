@@ -1,0 +1,29 @@
+# sdio_host_probe sub-options. COMPONENTS_SDIO_HOST_PROBE_ENABLE itself is
+# defined in components/network/Kconfig, next to the other network components.
+
+config SDIO_HOST_PROBE_BUS
+    bool "SDIO host probe: own the host descriptor (enumerate + negotiate + dumps)"
+    depends on COMPONENTS_SDIO_HOST_PROBE_ENABLE
+    default y
+    help
+      Compiles the bus layer, which keeps one SDIO_Host_Type on SDH controller
+      0 and drives enumeration, bus negotiation and the CCCR/CIS/function dumps.
+
+      Turn this OFF for a module whose vendor driver calls sdio_host_init()
+      itself -- ATBM6162 keeps its own descriptor in atbm_os_sdio.c, and a
+      second one on the same controller would race it. Those apps still get the
+      board layer (SDH pinmux + module power/reset sequencing).
+
+config SDIO_HOST_PROBE_SHELL
+    bool "SDIO host probe: register the generic sdio_* shell commands"
+    depends on SDIO_HOST_PROBE_BUS && SHELL
+    default y
+    help
+      sdio_init / sdio_pwr / sdio_reset / sdio_cycle / sdio_enum / sdio_width /
+      sdio_clk / sdio_hs / sdio_blksz / sdio_en / sdio_dis / sdio_cccr /
+      sdio_cis / sdio_func / sdio_readb / sdio_writeb / sdio_rdbyte /
+      sdio_rdblk / sdio_wrblk / sdio_pins / sdio_probe.
+
+      Module-specific commands stay in the app; bind an on_post_enable callback
+      with sdio_probe_shell_bind() to have sdio_probe run the module's own
+      bring-up registers.

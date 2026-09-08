@@ -1,0 +1,35 @@
+#
+# mbedTLS Integration
+#
+config COMPONENTS_MBEDTLS_ENABLE
+    bool "Enable mbedTLS Library"
+    default n
+    help
+      Enable the mbedTLS cryptographic and SSL/TLS library.
+      This provides support for secure communication protocols and crypto functions.
+
+config COMPONENTS_CIPHER_SUITE_ENABLE
+    bool "Enable Custom Cipher Suite"
+    default n
+    help
+      Enable custom configuration of supported cipher suites.
+      Requires mbedTLS to be enabled.
+
+source "components/crypto/nist_sp800_22/Kconfig"
+
+#
+# mbedTLS Advanced Configuration
+#
+if COMPONENTS_MBEDTLS_ENABLE
+
+menu "mbedTLS Configuration"
+
+# You can add additional options here, such as:
+# config MBEDTLS_TLS_VERSION
+# config MBEDTLS_ENABLE_DEBUG
+# config MBEDTLS_MAX_CONTENT_LEN
+# config MBEDTLS_CUSTOM_CONFIG_FILE
+
+endmenu
+
+endif  # COMPONENTS_MBEDTLS_ENABLE

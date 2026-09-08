@@ -1,0 +1,2 @@
+__component_add_subdirectory_ifdef(CONFIG_BOOT_APP_HEADER_ENABLE app_header)
+__component_add_subdirectory_ifdef(CONFIG_BOOT_UBOOT_TRIGGER_ENABLE uboot_trigger)

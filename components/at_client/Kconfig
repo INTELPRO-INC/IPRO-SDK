@@ -1,0 +1,9 @@
+config AT_CLIENT
+    bool "Generic AT Command Client"
+    select IPRO_OSAL
+    default n
+    help
+      Reusable AT command client engine for AT-based devices
+      (LTE modem, WiFi module, etc). Transport-agnostic with
+      pluggable UART/SPI transport. OS-agnostic via ipro_osal.
+      Multi-instance.

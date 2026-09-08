@@ -1,0 +1,4 @@
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_MBEDTLS_ENABLE mbedtls)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_CIPHER_SUITE_ENABLE cipher_suite)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_NIST_SP800_22_ENABLE nist_sp800_22)
+

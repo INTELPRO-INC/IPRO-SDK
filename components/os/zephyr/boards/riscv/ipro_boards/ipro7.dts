@@ -1,0 +1,271 @@
+/*
+ * Copyright (c) 2025 IPRO
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+/* Note: Using direct values instead of riscv-plic.h for compatibility */
+#define PLIC_IRQ_PRIORITY_DEFAULT 1
+
+/ {
+	model = "IPRO7 RISC-V Board";
+	compatible = "ipro,ipro7";
+
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	aliases {
+		uart0 = &uart0;
+		uart1 = &uart1;
+		spi0 = &spi0;
+		spi1 = &spi1;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		gpio0 = &gpio0;
+		pwm0 = &pwm0;
+		adc0 = &adc0;
+		timer0 = &timer0;
+		i2s0 = &i2s0;
+		can0 = &can0;
+		usb0 = &usb0;
+		dma0 = &dma0;
+		emac0 = &emac0;
+	};
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &ocram0;  /* Use OCRAM as main RAM, matching SDK */
+		zephyr,flash = &flash0; /* XIP from external flash */
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "riscv";
+			reg = <0>;
+			riscv,isa = "rv32imafc_zba_zbb_zbc_zbs_xxldsp";
+			mmu-type = "riscv,sv32";
+
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				#address-cells = <0>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+
+	/* Flash memory - EVB configuration (XIP from external flash) */
+	flash0: flash@13000000 {
+		compatible = "soc-nv-flash";
+		reg = <0x13000000 0x100000>; /* 1MB flash at 0x13000000 */
+	};
+
+	/* PSRAM - primary RAM (EVB configuration) */
+	psram0: memory@1e000000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x1e000000 0x800000>; /* 8MB PSRAM at 0x1e000000 */
+	};
+
+	/* OCRAM - On-chip RAM (used as main RAM) */
+	/* Start at 0x11020000 to avoid boot2 parameters at 0x11010000 (1KB)
+	 * and reserved MM ring buffer area (63KB for AI/multimedia).
+	 * This matches FreeRTOS SDK configuration. */
+	ocram0: sram@11020000 {
+		compatible = "mmio-sram";
+		reg = <0x11020000 0x30000>; /* 192KB OCRAM at 0x11020000 */
+	};
+
+	/* HBN RAM - Hibernation RAM */
+	hbnram0: sram@20090000 {
+		compatible = "mmio-sram";
+		reg = <0x20090000 0x1000>; /* 4KB HBN RAM at 0x20090000 */
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		mtimer: mtimer@e001000 {
+			compatible = "sifive,clint0";
+			reg = <0xe001000 0x10000>;
+			interrupts-extended = <&cpu0_intc 3>, <&cpu0_intc 7>;
+		};
+
+                plic: interrupt-controller@c000000 {
+                        compatible = "sifive,plic-1.0.0";
+                        reg = <0xc000000 0x1000>,     /* prio */
+                              <0xc001000 0x1000>,     /* irq_en */  
+                              <0xc200000 0x1000>;     /* reg */
+                        reg-names = "prio", "irq_en", "reg";
+                        #interrupt-cells = <2>;
+                        #address-cells = <0>;
+                        interrupt-controller;
+                        interrupts-extended = <&cpu0_intc 11>;
+                        riscv,ndev = <127>;
+                        riscv,max-priority = <7>;
+                };
+
+		uart0: serial@3000b000 {
+			compatible = "ipro,ipro7-uart";
+			reg = <0x3000b000 0x100>;
+			interrupts = <48 PLIC_IRQ_PRIORITY_DEFAULT>; /* UART0_IRQn = IRQ_NUM_BASE + 29 */
+			interrupt-parent = <&plic>;
+			/* FPGA uses 32MHz clock */
+			clock-frequency = <32000000>;
+			current-speed = <115200>;  /* Default baud rate */
+			status = "okay";
+		};
+
+		uart1: serial@3000c000 {
+			compatible = "ipro,ipro7-uart";
+			reg = <0x3000c000 0x100>;
+			interrupts = <49 PLIC_IRQ_PRIORITY_DEFAULT>; /* UART1_IRQn = IRQ_NUM_BASE + 30 */
+			interrupt-parent = <&plic>;
+			clock-frequency = <32000000>;
+			current-speed = <115200>;
+			status = "disabled";
+		};
+
+		gpio0: gpio@3001d000 {
+			compatible = "ipro,ipro7-gpio";
+			reg = <0x3001d000 0x1000>; /* PIO_BASE */
+			interrupts = <63 PLIC_IRQ_PRIORITY_DEFAULT>; /* GPIO_INT0_IRQn = IRQ_NUM_BASE + 44 */
+			interrupt-parent = <&plic>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <32>;
+			status = "okay";
+		};
+
+		pwm0: pwm@3000f000 {
+			compatible = "ipro,ipro7-pwm";
+			reg = <0x3000f000 0x1000>; /* PWM_BASE */
+			interrupts = <53 PLIC_IRQ_PRIORITY_DEFAULT>; /* PWM_IRQn = IRQ_NUM_BASE + 34 */
+			interrupt-parent = <&plic>;
+			#pwm-cells = <3>;
+			status = "okay";
+		};
+
+		spi0: spi@3000d000 {
+			compatible = "ipro,ipro7-spi";
+			reg = <0x3000d000 0x1000>; /* SPI_BASE */
+			interrupts = <46 PLIC_IRQ_PRIORITY_DEFAULT>; /* SPI_IRQn = IRQ_NUM_BASE + 27 */
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+		};
+
+		spi1: spi@3001e000 {
+			compatible = "ipro,ipro7-spi";
+			reg = <0x3001e000 0x1000>; /* SPI1_BASE */
+			interrupts = <73 PLIC_IRQ_PRIORITY_DEFAULT>; /* SPI2_IRQn = IRQ_NUM_BASE + 54 */
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c0: i2c@3000e000 {
+			compatible = "ipro,ipro7-i2c";
+			reg = <0x3000e000 0x1000>; /* I2C_BASE */
+			interrupts = <51 PLIC_IRQ_PRIORITY_DEFAULT>; /* I2C0_IRQn = IRQ_NUM_BASE + 32 */
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			status = "okay";
+		};
+
+		i2c1: i2c@30019000 {
+			compatible = "ipro,ipro7-i2c";
+			reg = <0x30019000 0x1000>; /* I2C1_BASE */
+			interrupts = <82 PLIC_IRQ_PRIORITY_DEFAULT>; /* ISP_I2C1_IRQn = IRQ_NUM_BASE + 63 */
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			status = "disabled";
+		};
+
+		adc0: adc@30042000 {
+			compatible = "ipro,ipro7-adc";
+			reg = <0x30042000 0x1000>; /* GPIP_BASE */
+			interrupts = <44 PLIC_IRQ_PRIORITY_DEFAULT>; /* GPADC_DMA_IRQn = IRQ_NUM_BASE + 25 */
+			interrupt-parent = <&plic>;
+			#io-channel-cells = <1>;
+			status = "okay";
+		};
+
+		timer0: timer@30010000 {
+			compatible = "ipro,ipro7-timer";
+			reg = <0x30010000 0x1000>; /* TIMER_BASE */
+			interrupts = <55 PLIC_IRQ_PRIORITY_DEFAULT>, /* TIMER_CH0_IRQn = IRQ_NUM_BASE + 36 */
+				     <56 PLIC_IRQ_PRIORITY_DEFAULT>, /* TIMER_CH1_IRQn = IRQ_NUM_BASE + 37 */
+				     <57 PLIC_IRQ_PRIORITY_DEFAULT>; /* TIMER_WDT_IRQn = IRQ_NUM_BASE + 38 */
+			interrupt-parent = <&plic>;
+			status = "okay";
+		};
+
+		i2s0: i2s@30017000 {
+			compatible = "ipro,ipro7-i2s";
+			reg = <0x30017000 0x1000>; /* I2S_BASE */
+			interrupts = <59 PLIC_IRQ_PRIORITY_DEFAULT>; /* I2S0_IRQn = IRQ_NUM_BASE + 40 */
+			interrupt-parent = <&plic>;
+			status = "disabled";
+		};
+
+		can0: can@3001c000 {
+			compatible = "ipro,ipro7-can";
+			reg = <0x3001c000 0x1000>; /* CAN_BASE */
+			interrupts = <50 PLIC_IRQ_PRIORITY_DEFAULT>; /* CAN_IRQn = IRQ_NUM_BASE + 31 */
+			interrupt-parent = <&plic>;
+			status = "disabled";
+		};
+
+		usb0: usb@30084000 {
+			compatible = "ipro,ipro7-usb";
+			reg = <0x30084000 0x1000>; /* USB_BASE */
+			interrupts = <47 PLIC_IRQ_PRIORITY_DEFAULT>; /* USB_IRQn = IRQ_NUM_BASE + 28 */
+			interrupt-parent = <&plic>;
+			status = "disabled";
+		};
+
+		dma0: dma@30082000 {
+			compatible = "ipro,ipro7-dma";
+			reg = <0x30082000 0x1000>; /* DMA_BASE */
+			interrupts = <34 PLIC_IRQ_PRIORITY_DEFAULT>; /* DMA_ALL_IRQn = IRQ_NUM_BASE + 15 */
+			interrupt-parent = <&plic>;
+			status = "okay";
+		};
+
+		emac0: ethernet@30083000 {
+			compatible = "ipro,ipro7-emac";
+			reg = <0x30083000 0x1000>; /* EMAC_BASE */
+			interrupts = <64 PLIC_IRQ_PRIORITY_DEFAULT>; /* EMAC_IRQn = IRQ_NUM_BASE + 45 */
+			interrupt-parent = <&plic>;
+			status = "disabled";
+		};
+
+		flash_controller: flash-controller@30081000 {
+			compatible = "ipro,ipro7-flash-controller";
+			reg = <0x30081000 0x1000>; /* SF_CTRL_BASE */
+			interrupts = <42 PLIC_IRQ_PRIORITY_DEFAULT>; /* SF_CTRL_IRQn = IRQ_NUM_BASE + 23 */
+			interrupt-parent = <&plic>;
+			status = "okay";
+		};
+	};
+};

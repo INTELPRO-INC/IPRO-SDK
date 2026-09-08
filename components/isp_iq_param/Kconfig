@@ -1,0 +1,6 @@
+config COMPONENTS_ISP_IQ_ENABLE
+    bool "Enable ISP IQ Framework"
+    default y
+    help
+      Enable the isp iq param
+

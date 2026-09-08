@@ -1,0 +1,140 @@
+# 避免多餘訊息
+ifndef VERBOSE
+MAKEFLAGS += --no-print-directory
+endif
+
+# 自動取 project name (needed for CONFIG_FILE path)
+PROJECT_NAME ?= $(notdir $(PROJECT_PATH))
+
+# Auto-detect nested app structure (apps/category/project vs apps/project)
+# If PROJECT_PATH is like /sdk/apps/bluetooth/ble/ipro_ble_remote, extract "bluetooth/ble"
+APPS_DIR := $(IPRO_SDK_BASE)/apps
+PROJECT_REL_PATH := $(subst $(APPS_DIR)/,,$(PROJECT_PATH))
+# Extract directory part (everything except the last component = project name)
+_REL_DIR := $(patsubst %/$(PROJECT_NAME),%,$(PROJECT_REL_PATH))
+ifneq ($(_REL_DIR),$(PROJECT_NAME))
+CONFIG_APP_CATEGORY := $(_REL_DIR)
+else
+CONFIG_APP_CATEGORY :=
+endif
+
+# DEFCONFIG support: build with an alternate config without touching .config
+# Usage: make -C apps/<project> DEFCONFIG=defconfig_xxx
+ifdef DEFCONFIG
+DEFCONFIG_NAME := $(patsubst defconfig_%,%,$(basename $(notdir $(DEFCONFIG))))
+BUILD_DIR := $(PROJECT_PATH)/build_$(DEFCONFIG_NAME)
+DEFCONFIG_FILE := $(PROJECT_PATH)/$(DEFCONFIG)
+CONFIG_FILE := $(DEFCONFIG_FILE)
+else
+CONFIG_FILE := $(PROJECT_PATH)/.config
+endif
+
+ifneq ($(wildcard $(CONFIG_FILE)),)
+ifeq ($(OS),Windows_NT)
+# Use Python on Windows since grep/sed are not available in cmd.exe
+CPU_ID_FROM_CONFIG := $(shell python -c "import re; f=open(r'$(CONFIG_FILE)'); m=re.search(r'CONFIG_CPU_ID=\"([^\"]+)\"', f.read()); f.close(); print(m.group(1) if m else '')")
+CROSS_FROM_CONFIG := $(shell python -c "import re; f=open(r'$(CONFIG_FILE)'); m=re.search(r'CONFIG_CROSS_COMPILE=\"([^\"]+)\"', f.read()); f.close(); print(m.group(1) if m else '')")
+else
+# Parse CPU_ID from CONFIG_CPU_ID="value"
+CPU_ID_FROM_CONFIG := $(shell grep '^CONFIG_CPU_ID=' $(CONFIG_FILE) | sed 's/CONFIG_CPU_ID="\(.*\)"/\1/')
+# Parse CROSS_COMPILE from CONFIG_CROSS_COMPILE="value"
+CROSS_FROM_CONFIG := $(shell grep '^CONFIG_CROSS_COMPILE=' $(CONFIG_FILE) | sed 's/CONFIG_CROSS_COMPILE="\(.*\)"/\1/')
+endif
+ifneq ($(CPU_ID_FROM_CONFIG),)
+CPU_ID ?= $(CPU_ID_FROM_CONFIG)
+endif
+ifneq ($(CROSS_FROM_CONFIG),)
+CROSS_COMPILE ?= $(CROSS_FROM_CONFIG)
+endif
+endif
+
+# Fallback defaults if .config not found or incomplete
+CPU_ID ?= intelpro_ipro7
+CHIP ?= ipro7
+CONFIG_ROMAPI ?= n
+CONFIG_DEBUG ?= y
+BOARD_DIR ?=
+CONFIG_BUILD_ERROR_ON_WARN ?= y
+
+# 工具設定
+ifeq ($(OS),Windows_NT)
+CMAKE := $(IPRO_SDK_BASE)/tools/cmake_win-x86_64/bin/cmake.exe
+else
+# Prefer system cmake; fall back to bundled cmake if system cmake not found
+SYSTEM_CMAKE := $(shell which cmake 2>/dev/null)
+BUNDLED_CMAKE := $(IPRO_SDK_BASE)/tools/cmake/bin/cmake
+ifneq ($(SYSTEM_CMAKE),)
+CMAKE := $(SYSTEM_CMAKE)
+else ifeq ($(shell test -x $(BUNDLED_CMAKE) && echo ok),ok)
+CMAKE := $(BUNDLED_CMAKE)
+else
+$(error No cmake found. Install cmake or provide bundled cmake at $(BUNDLED_CMAKE))
+endif
+endif
+
+# Fallback toolchain paths (only used if not set from .config)
+ifeq ($(CPU_ID), intelpro_ipro7)
+ifneq ($(OS),Windows_NT)
+CROSS_COMPILE ?= /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-
+endif
+endif
+
+ifeq ($(CPU_ID), m0)
+CROSS_COMPILE ?= /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-
+endif
+
+RM := $(CMAKE) -E remove_directory
+
+# Build directory
+BUILD_DIR ?= $(PROJECT_PATH)/build
+
+# CMake definitions
+cmake_definition += -DCROSS_COMPILE=$(CROSS_COMPILE)
+# cmake_definition += -DCHIP=$(CHIP)
+cmake_definition += -DCONFIG_CHIP=$(CONFIG_CHIP)
+cmake_definition += -DCPU_ID=$(CPU_ID)
+# cmake_definition += -DBOARD=$(BOARD)
+cmake_definition += -DBOARD_DIR=$(BOARD_DIR)
+cmake_definition += -DCONFIG_DEBUG=$(CONFIG_DEBUG)
+cmake_definition += -DCONFIG_ROMAPI=$(CONFIG_ROMAPI)
+cmake_definition += -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake_definition += -DCONFIG_BUILD_ERROR_ON_WARN=$(CONFIG_BUILD_ERROR_ON_WARN)
+ifdef DEFCONFIG
+cmake_definition += -DCUSTOM_CONFIG_DIR=$(BUILD_DIR)
+else
+cmake_definition += -DCUSTOM_CONFIG_DIR=$(PROJECT_PATH)
+endif
+cmake_definition += -DIPRO_SDK_BASE=$(IPRO_SDK_BASE)
+cmake_definition += -DCONFIG_BUILD_PORJECT=$(PROJECT_NAME)
+cmake_definition += -DCMAKE_PREFIX_PATH=$(IPRO_SDK_BASE)/cmake
+cmake_definition += -DCONFIG_APPS=1
+
+# Add category flag for nested projects
+ifneq ($(CONFIG_APP_CATEGORY),)
+cmake_definition += -DCONFIG_APP_CATEGORY=$(CONFIG_APP_CATEGORY)
+endif
+
+build:
+ifdef DEFCONFIG
+	$(CMAKE) -E make_directory $(BUILD_DIR)
+	$(CMAKE) -E copy $(DEFCONFIG_FILE) $(BUILD_DIR)/.config
+	@echo "[INFO] Using defconfig: $(DEFCONFIG) -> $(BUILD_DIR)/.config"
+endif
+	@echo "[INFO] Build Path: $(BUILD_DIR)"
+	@echo "CPU: $(CPU_ID)"
+	$(CMAKE) -S $(IPRO_SDK_BASE) -B $(BUILD_DIR) -G "Unix Makefiles" $(cmake_definition)
+	$(MAKE) -C $(BUILD_DIR) -j4
+	@echo "[INFO] Fixing compile_commands.json paths for Windows IntelliSense..."
+	-$(CMAKE) -E copy $(BUILD_DIR)/compile_commands.json $(IPRO_SDK_BASE)/compile_commands.json
+
+ninja:
+	$(CMAKE) -S $(IPRO_SDK_BASE) -B $(BUILD_DIR) -G Ninja $(cmake_definition)
+	$(MAKE) -C $(BUILD_DIR)
+
+clean:
+	$(RM) $(BUILD_DIR)
+
+menuconfig:
+	python $(IPRO_SDK_BASE)/tools/kconfig/menuconfig.py
+
+.PHONY: build clean menuconfig ninja

@@ -1,0 +1,47 @@
+# System Layer Configuration
+#
+# System-level components including CLI, event loop, and other system services.
+
+menu "System Services"
+
+config SHELL
+    bool "Enable Shell (RT-Thread FinSH based)"
+    default y
+    help
+      Enable the shell component based on RT-Thread FinSH.
+      This provides a modern command-line interface with:
+      - Command auto-completion (Tab key)
+      - Command history (Up/Down keys)
+      - Color output support
+      - Memory trace command
+      - Extensible command registration via SHELL_CMD_EXPORT macro
+
+config SHELL_EXEC_THREAD
+    bool "Execute commands in separate thread"
+    depends on SHELL
+    default y
+    help
+      Execute shell commands in a separate FreeRTOS task.
+      This allows long-running commands without blocking the shell.
+      Supports Ctrl+C to abort running commands.
+
+config CMD_SCHEDULER
+    bool "Enable Command Scheduler"
+    depends on SHELL && IPRO_EVENT
+    default y
+    help
+      Enable command scheduler for executing shell commands with delays.
+      Allows scheduling a list of commands with configurable delays
+      between each command execution.
+
+config COMPONENTS_CLI_CMD_ENABLE
+    bool "Enable Legacy CLI Command Support"
+    default n
+    help
+      Enable support for legacy command-line interface (CLI) commands.
+      This is the old AliOS-based CLI. Consider using SHELL instead.
+
+source "components/sys/ipro_event/Kconfig"
+source "components/sys/usb_console/Kconfig"
+
+endmenu

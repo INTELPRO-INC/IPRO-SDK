@@ -1,0 +1,7 @@
+build:
+  cmake: .
+  kconfig: components/os/zephyr/drivers/Kconfig
+  settings:
+    dts_root: .
+    board_root: .
+    soc_root: .

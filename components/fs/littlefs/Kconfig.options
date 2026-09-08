@@ -1,0 +1,31 @@
+# LittleFS sub-options (main config is in parent Kconfig)
+
+config LITTLEFS_CLI
+    bool "Enable LittleFS CLI commands"
+    default y
+    depends on COMPONENTS_CLI_CMD_ENABLE
+    help
+      Enable CLI commands for LittleFS (lfs_mount, lfs_ls, lfs_cat, lfs_write, etc.).
+
+config LITTLEFS_USE_PARTITION_TABLE
+    bool "Use partition table for LittleFS"
+    default y
+    help
+      Use partition table (hal_boot2) for automatic partition discovery.
+      If disabled, you must specify a fixed flash address and size.
+
+if !LITTLEFS_USE_PARTITION_TABLE
+
+config LITTLEFS_FLASH_ADDRESS
+    hex "Fixed flash address for LittleFS partition"
+    default 0x200000
+    help
+      Specify the fixed flash address for LittleFS when not using partition table.
+
+config LITTLEFS_FLASH_SIZE
+    int "LittleFS partition size (bytes)"
+    default 65536
+    help
+      Size of the LittleFS partition in bytes.
+
+endif # !LITTLEFS_USE_PARTITION_TABLE

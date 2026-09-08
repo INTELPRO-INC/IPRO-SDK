@@ -1,0 +1,6 @@
+config COMPONENTS_ISP_FIRMWARE_ENABLE
+    bool "Enable ISP FIRMWARE Parser"
+    default y
+    help
+      Enable the ISP FIRMWARE Parser
+

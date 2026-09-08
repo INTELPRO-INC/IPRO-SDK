@@ -1,0 +1,6 @@
+menu "Boot Loader Components"
+
+osource "components/boot/app_header/Kconfig"
+osource "components/boot/uboot_trigger/Kconfig"
+
+endmenu

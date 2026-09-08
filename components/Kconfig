@@ -1,0 +1,80 @@
+# Component Modules Configuration
+#
+# Software component configuration. Each component has its own Kconfig file
+# located in its subdirectory (Linux kernel style).
+
+menu "Component Modules"
+
+# Operating System
+osource "components/os/Kconfig"
+
+# System Services (Shell, ipro_event, etc.)
+osource "components/sys/Kconfig"
+
+# Wireless Subsystem
+osource "components/wireless/Kconfig"
+
+# AI/NPU Acceleration
+osource "components/ai/Kconfig"
+
+# Boot Loader Components (app_header envelope, etc.)
+osource "components/boot/Kconfig"
+
+# Third-party Libraries
+osource "components/3rdparty/Kconfig"
+
+# USB Stack (CherryUSB)
+osource "components/cherryusb/Kconfig"
+
+# Cryptography Library
+osource "components/crypto/Kconfig"
+
+# File System
+osource "components/fs/Kconfig"
+
+# Standard C Library
+osource "components/libc/Kconfig"
+
+# AT Command Client (generic UART AT engine)
+osource "components/at_client/Kconfig"
+
+# Networking Stack
+osource "components/network/Kconfig"
+
+# Sensor Abstraction
+osource "components/sensor/Kconfig"
+
+# IMU Sensors
+osource "components/imu/Kconfig"
+
+# Software CRC Utilities
+osource "components/softcrc/Kconfig"
+
+# CMSIS-DAP debug probe core
+osource "components/cmsis_dap/Kconfig"
+
+# Utility Modules
+osource "components/utils/Kconfig"
+
+# Matter (Project CHIP)
+osource "components/matter/Kconfig"
+
+# ISP Modules
+osource "components/isp_firmware/Kconfig"
+
+# JSON Utilities (always available, no config needed)
+
+# HTTP Client (connection pool, TLS, multipart)
+osource "components/http_client/Kconfig"
+
+# AI Client (agent, providers)
+osource "components/ai_client/Kconfig"
+
+# Telegram Client (Bot API)
+osource "components/telegram_client/Kconfig"
+
+# Audio Framework (capture + output)
+osource "components/audio/Kconfig"
+osource "components/radar/Kconfig"
+
+endmenu

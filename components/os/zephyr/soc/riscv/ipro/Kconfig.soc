@@ -1,0 +1,18 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_FAMILY_IPRO
+	bool "IPRO SoC Family"
+	select RISCV
+	help
+	  Enable support for IPRO RISC-V SoC family
+
+if SOC_FAMILY_IPRO
+
+config SOC_FAMILY
+	default "ipro"
+
+# Source SOC-specific Kconfig files for different IPRO models
+rsource "*/Kconfig.soc"
+
+endif # SOC_FAMILY_IPRO

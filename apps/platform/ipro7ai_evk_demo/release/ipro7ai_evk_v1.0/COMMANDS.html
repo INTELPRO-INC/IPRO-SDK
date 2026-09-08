@@ -1,0 +1,468 @@
+<title>EVK Command Reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root{
+  --ground:#eef0f3; --surface:#ffffff; --sunken:#f6f7f9;
+  --line:#d6dae1; --line-soft:#e6e9ee;
+  --ink:#171a1f; --ink-dim:#5b636f; --ink-faint:#8b929d;
+  --accent:#c26a10; --accent-soft:#fbf0e2; --accent-line:#e8871a;
+  --ok:#227a4e; --bad:#b8382b;
+  --shadow:0 1px 2px rgba(20,25,35,.06),0 4px 14px rgba(20,25,35,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101317; --surface:#181c22; --sunken:#13171c;
+    --line:#2a3138; --line-soft:#232930;
+    --ink:#e4e8ee; --ink-dim:#98a1ad; --ink-faint:#6d7681;
+    --accent:#e8871a; --accent-soft:#2a1f11; --accent-line:#e8871a;
+    --ok:#4cb583; --bad:#e2685a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101317; --surface:#181c22; --sunken:#13171c;
+  --line:#2a3138; --line-soft:#232930;
+  --ink:#e4e8ee; --ink-dim:#98a1ad; --ink-faint:#6d7681;
+  --accent:#e8871a; --accent-soft:#2a1f11; --accent-line:#e8871a;
+  --ok:#4cb583; --bad:#e2685a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font:400 15px/1.6 "IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0; text-wrap:balance; letter-spacing:-.015em}
+code,kbd{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+.bar{
+  position:sticky; top:0; z-index:10;
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:13px 22px;
+}
+.bar .in{
+  max-width:1020px; margin:0 auto;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.bar b{font-size:16px; font-weight:600}
+.bar .sub{
+  font:500 10.5px/1 "IBM Plex Mono",monospace; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-faint);
+}
+#q{
+  margin-left:auto; flex:1 1 240px; max-width:340px;
+  background:var(--sunken); border:1px solid var(--line); border-radius:7px;
+  padding:7px 11px; font:400 13.5px "IBM Plex Mono",monospace; color:var(--ink);
+}
+#q:focus{outline:2px solid var(--accent-line); outline-offset:1px}
+#hits{font:500 12px "IBM Plex Mono",monospace; color:var(--ink-faint); white-space:nowrap}
+
+main{max-width:1020px; margin:0 auto; padding:26px 22px 60px}
+
+.lede{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:18px 20px; box-shadow:var(--shadow); margin-bottom:26px;
+}
+.lede h1{font-size:23px; margin-bottom:8px}
+.lede p{margin:0 0 12px; color:var(--ink-dim); max-width:68ch}
+.lede p:last-child{margin-bottom:0}
+.ways{
+  display:grid; gap:10px; margin-top:16px;
+  grid-template-columns:repeat(auto-fit,minmax(212px,1fr));
+}
+.way{
+  border:1px solid var(--line-soft); border-radius:8px;
+  padding:11px 13px; background:var(--sunken);
+}
+.way h3{
+  font:600 12px/1 "IBM Plex Mono",monospace; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--accent); margin-bottom:6px;
+}
+.way p{margin:0; font-size:13px; line-height:1.5; color:var(--ink-dim)}
+.way code{font-size:12px; color:var(--ink)}
+
+section{margin-bottom:30px; scroll-margin-top:74px}
+section > header{
+  display:flex; align-items:baseline; gap:11px;
+  padding-bottom:9px; margin-bottom:12px;
+  border-bottom:2px solid var(--accent-line);
+}
+section > header h2{font-size:18px}
+section > header .tag{
+  font:500 11px/1 "IBM Plex Mono",monospace; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-faint);
+}
+section > header .what{
+  margin-left:auto; font-size:13px; color:var(--ink-dim); text-align:right;
+}
+
+.tbl{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:9px; box-shadow:var(--shadow); overflow:hidden;
+}
+.cmd{
+  display:grid; grid-template-columns:minmax(210px,34%) 1fr; gap:2px 20px;
+  padding:10px 15px; border-top:1px solid var(--line-soft);
+}
+.cmd:first-child{border-top:none}
+.cmd > code{
+  font-size:13px; font-weight:500; color:var(--accent);
+  word-break:break-word; align-self:start;
+}
+.cmd > span{font-size:13.5px; line-height:1.55; color:var(--ink-dim)}
+.cmd > span b{color:var(--ink); font-weight:600}
+@media (max-width:640px){
+  .cmd{grid-template-columns:1fr; gap:4px}
+}
+
+.tip{
+  margin-top:11px; padding:12px 15px;
+  background:var(--accent-soft); border:1px solid var(--line);
+  border-radius:8px; font-size:13.5px; line-height:1.6; color:var(--ink-dim);
+}
+.tip b{color:var(--ink); font-weight:600}
+.tip code{font-size:12.5px; color:var(--ink)}
+
+.order{counter-reset:step; display:flex; flex-direction:column; gap:10px}
+.step{
+  display:grid; grid-template-columns:30px 1fr; gap:13px; align-items:start;
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  padding:13px 15px; box-shadow:var(--shadow);
+}
+.step::before{
+  counter-increment:step; content:counter(step);
+  font:600 13px/28px "IBM Plex Mono",monospace; text-align:center;
+  width:28px; height:28px; border-radius:7px;
+  background:var(--accent); color:#fff;
+}
+.step h3{font-size:14.5px; margin-bottom:3px}
+.step p{margin:0; font-size:13.5px; line-height:1.6; color:var(--ink-dim)}
+.step code{font-size:12.5px; color:var(--ink)}
+
+.empty{
+  display:none; padding:26px; text-align:center;
+  color:var(--ink-faint); font-size:14px;
+}
+body.filtering .empty.on{display:block}
+footer{
+  max-width:1020px; margin:0 auto; padding:0 22px 44px;
+  font-size:13px; line-height:1.6; color:var(--ink-faint);
+}
+</style>
+
+<div class="bar">
+  <div class="in">
+    <b>Command Reference</b>
+    <span class="sub">IPRO7AI EVK</span>
+    <input id="q" type="search" placeholder="filter — try gain, roscal, mount" autocomplete="off" spellcheck="false">
+    <span id="hits"></span>
+  </div>
+</div>
+
+<main>
+
+  <div class="lede">
+    <h1>Every peripheral, one shell</h1>
+    <p>
+      The board exposes a single command shell, and every way in reaches the
+      same one. That is why there is no separate API per peripheral, and why a
+      command added to the firmware shows up everywhere at once.
+    </p>
+    <div class="ways">
+      <div class="way">
+        <h3>Serial</h3>
+        <p><code>/dev/cu.usbserial-*</code> at 115200. Always available, needs a cable.</p>
+      </div>
+      <div class="way">
+        <h3>Android</h3>
+        <p>EVK Bench, over BLE. Buttons for the common commands plus a console.</p>
+      </div>
+      <div class="way">
+        <h3>Terminal</h3>
+        <p><code>tools/evk.py</code> over BLE. <code>-f&nbsp;file</code> replays a whole test run.</p>
+      </div>
+      <div class="way">
+        <h3>Browser</h3>
+        <p>Web Bluetooth panel. Chrome or Edge, top-level tab.</p>
+      </div>
+    </div>
+    <p style="margin-top:15px">
+      The radio comes up on its own at boot, so the wireless clients have
+      something to connect to without a cable first. It takes a little over ten
+      seconds — RF calibration and the 32&nbsp;kHz qualification — and announces
+      itself in the log when it is ready.
+    </p>
+  </div>
+
+  <section id="bt">
+    <header><h2>Bluetooth</h2><span class="tag">bt</span>
+      <span class="what">link, LE Audio, RF calibration</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>bt status</code><span>Link state, address, LE Audio stream state.</span></div>
+      <div class="cmd"><code>bt rf</code><span><b>Check this first when anything streams badly.</b> Calibration status for this boot; <code>roscal</code> must read 3.</span></div>
+      <div class="cmd"><code>bt audio</code><span>Stream state, decode counters, measured DAC drain rate, peak level.</span></div>
+      <div class="cmd"><code>bt init</code><span>Bring up controller and host by hand. Only needed if the boot-time start failed.</span></div>
+      <div class="cmd"><code>bt adv on|off</code><span>Connectable advertising.</span></div>
+      <div class="cmd"><code>bt name &lt;string&gt;</code><span>Advertised name, applied at the next advertising start.</span></div>
+      <div class="cmd"><code>bt disconnect</code><span>Drop the current link. The firmware allows one at a time.</span></div>
+      <div class="cmd"><code>bt rate &lt;16|24|32|48|0&gt;</code><span>Publish only this LC3 rate; 0 restores all. At 16&nbsp;kHz the decoder upsamples internally, so the anti-alias filter and rate matcher drop out of the path entirely — that is how you rule the DSP out.</span></div>
+      <div class="cmd"><code>bt vol &lt;0-255&gt;</code><span>Drive the volume locally, to tell a silent phone slider from a dead volume path.</span></div>
+      <div class="cmd"><code>bt dacrate [hz]</code><span>Override the assumed DAC rate; 0 returns to automatic.</span></div>
+      <div class="cmd"><code>bt capture &lt;sec&gt;</code><span>Capture decoded PCM into PSRAM, then <code>mic play</code> replays it through the DAC path a tone already proves clean.</span></div>
+    </div>
+    <p class="tip">
+      <b>Why <code>bt rf</code> comes first.</b> An uncalibrated receiver does not
+      report an error — it drops packets, and the resulting audio imitates every
+      other fault in the chain. Loss measured on this board ran from 1.2&nbsp;%
+      to 30&nbsp;% depending on nothing but whether that calibration converged.
+    </p>
+  </section>
+
+  <section id="vid">
+    <header><h2>Video player</h2><span class="tag">vid</span>
+      <span class="what">clips from the card, panel and DAC</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>vid play &lt;n&gt;</code><span>Load <code>&lt;n&gt;.ipv</code> from the card root into PSRAM, then play it.</span></div>
+      <div class="cmd"><code>vid stop</code><span>Stop the current clip.</span></div>
+      <div class="cmd"><code>vid status</code><span>Geometry, frames shown, achieved rate, and the blit time against the frame slot.</span></div>
+      <div class="cmd"><code>vid auto on|off</code><span>Watch the card slot; insertion mounts and plays.</span></div>
+      <div class="cmd"><code>vid loop on|off</code><span>Keep replaying the list while the card stays in.</span></div>
+      <div class="cmd"><code>vid mem</code><span>Largest block the heap will actually hand out, and the clip length that allows.</span></div>
+    </div>
+    <p class="tip">
+      <b>Play the largest clip first.</b> The payload buffer is claimed once and
+      never resized, so whichever clip loads first fixes the reservation for the
+      whole session. Start small and every larger clip fails — with 8&nbsp;MB of
+      heap free, because the free space is not contiguous.
+      Pack clips with <code>tools/mkvid.py</code> and keep them under about
+      6&nbsp;MiB.
+    </p>
+  </section>
+
+  <section id="spk">
+    <header><h2>Speaker</h2><span class="tag">spk</span>
+      <span class="what">on-chip DAC into the class-D amplifier</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>spk status</code><span>State, gains, level meter.</span></div>
+      <div class="cmd"><code>spk tone [Hz] [sec] [amp%]</code><span>Synthesised sine. Defaults to 1000&nbsp;Hz, 2&nbsp;s, 30&nbsp;%.</span></div>
+      <div class="cmd"><code>spk gain &lt;-20..48&gt;</code><span>Software make-up gain applied before the DAC.</span></div>
+      <div class="cmd"><code>spk on | spk off</code><span>Amplifier enable. Active <b>high</b> on this board.</span></div>
+      <div class="cmd"><code>spk dc &lt;0..1023&gt;</code><span>Hold a DC code for multimeter checks. Leaves the amplifier off deliberately.</span></div>
+      <div class="cmd"><code>spk stop</code><span>Stop whatever is running.</span></div>
+    </div>
+    <p class="tip">
+      <b>A tone is the cleanest reference you have.</b> It shares the converter,
+      amplifier and analogue path with everything else but involves no decoder,
+      no radio and no resampling. Clean tone with rough streamed audio puts the
+      fault upstream of the DAC, and that one observation removes most of the
+      chain from suspicion.
+    </p>
+  </section>
+
+  <section id="mic">
+    <header><h2>Microphone</h2><span class="tag">mic</span>
+      <span class="what">PDM capture on GPIO18/19</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>mic rec [sec]</code><span>Record into PSRAM. Default 3&nbsp;s, maximum 10.</span></div>
+      <div class="cmd"><code>mic play [gain_dB|auto]</code><span>Play the recording; <code>auto</code> picks a gain from the take's own peak.</span></div>
+      <div class="cmd"><code>mic status</code> <span>Same view as <code>spk status</code>.</span></div>
+      <div class="cmd"><code>mic gain &lt;0..18&gt;</code><span>AUADC digital gain, applied at the next capture start.</span></div>
+      <div class="cmd"><code>mic loop [sec]</code><span>Live PDM to DAC. It will howl if the speaker can reach the microphone.</span></div>
+      <div class="cmd"><code>mic scope [sec]</code><span>Scrolling waveform on the panel.</span></div>
+      <div class="cmd"><code>mic probe</code><span>Clock the pins by hand and watch DATA — separates dead wiring from a silent capture path.</span></div>
+      <div class="cmd"><code>mic pads [hex]</code><span>Dump the GLB and HBN pad registers for GPIO18/19, or write a value to sweep them.</span></div>
+      <div class="cmd"><code>mic dump [off] [n]</code><span>Print recorded samples — tells "no frames arrived" from "frames arrived and every sample is zero".</span></div>
+      <div class="cmd"><code>mic ch &lt;left|right&gt;</code><span>PDM slot. Settable only before the first capture.</span></div>
+    </div>
+    <p class="tip">
+      <b>Pad ownership is split across two registers.</b> The AON bits live in
+      both <code>HBN_PAD_CTRL_0</code> and <code>HBN_PAD_CTRL_2</code>, so
+      reading only the first reports the pins as free while the input buffer is
+      still switched off and the microphone records silence. <code>mic pads</code>
+      shows both.
+    </p>
+  </section>
+
+  <section id="cam">
+    <header><h2>Camera</h2><span class="tag">cam</span>
+      <span class="what">SC101IOT over DVP, ISP to the panel</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>cam probe</code><span>SCCB, MCLK, reset and sensor probe without streaming.</span></div>
+      <div class="cmd"><code>cam start</code><span>Start the ISP pipeline and live preview.</span></div>
+      <div class="cmd"><code>cam stop</code><span>Stop the preview and park the sensor in reset.</span></div>
+      <div class="cmd"><code>cam status</code><span>Probe state, geometry, frame and error counters.</span></div>
+      <div class="cmd"><code>cam fps &lt;1..30&gt;</code><span>Preview rate target, applied live.</span></div>
+      <div class="cmd"><code>cam rot &lt;0..3&gt;</code><span>Panel orientation; 1 and 3 are landscape.</span></div>
+      <div class="cmd"><code>cam fit &lt;box|crop&gt;</code><span>How a 16:9 sensor lands on a 4:3 panel.</span></div>
+      <div class="cmd"><code>cam order &lt;rgb|bgr&gt;</code><span>Which channel is byte 0 of an ISP pixel. Fixes swapped red and blue.</span></div>
+      <div class="cmd"><code>cam pixels [n]</code><span>Dump raw ARGB words from the newest frame.</span></div>
+      <div class="cmd"><code>cam rst &lt;0|1&gt;</code><span>Drive the sensor reset line directly; 0 asserts.</span></div>
+    </div>
+    <p class="tip">
+      <b>Zero frames <em>and</em> zero errors means no pixel data arrives at all</b> —
+      not corrupted data, none. If SCCB still answers, the sensor has power and
+      I²C works, so look at the DVP side. MCLK shares GPIO41 with the boot
+      strap, so a jumper left on J6 silences the sensor clock while I²C carries
+      on regardless.
+    </p>
+  </section>
+
+  <section id="sd">
+    <header><h2>SD card</h2><span class="tag">sd</span>
+      <span class="what">SDH in 4-bit mode, FatFS at <code>sd:</code></span></header>
+    <div class="tbl">
+      <div class="cmd"><code>sd mount</code><span>Register the driver and mount. Prints the full card identification.</span></div>
+      <div class="cmd"><code>sd status</code><span>Card detect, mount state, free space.</span></div>
+      <div class="cmd"><code>sd ls [path]</code><span>Directory listing. Defaults to <code>sd:/</code>.</span></div>
+      <div class="cmd"><code>sd bench [path]</code><span>Read a file straight through with nothing else running, and report the rate.</span></div>
+      <div class="cmd"><code>sd unmount</code><span>Unmount.</span></div>
+      <div class="cmd"><code>sd test</code><span>Write a small file and read it back.</span></div>
+      <div class="cmd"><code>sd power &lt;on|off&gt;</code><span>Supply gate. Polarity is unconfirmed on this board.</span></div>
+    </div>
+    <p class="tip">
+      <b>The volume prefix is not optional.</b> Paths are <code>sd:/name</code>;
+      a bare filename goes to drive&nbsp;0, which has no work area and returns
+      <code>FR_NOT_ENABLED</code> rather than "file not found".
+      <code>sd bench</code> exists to separate a card that cannot sustain a rate
+      from one that only fails while the panel is also being driven — the second
+      is what actually happened here, and the first is what it looked like.
+    </p>
+  </section>
+
+  <section id="lcd">
+    <header><h2>Panel</h2><span class="tag">lcd</span>
+      <span class="what">ST7789P3, 240×320, SPI</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>lcd status</code><span>Current state.</span></div>
+      <div class="cmd"><code>lcd init [minimal|tuned] [noclear]</code><span>Re-run an initialisation sequence.</span></div>
+      <div class="cmd"><code>lcd bars | rgbtest | checker | grad | gray | ruler</code><span>Test patterns.</span></div>
+      <div class="cmd"><code>lcd dir &lt;0..3&gt; [mirror]</code><span>0 and 2 portrait 240×320; 1 and 3 landscape 320×240.</span></div>
+      <div class="cmd"><code>lcd bl &lt;on|off&gt;</code><span>Backlight enable on GPIO12.</span></div>
+      <div class="cmd"><code>lcd inv &lt;on|off&gt;</code><span>Inversion. An IPS normally-black panel needs this on.</span></div>
+      <div class="cmd"><code>lcd bgr &lt;on|off&gt;</code><span>MADCTL colour order, for swapped red and blue.</span></div>
+      <div class="cmd"><code>lcd clk &lt;hz&gt;</code><span>SPI clock. At or below 16&nbsp;M uses XCLK, above that BCLK.</span></div>
+      <div class="cmd"><code>lcd fill &lt;colour&gt;</code><span>Solid fill. Names: black white red green blue yellow cyan magenta gray.</span></div>
+      <div class="cmd"><code>lcd box &lt;x0&gt; &lt;y0&gt; &lt;x1&gt; &lt;y1&gt; &lt;colour&gt;</code><span>Filled rectangle.</span></div>
+      <div class="cmd"><code>lcd bench</code><span>Time one full-screen fill.</span></div>
+      <div class="cmd"><code>lcd id</code><span>Read the identification registers back over SDA.</span></div>
+      <div class="cmd"><code>lcd cmd &lt;hex&gt; [p0 p1 …]</code><span>Raw register write.</span></div>
+      <div class="cmd"><code>lcd read &lt;hex&gt; &lt;nbytes&gt;</code><span>Raw register read, 1 to 8 bytes.</span></div>
+    </div>
+    <p class="tip">
+      <b>The bus is the ceiling for anything animated.</b> A full 320×240 frame
+      at 16&nbsp;bits is 1.23&nbsp;Mbit, so at 16&nbsp;MHz it cannot be sent in
+      less than about 77&nbsp;ms — roughly 13&nbsp;fps before anything else is
+      counted. <code>lcd bench</code> measures it on the actual board.
+    </p>
+  </section>
+
+  <section id="power">
+    <header><h2>Supply</h2><span class="tag">vbat &middot; adc &middot; vbus</span>
+      <span class="what">GPADC</span></header>
+    <div class="tbl">
+      <div class="cmd"><code>vbat</code><span>The SoC's internal supply tap.</span></div>
+      <div class="cmd"><code>adc &lt;ch&gt; [ratio_x100]</code><span>Read a GPADC channel. The ratio scales back up through an external divider — two equal resistors is 200.</span></div>
+      <div class="cmd"><code>vbus</code><span>Is the USB-C connector powered? Read from the USB transceiver's comparator, not a GPIO.</span></div>
+      <div class="cmd"><code>vbus skip</code><span>Release a build that is holding its start-up until the cable goes in.</span></div>
+    </div>
+    <p class="tip">
+      <b>The firmware cannot see the battery.</b> The charger's status outputs
+      drive LEDs and reach no GPIO, and the cell never meets an ADC pin. The
+      channel named "VBAT/2" is an on-die tap of the SoC's own supply, which
+      here is the 3V3 rail out of the buck-boost — not the cell. Measuring the
+      cell needs a divider fitted into one of channels 0–11.
+    </p>
+    <p class="tip">
+      <b>What <code>vbus</code> answers, and what it doesn't.</b> It reports
+      that the connector has 5&nbsp;V on it — any source, an enumerated host or
+      a dumb charger — because it watches the rail, not the data lines. It is
+      not charge state. It is also only interesting with a cell fitted: the SoC
+      sits downstream of VBAT, so on a board with no battery VBUS is already
+      true by the time any code runs, and plugging the cable <em>is</em> the
+      power-on event.
+    </p>
+  </section>
+
+  <section id="order">
+    <header><h2>Where to start</h2><span class="tag">order</span>
+      <span class="what">when audio or streaming is wrong</span></header>
+    <div class="order">
+      <div class="step">
+        <div>
+          <h3>Check the receiver was calibrated</h3>
+          <p><code>bt rf</code> — <code>roscal</code> must read 3. It fails silently and the packet loss that follows imitates every other fault, so everything below is unreliable until this passes.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Prove the analogue path with a tone</h3>
+          <p><code>spk tone 1000 2 30</code> — no decoder, no radio, no resampling. Clean here means the converter, amplifier and speaker are all fine and the fault is upstream.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Take the DSP out of the path</h3>
+          <p><code>bt rate 16</code>, then reconnect. At 16&nbsp;kHz the decoder upsamples internally, so no anti-alias filter runs and the rate matcher sits at unity. Still wrong at 16&nbsp;kHz means the conversion was never the problem.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Separate delivery from decoding</h3>
+          <p><code>bt capture 5</code> during a stream, then <code>mic play</code>. A clean replay says the decoder output was always right and the fault is in real-time delivery; a rough one puts it before the DAC.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Read the loss, not the symptom</h3>
+          <p><code>bt audio</code> — concealed frames are counted separately from decoder rejections, because a link problem and a payload problem need opposite investigations.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="empty on">Nothing matches that. Try a peripheral name, or part of a command.</div>
+</main>
+
+<footer>
+  Commands come from the firmware's own usage text. Anything added to the shell
+  works from every client without a change to any of them — they all write to
+  the same place.
+</footer>
+
+<script>
+const q = document.getElementById("q");
+const hits = document.getElementById("hits");
+const rows = [...document.querySelectorAll(".cmd")];
+const sections = [...document.querySelectorAll("section")];
+
+function apply(){
+  const t = q.value.trim().toLowerCase();
+  document.body.classList.toggle("filtering", t.length > 0);
+
+  if (!t){
+    rows.forEach(r => r.style.display = "");
+    sections.forEach(s => s.style.display = "");
+    hits.textContent = rows.length + " commands";
+    return;
+  }
+  let n = 0;
+  rows.forEach(r => {
+    const on = r.textContent.toLowerCase().includes(t);
+    r.style.display = on ? "" : "none";
+    if (on) n++;
+  });
+  sections.forEach(s => {
+    const any = [...s.querySelectorAll(".cmd")].some(r => r.style.display !== "none");
+    // Keep prose-only sections when their own text matches.
+    const own = s.querySelector(".cmd") === null &&
+                s.textContent.toLowerCase().includes(t);
+    s.style.display = (any || own) ? "" : "none";
+  });
+  hits.textContent = n + (n === 1 ? " match" : " matches");
+}
+q.addEventListener("input", apply);
+apply();
+</script>

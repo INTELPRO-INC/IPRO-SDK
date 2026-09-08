@@ -1,0 +1,196 @@
+# IPRO6S controller compatibility Kconfig
+# ======================================
+
+menuconfig BTDM_ENABLE
+    bool "Enable IPRO6S RW v13.0.18 controller"
+    depends on IPRO6
+    default n
+    help
+      Enable the IPRO6S RivieraWaves v13.0.18 controller backend from
+      components/wireless/bluetooth/ipro_ble_controller.
+
+      BLE is always available. BR/EDR can be enabled independently with
+      BTDM_BT_ENABLE; both modes use the same source-built controller and
+      IPRO6S platform layer.
+
+config IPRO_BLE_CTLR_PLATFORM_IPRO6S
+    bool
+    depends on BTDM_ENABLE
+    default y if BTDM_ENABLE
+    help
+      Internal platform selector for the unified controller component.
+
+if BTDM_ENABLE
+
+config BTDM_BLE_ENABLE
+    bool "Enable BLE Support"
+    default y
+    help
+      Enable Bluetooth Low Energy (BLE) support.
+
+config BTDM_BT_ENABLE
+    bool "Enable BT Classic Support"
+    default n
+    help
+      Build the official RW v13.0.18 BR/EDR link layer alongside BLE. The
+      controller is compiled for IPRO6S instead of importing an E907 archive.
+
+config BTDM_MAX_BR_ACL_CONNECTIONS
+    int "Maximum BR/EDR ACL connections"
+    range 1 3
+    default 1
+    depends on BTDM_BT_ENABLE
+    help
+      Maximum number of simultaneous BR/EDR ACL links.
+
+menu "BLE Configuration"
+    depends on BTDM_BLE_ENABLE
+
+config BTDM_MAX_ACL_CONNECTIONS
+    int "Maximum ACL Connections"
+    range 1 8
+    default 4
+    help
+      Maximum number of simultaneous BLE ACL connections.
+
+config BTDM_MAX_ADV_SETS
+    int "Maximum Advertising Sets"
+    range 1 8
+    default 2
+    help
+      Maximum number of advertising sets for extended advertising.
+
+config BTDM_MAX_SCAN_SETS
+    int "Maximum Scan Sets"
+    range 1 4
+    default 1
+    help
+      Maximum number of scanning sets.
+
+endmenu
+
+menu "RF Configuration"
+
+config BTDM_TX_PWR_DBM
+    int "Default TX Power (dBm)"
+    range -20 10
+    default 0
+    help
+      Default transmit power in dBm.
+
+config BTDM_TX_PWR_MIN
+    int "Minimum TX Power (dBm)"
+    range -20 0
+    default -20
+    help
+      Minimum supported TX power.
+
+config BTDM_TX_PWR_MAX
+    int "Maximum TX Power (dBm)"
+    range 0 10
+    default 10
+    help
+      Maximum supported TX power.
+
+endmenu
+
+menu "Power Management"
+
+config BTDM_SLEEP_ENABLE
+    bool "Enable Deep Sleep"
+    default n
+    help
+      Enable BTDM deep sleep mode for power saving.
+
+config BTDM_WAKEUP_DELAY_SLOTS
+    int "Wakeup Delay (slots)"
+    range 1 10
+    default 2
+    depends on BTDM_SLEEP_ENABLE
+    help
+      Number of slots required for RF wakeup.
+
+endmenu
+
+menu "HCI Configuration"
+
+config BTDM_HCI_UART
+    bool "Enable HCI over UART"
+    default n
+    help
+      Enable HCI transport over UART for external host communication.
+
+if BTDM_HCI_UART
+
+config BTDM_HCI_UART_INDEX
+    int "HCI UART Index"
+    range 0 2
+    default 0
+    help
+      UART peripheral index for HCI transport.
+
+config BTDM_HCI_UART_BAUDRATE
+    int "HCI UART Baudrate"
+    default 115200
+    help
+      UART baudrate for HCI transport.
+
+config BTDM_HCI_FLOW_CONTROL
+    bool "Enable HCI Flow Control"
+    default n
+    help
+      Enable hardware flow control for HCI UART.
+
+endif # BTDM_HCI_UART
+
+endmenu
+
+menu "Debug Configuration"
+
+config BTDM_DEBUG
+    bool "Enable Debug Output"
+    default y
+    help
+      Enable debug output for BTDM stack.
+
+config BTDM_DEBUG_VERBOSE
+    bool "Enable Verbose Debug"
+    default n
+    depends on BTDM_DEBUG
+    help
+      Enable verbose debug output.
+
+config BTDM_DEBUG_HCI
+    bool "Enable HCI Debug"
+    default n
+    depends on BTDM_DEBUG
+    help
+      Enable HCI packet tracing.
+
+config BTDM_DEBUG_LL
+    bool "Enable Link Layer Debug"
+    default n
+    depends on BTDM_DEBUG
+    help
+      Enable Link Layer debug output.
+
+endmenu
+
+menu "Platform Configuration"
+
+config BTDM_FPGA
+    bool "FPGA Platform"
+    default y
+    help
+      Build for FPGA platform.
+
+config BTDM_RF_T2
+    bool "T2 RF Daughter Board"
+    default y
+    depends on BTDM_FPGA
+    help
+      Use T2 RF daughter board for FPGA testing.
+
+endmenu
+
+endif # BTDM_ENABLE

@@ -1,0 +1,11 @@
+config COMPONENTS_NEW_LIBC_ENABLE
+    bool "Enable newlib C Library (newlibc)"
+    default y
+    help
+      Enable the newlib C standard library.
+
+      newlib is a C library implementation intended for use on embedded systems.
+      It provides standard libc features such as `printf()`, `malloc()`, `string.h`, etc.
+
+# Include semihosting config if folder exists (osource ignores missing files)
+osource "components/libc/semihosting/Kconfig"

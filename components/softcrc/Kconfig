@@ -1,0 +1,6 @@
+config COMPONENTS_SOFTCRC_ENABLE
+    bool "Enable Software CRC Calculation"
+    default n
+    help
+      Enable the software-based CRC calculation component.
+      This is useful for systems without hardware CRC support or for custom CRC algorithms.

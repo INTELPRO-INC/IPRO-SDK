@@ -1,0 +1,375 @@
+# IPRO7 Demo Application Configuration
+#
+# This file contains configuration options specific to the IPRO7 demo application.
+# When building in this directory, these options are always available.
+
+menu "Demo Configuration"
+
+#
+# SOC Demo Master Switch
+#
+config DEMO_SOC
+    bool "Enable SOC demos"
+    default y
+    depends on SHELL
+    help
+      Master switch for all SOC-related demos.
+      Disabling this will exclude all peripheral, audio, security,
+      filesystem, and system demos from the build.
+
+#
+# Peripheral Demos
+#
+menu "Peripheral Demos"
+    depends on DEMO_SOC
+
+config DEMO_PERIPHERAL
+    bool "Enable peripheral demos"
+    default y
+    help
+      Enable peripheral hardware demos (timer, PWM, SPI, I2S, LCD, etc.)
+
+config DEMO_PERIPHERAL_BASIC
+    bool "Basic peripherals (timer, WDT, UART, SD card)"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable basic peripheral demos: timer_test, tick_test, wdt_test,
+      uart_dma, sdcard, sdh_speed_test, format_sd, ota_test.
+
+config DEMO_CPU_BENCH
+    bool "CPU benchmark (memory, DMA, cache)"
+    default n
+    depends on DEMO_PERIPHERAL
+    help
+      Enable CPU and memory benchmark demos: mem_rw_test, mem_dma_test,
+      ddr_test, cache_test, dhrystone, opus.
+      This adds ~60KB to BSS (RAM).
+
+config DEMO_DHRYSTONE
+    bool "Dhrystone benchmark"
+    default n
+    depends on DEMO_CPU_BENCH
+    help
+      Enable Dhrystone CPU benchmark test.
+      This adds ~10KB to BSS (RAM).
+
+config DEMO_CACHE_TEST
+    bool "Cache test with primes array"
+    default n
+    depends on DEMO_CPU_BENCH
+    help
+      Enable cache performance test using primes array.
+      This adds ~40KB to BSS (RAM).
+
+config DEMO_PWM
+    bool "PWM demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable PWM control demo: pwm_test, pwm_set_duty, pwm_set_freq.
+
+config DEMO_SPI
+    bool "SPI and Flash demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable SPI and flash demos: spi_test, flash_test, flash_readReg.
+
+config DEMO_PIO_SDH
+    bool "PIO SD host demo command (pio_sdcard)"
+    default n
+    depends on DEMO_PERIPHERAL && HAL_PIO_SDH
+    help
+      Enable the pio_sdcard shell command: PIO-based 4-bit SD host on
+      GPIO22-27, with A/B block comparison against the hardware SDH.
+      Core subcommands: init/read/mount/mkfs/fstest/fspeed + tuning knobs
+      (gap/wgap/hs/rising/wauto). The stress/benchmark subcommands are
+      gated separately by DEMO_PIO_SDH_TEST.
+
+config DEMO_PIO_SDH_TEST
+    bool "PIO SD host stress/benchmark subcommands"
+    default y
+    depends on DEMO_PIO_SDH
+    help
+      Include the pio_sdcard stress/benchmark subcommands: rstress, rloop,
+      wdiag (raw multi-block read/write stress + CMD13 state probes), write
+      (raw SSO-pattern write+verify), speedtest, and fstress / fstress_batch
+      (large/many-file FS write + full-byte-verify read soak with per-file
+      throughput). Turn off to shrink the demo when only the core
+      init/read/mount/mkfs/fspeed commands are needed.
+
+config DEMO_I2S
+    bool "I2S audio interface demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable I2S audio interface demos: i2s_test, i2s_vol, i2s_rx_test.
+
+config DEMO_I2S_DMIC
+    bool "I2S DMIC record test"
+    default n
+    depends on DEMO_PERIPHERAL
+    help
+      Enable I2S DMIC recording test: i2s_dmic [seconds].
+      Sets GPIO11/12/13/14 to I2S function, captures stereo
+      16-bit 16kHz audio from digital microphone.
+      WARNING: This reconfigures GPIO11-14 away from JTAG.
+
+config DEMO_LCD
+    bool "LCD display demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable LCD display demo: lcd_demo.
+
+config DEMO_EMAC
+    bool "Ethernet MAC demo"
+    default y
+    depends on DEMO_PERIPHERAL && ETHERNET
+    help
+      Enable Ethernet MAC demo: emac_lwip.
+      Requires Ethernet and LWIP network stack.
+
+config DEMO_LOWPOWER
+    bool "Low power demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable low power mode demos: lp_test, lp_gpio_test, pds_demo, hbn_demo.
+
+config DEMO_ROMAPI
+    bool "ROM API test"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable ROM API test: romapi_test.
+
+config DEMO_SPICAM
+    bool "SPI camera demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable SPI camera demo.
+
+config DEMO_PERIPHERAL_ADC
+    bool "Generic ADC voltage demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable generic ADC voltage demo: adc_demo [dma_en].
+      Reads ADC_CHANNEL4 (GPIO24) and prints mV. This is the non-audio
+      ADC and is separate from DEMO_ADC (which enables audio AMIC/DMIC
+      capture via the audio_capture framework).
+
+endmenu # Peripheral Demos
+
+#
+# Audio Demos
+#
+menu "Audio Demos"
+    depends on DEMO_SOC
+
+config DEMO_AUDIO
+    bool "Enable audio demos"
+    default y
+    help
+      Enable audio demos (ADC, DAC).
+
+config DEMO_ADC
+    bool "Audio ADC demo"
+    default y
+    depends on DEMO_AUDIO
+    select AUDIO_CAPTURE
+    select AUDIO_OUTPUT
+    help
+      Enable audio ADC demos: auadc_demo (AMIC), aupdm_demo (PDM DMIC),
+      replay_record (DAC replay via audio_output framework), aud_save.
+      Pulls in audio_capture + audio_output components.
+
+config DEMO_DAC
+    bool "Audio DAC demo"
+    default y
+    depends on DEMO_AUDIO
+    select AUDIO_OUTPUT
+    help
+      Enable audio DAC demo (dac_demo shell command). Drives the on-chip
+      DAC via the audio_output framework (one-shot or N-ring streaming).
+
+config DEMO_DAC_AUDIO_DATA
+    bool "Include DAC demo audio data"
+    default n
+    depends on DEMO_DAC
+    help
+      Include the built-in audio sample data for DAC demo.
+      This adds ~320KB to rodata (flash).
+      When disabled, DAC demo can still play audio from filesystem.
+
+config DEMO_MP3
+    bool "MP3 decode and playback demo"
+    default n
+    depends on DEMO_AUDIO
+    select COMPONENTS_MINIMP3_ENABLE
+    select AUDIO_OUTPUT
+    help
+      Enable MP3 decode, playback, and profiling commands:
+      mp3_play, mp3_stop, mp3_profile.
+      Requires SD card with MP3 files.
+
+config MP3_DSP_ACCEL
+    bool "DSP acceleration for MP3 decode"
+    default y
+    depends on DEMO_MP3
+    help
+      Use NMSIS-DSP functions to accelerate MP3 decode inner loops.
+      Requires CONFIG_NMSIS_DSP.
+
+endmenu # Audio Demos
+
+#
+# Security Demos
+#
+config DEMO_SECURITY
+    bool "Enable security demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable security hardware demos: aes_test, sha_test, trng_test,
+      gmac_test, pka_test, ecdsa_demo, xip_decrypt.
+
+config DEMO_TRNG_NIST
+    bool "Enable NIST SP 800-22 TRNG test suite"
+    default n
+    depends on DEMO_SECURITY && USE_PSRAM
+    select COMPONENTS_NIST_SP800_22_ENABLE
+    help
+      Enable full NIST SP 800-22 Rev 1a statistical test suite for TRNG validation.
+      Includes all 15 tests: Frequency, Block Frequency, Runs, Longest Run,
+      Matrix Rank, DFT Spectral, Template Matching (2 tests), Universal,
+      Linear Complexity, Serial, Approximate Entropy, Cumulative Sums,
+      Random Excursions, and Random Excursions Variant.
+      Requires PSRAM for 1Mbit test data buffer (~125KB).
+      Command: trng_nist [n_bits]
+
+#
+# DSP Demos
+#
+config DEMO_DSP
+    bool "Enable DSP library demos"
+    default y
+    depends on DEMO_SOC && IPRO7
+    help
+      Enable NMSIS-DSP library demos demonstrating:
+        - FFT (Real FFT computation)
+        - Matrix operations (multiplication)
+        - FIR filtering (low-pass filter)
+        - Statistics (mean, std, max, min, variance)
+
+      Commands:
+        dsp_fft [size]   - FFT demo (32-4096 points)
+        dsp_mat [size]   - Matrix multiply (2-32 size)
+        dsp_fir [taps]   - FIR filter (4-128 taps)
+        dsp_stat [size]  - Statistics (16-10000 samples)
+        dsp_all          - Run all demos
+
+#
+# Filesystem Demos
+#
+config DEMO_FS
+    bool "Enable filesystem demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable filesystem demos: lfs_test, fatfs_test, fs_test.
+
+#
+# System Demos
+#
+config DEMO_SYS
+    bool "Enable system demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable system demos: event_init, event_post, event_test.
+
+#
+# USB Demos
+#
+menu "USB Demos"
+    depends on DEMO_SOC && COMPONENTS_CHERRYUSB_ENABLE
+
+config DEMO_USB
+    bool "Enable USB demos"
+    default y
+    help
+      Enable USB device demos (CDC, MSC, UVC, UAC).
+
+choice
+    prompt "Select USB Device Class"
+    default APP_USB_DEVICE_UVC
+    depends on DEMO_USB
+    help
+      Select which USB device class demo to enable.
+
+config APP_USB_DEVICE_MSC
+    bool "Mass Storage (MSC)"
+    help
+      Enable the USB Mass Storage Class (MSC) device for file transfer.
+      This allows the device to appear as a USB flash drive.
+
+config APP_USB_DEVICE_CDC
+    bool "Communication Device Class (CDC)"
+    help
+      Enable the USB Communication Device Class (CDC) device for virtual serial communication.
+      This provides a virtual COM port over USB.
+
+config APP_USB_DEVICE_UVC
+    bool "USB Video Class (UVC)"
+    help
+      Enable the USB Video Class device for video transfer.
+      This provides a video device over USB.
+
+endchoice
+
+endmenu # USB Demos
+
+#
+# Sensor Configuration
+#
+config APP_SPI_SENSOR
+    bool "Enable SPI Sensor Demo"
+    default y
+    help
+      Enable SPI-based sensor interface in the demo application.
+      This demonstrates SPI communication with external sensors.
+
+#
+# ESP32-AT Network Application Demo
+#
+config DEMO_ESP32_AT
+    bool "ESP32-AT network application demo suite"
+    default y
+    depends on ESP32_WIFI_AT && SHELL
+    help
+      Enable the ESP32-AT demo submenu. Adds five shell commands:
+        demo_wifi_scan         - Pretty-printed AP scan
+        demo_net_info          - Link info (SSID/RSSI/IP/DNS)
+        demo_net_ping          - Ping via AT+PING
+        demo_http_get          - HTTP GET via AT+HTTPCGET
+        demo_reconnect_loop    - Reconnect soak test
+      Intended as a reference implementation customers can adapt.
+
+#
+# AI/NPU Configuration
+#
+config EVA_BIN_MODE
+    bool "Enable AI output verification mode"
+    default n
+    depends on AI_SUPPORT
+    help
+      Enable output verification mode for AI inference.
+      This mode compares NPU output against golden reference files.
+      Requires golden reference files (output_layer_b*.bin, tmp_layer_b*.bin).
+      When disabled, inference runs without verification (recommended for normal use).
+
+endmenu # Demo Configuration

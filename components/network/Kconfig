@@ -1,0 +1,144 @@
+menu "Network Configuration"
+
+config COMPONENTS_LWIP_ENABLE
+    bool "Enable lwIP TCP/IP Stack"
+    default n
+    help
+      Enable support for lwIP (Lightweight IP), a small-footprint
+      TCP/IP stack designed for embedded systems.
+
+if COMPONENTS_LWIP_ENABLE
+
+menu "lwIP Stack Configuration"
+
+config COMPONENTS_LWIP_APP_ENABLE
+    bool "Enable lwIP Application Layer"
+    default n
+    help
+      Enable example or custom applications using the lwIP stack,
+      such as HTTP server, echo server, or test tools.
+
+config PING
+    bool "Enable ping command"
+    default n
+    help
+      Enable ICMP ping command for network diagnostics.
+
+config DHCPD
+    bool "Enable DHCP Server"
+    default n
+    help
+      Enable DHCP server functionality in the lwIP stack,
+      allowing the device to assign IP addresses to clients.
+
+config ETHERNET
+    bool "Enable Ethernet Support"
+    default n
+    help
+      Enable Ethernet support for lwIP stack.
+      This will add CFG_ETHERNET_ENABLE compile definition.
+
+config MQTT_VAR_HEADER_BUFFER_LEN
+    int "MQTT variable header buffer length"
+    default 1024
+    help
+      Maximum length (in bytes) of the MQTT variable header buffer,
+      used for fields such as topic strings on publish/subscribe.
+      The lwIP upstream default is 128, which is too small for long
+      topic names (e.g. rlink v2). Raise if you see MQTT publish
+      failures caused by oversized topic strings.
+
+endmenu
+
+endif  # COMPONENTS_LWIP_ENABLE
+
+source "components/network/lte_modem/Kconfig"
+source "components/network/esp32_wifi_at/Kconfig"
+source "components/network/rtsp_server/Kconfig"
+
+config COMPONENTS_USBWIFI_ENABLE
+    bool "Enable USB-WiFi bridge device (ipro_iotnet)"
+    depends on COMPONENTS_CHERRYUSB_ENABLE && WIFI6 && COMPONENTS_LWIP_ENABLE
+    depends on !COMPONENTS_SDIOWIFI_ENABLE
+    default n
+    help
+      Port of bl_iot_sdk usbwifi. Device-class 0xFF + CDC-ACM interface.
+      VID/PID 0x349B:0x616F. Requires matching host driver (ipro_iotnet).
+
+config COMPONENTS_SDIOWIFI_ENABLE
+    bool "Enable SDIO-WiFi bridge device (ipro_iotnet, dev_net_sdio variant)"
+    depends on WIFI6 && COMPONENTS_LWIP_ENABLE
+    depends on !COMPONENTS_USBWIFI_ENABLE
+    default n
+    help
+      Port of bl_iot_sdk dev_net_sdio. Slave-mode SDIO peripheral on bl616
+      GPIO 10-15. Bouffalo silicon CIS 0x424C:0x0606 advertised to host.
+      Mutually exclusive with USBWIFI.
+
+config SMID_RAW_TX_TEST
+    bool "SMID: raw device->host test sender (ipro_sdio_send_raw + upld pool)"
+    depends on COMPONENTS_SDIOWIFI_ENABLE
+    default n
+    help
+      Compiles the ipro6 SMID raw upld test sender (ipro_sdio_send_raw) and its
+      pre-allocated 4x6144 upld buffer pool used by the smid_send/smid_flood
+      shell commands. Purely a data-plane bring-up validator; the real WiFi TX
+      path (ipro_sdio_write_pbuf) uses pbuf memory and never touches this pool.
+      Leave off for production SDIO-WiFi builds to reclaim ~24 KB of ram_tcm
+      for the WiFi heap.
+
+config COMPONENTS_REMOTE_NET_MANAGER_ENABLE
+    bool "Enable Remote Net Manager (RNM) control-plane server"
+    depends on COMPONENTS_USBWIFI_ENABLE || COMPONENTS_SDIOWIFI_ENABLE
+    default y if COMPONENTS_USBWIFI_ENABLE
+    default y if COMPONENTS_SDIOWIFI_ENABLE
+
+config COMPONENTS_NET_PKT_FILTER_ENABLE
+    bool "Enable net_pkt_filter inline helpers"
+    depends on COMPONENTS_LWIP_ENABLE
+    default y if COMPONENTS_USBWIFI_ENABLE
+    default y if COMPONENTS_SDIOWIFI_ENABLE
+
+config COMPONENTS_IPRONET_HOST_ENABLE
+    bool "Enable ipronet SDIO-WiFi host (IPRO7 <-> IPRO6S ipro6_if_wifi)"
+    depends on COMPONENTS_LWIP_ENABLE && IPRO7
+    default n
+    help
+      FreeRTOS host side of the ipronet SDIO-WiFi bridge: drives an IPRO6S
+      running ipro6_if_wifi over the IPRO7 SDH controller (SMID wire
+      protocol), presents the link as the lwIP netif iproeth0 and exposes
+      ipronet_start/connect plus event callbacks (ipronet_host.h). The
+      example app is apps/platform/ipro7_sdio_wifi; copy its lwipopts_app.h.
+
+config COMPONENTS_SDIO_HOST_PROBE_ENABLE
+    bool "Enable SDIO host bring-up probe helpers (IPRO7 SDH host)"
+    depends on IPRO7
+    default n
+    help
+      Shared board + bus layer behind the external-module probe apps
+      (apps/test/ipro_sdio_probe, ipro_sdio_host_probe, ipro_atbm_probe):
+      GPIO28-33 SDC pinmux, module power/reset sequencing, SDIO enumeration
+      and bus negotiation, plus the generic sdio_* shell commands. Public API
+      is sdio_probe.h.
+
+      Bench and bring-up only -- a shipping module driver owns its own host
+      (see components/network/ipronet_host).
+
+source "components/network/sdio_host_probe/Kconfig"
+
+config USBWIFI_DHCP_IN_EMB
+    bool "Keep DHCP+ARP on embedded side (recommended)"
+    depends on COMPONENTS_USBWIFI_ENABLE
+    default y
+
+config DHCP_IN_EMB
+    bool "SDIO: keep DHCP+ARP on embedded side"
+    depends on COMPONENTS_SDIOWIFI_ENABLE
+    default y
+
+config IPRO_DUAL_STACK
+    bool "Patch lwIP to forward unmatched packets to USB host"
+    depends on COMPONENTS_USBWIFI_ENABLE
+    default n
+
+endmenu

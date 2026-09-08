@@ -1,0 +1,32 @@
+config COMPONENTS_FLASHDB_ENABLE
+    bool "Enable FlashDB (Key-Value & Time-Series Database)"
+    default n
+    help
+      Enable FlashDB, a lightweight embedded database for
+      key-value storage (KVDB) and time-series logging (TSDB).
+      Requires flash read/write HAL adaptation.
+      License: Apache 2.0. ~20KB flash.
+
+if COMPONENTS_FLASHDB_ENABLE
+
+config FLASHDB_USING_KVDB
+    bool "Enable Key-Value Database (KVDB)"
+    default y
+    help
+      Enable the key-value database feature for persistent
+      configuration storage.
+
+config FLASHDB_USING_TSDB
+    bool "Enable Time-Series Database (TSDB)"
+    default n
+    help
+      Enable the time-series database feature for logging
+      sensor data with timestamps.
+
+config FLASHDB_DEBUG
+    bool "Enable FlashDB debug output"
+    default n
+    help
+      Enable debug print messages from FlashDB.
+
+endif # COMPONENTS_FLASHDB_ENABLE

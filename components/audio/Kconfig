@@ -1,0 +1,36 @@
+menu "Audio"
+
+config AUDIO_CAPTURE
+    bool "Audio capture producer (AMIC/DMIC/I2S) with multicast"
+    default n
+    help
+      Enable audio_capture framework: DMA-driven mic capture (analog mic,
+      PDM digital mic, or I2S) with multi-consumer StreamBuffer multicast.
+      Consumers: audio recorders, STT, UAC loopback, voice assistant, etc.
+
+config AUDIO_OUTPUT
+    bool "Audio output sink abstraction (DAC/UAC/I2S/DUMP)"
+    default n
+    help
+      Enable audio_output framework: pluggable PCM sink with DAC backend
+      (one-shot + N-ring streaming), UAC backend, I2S backend, and raw
+      dump backend (file or custom hook). Includes linear resampler.
+
+config AUDIO_OUTPUT_UAC_EXCLUDE
+    bool "Do not build the UAC output backend"
+    depends on AUDIO_OUTPUT
+    default n
+    help
+      Leave audio_output_uac.c out of the build even when
+      CHERRYUSB_DEVICE_AUDIO is on.
+
+      Required by any app that implements its own USB Audio Class device —
+      a microphone, for instance. usbd_audio_open(), usbd_audio_close() and
+      usbd_audio_in_callback() are fixed-name callbacks of the CherryUSB
+      audio class, so the backend and an app-side implementation collide at
+      link time ("multiple definition").
+
+      Opt-out rather than opt-in so apps that do not set it keep building
+      the backend exactly as before.
+
+endmenu

@@ -1,0 +1,31 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+CONFIG_SOC_FAMILY_IPRO=y
+CONFIG_SOC_IPRO7=y
+CONFIG_BOARD_IPRO7_FPGA=y
+
+# Enable reset vector
+CONFIG_INCLUDE_RESET_VECTOR=y
+
+# Enable FPU
+CONFIG_FPU=y
+CONFIG_FLOAT_HARD=y
+
+CONFIG_CONSOLE=y
+CONFIG_SERIAL=y
+CONFIG_UART_CONSOLE=y
+CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC=100000000
+
+# Enable XIP (Execute In Place) to separate code and data
+CONFIG_XIP=y
+
+# Enable GPIO support
+CONFIG_GPIO=y
+
+# Enable PWM support  
+CONFIG_PWM=y
+
+# Enable log system for debugging
+CONFIG_LOG=y
+CONFIG_PRINTK=y

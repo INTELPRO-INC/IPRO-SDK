@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) 2026 IntelPro Technology Co., Ltd.
+ * All rights reserved.
+ *
+ * This software and associated documentation files (the "Software") are
+ * proprietary and confidential to IntelPro Technology Co., Ltd..
+ *
+ * Access to and use of this Software is limited exclusively to authorized 
+ * customers and partners of IntelPro Technology Co., Ltd. who have entered into a 
+ * valid license or non-disclosure agreement.
+ *
+ * Unauthorized copying, modification, distribution, or reverse engineering 
+ * of this Software, via any medium, is strictly prohibited without 
+ * prior written permission from IntelPro Technology Co., Ltd..
+ *
+ * SPDX-License-Identifier: Proprietary
+ */
+
+/*
+ * Derived from:
+ * http://www.kernel.org/pub/linux/libs/klibc/
+ */
+/*
+ * sscanf()
+ */
+
+#include <stdio.h>
+#include <stdarg.h>
+
+int sscanf(const char *str, const char *format, ...)
+{
+	va_list ap;
+	int rv;
+
+	va_start(ap, format);
+	rv = vsscanf(str, format, ap);
+	va_end(ap);
+
+	return rv;
+}

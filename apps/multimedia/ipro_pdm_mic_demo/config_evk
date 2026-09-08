@@ -1,0 +1,283 @@
+# IPRO7AI EVK variant of the PDM mic demo.
+#
+# Same firmware as the EVB build; only the board and its pin map differ. Copy
+# over .config to use it:  cp config_evk .config && make
+#
+# What changes and why:
+#
+#   Microphone   EVB GPIO0/1 -> EVK GPIO18/19. On the EVK, GPIO0-7 are the
+#                camera DVP data bus, so the EVB pins are not available. The
+#                part is an IM69D129.
+#
+#   Speaker      GPIO22 enables the amplifier on both boards, but the polarity
+#                is opposite: the EVB's LM4871 SHUTDOWN is asserted high (so
+#                unmute = 0) while the EVK's TPA2037D1 enable is active high
+#                (unmute = 1). Getting this backwards is silent - buffers sent,
+#                zero underruns, no sound.
+#
+#   Buttons      Off. The EVK has no switches on GPIO5-7; those pins are camera
+#                DVP D5-D7.
+#
+#   Console      921600. The EVK's UART0 is on GPIO20/21 and the higher rate
+#                matters for the PCM dump paths.
+#
+#   PSRAM        Required, and CONFIG_IPRO7AI_EVK selects it - but a raw
+#                per-app build does not resolve Kconfig `select`, so it is set
+#                explicitly below.
+#
+CONFIG_IPRO7=y
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+CONFIG_IPRO7AI_EVK=y
+CONFIG_BOARD="IPRO7AI_EVK"
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+# Flash: the EVK's SoM carries the 1 MB on-chip part (JEDEC EF4014 at boot),
+# so the linker stays on the 1M default like apps/platform/ipro7ai_evk_demo.
+# The EVB config sets CONFIG_IPRO7_FLASH_2M for its in-package 2M part; on
+# this board that would let an image grow past the FW partition (0xD7000 in
+# the 1M table) while still "fitting" the linker. Not set here on purpose.
+CONFIG_PARTITION=y
+CONFIG_ENABLE_FRAME_POINTER=y
+CONFIG_EXCEPTION_DUMP=y
+
+#
+# Memory Configuration
+#
+CONFIG_USE_PSRAM=y
+CONFIG_DISABLE_EM_TCM_RET=y
+
+#
+# Debug UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=921600
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+CONFIG_IPRO_OSAL=y
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+CONFIG_OCRAM_NORET_SPLIT=y
+CONFIG_OCRAM_NORET_AS_RAM=y
+CONFIG_IPRO_BLE_QUIET_TICKLESS=y
+# CONFIG_IPRO_BLE_CONNECTED_PDS_AUTO_TEST is not set
+CONFIG_IPRO_BLE_PDS_PHASE_BIAS_HUS=0
+CONFIG_IPRO_BLE_PDS_PHASE_ADVANCE_ENABLE=0
+CONFIG_IPRO_BLE_PDS_CSA_OVERRIDE_ENABLE=0
+CONFIG_IPRO_BLE_PDS_CSA2_EVT_OFFSET=0
+CONFIG_IPRO_BLE_PDS_PRELOAD_EVT_COUNTER=1
+CONFIG_IPRO_BLE_PDS_RESET_APPLY_FINE_CORR=0
+CONFIG_IPRO_BLE_PDS_RESTORE_RXDESC_PTR=1
+CONFIG_IPRO_BLE_PDS_SANITIZE_RETAINED_RXDESC=0
+CONFIG_IPRO_BLE_PDS_RELOAD_BACK_BIAS_HS=1
+CONFIG_IPRO_BLE_PDS_SOFTWARE_WAKE_PHASE_SHIFT=1
+CONFIG_IPRO_BLE_PDS_RXWINSZDEF=16
+CONFIG_IPRO_BLE_PDS_RXPATHDLY0=7
+CONFIG_IPRO_BLE_PDS_RXPWRUP0=88
+CONFIG_IPRO_BLE_DIAG_UART_MAX_ENTRIES=64
+CONFIG_IPRO_BLE_PDS_UART_ONLY_MEASURE=1
+CONFIG_IPRO_BLE_PDS_DEFAULT_CYCLE_LIMIT=0
+CONFIG_IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_RX_OK=1
+CONFIG_IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_EVENTS=2
+CONFIG_IPRO_BLE_PDS_DEFAULT_SLEEP_US=0
+CONFIG_IPRO_BLE_PDS_WAKE_BUDGET_US=90000
+CONFIG_IPRO_BLE_PDS_DEADLINE_GUARD_US=5000
+CONFIG_IPRO_BLE_PDS_USE_FULL_WINDOW=1
+CONFIG_IPRO_BLE_PDS_CONNECTED_MIN_WINDOW_US=1000000
+CONFIG_IPRO_BLE_PDS_ADAPTIVE_SLEEP_START_US=0
+CONFIG_IPRO_BLE_PDS_ADAPTIVE_SLEEP_STEP_US=0
+CONFIG_IPRO_BLE_PDS_ADAPTIVE_SLEEP_MAX_US=0
+CONFIG_IPRO_BLE_PDS_ADAPTIVE_GROW_CLEAN_CYCLES=0
+# CONFIG_IPRO_BLE_PDS_RELEASE_RECOVERY_ON_EVENT_START is not set
+CONFIG_IPRO_BLE_PDS_BLOCK_ON_CON_RECOVERY=0
+CONFIG_IPRO_BLE_PDS_UART_SUMMARY_PERIOD_MS=30000
+CONFIG_IPRO_BLE_PDS_UART_MINIMAL_SUMMARY=1
+# CONFIG_IPRO_BLE_PDS_AUTO_VERBOSE_UART is not set
+# CONFIG_IPRO_BLE_PDS_CYCLE_UART_TRACE is not set
+CONFIG_IPRO_BLE_PDS_DISCONNECT_TRACE_DUMP=1
+CONFIG_IPRO_BLE_PDS_FREEZE_ON_POST_RX_ERROR=0
+CONFIG_IPRO_BLE_PDS_POST_RX_ERROR_FREEZE_MIN_TRACE=1
+CONFIG_IPRO_BLE_PDS_GPIO_MARKERS=0
+CONFIG_IPRO_BLE_PDS_GPIO_MARKER0=12
+CONFIG_IPRO_BLE_PDS_GPIO_MARKER1=13
+CONFIG_IPRO_BLE_PDS_GPIO_MARKER2=14
+CONFIG_IPRO_BLE_PDS_GPIO_MARKER3=18
+# CONFIG_IPRO_BLE_ENABLE_CCI_PDS_TRIGGER is not set
+# CONFIG_IPRO_BLE_PDS_KEEP_ALL_EXPERIMENT is not set
+# CONFIG_IPRO_BLE_PDS_PLATFORM_ONLY_EXPERIMENT is not set
+CONFIG_IPRO_PDM_MIC_PDS_KEEP_ALL_DOMAIN=0
+CONFIG_IPRO_PDM_MIC_PDS_KEEP_CLOCKS=0
+CONFIG_IPRO_PDM_MIC_PDS_KEEP_BLE_POWER=1
+CONFIG_IPRO_PDM_MIC_PDS_KEEP_GLOBAL_POWER=0
+CONFIG_IPRO_PDM_MIC_PDS_POWER_OFF_RF=0
+CONFIG_IPRO_BLE_PDS_RF_RESTORE_USE_NORMAL_RF_INIT=1
+CONFIG_IPRO_BLE_PDS_RF_RESTORE_FORCE_FULL_INIT=1
+CONFIG_IPRO_BLE_PDS_RF_RESTORE_INIT_SHARED_MDM=0
+# CONFIG_IPRO_BLE_PDS_RF_KEEP_EXPERIMENT is not set
+CONFIG_IPRO_BLE_PDS_KEEP_MISC_LIVE_EXPERIMENT=1
+# WFI stress baseline: FreeRTOS tickless may stop the CPU in WFI, but the
+# application never grants platform PDS and leaves BLE/RF running.
+CONFIG_IPRO_PDM_MIC_WFI_ONLY=1
+# CONFIG_IPRO_PDM_MIC_AUTO_PDS is not set
+# CONFIG_IPRO_PDM_MIC_CCI_ANALYSIS is not set
+CONFIG_IPRO_PDM_MIC_PDS_RECOVERY_DRIFT_FLOOR_PPM=0
+CONFIG_IPRO_BLE_PDS_RECOVERY_RX_GUARD_HUS=80
+# CONFIG_IPRO_BLE_PDS_RETAIN_FULL_CR_DUMP is not set
+CONFIG_IPRO_BLE_PDS_FORCE_RF_RESTORE=0
+CONFIG_IPRO_BLE_PDS_RESET_RADIOCNTL=0
+CONFIG_IPRO_BLE_PDS_REFRESH_MDM_BLE_AFTER_WAKE=0
+CONFIG_IPRO_BLE_PDS_SYNTH_RADIO_WAKE_AFTER_RESTORE=0
+CONFIG_IPRO_BLE_PDS_REPLAY_PROGRAMMER_AFTER_WAKE=0
+CONFIG_IPRO_BLE_PDS_RETIME_SUBMIT_ET_AFTER_WAKE=0
+CONFIG_IPRO_BLE_RESET_ONLY_EXPERIMENT=0
+CONFIG_IPRO_PDM_MIC_PDS_FORCE_BLE_RST=0
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+
+#
+# Wireless — BLE Peripheral
+#
+CONFIG_BLUETOOTH_LE_ENABLE=y
+
+# Controller: link1 (single connection, smallest footprint)
+CONFIG_BT_CTLR_IPRO=y
+CONFIG_IPRO_BLE_CTLR_LIB="link1_periph"
+CONFIG_IPRO_BLE_CTLR_FEATURE_BT52=y
+CONFIG_IPRO_BLE_CTLR_FEATURE="bt52"
+# CONFIG_IPRO_BLE_CTLR_CFG_DBG is not set
+CONFIG_IPRO_BLE_CTLR_TRACE_BUFFERS=y
+# CONFIG_IPRO_BLE_CTLR_NATIVE_SLEEP_DEFAULT is not set
+CONFIG_IPRO_BLE_CTLR_32K_FORCE_RC32K=y
+CONFIG_IPRO_BLE_CTLR_32K_CORRECTED_DRIFT_PPM=500
+CONFIG_BLE_PDS=y
+CONFIG_EM_SIZE=16
+
+# NVDS — required for flash BLE apps: the link1 controller references
+# __nvds_start/__nvds_end (emitted only when ENABLE_NVDS=y) and
+# bt_nvds_cli_link_anchor (compiled only under CFG_NVDS). Flash-layout
+# builds default ENABLE_NVDS off, so a BLE flash app must opt in here.
+CONFIG_ENABLE_NVDS=y
+CONFIG_CFG_NVDS=y
+
+#
+# AI / NPU — on-device speaker ID (shares the DMIC with BLE streaming).
+# PSRAM (already enabled) holds the NPU activation buffers + 1MB model.
+#
+CONFIG_AI_SUPPORT=y
+CONFIG_AI_CPU_NN_OPS=y
+CONFIG_AI_LEGACY_YOLO=y
+CONFIG_AI_LEGACY_POSTPROCESS=y
+
+# Roles: peripheral only
+CONFIG_BT_CONN=1
+# CONFIG_BT_CENTRAL is not set
+CONFIG_BT_PERIPHERAL=y
+# CONFIG_BT_OBSERVER is not set
+CONFIG_BT_BROADCASTER=y
+
+# Features
+CONFIG_PHY_UPDATE=y
+CONFIG_BT_AUTO_PHY_PERIPHERAL_NONE=y
+CONFIG_BT_DATA_LEN_UPDATE=y
+# CONFIG_BT_AUTO_DATA_LEN_UPDATE is not set
+
+# Host stack
+CONFIG_BT_HOST_IPRO_V44=y
+CONFIG_BT_SMP=y
+#
+# SMP bonding, persisted to the PSM flash partition.
+#
+# The button-triggered PDS path powers the radio off and comes back through a
+# reset, so keys held only in RAM would be gone on every wake and the phone
+# would ask the user to pair again each time. With these on, the peer
+# reconnects and re-keys from the bond it already has.
+#
+CONFIG_EASYFLASH4=y
+CONFIG_BT_SETTINGS=y
+CONFIG_BT_BONDABLE=y
+CONFIG_BT_KEYS_OVERWRITE_OLDEST=y
+
+CONFIG_BT_FIXED_PASSKEY=y
+CONFIG_BT_GATT_CLIENT=y
+# CONFIG_BT_STACK_CLI is not set
+CONFIG_BLE_STACK_DBG_PRINT=y
+# CONFIG_IPRO_BT_HOST_HCI_TRACE is not set
+CONFIG_BT_DIS_SERVER=y
+
+# Event system (needed by BLE stack)
+CONFIG_IPRO_EVENT=y
+
+# LC3 codec (for compressed BLE audio streaming)
+CONFIG_COMPONENTS_LC3_ENABLE=y
+
+#
+# Audio output — on-chip DAC sink for the PDM -> DAC test commands
+# (dac_tone / pdm_play / pdm_loop in src/dac_test.c)
+#
+CONFIG_AUDIO_OUTPUT=y
+
+# REQUIRED for pdm_loop (AUADC capture + DAC playback at the same time).
+# The legacy dma_init() does a controller-wide DMA_Disable/Enable on every
+# call, so bringing up the DAC channel aborts the in-flight AUADC transfer —
+# hal_dma.c calls this out as "the bug that blocks duplex audio". The
+# allocator replaces it with a non-disruptive per-channel attach.
+CONFIG_DMA_CHANNEL_ALLOCATOR=y
+
+#
+# USB — UAC microphone (src/uac_mic.c). The board enumerates as a 16 kHz
+# mono mic so a host can record the PDM capture directly for SNR analysis.
+# The UAC isoc IN endpoint takes a third DMA channel alongside AUADC and
+# the DAC, which is why the allocator above is mandatory here.
+#
+CONFIG_COMPONENTS_CHERRYUSB_ENABLE=y
+CONFIG_CHERRYUSB_DEVICE=y
+CONFIG_CHERRYUSB_DEVICE_AUDIO=y
+# CONFIG_USB_HS is not set
+
+# src/uac_mic.c implements the UAC device itself, so the audio component's
+# UAC *output* backend must stay out of the build — both define the class's
+# fixed-name usbd_audio_open/close/in_callback and would collide at link.
+CONFIG_AUDIO_OUTPUT_UAC_EXCLUDE=y
+
+#
+# Logging
+#
+CONFIG_IPRO_LOG_ENABLE=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_BUFFER_SIZE=256
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_LOG_OUTPUT_UART=y
+
+#
+# Console / libc
+#
+CONFIG_CONSOLE_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+
+#
+# Compiler Optimization
+#
+CONFIG_COMPILER_OPTIMIZATION_LEVEL_SIZE=y
+
+# --- IPRO7AI EVK board pin map ---
+CONFIG_IPRO_PDM_MIC_CLK_PIN=18
+CONFIG_IPRO_PDM_MIC_DATA_PIN=19
+CONFIG_IPRO_PDM_MIC_SPK_GPIO=22
+CONFIG_IPRO_PDM_MIC_SPK_UNMUTE=1
+CONFIG_IPRO_PDM_MIC_BUTTONS=0

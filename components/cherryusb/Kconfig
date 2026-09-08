@@ -1,0 +1,85 @@
+config COMPONENTS_CHERRYUSB_ENABLE
+    bool "Enable CherryUSB Stack"
+    default n
+    help
+      Enable CherryUSB - a lightweight and portable USB stack
+      supporting USB Device and Host functionalities.
+
+if COMPONENTS_CHERRYUSB_ENABLE
+
+menu "CherryUSB Configuration"
+
+#
+# General Configuration
+#
+config CHERRYUSB_DEVICE
+    bool "Enable USB Device Support"
+    help
+      Enable USB device functionality using CherryUSB.
+
+config USB_HS
+    bool "Enable USB High-Speed Mode"
+    help
+      Enable USB high-speed (USB 2.0 HS) support if hardware allows.
+
+#
+# USB Device Classes
+#
+config CHERRYUSB_DEVICE_CDC
+    bool "Enable USB CDC (Communication Device Class)"
+    help
+      Enable support for the USB CDC class (Virtual COM Port).
+
+config CHERRYUSB_DEVICE_HID
+    bool "Enable USB HID (Human Interface Device)"
+    help
+      Enable support for HID class devices (keyboard, mouse, etc).
+
+config CHERRYUSB_DEVICE_MSC
+    bool "Enable USB MSC (Mass Storage Class)"
+    help
+      Enable support for mass storage devices (e.g., USB flash drives).
+
+config CHERRYUSB_DEVICE_AUDIO
+    bool "Enable USB Audio Class"
+    help
+      Enable support for USB audio input/output devices.
+
+config CHERRYUSB_DEVICE_VIDEO
+    bool "Enable USB Video Class"
+    help
+      Enable support for USB video devices (e.g., webcams).
+
+config CHERRYUSB_DEVICE_CDC_ECM
+    bool "Enable USB CDC ECM (Ethernet Control Model)"
+    help
+      Enable support for CDC ECM class (USB Ethernet adapter).
+
+config CHERRYUSB_DEVICE_CDC_NCM
+    bool "Enable USB CDC NCM (Network Control Model)"
+    help
+      Enable support for CDC NCM class (USB Ethernet, Windows 11 native).
+
+config CHERRYUSB_DEVICE_RNDIS
+    bool "Enable USB RNDIS (Remote NDIS)"
+    help
+      Enable support for RNDIS class (USB Ethernet, Windows compatible).
+
+config CHERRYUSB_DEVICE_VENDOR_TP
+    bool "Enable USB vendor throughput test class"
+    help
+      Enable the bulk/isoc throughput test device class (the "usb_tp" shell
+      command) used to benchmark the ipro6 USB device against a Windows
+      WinUSB host. Requires USB_HS for meaningful (High-Speed) numbers.
+
+#
+# USB Host Support
+#
+config CHERRYUSB_HOST
+    bool "Enable USB Host Support"
+    help
+      Enable USB Host functionality for connecting external USB devices.
+
+endmenu
+
+endif  # COMPONENTS_CHERRYUSB_ENABLE

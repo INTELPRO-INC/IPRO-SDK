@@ -1,0 +1,6 @@
+config COMPONENTS_LLHTTP_ENABLE
+    bool "Enable llhttp (HTTP parser)"
+    default n
+    help
+      Enable llhttp, a lightweight HTTP/1.x parser from Node.js.
+      MIT License, ~15KB flash.

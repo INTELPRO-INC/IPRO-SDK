@@ -1,0 +1,1711 @@
+{
+  "schema": 1,
+  "project": "zephyr",
+  "version": "4.4.0",
+  "tag": "v4.4.0",
+  "commit": "684c9e8f32e4373a21098559f748f06915f950c9",
+  "remote": "https://github.com/zephyrproject-rtos/zephyr.git",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "path": "include/zephyr/arch/common/addr_types.h",
+      "sha256": "407363b6fbc93f82bddcfc1fa7bff9834a3838af360c11d713af1dc1dcccbc16"
+    },
+    {
+      "path": "include/zephyr/arch/common/app_data_alignment.ld",
+      "sha256": "d918f67f7a86d870a364a37c38ffb29060524546cabe37ab210030689fb327e4"
+    },
+    {
+      "path": "include/zephyr/arch/common/exc_handle.h",
+      "sha256": "40fc603ea9991a9d5906c607f6da61e79e5b6bf2fb333b06fc1a013657ac8a7a"
+    },
+    {
+      "path": "include/zephyr/arch/common/ffs.h",
+      "sha256": "c3be702b5a1e2e513d9abaf0234bf786b1f3981cfa7e05bb85649efdc0207bba"
+    },
+    {
+      "path": "include/zephyr/arch/common/init.h",
+      "sha256": "0f4dd4a234c1702ec70b85c2695dcba6b20fb6aad937c2e76ea74f4c813051d1"
+    },
+    {
+      "path": "include/zephyr/arch/common/pm_s2ram.h",
+      "sha256": "3a4d295a750cbe8e3aa8138cdd8934689916e8b12dc6aa8a8743b8f2398538ca"
+    },
+    {
+      "path": "include/zephyr/arch/common/semihost.h",
+      "sha256": "32ab54f7cd811fbf899c19804384d85bcf9134b44a9e73ef9eaa79734e85615d"
+    },
+    {
+      "path": "include/zephyr/arch/common/sys_bitops.h",
+      "sha256": "909b715fad3e65f8b084ac2c5c941516711df1d41d4c2a25c68704444d3b8684"
+    },
+    {
+      "path": "include/zephyr/arch/common/sys_io.h",
+      "sha256": "04d8573e60ab12e85b5164fb525a3190ab00e467ec5fe8f36407e7af10aa1b48"
+    },
+    {
+      "path": "include/zephyr/arch/common/xip.h",
+      "sha256": "e8339aec746628c32db53431e3f5bbf7e35421e40c20055bdcdea708548adfe2"
+    },
+    {
+      "path": "include/zephyr/bluetooth/addr.h",
+      "sha256": "abbdc79c0c20767a76bffcb9f32443a606e908316819aa0687a586202b24f925"
+    },
+    {
+      "path": "include/zephyr/bluetooth/assigned_numbers.h",
+      "sha256": "25554ac915af3d892f37222be580d8eb603caa6c4a053cd7a55db33f7325f784"
+    },
+    {
+      "path": "include/zephyr/bluetooth/att.h",
+      "sha256": "bd620e768a7cda2ad17d41f3a544b8e794ae7b5eb4ba72e4fccf8da45cc57678"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/aics.h",
+      "sha256": "90bf92488cc9bc178012147df0f636b7757430381712ffbe14222a22035871b7"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/audio.h",
+      "sha256": "7720513dd5f1d81d7fe94a43f994c1d38e52c3a38c67587e50ba3563bf0ca602"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/bap.h",
+      "sha256": "4cdeb872bd29cfef37553fd3859ab0b04dd35b4c7bb5a2c6f497b351261237be"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/bap_lc3_preset.h",
+      "sha256": "942a4ca530db65bb34be8a1b804b5238be976aac6a109c0aaf73273502fab7b7"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/cap.h",
+      "sha256": "14fb58fd9fec794efc60a68dcefde8820d81eaf708989980a13f346e00bf610d"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/ccid.h",
+      "sha256": "99c36c235aaac3bb2c66ace58c1a1826875291549ff1bb21d3a2eea247841daf"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/ccp.h",
+      "sha256": "e56894f506e7a76bb7a19b4d5212caedc70e12e36679b975f739033e34399af4"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/csip.h",
+      "sha256": "aeda00627f9d438afe1e6271f33beaca88773f8f5bead8140255fa486b9a4e5f"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/gmap.h",
+      "sha256": "6497f3f3d9f0bbc46d1d02875d34a86f443eaa488277d79bf490a8236fe4ff1e"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/gmap_lc3_preset.h",
+      "sha256": "07374d330fadaccbff0fab55a59f3ce461451a268bb12f6ec4bd67df8e062ac8"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/has.h",
+      "sha256": "b4ef880ee0944d5cf0de1da7a315d5a8656104436e79adca24b3871bf4ae91f2"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/lc3.h",
+      "sha256": "8e7461fde4d365a3e4ada2edb47d8f42cea56ea64344ad66c3b08e4d895712d9"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/mcc.h",
+      "sha256": "f8aaa22bd77354e85bd508281931a1e71d9865356fa71b409a36ce4b43c458d5"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/mcs.h",
+      "sha256": "4cfff2913c69809db63c5724b7401dec3f9c1bed2abf0d4e6234ba3a771a58ae"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/media_proxy.h",
+      "sha256": "34ab5df16ce3effa34451c68c7ab9936293014a1ffb9888b747d8e73f455f2e9"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/micp.h",
+      "sha256": "8253abd3fe8e3d89c7141b78a1ec3892f21f93e8c5a5f3fc54f7dfa6e09e4fad"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/pacs.h",
+      "sha256": "edb70cdd55b2dc5b1bd90f85ef4bb766e202f70493c88b7e379730f96dfd26ae"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/pbp.h",
+      "sha256": "07611fa1e167e1ef558bbdcc3bdd24cb6d2903633d5d6eb5278c8808de1875f8"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/tbs.h",
+      "sha256": "3dd17e05ad971462749d699b0f58bc4ba45ebe3b5b4bffcc6980b739f1422c60"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/tmap.h",
+      "sha256": "0f99d76a7f4ff1d72a9161591ddb8af56f482c13a46a1e0893c675605ddd5afa"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/vcp.h",
+      "sha256": "279341fede8326f9b65c90470c6c83fd9724c1f2147bbe8c04f835e713ec7a6a"
+    },
+    {
+      "path": "include/zephyr/bluetooth/audio/vocs.h",
+      "sha256": "8af86cd352fbc7700edb449fe2b1aa52d567b2aa9959c930c5c94d07cc6b44a3"
+    },
+    {
+      "path": "include/zephyr/bluetooth/bluetooth.h",
+      "sha256": "e0ad2a8dc4ebd2aae5fa9888aba380915e3dc428c063b6b20bd813aee6a47bab"
+    },
+    {
+      "path": "include/zephyr/bluetooth/buf.h",
+      "sha256": "afb1ea3b93065427aa30ca5b8064c9ed69fc49da21ba857179492c7fac2bab20"
+    },
+    {
+      "path": "include/zephyr/bluetooth/byteorder.h",
+      "sha256": "b70e130656dfaf85415902a30e78267b04258a0e491fe4463689aa8fa2707940"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/a2dp.h",
+      "sha256": "8aecd820937c7dab00052e565702666ada09484ef74c26619e03c9153732f2fa"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/a2dp_codec_sbc.h",
+      "sha256": "eebfd94d8a9dd940f2e859649b206185b02fe1431065211387c5fa277d5da405"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/avdtp.h",
+      "sha256": "c2bbf5ac567bd36db75b90769d77deba674166e7b397ce1e4f6353a5776088fe"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/avrcp.h",
+      "sha256": "37365eee4a9734ae0ed69460f66bde8e75e23479241c2f3acb7ca24e4f52a0dc"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/avrcp_cover_art.h",
+      "sha256": "c37833470bc27bb26f66d9e17e317de0f93b37d7eb7c00f5eb16168d6d1b8a03"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/bip.h",
+      "sha256": "21d683bf3ae4501528c955f5439eff6cbda656016d6300b06034de441c41619c"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/classic.h",
+      "sha256": "e67cadb64b48891285df9263fe0941e0ebea1a2a05f68dbd9367eed3331491e4"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/goep.h",
+      "sha256": "8b3c939d97592523e60aaaf90ccaf685de37750e7397d9f57febb98493b7be60"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/hfp_ag.h",
+      "sha256": "4ebbde03b92e725cd3deb5d490cd0125555172977f49c16e96af1b3a86c30813"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/hfp_hf.h",
+      "sha256": "6e1a3bd5f2ba107ad799b6942940f7c2f61eb04ad5152dcd1d428360d07bebc8"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/l2cap_br.h",
+      "sha256": "d64659d0c9f73fef3ab69e502812faa44d64891aaefd9f6153602795f44db84b"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/obex.h",
+      "sha256": "0dcb7e4d0713391f5ffd065d8f262981fc998ed5388cc55a8aa79b21c3a6debb"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/rfcomm.h",
+      "sha256": "9d4505a141974f93af87de4cae71659ad8203944ed7d93ce3bd13638547c1c6b"
+    },
+    {
+      "path": "include/zephyr/bluetooth/classic/sdp.h",
+      "sha256": "e299b74393a8aa421d611bd3d6a33973c773aea0a71811a7c4a715b672758704"
+    },
+    {
+      "path": "include/zephyr/bluetooth/conn.h",
+      "sha256": "d58e4e75ed29aab2e3fe2a020a1475e64c5a4cf1e5691596bd0cbd45e06aafb6"
+    },
+    {
+      "path": "include/zephyr/bluetooth/controller.h",
+      "sha256": "be0ad1e0ca47ed8d262de0e891d2b53b1703821e86154cc4632ce8511fd099e7"
+    },
+    {
+      "path": "include/zephyr/bluetooth/crypto.h",
+      "sha256": "103e056a0767c2a18d3267c8ac40052477fdc93f74826b3df1d2b027851018a6"
+    },
+    {
+      "path": "include/zephyr/bluetooth/cs.h",
+      "sha256": "b6ccc55385fe696bbe38119ee1e3013f073e065cf7c0d5deedfbcb462466e7dc"
+    },
+    {
+      "path": "include/zephyr/bluetooth/direction.h",
+      "sha256": "aa35970cd991c9583819622622e7052e89d4b61b1bc0a3a98da3abbd20319a1d"
+    },
+    {
+      "path": "include/zephyr/bluetooth/ead.h",
+      "sha256": "7818e40bdc293021331035ce813a9c891f0d1522a38d0cbe0eacb8ebecbc6c08"
+    },
+    {
+      "path": "include/zephyr/bluetooth/gap.h",
+      "sha256": "cdd3db6b385948377933b36c03a6bb554aacd4b7bb629c0c701428a0814ca4df"
+    },
+    {
+      "path": "include/zephyr/bluetooth/gatt.h",
+      "sha256": "dffc0bce32379522f9c85af01f712d4a941a70dbd7b69c1b2be10893bf2ac6d3"
+    },
+    {
+      "path": "include/zephyr/bluetooth/hci.h",
+      "sha256": "4b586dae484a4954667e932500192ffc5f9138657ca71884620d510dd82e1f8b"
+    },
+    {
+      "path": "include/zephyr/bluetooth/hci_raw.h",
+      "sha256": "74a1fec7a6b3ed1652ab284e200654398f4f404d144f65a14c1a4a8fcc193ba9"
+    },
+    {
+      "path": "include/zephyr/bluetooth/hci_types.h",
+      "sha256": "3def774b84eb7bed3a68ca6484e365d2f18012f3c616893944e8a255b43383e4"
+    },
+    {
+      "path": "include/zephyr/bluetooth/hci_vs.h",
+      "sha256": "5df6e04ff98a462f854676cc2a2f86d80fe46d5891f4ece571d3d1809d924e9c"
+    },
+    {
+      "path": "include/zephyr/bluetooth/iso.h",
+      "sha256": "594df9ba5a4749180feb08e69aaba51eb94bcca44588623ffbd711859e35bae4"
+    },
+    {
+      "path": "include/zephyr/bluetooth/l2cap.h",
+      "sha256": "bc755b036d6b421402d61926035eeac8842c773fc2f2a3602c0c625ff51f940d"
+    },
+    {
+      "path": "include/zephyr/bluetooth/mesh.h",
+      "sha256": "92dff1d6f5cb40f735f9e27d3c90002fd1e121b0f35d909505cb2d5cb1adbb45"
+    },
+    {
+      "path": "include/zephyr/bluetooth/sbc.h",
+      "sha256": "422e831d7b603af78d00c3fd0800bc6f5657b8a1ee9eb954210c2e9b9642b277"
+    },
+    {
+      "path": "include/zephyr/bluetooth/services/ots.h",
+      "sha256": "63f88e182e8f20b8857d9f51f6efda306e6f5b3806e7f273b2c09ff0d99ba8b9"
+    },
+    {
+      "path": "include/zephyr/bluetooth/testing.h",
+      "sha256": "632b939963297b78c84f5a962641c3d97e0bd56486a110bc476b9550d2299487"
+    },
+    {
+      "path": "include/zephyr/bluetooth/uuid.h",
+      "sha256": "1cea90d817a74bf2bf141e7749575cf6dc454e3ae82017f1e257874d1769e62a"
+    },
+    {
+      "path": "include/zephyr/debug/stack.h",
+      "sha256": "680caa418811f56e07c404738b8c08f1ed23e052e944cc2002a06fc7bcb0c298"
+    },
+    {
+      "path": "include/zephyr/drivers/bluetooth.h",
+      "sha256": "fb17396dc919ef56e14ea5d2ec952429c5ec9ef818e214648f276a9d811103ce"
+    },
+    {
+      "path": "include/zephyr/kernel/thread.h",
+      "sha256": "cc9128b19b8b1485774233e9bdd49d6c030b033a7a934eab70afaa4f3e39f9fa"
+    },
+    {
+      "path": "include/zephyr/kernel/thread_stack.h",
+      "sha256": "6b596e7d69be53f59e62264ca273581439f7bffa2d87aa0c4c399b105d46a67c"
+    },
+    {
+      "path": "include/zephyr/net_buf.h",
+      "sha256": "838ce8a915d687297e85118308392397d5a4c4be2f10bb4a152c5b7c8edd8d01"
+    },
+    {
+      "path": "include/zephyr/settings/settings.h",
+      "sha256": "4135bf0fe67f0002aeebabb2fb45e8d7a3d6daa5f65b9a9daefc98eadf8743cc"
+    },
+    {
+      "path": "include/zephyr/sys/__assert.h",
+      "sha256": "83feabe471960fa14e29a4b3441f91f0e235ea982d636fe0b0e981526c1a19d4"
+    },
+    {
+      "path": "include/zephyr/sys/atomic.h",
+      "sha256": "00e6493d49658df236e4164c18be9deee94acc7581f3a082a4526dde168fbed9"
+    },
+    {
+      "path": "include/zephyr/sys/atomic_arch.h",
+      "sha256": "7d66bd8aa0d9a0d14851b8c608bd39224206e3aec02866a9951fa4f16ed9bf93"
+    },
+    {
+      "path": "include/zephyr/sys/atomic_builtin.h",
+      "sha256": "f8c42f00cce9f87ad757623bf2533c74582553c6ce13d96154e9028cf7e28597"
+    },
+    {
+      "path": "include/zephyr/sys/atomic_c.h",
+      "sha256": "e545b8c67e78910189d5c0310c849142bc02848b4d54ce098f0e74d6c0d01e59"
+    },
+    {
+      "path": "include/zephyr/sys/atomic_types.h",
+      "sha256": "b518207959f774d97a4afef6f7d7b5629488478b57489aea5e3f5e4aeef90e51"
+    },
+    {
+      "path": "include/zephyr/sys/barrier.h",
+      "sha256": "f89b28212685d0f134c87daae568ad833ebf603d10c2fdbc548b3c691bd25695"
+    },
+    {
+      "path": "include/zephyr/sys/barrier_builtin.h",
+      "sha256": "dbfe2e695837dc92ec57e3301dfdff6b0dde106336579c67d5b171b05b297989"
+    },
+    {
+      "path": "include/zephyr/sys/base64.h",
+      "sha256": "a1f3999ecbd1cd877a5a68bf575d15b1df931b9c108a47441932005eac302d0d"
+    },
+    {
+      "path": "include/zephyr/sys/bitarray.h",
+      "sha256": "eb835251996b076fb47c6911e1b988922f5fb417af640e94d7c2446ee4beb596"
+    },
+    {
+      "path": "include/zephyr/sys/byteorder.h",
+      "sha256": "243a7196c7c71f821cd8bf66cfa4befdfccfa31844a3d20e569b9ee1048f8ba1"
+    },
+    {
+      "path": "include/zephyr/sys/cbprintf.h",
+      "sha256": "b99de84597e3db85cb0e1ab538bc78dfb98a9bbb32ea6a8e5c14723097d8773b"
+    },
+    {
+      "path": "include/zephyr/sys/cbprintf_cxx.h",
+      "sha256": "46e83f1b028d6b825f9523123278e27e18ff81fea46e40e1b84915222fee96a8"
+    },
+    {
+      "path": "include/zephyr/sys/cbprintf_enums.h",
+      "sha256": "4d512eb5d924c52623eabf1ab5fe1b01e8fbde8fa77c1b3c0a10b59c1bbcb278"
+    },
+    {
+      "path": "include/zephyr/sys/cbprintf_internal.h",
+      "sha256": "69724dcc2ab26b74f66f02dfc5ef8f92998b6c1082be35ab19c1dbb032d2b8be"
+    },
+    {
+      "path": "include/zephyr/sys/check.h",
+      "sha256": "228d1ead806786aa15e4fd2e8f8922eed544cbb195ca835c845390016d5802f4"
+    },
+    {
+      "path": "include/zephyr/sys/clock.h",
+      "sha256": "15161ce0ef4a1632b4e6fb9b4df2575a3e406fd426447801425f1a107f155657"
+    },
+    {
+      "path": "include/zephyr/sys/cpu_load.h",
+      "sha256": "b715e3939debfb9acdc7d2aa7d8c70736444e54bf7dedf90835cf88c6c05c8c6"
+    },
+    {
+      "path": "include/zephyr/sys/crc.h",
+      "sha256": "3473f17e0cfedec4ec57a60dc6c8bb387c92e27fbf17e23234ec936a7678edff"
+    },
+    {
+      "path": "include/zephyr/sys/device_mmio.h",
+      "sha256": "cf1ed626e7a50518296812ebe34c2ba405bdc4172a46a465c74aa58acf8b3641"
+    },
+    {
+      "path": "include/zephyr/sys/dlist.h",
+      "sha256": "cfe23948ea7986508bf9cde0a5c11c802c42316acc18ad510c7edb1a8e88e029"
+    },
+    {
+      "path": "include/zephyr/sys/errno_private.h",
+      "sha256": "f77b919d00cea89d2547af8b9e92935d5fd38ef965b61412c0f189db01117817"
+    },
+    {
+      "path": "include/zephyr/sys/fdtable.h",
+      "sha256": "d4cc3bb349afc4cb4d7160f2c233aaaef61f245eb068ece23b07a2e1c162f3ad"
+    },
+    {
+      "path": "include/zephyr/sys/hash_function.h",
+      "sha256": "d484a2b215e5e5a7fcb0b53d9554b5f5a343ee607614bff9b8bf672413c6a23e"
+    },
+    {
+      "path": "include/zephyr/sys/hash_map.h",
+      "sha256": "8e8a156922c6a31667dc7eb03d2f9fa21c688f1babc3ef30a9d067b421b2c6bc"
+    },
+    {
+      "path": "include/zephyr/sys/hash_map_api.h",
+      "sha256": "cf80fe4d0ece1af8b40b0d539379a2639c4d312028efcd682acebeb7a948fa57"
+    },
+    {
+      "path": "include/zephyr/sys/hash_map_cxx.h",
+      "sha256": "a9b033f20c722583d44faf6120a3f186b208dfeccc8c7fb9f86c5fa964babdbe"
+    },
+    {
+      "path": "include/zephyr/sys/hash_map_oa_lp.h",
+      "sha256": "56669d83efce298bf84f4c21e5ff2a4f3084de852b87adf7ce644cc0850ff8b4"
+    },
+    {
+      "path": "include/zephyr/sys/hash_map_sc.h",
+      "sha256": "50a66c8e1060a0ae9844f9fffea3528ce916799b2a91e02601c089f1847a53e3"
+    },
+    {
+      "path": "include/zephyr/sys/heap_listener.h",
+      "sha256": "7011115dd3a0176d15208b8257ea42d39e305c3ec128c7bb6afe1ec2399ef145"
+    },
+    {
+      "path": "include/zephyr/sys/internal/kobject_internal.h",
+      "sha256": "38d7a8ce4662c96cf466739285be108bb9b942fe6739f6a2f65e94b3ab07ea6f"
+    },
+    {
+      "path": "include/zephyr/sys/iterable_sections.h",
+      "sha256": "06225fcad5a11ba7ca5c61b00525d2cf42537d7d636eb4af167d7ee34db2235e"
+    },
+    {
+      "path": "include/zephyr/sys/kobject.h",
+      "sha256": "009dfa0779eebe7d3b33bfefee651baea9140439201503f971aa4c4552a47e1d"
+    },
+    {
+      "path": "include/zephyr/sys/libc-hooks.h",
+      "sha256": "111c59a11db21f7a0e258bee65ea05df2158825f218926929c15e5013cbdad45"
+    },
+    {
+      "path": "include/zephyr/sys/linear_range.h",
+      "sha256": "539367a2091bbd5f8c9856da5c7132a64133e5279b3a7c21ea43d7451b32d9b9"
+    },
+    {
+      "path": "include/zephyr/sys/list_gen.h",
+      "sha256": "a29ebc19f771c4ed3d73fe98caeeebdb92420a3cde6ee5a0eee12d824cd54773"
+    },
+    {
+      "path": "include/zephyr/sys/math_extras.h",
+      "sha256": "ee70b9389d320510aa9509f7c1e8e0c4ad11b2f52a3563745748370bef8fd4a2"
+    },
+    {
+      "path": "include/zephyr/sys/math_extras_impl.h",
+      "sha256": "7ea4a9a15b9ca5be3ee9a03d558d6d0f3368bb4a598023978c31c61c64f7acd1"
+    },
+    {
+      "path": "include/zephyr/sys/mem_blocks.h",
+      "sha256": "0154ca4a6288d8b1f2f04729d21289b40db9880486cfeba3730299b921571554"
+    },
+    {
+      "path": "include/zephyr/sys/mem_manage.h",
+      "sha256": "51eba443848d912bc75962d492351fef14b8c7e3a893da3cc7bbb766db68a8fd"
+    },
+    {
+      "path": "include/zephyr/sys/mem_stats.h",
+      "sha256": "bbcbb163d429d5b49be9b6e59a0a01c0eb3562f596fbcfac9fb7d01ad636f8da"
+    },
+    {
+      "path": "include/zephyr/sys/min_heap.h",
+      "sha256": "83e02130d4d09a9176d5308ebaf64e23548788a256e575ce1b92b8db19db677d"
+    },
+    {
+      "path": "include/zephyr/sys/mpsc_lockfree.h",
+      "sha256": "bb6b00d4e5fc618df2de8714caf1624eeaea447166b43c9a20348af0e393ab94"
+    },
+    {
+      "path": "include/zephyr/sys/mpsc_packet.h",
+      "sha256": "f358d2ff7a47847fd456ceb20eff93c959c0445bbc758a396205c167e3125ac8"
+    },
+    {
+      "path": "include/zephyr/sys/mpsc_pbuf.h",
+      "sha256": "41f7d518dcc0b380cfa1c457fb6fbf528a754cc0615bcf0e089167493c28353e"
+    },
+    {
+      "path": "include/zephyr/sys/multi_heap.h",
+      "sha256": "c8044bb87cfaa7532571691f1bc7bf33b256d0a4f32825e008bfdd01e82e0ea6"
+    },
+    {
+      "path": "include/zephyr/sys/mutex.h",
+      "sha256": "889768fad5234babf0a7be56fd56e09e0a8408c35a7926c4a211e86d49e7f825"
+    },
+    {
+      "path": "include/zephyr/sys/notify.h",
+      "sha256": "d46b0007e6f6678b8d3c886bc7205db7d80872f0f723c27f9e07278cf0dae439"
+    },
+    {
+      "path": "include/zephyr/sys/onoff.h",
+      "sha256": "44c38140393e6b5f94f3971b7ed4e73226699205fcd32b98838caf1db45e3d7a"
+    },
+    {
+      "path": "include/zephyr/sys/p4wq.h",
+      "sha256": "3dcac28c97b4a563e74b65b42914531335af939855aae094355427b06a50f636"
+    },
+    {
+      "path": "include/zephyr/sys/poweroff.h",
+      "sha256": "9b7f76f6ef8f6df02a52ce654572f447f3629104337af5a53bec9cf89a5ce931"
+    },
+    {
+      "path": "include/zephyr/sys/printk-hooks.h",
+      "sha256": "1bab82ef0d4427bcc2a7033632d5f2a30ea3a0dca31fe46c51dee8d0bbb25496"
+    },
+    {
+      "path": "include/zephyr/sys/printk.h",
+      "sha256": "1f8b825c2a825ad9c62e3428b5a0843ad86ea29f84cd1fb41c2b258191427dc8"
+    },
+    {
+      "path": "include/zephyr/sys/rb.h",
+      "sha256": "f76847b9e691876b30be081b326c7114f02fbe0836fa1712858082080dd47175"
+    },
+    {
+      "path": "include/zephyr/sys/reboot.h",
+      "sha256": "44099da5f59ae21b031707896717d775d262342758a93695ac1518f56bded56b"
+    },
+    {
+      "path": "include/zephyr/sys/ring_buffer.h",
+      "sha256": "48adb927aab5b70dc60255d2f5ea7985758bc92f6aa8f2dc03034d1bdf89af08"
+    },
+    {
+      "path": "include/zephyr/sys/sem.h",
+      "sha256": "098c33f54f4a1a270765080be129b651b64e24234e1090101f050f91f7c4af09"
+    },
+    {
+      "path": "include/zephyr/sys/set.h",
+      "sha256": "f503b4cd242008379fad8bca1c445895026b1b458194597941b561a49cc46ee3"
+    },
+    {
+      "path": "include/zephyr/sys/sflist.h",
+      "sha256": "0ee4ef21413add6a555ca20abf6dd2748e1428a18b42457f41fa81d049ecb7cc"
+    },
+    {
+      "path": "include/zephyr/sys/slist.h",
+      "sha256": "d927b9310fa1aff82b72b617361af7f346861089d87c19fa2f1d056744b0e485"
+    },
+    {
+      "path": "include/zephyr/sys/speculation.h",
+      "sha256": "c672f92943ee94e1285582003b5cf3e9e2e18e3608cd8ff85490091ad2691ed9"
+    },
+    {
+      "path": "include/zephyr/sys/spsc_lockfree.h",
+      "sha256": "f49b841ea6bfd459c2aa4d1b0b16277ac117d3a8d8c297834cbf7b77bca4c595"
+    },
+    {
+      "path": "include/zephyr/sys/spsc_pbuf.h",
+      "sha256": "44067453af06e9c10242d883624ca2afd956e9ee011ba2e601f615656488f0dc"
+    },
+    {
+      "path": "include/zephyr/sys/sys_getopt.h",
+      "sha256": "0cca55f36081ee2a1cf5143f822428fb2175f074d9fb557b5be4858b3d9e6e4d"
+    },
+    {
+      "path": "include/zephyr/sys/sys_heap.h",
+      "sha256": "1a86c8839aa0becf4e13b5a70ff6464979c78135ae3cdfa219e7d9c68b382eac"
+    },
+    {
+      "path": "include/zephyr/sys/sys_io.h",
+      "sha256": "9e9d3b9ad7d6dad8506a2b209be88e7c18904e030e931ade0dd6db980ab4d533"
+    },
+    {
+      "path": "include/zephyr/sys/time_units.h",
+      "sha256": "ab708f3650fe960c6679c323be1c4c21c7da056c540aa0f628d4e2254c89c5bf"
+    },
+    {
+      "path": "include/zephyr/sys/timeutil.h",
+      "sha256": "38a0f7f61a654d4a86a58795feabbdb05771357a362aff09a81f5a693a3853dc"
+    },
+    {
+      "path": "include/zephyr/sys/util.h",
+      "sha256": "b8bed07b571ecd525bab894797337517025d2546e0d19ffa2990116f53edc9b8"
+    },
+    {
+      "path": "include/zephyr/sys/util_internal.h",
+      "sha256": "a5b9064fd7a1ded02a1db0a12d75eb5ed0ec484b1c10d4fcac9988a7e43f8db4"
+    },
+    {
+      "path": "include/zephyr/sys/util_internal_is_eq.h",
+      "sha256": "007622210ea3fc07b6e45ffdbb048a4818bf1a51ecae4d3ce22f43b2e97fdb79"
+    },
+    {
+      "path": "include/zephyr/sys/util_internal_util_dec.h",
+      "sha256": "088a96ac49587c2cc569be1c69a5b8c273ed02bbf8d11b4b1d5c1ccf5f45b412"
+    },
+    {
+      "path": "include/zephyr/sys/util_internal_util_inc.h",
+      "sha256": "63b79157a40115209325a69e8c22297ef69573fb9aea2600112017cb49743048"
+    },
+    {
+      "path": "include/zephyr/sys/util_internal_util_x2.h",
+      "sha256": "bec1a1f556693ed236291a53967f1037498e0a890b834f564576ad256327d332"
+    },
+    {
+      "path": "include/zephyr/sys/util_listify.h",
+      "sha256": "7a2dd9ffe655182c6c815244a71b2ed58705f165340c52a5319de851987c037a"
+    },
+    {
+      "path": "include/zephyr/sys/util_loops.h",
+      "sha256": "9c5c9d5c4bf65c9390ea26b836123c0801057ab4990481a3d73538ee2f4b8e97"
+    },
+    {
+      "path": "include/zephyr/sys/util_macro.h",
+      "sha256": "35993d1760a770f68ec2f6d918f017d6247a05d10f57ddd06900ebb4ae815a36"
+    },
+    {
+      "path": "include/zephyr/sys/util_utf8.h",
+      "sha256": "23729130241fd4d4fccb8e8e1cbdb2842e691460e181f9c590ad551d2058eb63"
+    },
+    {
+      "path": "include/zephyr/sys/uuid.h",
+      "sha256": "6d86db40b179c5546a83f817bfa16a6532f7f8f788021d7a42877a557ed1105e"
+    },
+    {
+      "path": "include/zephyr/sys/winstream.h",
+      "sha256": "df24ae0ce57b1acf77cec2578f109dcd0c1809ddb5a0c9d6d733d7052fba273d"
+    },
+    {
+      "path": "include/zephyr/toolchain/armclang.h",
+      "sha256": "7014a7d8bc216733778143a86e7fbd641a39445bbd244836ae010c0cbe4713d7"
+    },
+    {
+      "path": "include/zephyr/toolchain/common.h",
+      "sha256": "cd7d5e01e1947dc477be39a0f933775200c1eed948994641c3ec078b71a5d213"
+    },
+    {
+      "path": "include/zephyr/toolchain/gcc.h",
+      "sha256": "5969b4bf7275fd514a799ed54d3238fa5dc9a0b9627c09bf6317a74f04d751ed"
+    },
+    {
+      "path": "include/zephyr/toolchain/iar/iar_missing_defs.h",
+      "sha256": "24dc56e10bce7e8500f7c12f4b9ddd551c50188403d4259c11d60d79fb55c815"
+    },
+    {
+      "path": "include/zephyr/toolchain/iar/iccarm.h",
+      "sha256": "9954d4026dc175bd7bea7a220a3ce736e65c9fde26a81025fbbed8c44320ab81"
+    },
+    {
+      "path": "include/zephyr/toolchain/iar.h",
+      "sha256": "165e1b694972c8c1eaed54c32210ce1d508dd2812ed009ab24e887e0563c246d"
+    },
+    {
+      "path": "include/zephyr/toolchain/llvm.h",
+      "sha256": "081ed967032bd4ff7d5d388e2494dba55a2b30069fd7ae4c18fdbdcb81628577"
+    },
+    {
+      "path": "include/zephyr/toolchain/mwdt.h",
+      "sha256": "6459351e98fe381586800d1f8a0f6602666ac875a2fb77ae33fd88306519469f"
+    },
+    {
+      "path": "include/zephyr/toolchain/xcc.h",
+      "sha256": "0c2cc9e1c9b54fcbdb74caa1af44f029f795bbdbe2b5f0bedcdda137f0926110"
+    },
+    {
+      "path": "include/zephyr/toolchain/xcc_missing_defs.h",
+      "sha256": "dd57c8e1da2bfaf6e5fe5a118c07f75264662f4ca52f97a8455f3de464ba701b"
+    },
+    {
+      "path": "include/zephyr/toolchain/zephyr_stdint.h",
+      "sha256": "8b0ba39dfa5bc9267d39f9a71bcbf8c00663b1d89fe8696f864b19002792b359"
+    },
+    {
+      "path": "include/zephyr/toolchain.h",
+      "sha256": "1cb134d68bab9d66d907a5c72b521e842320c3affc30d617269605c5ca3b6cd1"
+    },
+    {
+      "path": "include/zephyr/types.h",
+      "sha256": "65fb8e6198cff1f9b768de7b81570bebcc193d1f41d0b1450a8883f71992aae2"
+    },
+    {
+      "path": "lib/net_buf/CMakeLists.txt",
+      "sha256": "02faf88d4b1df7aad3b2cf11403005a98d4cc4d150cb94f4a560a1f21688802d"
+    },
+    {
+      "path": "lib/net_buf/Kconfig",
+      "sha256": "e6f9aa10fed5af5e33fe01d48978efd24edd118a435955bbf324e561dd6e2a0d"
+    },
+    {
+      "path": "lib/net_buf/buf.c",
+      "sha256": "b14aa3668b90ab1a68ed60d1a749a5d1e1ca8e8944ecf5dd82e95c6ac512af38"
+    },
+    {
+      "path": "lib/net_buf/buf_simple.c",
+      "sha256": "2721c30ab86db12202a72fe51955099040900e21ba14321ec45539c543891331"
+    },
+    {
+      "path": "subsys/bluetooth/audio/CMakeLists.txt",
+      "sha256": "99dd4686a9555b0be17bab3d0ef4a27371c00d73fe21efb1cb6644bd901191a1"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig",
+      "sha256": "0862233f456d808dea26500ca1ccb23969c211b0b73178ec04c01a851f444b52"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.aics",
+      "sha256": "fd452241117107fbc55f4098b06f4921dd4c7ac5bce413f4c15e58c8616f2d18"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.ascs",
+      "sha256": "05f5a681b8955d94cb9a2e57012c0ba20f3594fb53dedbbc959012f66f54e898"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.bap",
+      "sha256": "88dcb4015b899c9a6821988c64a7f4c6efbe06f4bd75782e9a925b4ab4d90418"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.cap",
+      "sha256": "374dbd05efea2e2630b90886f762a15cd874a30a4fa28dcfc5e93aa9a190e32e"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.ccp",
+      "sha256": "c696099880291ebdaaf8b99bedde065df40e87fc33b158a6d0b8834f5f8a1313"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.csip",
+      "sha256": "6e1833b3bae7b8c9fe4b5205f565446cca9e99f8d4b4b3a5a50aeb243d428c30"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.gmap",
+      "sha256": "c3b4c99638100bb729657d205d812783a5a86584e2b682702498bb058cc7a41e"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.has",
+      "sha256": "0368ec47c8e8a70afacaa9f92c7b115f94a02839d107e2fe2d4e57d9ee4e1a16"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.mcs",
+      "sha256": "e3d8c36f52d0150322e328db2356f222952514eb65582ca4f27cbbe68773a567"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.mctl",
+      "sha256": "d2ccd116873f0b8aa743ffa782c74b995f632fb0d9d42abcf9410a68772ab252"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.micp",
+      "sha256": "c79cc96849c7f9639a47e36b2bbf12d78e65d306390bd92128b1c2bf043498f5"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.mpl",
+      "sha256": "65050c3f7de2ea9d342604de649358413e8419cecab2ce04654b0d02b3cb807e"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.pacs",
+      "sha256": "6b51f2dd9d51808cb574d166ddf297eb31f34b63e4abb3d12cc16f0f42c8913c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.pbp",
+      "sha256": "377313ff6f65fe95614f89ce60ac0c072e319e1ffa59d41b61694936b238acb6"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.tbs",
+      "sha256": "6dcf871671fbde53c4a2bca75530aca2381dbceb3f531ccb2cbd34544a1df0cb"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.tmap",
+      "sha256": "c673b5ce5f8f190f6938eb09f4cf881f34bc721c5926e6da780c148102d8f187"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.vcp",
+      "sha256": "2ec59e611df10dd4532088142f6da02d577c7e6dd82ff41ea7378da36a35aa2b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/Kconfig.vocs",
+      "sha256": "9abf0288b489d4aa6ddc6c26505adea1d16dfaf4e3a065b9e3b980f026bfb546"
+    },
+    {
+      "path": "subsys/bluetooth/audio/aics.c",
+      "sha256": "b46e46184c0d7ec939a41d909f61243bbb51240d9e9d84d4889e87b789392efb"
+    },
+    {
+      "path": "subsys/bluetooth/audio/aics_client.c",
+      "sha256": "d54d704ab80f4788a8930c19b184936e7f63a9aa420c2ee6226cabcb1a972fc5"
+    },
+    {
+      "path": "subsys/bluetooth/audio/aics_internal.h",
+      "sha256": "2bf4e468a8cffb4b3cf335369ac8f03524aead2f5daece690df00668a4c1c0cf"
+    },
+    {
+      "path": "subsys/bluetooth/audio/ascs.c",
+      "sha256": "e262e6d489f4f3716a089762e71f05173f89293244d5b73e28a38ad7a7f09b15"
+    },
+    {
+      "path": "subsys/bluetooth/audio/ascs_internal.h",
+      "sha256": "0ed575a213834aa08607403088571a75189ea68647a84de9085c5416da7dcecc"
+    },
+    {
+      "path": "subsys/bluetooth/audio/audio.c",
+      "sha256": "07b0b016ba518dbdb7f324c9948dbfd19619569f62f216aa75cde2e88e574d1d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/audio_internal.h",
+      "sha256": "6043d698c397a7673e572f03b238942c92b7164f823efba95809782fdb496c50"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_base.c",
+      "sha256": "51893807668bd2f87cd5421b550f96fa8e1af56db79c64d7934bd72900cdde61"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_broadcast_assistant.c",
+      "sha256": "3873a63a26af99f574dc46c0ca51460529d6226d73add4315f891aa5935a00df"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_broadcast_sink.c",
+      "sha256": "49cac713463024a4ed3ab84962d9354830c128a37ebe39f18f98c1a790f3a874"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_broadcast_source.c",
+      "sha256": "01f62be828ea5fa0b6edb93a1cba58126e6aa35ff61da4c77b78eb5a7db6c409"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_endpoint.h",
+      "sha256": "5357f740a226513a5dbff3c7407abacfd9e499d7fe885cbd140a9cbbe25de563"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_internal.h",
+      "sha256": "e0f85b45936a88e511c8b06cf48687948e2a85d6d64002f61642f7aeeb8cc552"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_iso.c",
+      "sha256": "e8e7fd79e1d53a418a0912d2ac234ce045ba965ebecf295e511c5266549aeffa"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_iso.h",
+      "sha256": "49c11654324b1ae67246e172889e4a361871626ce4e7337f97d92dc603b6bdae"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_scan_delegator.c",
+      "sha256": "c38893d4d4052587c7d78627de98259af6afdf8116e657d2380453c8e6c4927f"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_stream.c",
+      "sha256": "7b44890804d99896e3a3f45940f09a988ff320f2c9ad4c1d49453ffcd0b69e84"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_stream.h",
+      "sha256": "258349fb405828492f24bea73b6b82aec6efc5e6b145e23d65fc59177b47e83d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_unicast_client.c",
+      "sha256": "790cc6b5170ff8ca0e0eecf0f7861d911551b14de01e5bee1410e340ce05868b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_unicast_client_internal.h",
+      "sha256": "6206b4f4ad3b71b978c10524dfea5c4b4ba22b2b93e2004af229f2da1911d66d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_unicast_server.c",
+      "sha256": "06efa18c08c211af00ac1a90d01a1a9860107101dc9c811a80323ef8b69b9999"
+    },
+    {
+      "path": "subsys/bluetooth/audio/bap_unicast_server.h",
+      "sha256": "f4481625ec789d1a586ee1546b0f761f856ccf4b8f0355c9fa291056e257dc47"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_acceptor.c",
+      "sha256": "9e8423653e895943ad7cf3593fe7cf1324071318ec5048047d88a8082b528e10"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_commander.c",
+      "sha256": "b05c8f3ef2f35462215fde63a3655cfdd27981177b9bd867da760162e752d89b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_common.c",
+      "sha256": "5052888f6e54b2c60452cbb30a966bb27cc29b9890d8fe9b4bbcb15687265b10"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_handover.c",
+      "sha256": "f4e84bbd00d4b957762535ab47925bd018423337b1019f7ce898321c20f596e2"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_initiator.c",
+      "sha256": "6c6c5d65a69d8ac6c34ab0f56cb026892eb0b0500f64038c97a78ad13be27f9b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_internal.h",
+      "sha256": "57b92c4524e9d0709a31586ec5fc7571651f694d0bf63f6425b2b388aee4a6e3"
+    },
+    {
+      "path": "subsys/bluetooth/audio/cap_stream.c",
+      "sha256": "e7eb821e67ccd5a3e7d0362dbf9d4cbab6c88c3e54811a8486c3fe6e00be5f5b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/ccid.c",
+      "sha256": "0b6a33483851f16cd1ab681cf135fdb2686db2f29544d8a44a91ec0864e9a54b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/ccp_call_control_client.c",
+      "sha256": "4d7bf8f1bc102872dfab971e5c0fd0253612f0eb4f72bbc923587d3bce6eed79"
+    },
+    {
+      "path": "subsys/bluetooth/audio/ccp_call_control_server.c",
+      "sha256": "bd10e9b476b0f2c27e06d8a0505170fbcec701342948fdfae778f57729444008"
+    },
+    {
+      "path": "subsys/bluetooth/audio/codec.c",
+      "sha256": "d36e39b963bec929e7458feb640434c8b334a162047c083c91b04a8f51122e38"
+    },
+    {
+      "path": "subsys/bluetooth/audio/csip_crypto.c",
+      "sha256": "43ec1eca4916d346330727121d8d8b1a239ca2dfca80efb098888b2f4f262ef4"
+    },
+    {
+      "path": "subsys/bluetooth/audio/csip_crypto.h",
+      "sha256": "d8294e43cbb044cd0cba5cd73719f62888bc5874f6e24800a815da5f4eaf1762"
+    },
+    {
+      "path": "subsys/bluetooth/audio/csip_internal.h",
+      "sha256": "38415284689d4ea2416bdb04fd3a6150e08c48e6262860431a22b208c1ce75be"
+    },
+    {
+      "path": "subsys/bluetooth/audio/csip_set_coordinator.c",
+      "sha256": "cd071704e2ffc49e559ea47465b93b4a2f2897638a7049134f5d04f8fb7acf0c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/csip_set_member.c",
+      "sha256": "01e70697bfbd28ac55f93d02e67527c9b5ce133894260f078d4308d6a087acaa"
+    },
+    {
+      "path": "subsys/bluetooth/audio/gmap_client.c",
+      "sha256": "36f0881e91e08d347a4535ed98e203b9e9531bad2471601bb2c1d3122800c122"
+    },
+    {
+      "path": "subsys/bluetooth/audio/gmap_server.c",
+      "sha256": "eccb289d8705785ae696b7b820dfa564bb413b2c2af3ce97e13d69faf287f773"
+    },
+    {
+      "path": "subsys/bluetooth/audio/has.c",
+      "sha256": "f475c81acedf9b2aa2cec6fa859d220ebeca4453888a1ea8a99f9081e7d053f7"
+    },
+    {
+      "path": "subsys/bluetooth/audio/has_client.c",
+      "sha256": "783c91e5b8efbe307756104a6db4810d1ec58bcf2e079022f5620c27d4a5bd87"
+    },
+    {
+      "path": "subsys/bluetooth/audio/has_internal.h",
+      "sha256": "34e482939b8dc08e403491b2cffd6cad4700cb9cb851134060b1edc3f91a2e53"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mcc.c",
+      "sha256": "b0bb72c0f9a5249c7ff297eae1070ffd1601f8e96603b357fe70891e89277619"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mcc_internal.h",
+      "sha256": "b8034107dbc22fd63a6fbd1e571fcd15bfff9918ba3b763530de6786d166ee01"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mcs.c",
+      "sha256": "d417cfad0d93103d78071f1b1eb8852cfcdb4112d1bc510a4470a2399d5d2c46"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mcs_internal.h",
+      "sha256": "5f7ab2d99b6c194a62faa18ac7beb0c190bab32c1051928098a357003ef19d31"
+    },
+    {
+      "path": "subsys/bluetooth/audio/media_proxy.c",
+      "sha256": "ffbf9a4a1f6e7441ab4d3a869e38a9290424043429fcc8b696c3ab0f0e427d41"
+    },
+    {
+      "path": "subsys/bluetooth/audio/media_proxy_internal.h",
+      "sha256": "cd4ab78384155948b9e3cf6eeb9a163ceaa7227b42078c640a67d280fc06ef58"
+    },
+    {
+      "path": "subsys/bluetooth/audio/micp_internal.h",
+      "sha256": "bf768fe2a2374c3d0a844431cd5e8edda6cb0917cc0c40afefff76f86879b63a"
+    },
+    {
+      "path": "subsys/bluetooth/audio/micp_mic_ctlr.c",
+      "sha256": "8ea703a0820d2c81b2ec9700bbed9a1e0bc7fd91fef5e73f20816e4f9d3b7cdb"
+    },
+    {
+      "path": "subsys/bluetooth/audio/micp_mic_dev.c",
+      "sha256": "bc6cb204621728318b6986c2b80b4fc250bc60eb224e627f38344afeaf36d589"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mpl.c",
+      "sha256": "5850886626fbbca082b349dbe38ff78cb5cfbf627c23c274c61fc3538ea5886d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/mpl_internal.h",
+      "sha256": "2efc4ca5848e433fb9a8aa8fe81cb861e2685773df8499f229680448e642e7ec"
+    },
+    {
+      "path": "subsys/bluetooth/audio/pacs.c",
+      "sha256": "d260b5dcb65d99372f27fda552037bdb98f93ba28d0f7744bcc32b74dad2616c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/pacs_internal.h",
+      "sha256": "196493b4da0c76d5078690cb6064c8c6314657a612fbc921a0130ebdde7bde32"
+    },
+    {
+      "path": "subsys/bluetooth/audio/pbp.c",
+      "sha256": "51791af42c019d7290a2476d9c24c6223632997a43476ef05440de10448bd42b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/CMakeLists.txt",
+      "sha256": "6e71e464fbeb34df1bca58445acf87ef40870ed28e76b99b0414a6a56a64e154"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/audio.h",
+      "sha256": "8132072dd771f489f15ef93f7c0c6868f2561d8a1e687a140cc980e744b9e7d1"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/bap.c",
+      "sha256": "81881706e712b820c1306e1c41bc049e91c6059e902e11e4bd969d0808b4d2b6"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/bap_broadcast_assistant.c",
+      "sha256": "8d37c869d9f090ff7b26fef83d8d05c7bd0354a0a0fb1bc0c99881b214b0910f"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/bap_scan_delegator.c",
+      "sha256": "5b068328c8e90583580178057f47fdc3c9a9f30bc9afe9916f4a19412f323d76"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/bap_usb.c",
+      "sha256": "64894e536c9280a60c139e8695f2a4e039d096863946041d75b4799770843a81"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/cap_acceptor.c",
+      "sha256": "b35fb93a269416e7cd877ffaa705806b380de341a0d8fec8cb7dbc00c2fc44fd"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/cap_commander.c",
+      "sha256": "8cd14eb3ef5a0d9329d3edd7de1d7b8c130cccd8c90da717e5772899c409b397"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/cap_initiator.c",
+      "sha256": "a403f00f66dafc02779d24ff277f7abc617ed094e685a620d0de535813555472"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/ccp_call_control_client.c",
+      "sha256": "610a099379bc99e53284df2941e2106e55c002f57c7f257bcd70ffe5832c95b3"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/ccp_call_control_server.c",
+      "sha256": "0eaafebb4f840cb91d6a2b88a1f8b9baeee4c2c29e16be4928b9dfc857204f9d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/csip_set_coordinator.c",
+      "sha256": "436c7a1a961ef508c904f767058c0958e052acb86b03c9606437fe1ebe5b849b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/csip_set_member.c",
+      "sha256": "31d103f852487f17bbf8e38d30243cd2f8f71c2d7a4002cfc38fe829cc1f9bf1"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/gmap.c",
+      "sha256": "d5c0576bcaae2b502397883aedf4e18729ff6167e613370a9d032225b5865502"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/has.c",
+      "sha256": "868647363f1aa48c45fbe58ce768815fe762ee62e2ae63ba75f315f4e2435afb"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/has_client.c",
+      "sha256": "84980ff40082194ca1a7c150bf8862398d7a36e5e6f93256f2879269161406d7"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/mcc.c",
+      "sha256": "d8afa52d6121d3ee6996e717bc3c630ad43b5f007a2d9e317c72f1f72ec9b46c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/media_controller.c",
+      "sha256": "bfaae99dc2adc639866da79dc468355b333ca33c47835c01d9983ee8f9af295c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/micp_mic_ctlr.c",
+      "sha256": "3fe8139d5c58855617fa1c1de64a381b5f01a96865b01d23c85043b5e816841d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/micp_mic_dev.c",
+      "sha256": "e2033b358acb6518d232d3fb9338c7b9b5bf0d8ddb3a08bb7db57b589a05a2cd"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/mpl.c",
+      "sha256": "f9de666921372ff430db34fd2894b461a9412a899d8baa3122b0f4d82a73b015"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/pbp.c",
+      "sha256": "436aa846cdb51ddd797e9cc710ac7f34bc9de01053370ab36292b3cf9490cfb5"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/tbs.c",
+      "sha256": "5a824bba999eac7c7ac06e76d7426e8a71e10c4fae1ca3fbbbed848da7db77aa"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/tbs_client.c",
+      "sha256": "7ebeb3afa54879911df7bab9faa07a2b24401f73948a6d89cb8797a427cb384b"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/tmap.c",
+      "sha256": "e624f5ace6842c588087490979c1d412f1b6780aae1453d42735572afea02ce5"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/vcp_vol_ctlr.c",
+      "sha256": "f227fdab17b57fe6667dc49338389a0b900e3152064045f95b0445fa51e5c234"
+    },
+    {
+      "path": "subsys/bluetooth/audio/shell/vcp_vol_rend.c",
+      "sha256": "da968d533c3fc6266420f094b75ab2a85439b10296d47d3a2db4d2c79c854339"
+    },
+    {
+      "path": "subsys/bluetooth/audio/tbs.c",
+      "sha256": "7ad79934e34023a28b90864510a3827d91e1bd16177a143da7cdc35bd97b2e9d"
+    },
+    {
+      "path": "subsys/bluetooth/audio/tbs_client.c",
+      "sha256": "368b5ebfdce702ac0628ac0e4338ef6cccab1e2d54ed1907f0f1bd3753d6373c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/tbs_internal.h",
+      "sha256": "8447e0bdbed817d9b120ab7928451138ca505139a046ac80d768b349b5a74af4"
+    },
+    {
+      "path": "subsys/bluetooth/audio/tmap.c",
+      "sha256": "c114b8d7547130b980b076bf6dcf94e48a7084f9d01526275b56881f5fd4ea24"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vcp_internal.h",
+      "sha256": "5e7cfaf62165c90d19ef7f18f1856b372b2f6e9347bf4b5cc18a827b6effe2e2"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vcp_vol_ctlr.c",
+      "sha256": "93ee818d958fb6dc782624763435febf1d8ebaaa3cdb149dd7fda79ad79d7050"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vcp_vol_rend.c",
+      "sha256": "e4ad3db80807fc4f4c856f75432dedc01962cffd050f8647fc6cd51ca70ddaf5"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vocs.c",
+      "sha256": "68fde38363d0e21e69a75920a1f638d6de409904cb48d9ec0b3577840885177c"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vocs_client.c",
+      "sha256": "7cc42f4d4ead6c2e99746bfc0dc6be6d50b3692e7ad9da28f635073685b71eca"
+    },
+    {
+      "path": "subsys/bluetooth/audio/vocs_internal.h",
+      "sha256": "93cb4dc124e9cb9da0706198793e9dbb1857fc9b1719b33a9d6dc376b5864e7b"
+    },
+    {
+      "path": "subsys/bluetooth/common/CMakeLists.txt",
+      "sha256": "34fbb41895bb8204f0d815eac7ab4376d2608e39d163f1112b00744fb0b4591c"
+    },
+    {
+      "path": "subsys/bluetooth/common/Kconfig",
+      "sha256": "d176304dcbace09d9f3e7ff6bef916069ccc6864bab94702002095396bb1a12c"
+    },
+    {
+      "path": "subsys/bluetooth/common/addr.c",
+      "sha256": "7eb762c5933d0c7c7f58b3244086d5706053101ee7bba6e73aaf78a9ebeb1655"
+    },
+    {
+      "path": "subsys/bluetooth/common/assert.h",
+      "sha256": "9a6a23737656fd6653c965d34e37822c1918eebbb9add0dd824d51cdf7608af1"
+    },
+    {
+      "path": "subsys/bluetooth/common/bt_settings_commit.h",
+      "sha256": "06308fc98583f07b1146bae1d7e288ec06f8afd54dd65bbc2d8064ca2fe52a8b"
+    },
+    {
+      "path": "subsys/bluetooth/common/bt_shell_private.c",
+      "sha256": "352be7db1d7c5de57d57ff45548832a30a2a9e38400ef718e1e924b7dff4d6a9"
+    },
+    {
+      "path": "subsys/bluetooth/common/bt_shell_private.h",
+      "sha256": "0e001ad4a7692a9430a6cea2a24df46597aaf82451b174f4a7669506ec6d4004"
+    },
+    {
+      "path": "subsys/bluetooth/common/bt_str.c",
+      "sha256": "ebd3ca1444fd9b1367f02c10c24e4e9838c26be3f1166e4deb1c61395dedc74a"
+    },
+    {
+      "path": "subsys/bluetooth/common/bt_str.h",
+      "sha256": "d40f7d6ee13564ae4e62a60e85473c0992066b57343e2bead36289516620719d"
+    },
+    {
+      "path": "subsys/bluetooth/common/dummy.c",
+      "sha256": "9d75a6222cb5ecaa14df751fb8f65e6451572cb422f3e7cc65188ce2a6279300"
+    },
+    {
+      "path": "subsys/bluetooth/common/hci_common_internal.h",
+      "sha256": "26b5831fbf86b90bd1b77fee962081ff4bd863eb68677dc974abb7e5dec9be21"
+    },
+    {
+      "path": "subsys/bluetooth/common/rpa.c",
+      "sha256": "5aeda61d8aaff8d0127a4ce61d57b01619de6175c45f26bdab85e1a91b9b7b51"
+    },
+    {
+      "path": "subsys/bluetooth/common/rpa.h",
+      "sha256": "3270ba2ab64c0b4c4439516c634508afbeaa6796327dc83288b1121cde7b3ca1"
+    },
+    {
+      "path": "subsys/bluetooth/crypto/CMakeLists.txt",
+      "sha256": "7e69bf0d975640965823a8c3f4cba27a89347b45247abf31b7f8a133101c6bdc"
+    },
+    {
+      "path": "subsys/bluetooth/crypto/Kconfig",
+      "sha256": "eb71c3cbd6dfcda2195dd01b10fb81730c0d6dd7d731dd2bf51c12c5e96c4413"
+    },
+    {
+      "path": "subsys/bluetooth/crypto/bt_crypto.c",
+      "sha256": "547442ded49da12e0575f4af19cec77a05df8bdfcf9a40d06af099b1035d879f"
+    },
+    {
+      "path": "subsys/bluetooth/crypto/bt_crypto.h",
+      "sha256": "ec0318f93058e9c23f3364695807cecde9dbd83ded334511758dc430636380ea"
+    },
+    {
+      "path": "subsys/bluetooth/crypto/bt_crypto_psa.c",
+      "sha256": "194928508eb29bdd495bf3b5239a4630c2b2721f74fd9c858e6eef387c681b4a"
+    },
+    {
+      "path": "subsys/bluetooth/host/CMakeLists.txt",
+      "sha256": "7c63d9cdba11701c9bcc20d89b0fe9478031a37099211d32786115744ad3e86f"
+    },
+    {
+      "path": "subsys/bluetooth/host/Kconfig",
+      "sha256": "0c4f6876e7484b252738185a68ffe76ab0a3d0709282b3e00c920f4ca26e5218"
+    },
+    {
+      "path": "subsys/bluetooth/host/Kconfig.gatt",
+      "sha256": "2c79aa95a8bb2cb2a1cc0963a3ba1b38ba75ba067dbc0c9d427b98e7b0d0c9e4"
+    },
+    {
+      "path": "subsys/bluetooth/host/Kconfig.l2cap",
+      "sha256": "0bd6d0db47f1fb905bf04129371dbe94a881ac250c6a9f57198fbb8f8ba21891"
+    },
+    {
+      "path": "subsys/bluetooth/host/addr.c",
+      "sha256": "738e5feec7505e1b68ebd1054c0d09aeac2050d5e73d74c6c0dd2cfa741055cf"
+    },
+    {
+      "path": "subsys/bluetooth/host/addr_internal.h",
+      "sha256": "384a0d158282a6437f2f44ab1dc392da994cdcfa223dbdb8fbb64c2dca14f769"
+    },
+    {
+      "path": "subsys/bluetooth/host/adv.c",
+      "sha256": "597a8ae3260e848511d4360efb617672f98efeb9a1f576f878db8da59aa7e840"
+    },
+    {
+      "path": "subsys/bluetooth/host/adv.h",
+      "sha256": "99a04fb8a9ab16cb87d1d7d7240f140d144f8048d242b14328e9b2e25c910748"
+    },
+    {
+      "path": "subsys/bluetooth/host/aes_ccm.c",
+      "sha256": "43c081a852e95a9b9405a807f813755d67cfdd7ce2590397565b78ba03218490"
+    },
+    {
+      "path": "subsys/bluetooth/host/att.c",
+      "sha256": "068057075b1265427ca11fd0a9853110aa956203b896077cbe4b9376764d3cf0"
+    },
+    {
+      "path": "subsys/bluetooth/host/att_internal.h",
+      "sha256": "2a431b872088d2564c357789ebf72af5679f20e06975c510db87d9aa96f24848"
+    },
+    {
+      "path": "subsys/bluetooth/host/buf.c",
+      "sha256": "3e3ffe2d7040dade57422cf657c64f3c1ce0518525fff165467c919d290cedf1"
+    },
+    {
+      "path": "subsys/bluetooth/host/buf_view.h",
+      "sha256": "ee649f834705ae1b2a32eff8837188bb841b38c8a2ddc9cd30c1435b510a8dfe"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/CMakeLists.txt",
+      "sha256": "5020f3503c0c59bbf9192f7ee95cc0389a9cb37cf85b58e75cc67ca547c3f372"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/Kconfig",
+      "sha256": "da136dd999d47ee74bd5bd9e048d06bfdac9e30873fc3715a987abd34ab4a91b"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/a2dp.c",
+      "sha256": "1ba345aae7c395b6e14a8bf1992453a3021fe12a8535b770b99dcc8d9a053efb"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/a2dp_codec_sbc.c",
+      "sha256": "a481424c68e3f136662829aa1b58ddb890d92f939430192085e45050922dc6de"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/a2dp_internal.h",
+      "sha256": "d52930f9e78db1bb80aec5356d49281eb8bb9d7e3f88aaecd859e6497b5c55b6"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/at.c",
+      "sha256": "1f91f74ca207abeaa1f1026d69b2c391a79aade11784594b3cc52fffe1643dc4"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/at.h",
+      "sha256": "0286234e136669abd623fb963295fd59ddba4d8fd016cdb5550873c8963c6317"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avctp.c",
+      "sha256": "ab9d8691312b872f4b951cc8bc0caf31a621f5d8a4ae94977a6d00b89f1129e0"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avctp_internal.h",
+      "sha256": "eea552c271da069c7cf715d434ae56afbc615a8600f08134a9a23c1894ad08fb"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avdtp.c",
+      "sha256": "84951e5c5b2556018bd59fa9e5d660e27555282f983cd2966700a5e2ab6cde98"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avdtp_internal.h",
+      "sha256": "ac397cb2fc4472b58793ba610ee9cdc235524d8e87cdb2e7a07f56b2b580ffa5"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avrcp.c",
+      "sha256": "1dde2518aeff2683eaf8275668a7fd8066f8057e6d54a661c3e6abd50fc5d878"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avrcp_cover_art.c",
+      "sha256": "f69352afe4980ac40032d7b7381f78e510e0c1c2fc312f576b6276c399c14d61"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/avrcp_internal.h",
+      "sha256": "c0a3aebfe7d8bfd7960768db76f28b192396e040856c6cce6015760327b1e0d0"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/bip.c",
+      "sha256": "ffcd07e959685d4f880edb7f2e748fee3a27474ce8ca4f628eeb95ef31ffb15b"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/br.c",
+      "sha256": "2cca32a67cca577796ca75ca2880abc6bf43ab6bd93ee16839e01f794d7e3acd"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/br.h",
+      "sha256": "91d21b42fcbd019bfae15a3cd5cb6c0abf22b02f8f40eae0dddc58d7d94cbc38"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/conn_br.c",
+      "sha256": "8d99035c69223a86d80cffde83aa1a79e6ae901cc65658a06c2376f0696a4f9f"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/conn_br_internal.h",
+      "sha256": "baf52f428b9e343d459c132c68e6f605076bf0c383f0d2e988734419d0085e2c"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/did.c",
+      "sha256": "548abc7c3532dfd6786995e53a3c2cf95edfa3525bedd9045f6a8e04b9923c69"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/did_internal.h",
+      "sha256": "4f476d812c9d063e0bc36ec38fdc9d03d55b9be7a66d00bad6a83f047843552d"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/goep.c",
+      "sha256": "d7cb60406013d8ccdf7c5beff42ed03cd203475011638d5a40659ddc23d964a2"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/hfp_ag.c",
+      "sha256": "d68131ddd8bb1f05764bfb6c21bd8604223200c3dde14cf943bec0695a2a9663"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/hfp_ag_internal.h",
+      "sha256": "f4daf82ac5cb5c20156ac67bf9e10ef5e7e6eaee8828b5d886c77c8d0c27276a"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/hfp_hf.c",
+      "sha256": "64465666b13b2af8681255148c24dbabf707b9066902d8cf46138c938ad03052"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/hfp_hf_internal.h",
+      "sha256": "acde5f68994a29c875f0c0f6e436575c57180251d859c5a28d8df6953322cc47"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/hfp_internal.h",
+      "sha256": "129cf6ec6a7c60249900c40ec0ba34de3ab41ba3dcfb80154deb96c12dd6689b"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/keys_br.c",
+      "sha256": "072dca30d06a41f1a696cf7a33e1ffebcae05b878aac60df8be0b3822faf9805"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/l2cap_br.c",
+      "sha256": "ee1c3399d4c91c3a07e5112e364c7ce9ab195f8e6ad0a1dfb8c65650c8d71908"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/l2cap_br_interface.h",
+      "sha256": "5bbdef832106f40434a0d89b209210f54f5eabdd628a556e9b578bebee4ebaf2"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/l2cap_br_internal.h",
+      "sha256": "1b3b3931f7fd17d1f47f9e8265db0c1c979c116cf66ae1ecc61337be2881a6e7"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/obex.c",
+      "sha256": "383afafe989a6eb0d2c7bb8be8cbfb27df10db93280f1f8b73916a2d1d69acdb"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/obex_internal.h",
+      "sha256": "360e94e4ac32b0999b32d028c61e29dfdee5c76562a878ddc9eabe7db39ebc4a"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/rfcomm.c",
+      "sha256": "14a5fcbfd82590f32e2b54dda769d639c30deb4baf75859b5a6016ae42c3d1a9"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/rfcomm_internal.h",
+      "sha256": "0e8774672ecd785816c3c5b7f761180d29635fe5bc744186904aca303ea133e1"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/sco.c",
+      "sha256": "3ce8ded69bae33f6cf9ec5667e3780e6864c86731bba1fc8b5a218a63182fef5"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/sco_internal.h",
+      "sha256": "91a69a550d1fe510ff01b94e80e01e90be5ed36cfd2920a1bcdd283dab1181c7"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/sdp.c",
+      "sha256": "fd18a8edd2a20a5c08f0cbca67bb7a96f107961cbc6d8782756f083d2cf3f48c"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/sdp_internal.h",
+      "sha256": "397180b395719b2333f24c606d9d8ad319410ac5d6f702d985f2df83f77ba881"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/CMakeLists.txt",
+      "sha256": "b5b51ba87ad9612473aae92ffb081f0322b3130a17aca315e6ff4b7d3f8122f7"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/a2dp.c",
+      "sha256": "e0dbe828a398896d5566f87443ca45c44e452061f9c306a5e467035172c3bfec"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/avrcp.c",
+      "sha256": "b91b43318c514b3f829e521e6f576d541626a5c69f70589cf7922600384c1736"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/avrcp_cover_art.c",
+      "sha256": "64619f571576ab0fad90b27e43da1cce27e59e71854722a716316b840f9059d3"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/bip.c",
+      "sha256": "da3184986d704bc68380bd1407d5dc3fb3f1535f61d764f7ce4ae5346f01bf8a"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/bredr.c",
+      "sha256": "9b7c1be7eca2b878ac9cc3b08f3f09089cbfbcdb35497184b8e9ba78529ac270"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/bredr.h",
+      "sha256": "7c001f7b7ca33457b0149a862384911d8c1bed63cdd3cc650fe6802e6656e539"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/goep.c",
+      "sha256": "5a4a3a2f3eaf1b4eec877d21f49b743e6ac39f88c9e12c9d84edadba36519bcd"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/hfp.c",
+      "sha256": "61aa56c567736ef55cd839cfb9d41b9cbcd1ee37e05da8dd127a585d06df90a9"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/shell/rfcomm.c",
+      "sha256": "3598085731cc6c442122a173f8474d361ed38e024993affc83b36e9e3ed9e27a"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/ssp.c",
+      "sha256": "a265b8bbaecd83c71b48deadd3f00d7fdc8c2bfe20162de8b00f0af94b24d473"
+    },
+    {
+      "path": "subsys/bluetooth/host/classic/ssp.h",
+      "sha256": "241a939060e16a377263b7db909907286028d4e70594f0dd06e477db9e47e7dc"
+    },
+    {
+      "path": "subsys/bluetooth/host/conn.c",
+      "sha256": "d85b1b95fafd8a150d193b0084129c64b52e7c2cd8141366d192f5bdb18a3839"
+    },
+    {
+      "path": "subsys/bluetooth/host/conn_internal.h",
+      "sha256": "cfb72b1fa2402897248ba61be18913adea2eb34dcac46cc23c859f6927d026df"
+    },
+    {
+      "path": "subsys/bluetooth/host/crypto.h",
+      "sha256": "eb252f014840c077369a3f01ad4c1ed45eb5ab38501ac1957469e4cbd1a9f595"
+    },
+    {
+      "path": "subsys/bluetooth/host/crypto_psa.c",
+      "sha256": "1271e6ee257737e02f6633e2d9df88e8c0c664ba0a02d657d255795924c8920a"
+    },
+    {
+      "path": "subsys/bluetooth/host/cs.c",
+      "sha256": "03229f59d41ae6776059dfefdafa9e462b8c6fa1c873d4295e43c41a5516beca"
+    },
+    {
+      "path": "subsys/bluetooth/host/data.c",
+      "sha256": "366835005229c285cec99f7579f7971b3963becfe0e7f62ed6caf343a6e72ee6"
+    },
+    {
+      "path": "subsys/bluetooth/host/direction.c",
+      "sha256": "679d01fe0e0e4d4db56d610ef9fee75ce33b0106fe7ab151e6945c7ac4cf9264"
+    },
+    {
+      "path": "subsys/bluetooth/host/direction_internal.h",
+      "sha256": "f87df16c81abacd5ae44551f76e8a952f3b9d9ea1a443579ab29427c1448c62c"
+    },
+    {
+      "path": "subsys/bluetooth/host/ecc.c",
+      "sha256": "a1064e10c17611058f617c33fda5fcc20ae938b02dd60dd7e7a26fd5df5310cc"
+    },
+    {
+      "path": "subsys/bluetooth/host/ecc.h",
+      "sha256": "441e4487a6c7cb617f2431f3e9a20985c1b933827842a9cc089a12ff04c1891b"
+    },
+    {
+      "path": "subsys/bluetooth/host/gatt.c",
+      "sha256": "fc4d941987a961d81d3fb334b2ff3b512fffcb8b0ea9e0e0b55abad355829b69"
+    },
+    {
+      "path": "subsys/bluetooth/host/gatt_gap_svc_validate.c",
+      "sha256": "355e685d0dd1275642e5bf17bb1905946a4cf056aa744f6d0341f8a3164cb0df"
+    },
+    {
+      "path": "subsys/bluetooth/host/gatt_gap_svc_validate.h",
+      "sha256": "d13225ddcfecc3586cc47544b2c249bed15240a9ded19e3b1c2f880b4a0ea991"
+    },
+    {
+      "path": "subsys/bluetooth/host/gatt_internal.h",
+      "sha256": "70e284b9e2920983cbe7c4d4ffc0384e7d282f1184d35bccbed793ab7a09bd01"
+    },
+    {
+      "path": "subsys/bluetooth/host/hci_common.c",
+      "sha256": "8b6437e3f49d67779613156ff2213fda026385805309a5ab433f05ca35b395df"
+    },
+    {
+      "path": "subsys/bluetooth/host/hci_core.c",
+      "sha256": "d9b0fe9dd79d80eb7be7084b585bbaf54f0b4549b721c2d192e1f1a45bbed04b"
+    },
+    {
+      "path": "subsys/bluetooth/host/hci_core.h",
+      "sha256": "a9726fcfd51a1c835aac504e1a9c72e839323439ca3aa256956b87f83615957a"
+    },
+    {
+      "path": "subsys/bluetooth/host/hci_raw.c",
+      "sha256": "312094fd517dcd0e0736f7611d42f89c6073f187daddfb8ed7e86d84ff372bbc"
+    },
+    {
+      "path": "subsys/bluetooth/host/hci_raw_internal.h",
+      "sha256": "6cd726ec4d5a1d81a72a311a8f60fcb7b08c5ef92053d39feea78674e8fa21ea"
+    },
+    {
+      "path": "subsys/bluetooth/host/id.c",
+      "sha256": "db721a5bac39d7cfd60b632765b511faadcc36dc6b0a3b297bdd5da08facae27"
+    },
+    {
+      "path": "subsys/bluetooth/host/id.h",
+      "sha256": "f89e4555534daeaa3f248ab4aae062d30ea23173384a5ffc4536957e586d0370"
+    },
+    {
+      "path": "subsys/bluetooth/host/iso.c",
+      "sha256": "300078e15944a5fedf03e2a47ccb4ab8471971e9ced49a9f9b44153c7aa42a6d"
+    },
+    {
+      "path": "subsys/bluetooth/host/iso_internal.h",
+      "sha256": "a02bd5e59b744035c7f485f7724788b5b5cc1104259426917cca66c94feefda2"
+    },
+    {
+      "path": "subsys/bluetooth/host/keys.c",
+      "sha256": "b0a4822e58f7acf004014a401da135234fb790e058369c19b59d88afeffeb8fb"
+    },
+    {
+      "path": "subsys/bluetooth/host/keys.h",
+      "sha256": "4acd4d0f03cb36545f0e9b7b93e1e528f7a52b695e3292e8a10e6e2f683ac352"
+    },
+    {
+      "path": "subsys/bluetooth/host/l2cap.c",
+      "sha256": "0deb867250dcb79bcd1ada16b68c25b06fb43cc6f08f51b52a8f861d5cef1b8c"
+    },
+    {
+      "path": "subsys/bluetooth/host/l2cap_internal.h",
+      "sha256": "48a6d155267f57479ea7dfe97f19167130b328783bc996a316358eb19350d52a"
+    },
+    {
+      "path": "subsys/bluetooth/host/long_wq.c",
+      "sha256": "d05f93dc3f64e5b7adeb00f5c4a974f9e12bfa44f94b52b90ed2524d696b3d55"
+    },
+    {
+      "path": "subsys/bluetooth/host/long_wq.h",
+      "sha256": "4302c0bdca2a9b8aaa7e39b2429a3e21f68837df3717d729fc305f922178e427"
+    },
+    {
+      "path": "subsys/bluetooth/host/monitor.c",
+      "sha256": "5f7f5d9b7be7dff397077cb88c2511098a8f23710e20a9f49ad96a2f0a629246"
+    },
+    {
+      "path": "subsys/bluetooth/host/monitor.h",
+      "sha256": "85071b4b2e4a117d68aea17a75e75679e439563101d08d8b19af2ddf5c11e21e"
+    },
+    {
+      "path": "subsys/bluetooth/host/scan.c",
+      "sha256": "71aa43a7a4042502293a028145e70b8f5aaac8bcc53772c3141382ad4e2dc137"
+    },
+    {
+      "path": "subsys/bluetooth/host/scan.h",
+      "sha256": "fead9922d630352e962affd628bffb1d41d96e84e8cb3f2b3d80a82025086d97"
+    },
+    {
+      "path": "subsys/bluetooth/host/settings.c",
+      "sha256": "5de9a7ecec27abf9d16c690d1e4244353ef1d7e3679677d09d1dc03851c3959b"
+    },
+    {
+      "path": "subsys/bluetooth/host/settings.h",
+      "sha256": "3701fec4142dcc836d38239987c073ffdd9dd219b69a0f3fa2ad6b44cedc5c38"
+    },
+    {
+      "path": "subsys/bluetooth/host/smp.c",
+      "sha256": "9baec29263c80ca937bdf5131484c294cb8762a73dbf480b4780155569ed19bf"
+    },
+    {
+      "path": "subsys/bluetooth/host/smp.h",
+      "sha256": "adf11b973fb34f3e29bfb4a0ea14053e4403475abad63bee044fccedf427c5f4"
+    },
+    {
+      "path": "subsys/bluetooth/host/smp_null.c",
+      "sha256": "489c77f1d91f53f6e20261325487861f843cb6feeb59777f0b717b7009b3efa9"
+    },
+    {
+      "path": "subsys/bluetooth/host/uuid.c",
+      "sha256": "658f4ad41937136ee132ad9d3295ada2717b299cf198d3ab822ac30eee5dbfa3"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/CMakeLists.txt",
+      "sha256": "2305dbb0a601a10861350c777043e972eb36d2a733afefbe58a8d71a8c910ed7"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/Kconfig",
+      "sha256": "7192d35c1ec1840ee915328b9e28ab1805e7260361303e9f482eaf65f08a7b20"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots.c",
+      "sha256": "ac78ba797edc3439dd150deeb3fdb614181ce58f51e1138b51bd8003c39455c1"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_client.c",
+      "sha256": "15f48013c2382a8d1574e7754093d9317b817869df412a163553ca6081d16212"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_client_internal.h",
+      "sha256": "21ae0b9b33c2224f9cc0210255d671ff2c39c8519a425cd1904557503a48eabd"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_dir_list.c",
+      "sha256": "71959f2881f6ed64a06205e066274a3a67317ba1f2dce1858e383f5dd73e3a66"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_dir_list_internal.h",
+      "sha256": "62c4cae781bbc97befb4bfe25fbc6a18e1b39a16176a985c4e4589f9501a7d4d"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_internal.h",
+      "sha256": "c104ba3be1d1fad82e6894201c8c3255ae15ca97ad954321da2db7b9b6019fed"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_l2cap.c",
+      "sha256": "d8a465c3fa3043dcecc516e2698a6c0861e18a5271edea69e29106133540007f"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_l2cap_internal.h",
+      "sha256": "088fe5c5275a014ce8098cc0ea4057610249966f333144c737916c0736e3ed4e"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_oacp.c",
+      "sha256": "66d4bee07408a3b2378c28b20043334b1d5ee49f4bd8bc6ae6d8dee867da60bd"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_oacp_internal.h",
+      "sha256": "bdae362217674c4dc79c5048d009bfb14551142464d61bcffd24d424113cd308"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_obj_manager.c",
+      "sha256": "f0d9d63b30046d2fbac7ac5aa2ec386011a250363e1412384973e64918f42a17"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_obj_manager_internal.h",
+      "sha256": "0defe3a54546acbda10c9d30dc2b6195bbf86877b8a6e44df31da4d1a8fd9c3c"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_olcp.c",
+      "sha256": "64b62a66e06eff64ac9e96dcdeba4709c086dbbe954a6d15a51cbd4167c14989"
+    },
+    {
+      "path": "subsys/bluetooth/services/ots/ots_olcp_internal.h",
+      "sha256": "d3e49ca1ad98d0278053c081ff5b5b64a2ed449c73cb88b7c739c0e85755fecd"
+    }
+  ]
+}

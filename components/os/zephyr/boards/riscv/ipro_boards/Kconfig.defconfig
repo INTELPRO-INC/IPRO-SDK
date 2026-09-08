@@ -1,0 +1,22 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_IPRO7_FPGA
+
+config BOARD
+	default "ipro7_fpga"
+
+config SOC
+	default "ipro/ipro7"
+
+endif # BOARD_IPRO7_FPGA
+
+if BOARD_IPRO7_EVB
+
+config BOARD
+	default "ipro7_evb"
+
+config SOC
+	default "ipro/ipro7"
+
+endif # BOARD_IPRO7_EVB

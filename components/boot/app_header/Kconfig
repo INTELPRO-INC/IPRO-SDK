@@ -1,0 +1,17 @@
+config BOOT_APP_HEADER_ENABLE
+    bool "IPRO u-boot application image envelope (app_header)"
+    default n
+    help
+      Build the 256-byte envelope header parser used by boot2 to validate
+      u-boot-produced application images (.img). When disabled, boot2 runs
+      the legacy IPNP-only path.
+
+config BOOT_APP_HEADER_STANDALONE_CRC
+    bool "Use built-in CRC32 in app_header (no softcrc dependency)"
+    depends on BOOT_APP_HEADER_ENABLE
+    default n
+    help
+      Compile the bit-by-bit CRC-32/IEEE implementation inside app_header
+      itself instead of calling softcrc. Useful for boot2 which wants a
+      minimal footprint and no extra component dependency. Slightly slower
+      than softcrc's table-based version.

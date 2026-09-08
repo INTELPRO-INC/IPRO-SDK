@@ -1,0 +1,110 @@
+menu "RTOS Configuration"
+
+#
+# RTOS Support Flags (selected automatically)
+#
+config FREERTOS_SUPPORT
+    bool
+    default n
+    help
+      Internal symbol indicating that FreeRTOS is enabled.
+
+config ZEPHYR_SUPPORT
+    bool
+    default n
+    help
+      Internal symbol indicating that Zephyr RTOS is enabled.
+
+config COMPONENTS_FREERTOS_ENABLE
+    bool 
+    default n
+    help
+      Internal symbol used to enable FreeRTOS-specific components and settings.
+
+config COMPONENTS_ZEPHYR_ENABLE
+    bool
+    default n
+    help
+      Internal symbol used to enable Zephyr-specific components and settings.
+
+
+#
+# RTOS Selection
+#
+choice
+    prompt "Select RTOS"
+    default FREERTOS
+    help
+      Select which RTOS to use in this project.
+      Only one option may be selected at a time.
+
+config FREERTOS
+    bool "FreeRTOS"
+    help
+      Enable FreeRTOS support in the project.
+      This includes the FreeRTOS kernel and related components.
+    select FREERTOS_SUPPORT
+    select COMPONENTS_FREERTOS_ENABLE
+
+config ZEPHYR
+    bool "Zephyr RTOS"
+    help
+      Enable Zephyr RTOS support in the project.
+      This includes the Zephyr kernel and its integration settings.
+    select ZEPHYR_SUPPORT
+    select COMPONENTS_ZEPHYR_ENABLE
+
+config NO_RTOS
+    bool "No RTOS"
+    help
+      Do not include any RTOS in the project.
+      Useful for bare-metal applications or test cases.
+endchoice
+
+
+#
+# FreeRTOS-specific Options
+#
+if FREERTOS
+
+menu "FreeRTOS Configuration"
+
+config COMPONENTS_FREERTOS_POSIX_ENABLE
+    bool "Enable FreeRTOS POSIX Compatibility Layer"
+    default n
+    help
+      Enable POSIX API support for FreeRTOS.
+      This allows writing applications using standard POSIX functions like pthread, sem, etc.
+
+config HW_STACK_PROTECTION
+    bool "Hardware Stack Protection"
+    default n
+    depends on IPRO7 || IPRO6
+    help
+      Enable hardware stack overflow detection using
+      mstack_ctrl/mstack_bound/mstack_base CSRs (0x7C6-0x7C8).
+      Provides instant hardware trap on stack overflow with zero
+      runtime polling overhead. Requires CFG_HAS_STACK_CHECK
+      enabled in RTL.
+
+endmenu
+
+endif  # FREERTOS
+
+#
+# IPRO OSAL (works with FreeRTOS)
+#
+if FREERTOS
+source "components/os/ipro_osal/Kconfig"
+endif
+
+#
+# Zephyr-specific Options
+#
+if ZEPHYR
+
+source "components/os/zephyr/Kconfig"
+
+endif  # ZEPHYR
+
+endmenu

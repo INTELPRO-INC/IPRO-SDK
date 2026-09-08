@@ -1,0 +1,233 @@
+# defconfig_security_cert: ipro7_demo lean build for the IPRO7 crypto engine
+# certification self-test (SHA-2 / AES / GMAC / TRNG / PKA ECDSA+ECDH, plus the
+# HMAC / CMAC / GMAC / HKDF modes in mac_kdf_test.c). Build:
+# ./build_freertos.sh -d defconfig_security_cert platform/ipro7_demo
+# (output in build_security_cert/). NIST SP800-22 suite is off - that is a
+# separate deliverable built from defconfig_nist_fulltest.
+
+#
+# Hardware Platform Configuration
+#
+CONFIG_IPRO7=y
+# CONFIG_IPRO6LE is not set
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+# CONFIG_NONE is not set
+# CONFIG_FPGA is not set
+CONFIG_EVB=y
+CONFIG_BOARD="EVB"
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_FLASH_CFG_FROM_BOOTROM=y
+CONFIG_ENABLE_FRAME_POINTER=y
+# CONFIG_DMA_CHANNEL_ALLOCATOR is not set
+# CONFIG_USE_ROM_DRIVERS is not set
+CONFIG_EXCEPTION_DUMP=y
+# CONFIG_EXCEPTION_AUTO_REBOOT is not set
+# end of Build Configuration
+
+#
+# Memory Configuration
+#
+CONFIG_USE_PSRAM=y
+# CONFIG_ENABLE_NVDS is not set
+CONFIG_DISABLE_EM_TCM_RET=y
+# end of Memory Configuration
+
+#
+# Hardware Features
+#
+# CONFIG_MM_SUPPORT is not set
+# CONFIG_NMSIS_DSP is not set
+# end of Hardware Features
+
+#
+# Debug UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+# end of Debug UART Configuration
+# end of Hardware Platform Configuration
+
+#
+# Component Modules
+#
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+# CONFIG_ZEPHYR is not set
+# CONFIG_NO_RTOS is not set
+
+#
+# FreeRTOS Configuration
+#
+CONFIG_COMPONENTS_FREERTOS_POSIX_ENABLE=y
+CONFIG_HW_STACK_PROTECTION=y
+# end of FreeRTOS Configuration
+
+CONFIG_IPRO_OSAL=y
+# end of RTOS Configuration
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_CMD_SCHEDULER=y
+# CONFIG_COMPONENTS_CLI_CMD_ENABLE is not set
+CONFIG_IPRO_EVENT=y
+CONFIG_IPRO_EVENT_DEFAULT_QUEUE_SIZE=32
+CONFIG_IPRO_EVENT_DEFAULT_TASK_STACK=2048
+CONFIG_IPRO_EVENT_DEFAULT_TASK_PRIORITY=5
+CONFIG_IPRO_EVENT_POST_FROM_ISR=y
+# end of System Services
+
+#
+# Wireless Configuration
+#
+# CONFIG_BLUETOOTH_LE_ENABLE is not set
+# CONFIG_WIFI6 is not set
+# CONFIG_LPAPP is not set
+# CONFIG_ZIGBEE_STACK is not set
+# CONFIG_LOWER_MAC_15P4_LIB is not set
+# CONFIG_IEEE802154_ENABLE is not set
+# CONFIG_OPENTHREAD_ENABLE is not set
+
+# end of Wireless Configuration
+
+#
+# AI/NPU Configuration
+#
+# CONFIG_AI_SUPPORT is not set
+# CONFIG_AI_DEBUG is not set
+# CONFIG_DEMO_LCD_AI is not set
+# end of AI/NPU Configuration
+
+#
+# Third-Party Components
+#
+# CONFIG_COMPONENTS_OPUS_ENABLE is not set
+# CONFIG_COMPONENTS_XZ_ENABLE is not set
+# CONFIG_COMPONENTS_ZMODEM_ENABLE is not set
+# CONFIG_COMPONENTS_IPERF_ENABLE is not set
+# end of Third-Party Components
+
+# CONFIG_COMPONENTS_CHERRYUSB_ENABLE is not set
+
+# CONFIG_COMPONENTS_MBEDTLS_ENABLE is not set
+# CONFIG_MBEDTLS_BIGNUM_USE_HW is not set
+# CONFIG_MBEDTLS_SELF_TEST is not set
+# CONFIG_COMPONENTS_CIPHER_SUITE_ENABLE is not set
+# CONFIG_COMPONENTS_NIST_SP800_22_ENABLE is not set
+# CONFIG_NIST_KAT is not set
+# CONFIG_NIST_FULL_TEST is not set
+# CONFIG_NIST_PRNG_VERIFY is not set
+
+#
+# File System Configuration
+#
+# EVFS + FatFs give the SD-card path: `sdcard` mounts /sdcard, and EVFS_POSIX
+# enables the shell's ls/cat/mkdir/rm (components/sys/shell/shell_vfs.c).
+CONFIG_EVFS=y
+CONFIG_EVFS_USE_FATFS=y
+# CONFIG_EVFS_USE_FATFS_IMAGE is not set
+# CONFIG_EVFS_USE_LITTLEFS is not set
+# CONFIG_EVFS_USE_ROMFS is not set
+# CONFIG_EVFS_USE_TAR is not set
+CONFIG_EVFS_POSIX=y
+# CONFIG_EVFS_USE_SHIM_TRACE is not set
+# CONFIG_EVFS_USE_SHIM_JAIL is not set
+# CONFIG_EVFS_USE_SHIM_ROTATE is not set
+CONFIG_COMPONENTS_FATFS_ENABLE=y
+CONFIG_FATFS_CODE_PAGE_437=y
+CONFIG_FATFS_CODE_PAGE_VALUE=437
+# CONFIG_COMPONENTS_ROMFS_ENABLE is not set
+# CONFIG_EASYFLASH4 is not set
+CONFIG_LITTLEFS=y
+CONFIG_LITTLEFS_USE_PARTITION_TABLE=y
+CONFIG_LITTLEFS_CLI=y
+# end of File System Configuration
+
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# Network Configuration
+#
+# CONFIG_COMPONENTS_LWIP_ENABLE is not set
+# CONFIG_ETHERNET is not set
+# CONFIG_AT_CLIENT is not set
+# CONFIG_ESP32_WIFI_AT is not set
+# end of Network Configuration
+
+# CONFIG_COMPONENTS_SENSOR_ENABLE is not set
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+
+#
+# IPRO Logging System
+#
+CONFIG_IPRO_LOG_ENABLE=y
+# CONFIG_LOG_DEFAULT_LEVEL_NONE is not set
+# CONFIG_LOG_DEFAULT_LEVEL_ERROR is not set
+# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# CONFIG_LOG_DEFAULT_LEVEL_DEBUG is not set
+# CONFIG_LOG_DEFAULT_LEVEL_VERBOSE is not set
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_THREAD_ID=y
+CONFIG_LOG_BUFFER_SIZE=512
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_LOG_OUTPUT_UART=y
+# CONFIG_LOG_OUTPUT_RTT is not set
+# CONFIG_LOG_OUTPUT_FILE is not set
+# end of IPRO Logging System
+# end of Component Modules
+
+#
+# Demo Configuration
+#
+CONFIG_DEMO_SOC=y
+
+#
+# Peripheral Demos
+#
+# Only the BASIC group is enabled: it carries `sdcard` (pinmux GPIO28-33 +
+# mount /sdcard) and `format_sd`. Every other peripheral demo stays off —
+# defconfigs are copied verbatim (project.build), so unlisted symbols are off.
+CONFIG_DEMO_PERIPHERAL=y
+CONFIG_DEMO_PERIPHERAL_BASIC=y
+# end of Peripheral Demos
+
+#
+# Audio Demos
+#
+# CONFIG_DEMO_AUDIO is not set
+# CONFIG_COMPONENTS_MINIMP3_ENABLE is not set
+# CONFIG_AUDIO_CAPTURE is not set
+# CONFIG_AUDIO_OUTPUT is not set
+# end of Audio Demos
+
+CONFIG_DEMO_SECURITY=y
+# CONFIG_DEMO_TRNG_NIST is not set
+# CONFIG_DEMO_DSP is not set
+CONFIG_DEMO_FS=y
+# CONFIG_DEMO_SYS is not set
+
+#
+# USB Demos
+#
+# CONFIG_DEMO_USB is not set
+# end of USB Demos
+
+# CONFIG_APP_SPI_SENSOR is not set
+# CONFIG_EVA_BIN_MODE is not set
+# end of Demo Configuration

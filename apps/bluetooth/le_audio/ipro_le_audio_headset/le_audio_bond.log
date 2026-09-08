@@ -1,0 +1,88 @@
+ÿBuild:19:17:00,Aug 23 2026
+[HEAP] 8037KB @ 0x1e0268c0
+Active Partition[0], entryCnt 6
+======= PtTable_Config @0x1e01c1a4=======
+magicCode 0x54505049; version 0x0000; entryCnt 6; age 0; crc32 0xEE52E305
+idx  type device activeIndex     name   Address[0]  Address[1]  Length[0]   Length[1]   age
+[00]  00     0         0            FW  0x00003000  0x0012a000  0x00127000  0x000ce000  0
+[01]  01     0         0           mfg  0x0012a000  0x00000000  0x000ce000  0x00000000  0
+[02]  02     0         0           PSM  0x001f8000  0x00000000  0x00002000  0x00000000  0
+[03]  03     0         0        backup  0x001fa000  0x00000000  0x00001000  0x00000000  0
+[04]  04     0         0         media  0x001fb000  0x00000000  0x00004000  0x00000000  0
+[05]  05     0         0       factory  0x001ff000  0x00000000  0x00001000  0x00000000  0
+flash ID = 001540ef
+show flash cfg:
+jedec id   0xEF4015
+mid            0xEF
+iomode         0x04
+clk delay      0x01
+clk invert     0x01
+read reg cmd0  0x05
+read reg cmd1  0x35
+write reg cmd0 0x01
+write reg cmd1 0x01
+qe write len   0x02
+cread support  0x01
+cread code     0x20
+burst wrap cmd 0x77
+-------------------
+rc32k from efuse, cap_sel=0x6 code=0x19d8 byp=1
+rc32m from efuse, code = 0x4e
+[0;32mI[0m (0) [0] LOG: IPRO Log system initialized (level: I, colors: ON, timestamp: ON)
+[0;32mI[0m (0) [0] MAIN: IPRO LE Audio Headset Starting...
+[0mipro />[0m[0;32mI[0m (0) [503330616] MAIN: Initializing BLE controller...
+[RC32K_CAL] src=walk hint=-1 cap=6 code=0x1a38 r=0x347 sdm=0 byp=1 dir=-1 iters_r=6 err=-152 walk_us=1204704 r_us=906305 meas_us=1000090
+[ipro_ble_ctlr] RC32K residual compensation: -335 ppm
+[ipro_ble_ctlr] RC32K force-cal done: 6
+[ipro_ble_ctlr] efuse MAC B5:... has the I/G (multicast) bit set -- not a valid device address
+[ipro_ble_ctlr] BD address 1E:0B:37:00:00:01 (DEV DEFAULT -- not unique!)
+[0;32mI[0m (0) [503322688] MAIN: IPRO LE Audio Headset v2.0 (Zephyr blestack)
+[0;32mI[0m (6) [503322688] MAIN: Codec: LC3 24kHz/10ms/48kbps (Mono)
+[0;32mI[0m (12) [503322688] MAIN: Mode:  Unicast Server (BAP + VCP + CAP)
+[0;32mI[0m (18) [503322688] MAIN: Initializing subsystems...
+[0;32mI[0m (24) [503322688] MAIN: [GPIO] Debug pin 28 initialized
+[0;32mI[0m (30) [503322688] AUDIO: Initializing LC3 decoder (default: 32000 Hz)
+[0;32mI[0m (37) [503322688] AUDIO: LC3 decoder initialized successfully (32000 Hz)
+[0;32mI[0m (45) [503322688] PCM_MON: PCM Monitor initialized
+[0;32mI[0m (51) [503322688] RESAMP: Resampler: passthrough (32000 Hz)
+[0;32mI[0m (57) [503322688] DAC: Initializing DAC output (Triple Buffer mode, 4 buffers)
+[0;32mI[0m (66) [503322688] DAC: DAC initialized: 32000 Hz, 4 buffers x 4096 samples, gain_shift=4, knee=5120
+[0;32mI[0m (74) [503322688] AUDIO: LC3: 32000 Hz, 10000 us, 80 bytes, 64 kbps (DAC: 32000 Hz)
+[0;32mI[0m (83) [503322688] MAIN: Audio subsystem initialized (DAC output)
+[0;32mI[0m (90) [503322688] BLE_INIT: ========================================
+[0;32mI[0m (97) [503322688] BLE_INIT:    LE Audio Headset (Zephyr blestack)
+[0;32mI[0m (104) [503322688] BLE_INIT: ========================================
+[0;32mI[0m (111) [503322688] BLE_INIT: Initializing HCI driver...
+[0;32mI[0m (167) [503322688] BLE_INIT: Initializing BLE stack...
+ENV AREA SIZE 8192, SECTOR NUM 2
+*default_env_size = 1
+I: bt_init: calling host_hci_init
+W: ACL LE buffers: pkts 7 mtu 251,CONFIG_BT_L2CAP_TX_BUF_COUNT=2
+I: bt_init: host_hci_init OK
+I: bt_init: calling bt_conn_init
+I: bt_init: bt_conn_init OK
+[0;32mI[0m (271) [503491624] BLE_INIT: Bluetooth initialized successfully
+[0;32mI[0m (277) [503491624] BLE_INIT: SMP auth callbacks registered
+[0;32mI[0m (283) [503491624] BLE_INIT: Initializing LE Audio services...
+[0;32mI[0m (290) [503491624] BLE_MAIN: Initializing LE Audio services
+[0;32mI[0m (296) [503491624] CAP_ACCEPTOR: Initializing CAP Acceptor
+[0;32mI[0m (302) [503491624] CAP_ACCEPTOR: CAP Acceptor initialized successfully
+[0;32mI[0m (309) [503491624] BAP_SERVER: Initializing BAP Unicast Server
+[0;32mI[0m (316) [503491624] BAP_SERVER: PACS service registered
+[0;32mI[0m (322) [503491624] BAP_SERVER: LC3 sink capability registered
+[0;32mI[0m (329) [503491624] BAP_SERVER: BAP Unicast Server initialized successfully
+[0;32mI[0m (336) [503491624] VCP_SERVER: Initializing VCP Volume Renderer
+[0;32mI[0m (343) [503491624] VCP_SERVER: VCP Volume Renderer initialized (volume=128, mute=0)
+[0;32mI[0m (351) [503491624] BLE_MAIN: LE Audio services initialized successfully
+[0;32mI[0m (359) [503491624] BLE_INIT: Connection callbacks registered
+[0;32mI[0m (366) [503322688] BLE_INIT: BLE stack initialization in progress...
+[0;32mI[0m (372) [503322688] MAIN: Subsystems initialized successfully
+[0;32mI[0m (2367) [503491624] BLE_INIT: Advertising started: IPRO-LE-Audio
+[0;32mI[0m (4232) [503502776] BLE_INIT: Connected: 65:70:F1:5E:EF:52 (random)
+[0;32mI[0m (4238) [503502776] BLE_INIT: Advertising stopped
+I: HCI cmd 0x2026 failed: status 0xff
+E: k_sem_take timeout with opcode 0x2026
+[0;31mE[0m (14604) [503502776] BLE_INIT: Security failed: 65:70:F1:5E:EF:52 (random) err 8
+[0;31mE[0m (14611) [503502776] BLE_INIT: [SMP] Pairing failed: 65:70:F1:5E:EF:52 (random), reason=8
+[!] ASSERT /Users/rex-mbp/Works/ipro_sdk/components/os/freertos/Source/queue.c:951
+  Caller: 0x130595a8

@@ -1,0 +1,20 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: IPRO7 SPI controller
+
+compatible: "ipro,ipro7-spi"
+
+include: [spi-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clock-frequency:
+    type: int
+    default: 1000000
+    description: SPI controller clock frequency

@@ -1,0 +1,32 @@
+mainmenu "IPRO BLE Remote Control Application"
+
+config BLE_REMOTE_ENABLE
+    bool "Enable BLE Remote Control application"
+    default y
+    help
+      Enable the BLE Remote Control demo application for mobile phone interaction
+
+config BLE_REMOTE_DEVICE_NAME
+    string "BLE device name"
+    default "IPRO-Remote"
+    help
+      Device name that will be advertised
+
+config BLE_REMOTE_ENV_NOTIFY_INTERVAL
+    int "Default environment notification interval (ms)"
+    default 1000
+    range 100 60000
+    help
+      Default interval for periodic environment sensor notifications
+
+config BLE_REMOTE_AUTO_ADV
+    bool "Auto-start advertising after initialization"
+    default y
+    help
+      Automatically start advertising after BLE initialization
+
+config BLE_REMOTE_AUTO_RECONNECT
+    bool "Auto-restart advertising after disconnection"
+    default y
+    help
+      Automatically restart advertising when a connection is lost

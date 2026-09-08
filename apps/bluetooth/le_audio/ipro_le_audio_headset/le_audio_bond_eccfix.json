@@ -1,0 +1,11 @@
+{
+  "pass": false,
+  "device": "IPRO-LE-Audio",
+  "duration_s": 45.0,
+  "failures": [
+    "Android did not discover ASCS (0x184e)",
+    "Android disconnected during test"
+  ],
+  "board_log": "apps/bluetooth/le_audio/ipro_le_audio_headset/le_audio_bond_eccfix.log",
+  "android_log": "--------- beginning of main\n08-23 19:29:35.494 14339 14339 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-LE-Audio\n08-23 19:29:35.554 14339 14339 I IPRO_BLE_CTLR_VERIFY: FOUND 1E:0B:37:00:00:01 rssi=-41\n08-23 19:29:35.558 14339 14339 I IPRO_BLE_CTLR_VERIFY: BOND requested=true\n08-23 19:29:35.968 14339 14355 I IPRO_BLE_CTLR_VERIFY: CONNECTED status=0\n08-23 19:29:51.309 14339 14355 I IPRO_BLE_CTLR_VERIFY: DISCONNECTED status=8\n08-23 19:29:52.310 14339 14339 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-LE-Audio\n"
+}

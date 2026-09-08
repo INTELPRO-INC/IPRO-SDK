@@ -1,0 +1,426 @@
+OUTPUT_ARCH( "riscv" )
+
+ENTRY( _start )
+
+/* Force inclusion of LP firmware symbols from library */
+EXTERN( hal_lp_wakeup_entry )
+EXTERN( hal_lp_init )
+
+__EM_SIZE = @EM_SIZE@;
+
+MEMORY
+{
+  flash     (rxa!w) : ORIGIN = @FLASH_ORIGIN@, LENGTH = @FLASH_SIZE@
+@PSRAM_MEMORY_REGION@
+
+  ocram     (wxa!r) : ORIGIN = @OCRAM_ORIGIN@, LENGTH = @OCRAM_SIZE@
+@OCRAM_NORET_MEMORY_REGION@
+@OCRAM_HIGH_MEMORY_REGION@
+@EM_TCM_RET_MEMORY_REGION@
+  hbnram    (wxa!r) : ORIGIN = @HBNRAM_ORIGIN@, LENGTH = @HBNRAM_SIZE@
+}
+
+REGION_ALIAS("ROM", flash)
+REGION_ALIAS("RAM", @RAM_REGION@)
+
+SECTIONS
+{
+  /* To provide symbol __STACK_SIZE, __HEAP_SIZE */
+  PROVIDE(__STACK_SIZE = @STACK_SIZE@);
+  PROVIDE(__HEAP_SIZE = @HEAP_SIZE@);
+  __TOT_STACK_SIZE = __STACK_SIZE;
+
+  .init           :
+  {
+    /* vector table locate at ROM */
+    *(.text.vtable)
+    KEEP (*(SORT_NONE(.text.init)))
+    . = ALIGN(4);
+  } >ROM
+
+  /* Code section located at ROM */
+  .text           :
+  {
+    *(.text.unlikely .text.unlikely.*)
+    *(.text.startup .text.startup.*)
+    *(.text .text.*)
+    *(.gnu.linkonce.t.*)
+
+    *(EXCLUDE_FILE
+     ( *hal_mtimer*.o*
+       *_udivdi3.o*
+       *lib_a-memset*.o*) .text*)
+
+    /* readonly data placed in ROM */
+    . = ALIGN(8);
+    *(.srodata.cst16)
+    *(.srodata.cst8)
+    *(.srodata.cst4)
+    *(.srodata.cst2)
+    *(.srodata .srodata.*)
+    *(.rdata)
+    *(.rodata .rodata.*)
+    *(.gnu.linkonce.r.*)
+    /* below sections are used for rt-thread */
+    . = ALIGN(4);
+    __rt_init_start = .;
+    KEEP(*(SORT(.rti_fn*)))
+    __rt_init_end = .;
+    . = ALIGN(4);
+    __fsymtab_start = .;
+    KEEP(*(FSymTab))
+    __fsymtab_end = .;
+    . = ALIGN(4);
+    __vsymtab_start = .;
+    KEEP(*(VSymTab))
+    __vsymtab_end = .;
+
+	/* static cli cmds */
+    . = ALIGN(4);
+    _static_cli_cmds_start = .;
+    KEEP(*(.static_cli_cmds))
+    *(.static_cli_cmds)
+    _static_cli_cmds_end = .;
+
+    /* section information for usb desc */
+    . = ALIGN(4);
+    _usb_desc_start = .;
+    KEEP(*(usb_desc))
+    . = ALIGN(4);
+    _usb_desc_end = .;
+
+    /* camera driver */
+    . = ALIGN(4);
+    _cam_desc_start = .;
+    KEEP(*(.camera_desc))
+    *(.camera_desc)
+    _cam_desc_end = .;
+
+    /* isp param */
+    . = ALIGN(4);
+    _img_param_desc_start = .;
+    KEEP(*(.img_param_desc))
+    *(.img_param_desc)
+    _img_param_desc_end = .;
+
+    /* AI model/weights blob — placed LAST in .text to avoid polluting
+     * XIP flash cache between hot code paths (BLE, codec, ISR).
+     * Apps embed data via: .section .ai_blob, "a", @progbits */
+    . = ALIGN(4);
+    KEEP(*(.ai_blob))
+
+  } >ROM
+
+  .fini           :
+  {
+    KEEP (*(SORT_NONE(.fini)))
+  } >ROM
+
+  .preinit_array  :
+  {
+    PROVIDE_HIDDEN (__preinit_array_start = .);
+    KEEP (*(.preinit_array))
+    PROVIDE_HIDDEN (__preinit_array_end = .);
+  } >ROM
+
+  .init_array     :
+  {
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+    KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
+    PROVIDE_HIDDEN (__init_array_end = .);
+  } >ROM
+
+  .fini_array     :
+  {
+    PROVIDE_HIDDEN (__fini_array_start = .);
+    KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
+    KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
+    PROVIDE_HIDDEN (__fini_array_end = .);
+  } >ROM
+
+  .ctors          :
+  {
+    /* gcc uses crtbegin.o to find the start of
+     * the constructors, so we make sure it is
+     * first.  Because this is a wildcard, it
+     * doesn't matter if the user does not
+     * actually link against crtbegin.o; the
+     * linker won't look for a file to match a
+     * wildcard.  The wildcard also means that it
+     * doesn't matter which directory crtbegin.o
+     * is in.
+     */
+    KEEP (*crtbegin.o(.ctors))
+    KEEP (*crtbegin?.o(.ctors))
+    /* We don't want to include the .ctor section from
+     * the crtend.o file until after the sorted ctors.
+     * The .ctor section from the crtend file contains the
+     * end of ctors marker and it must be last
+     */
+    KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o ) .ctors))
+    KEEP (*(SORT(.ctors.*)))
+    KEEP (*(.ctors))
+  } >ROM
+
+  .dtors          :
+  {
+    KEEP (*crtbegin.o(.dtors))
+    KEEP (*crtbegin?.o(.dtors))
+    KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o ) .dtors))
+    KEEP (*(SORT(.dtors.*)))
+    KEEP (*(.dtors))
+  } >ROM
+
+@TCMCODE_SECTION@
+  PROVIDE( _tcmtext_lma = LOADADDR(.tcmcode) );
+  PROVIDE( _tcmtext = ADDR(.tcmcode) );
+  PROVIDE( _tcmtext_end = ADDR(.tcmcode) + SIZEOF(.tcmcode) );
+  PROVIDE( _tcmdata_lma = LOADADDR(.tcmdata) );
+  PROVIDE( _tcmdata = ADDR(.tcmdata) );
+  PROVIDE( _tcmdata_end = ADDR(.tcmdata) + SIZEOF(.tcmdata) );
+
+@EM_TCM_RET_SECTION@
+@EM_TCM_RET_PROVIDES@
+
+  /*
+   * HBN Code Section - Low Power Firmware
+   *
+   * This section contains code that runs from HBN RAM after PDS wakeup.
+   * VMA = hbnram (HBN_RAM_BASE, 0x20090000 for IPRO7) - where code executes
+   * LMA = ROM (flash) - where code is stored
+   *
+   * The code is copied from flash to HBN RAM by hal_lp_load_hbn_code()
+   * before entering low power mode.
+   *
+   * KEEP() is used to prevent garbage collection of LP firmware code.
+   */
+  .hbn_code : ALIGN(4)
+  {
+    __hbn_code_start = .;
+    KEEP(*(.hbn_code))
+    KEEP(*(.hbn_code.*))
+    KEEP(*(.hbn_data))
+    KEEP(*(.hbn_data.*))
+    . = ALIGN(4);
+    __hbn_code_end = .;
+  } >hbnram AT>ROM
+
+  PROVIDE( __hbn_code_load_addr = LOADADDR(.hbn_code) );
+
+  /*
+   * HBN RAM is centrally partitioned by hal_hbnram_mgnt.h.  Do not append
+   * arbitrary retained data after .hbn_code: the fixed LP parameter block
+   * occupies +0x400..+0x5ff, followed by reset/wake/boot2 blocks through
+   * +0x8e3.  The old placement silently grew .hbn_noinit across +0x400 and
+   * corrupted hal_lp_param_t (CPU snapshot and flash/XIP recovery fields).
+   *
+   * IPRO7's app-owned reserved window is +0x8e4..+0xeff.  Keep its first word
+   * free for the documented bootloader magic at HAL_HBNRAM_RESERVED_ADDR and
+   * place linker-managed retained diagnostics at +0x8e8.  +0xf00..+0xfff is
+   * the fixed iot2lp parameter block and is therefore a hard upper bound.
+   */
+  .hbn_noinit ORIGIN(hbnram) + 0x8e8 (NOLOAD) : ALIGN(4)
+  {
+    __hbn_noinit_start = .;
+    KEEP(*(.hbn_noinit))
+    KEEP(*(.hbn_noinit.*))
+    . = ALIGN(4);
+    __hbn_noinit_end = .;
+  } >hbnram
+
+  ASSERT(__hbn_code_end <= ORIGIN(hbnram) + 0x400,
+         "HBN LP firmware exceeds fixed 1KB region")
+  ASSERT(__hbn_noinit_end <= ORIGIN(hbnram) + 0xf00,
+         "HBN noinit exceeds IPRO7 reserved region")
+
+@OCRAM_DATA_SECTION@
+@OCRAM_BSS_SECTION@
+@OCRAM_HIGH_BSS_SECTION@
+@OCRAM_DATA_END_MARKER@
+
+  PROVIDE( _ilm_lma = LOADADDR(.text) );
+  PROVIDE( _ilm = ADDR(.text) );
+  PROVIDE( _eilm = . );
+  PROVIDE( _text_lma = LOADADDR(.text) );
+  PROVIDE( _text = ADDR(.text) );
+  PROVIDE (_etext = .);
+  PROVIDE (__etext = .);
+  PROVIDE (etext = .);
+
+  .data            : ALIGN(8)
+  {
+    KEEP(*(.data.ctest*))
+    *(.data .data.*)
+    *(.gnu.linkonce.d.*)
+    . = ALIGN(8);
+    PROVIDE( __global_pointer$ = . + 0x800 );
+    *(.sdata .sdata.* .sdata*)
+    *(.gnu.linkonce.s.*)
+    /* Fix undefined symbol: __eh_frame_start/__eh_frame_hdr_start/__eh_frame_end/__eh_frame_hdr_end */
+    PROVIDE_HIDDEN (__eh_frame_hdr_start = .);
+    *(.eh_frame_hdr)
+    PROVIDE_HIDDEN (__eh_frame_hdr_end = .);
+    PROVIDE_HIDDEN (__eh_frame_start = .);
+    *(.eh_frame)
+    PROVIDE_HIDDEN (__eh_frame_end = .);
+    . = ALIGN(8);
+
+    *(.vectable)
+
+    *(._k_queue.static.*)
+    *(._k_sem.static.*)
+    *(._k_mutex.static.*)
+    _net_buf_pool_list_start = .;
+    KEEP(*(SORT_BY_NAME("._net_buf_pool.static.*")))
+    _net_buf_pool_list_end = .;
+    _bt_conn_cb_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_conn_cb.static.*")))
+    _bt_conn_cb_list_end = .;
+    _bt_gatt_service_static_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_gatt_service_static.static.*")))
+    _bt_gatt_service_static_list_end = .;
+    _bt_l2cap_fixed_chan_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_l2cap_fixed_chan.static.*")))
+    _bt_l2cap_fixed_chan_list_end = .;
+    _settings_handler_static_list_start = .;
+    KEEP(*(SORT_BY_NAME("._settings_handler_static.static.*")))
+    _settings_handler_static_list_end = .;
+    . = ALIGN(8);
+    *(.decode_jpeg_data)
+  } >RAM AT>ROM
+
+  .tdata           : ALIGN(8)
+  {
+    PROVIDE( __tls_base = . );
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+  } >RAM AT>ROM
+
+  PROVIDE( _data_lma = LOADADDR(.data) );
+  PROVIDE( _data = ADDR(.data) );
+  PROVIDE( _edata = . );
+  PROVIDE( edata = . );
+
+  PROVIDE( _fbss = . );
+  PROVIDE( __bss_start = . );
+
+  .tbss (NOLOAD)   : ALIGN(8)
+  {
+    *(.tbss .tbss.* .gnu.linkonce.tb.*)
+    *(.tcommon)
+    PROVIDE( __tls_end = . );
+  } >RAM
+
+  .tbss_space (NOLOAD) : ALIGN(8)
+  {
+    . = . + SIZEOF(.tbss);
+  } >RAM
+
+  .bss (NOLOAD)   : ALIGN(8)
+  {
+    *(.sbss*)
+    *(.gnu.linkonce.sb.*)
+    *(.bss .bss.*)
+    *(.gnu.linkonce.b.*)
+    *(COMMON)
+    . = ALIGN(8);
+  } >RAM
+
+  PROVIDE( _end = . );
+  PROVIDE( end = . );
+
+@NOINIT_DATA_SECTION@
+
+  /* Non-cacheable address offset: 0x21xxxxxx - 0x11xxxxxx = 0x10000000 */
+  __NOCACHE_ADDR_OFFSET = 0x10000000;
+
+@NOCACHE_SECTIONS@
+
+  /* .stack is emitted BEFORE the OCRAM noret section: under
+   * CONFIG_OCRAM_NORET_SPLIT the main/MSP stack lives in ocram_noret (>RAM),
+   * and __heap_noret_start is computed as __ocram_noret_end at the end of that
+   * noret section. If the stack is placed AFTER that point it lands inside the
+   * noret heap (overlap) -> xTaskCreate's malloc spins on a corrupted
+   * free-list and ble_controller_init hangs. Placing the stack first makes the
+   * noret heap start strictly past the stack. (Non-split / PSRAM builds
+   * compute their front/PSRAM heap after all sections, so the earlier stack
+   * position is harmless there.) */
+@STACK_SECTION@
+
+@OCRAM_NORET_SECTION@
+
+@PSRAM_CODE_SECTION@
+@PSRAM_DATA_SECTION@
+@PSRAM_BSS_SECTION@
+
+@NVDS_SECTION@
+
+  /* OCRAM heap - fast heap in OCRAM after stack AND after the NVDS section
+   * (when NVDS is enabled). Using `.` here (which the prior section
+   * placements have advanced past both .stack and .nvds) guarantees the
+   * heap starts beyond the NVDS RAM mirror; otherwise the heap allocator
+   * stomps the NVDS buffer right after nvds_init_memory() writes the
+   * magic, and nvds_walk_tag asserts on the garbage.
+   * Use the current location counter so PROVIDE handles NVDS-disabled
+   * builds (where . == ADDR(.stack) + SIZEOF(.stack)) and NVDS-enabled
+   * builds (where . == __nvds_end) identically. */
+  . = ALIGN(16);
+  __ocram_heap_start = .;
+  PROVIDE( __heap_ocram_start = __ocram_heap_start );
+  /* __heap_ocram is ONLY the front-64 KB retention OCRAM leftover (it sits
+   * just past that region's retention .bss/.stack/.nvds). It MUST be bounded
+   * by the front-64 KB `ocram` region end, NOT by ORIGIN(RAM)+LENGTH(RAM):
+   * under CONFIG_OCRAM_NORET_SPLIT, RAM==ocram_noret, so a RAM-based size
+   * spans the front-64 KB leftover + the noret .bss + the noret leftover and
+   * OVERLAPS __heap_noret — handing FreeRTOS heap_5 two overlapping regions
+   * (one of which covers live .bss) → corruption. The noret leftover is a
+   * SEPARATE heap region (__heap_noret_*), so this one must stop at the
+   * 64 KB boundary. MAX() guards the front-64-KB-full case (heap_start beyond
+   * `ocram` → size 0, no underflow; __heap_noret then provides the heap).
+   * For non-split OCRAM builds RAM==ocram so this is identical to before; for
+   * PSRAM builds __heap_ocram is unused (the main heap is __heap_psram). */
+  PROVIDE( __heap_ocram_size = MAX(ORIGIN(ocram) + LENGTH(ocram), __heap_ocram_start) - __heap_ocram_start );
+  PROVIDE( __heap_ocram_end = __heap_ocram_start + __heap_ocram_size );
+
+  /* Default heap - in RAM region (PSRAM when PSRAM enabled, OCRAM otherwise) */
+  /* Note: When PSRAM enabled, this is the main heap in PSRAM */
+  PROVIDE( __heap_start = __heap_ocram_start );
+  PROVIDE( __heap_size = __heap_ocram_size );
+  PROVIDE( __heap_end = __heap_ocram_end );
+
+  /* Non-cacheable RAM information */
+  PROVIDE( __nocache_ram_addr = __nocache_ram_start );
+  PROVIDE( __nocache_ram_size = __nocache_total_size );
+
+@PSRAM_PROVIDE_START@
+@PSRAM_PROVIDE_SIZE@
+@PSRAM_PROVIDE_END@
+
+  /* cli */
+  PROVIDE( _ld_static_cli_cmds_start = _static_cli_cmds_start );
+  PROVIDE( _ld_static_cli_cmds_end   = _static_cli_cmds_end );
+
+  /* cam desc */
+  PROVIDE( cam_desc_start = _cam_desc_start );
+  PROVIDE( cam_desc_end   = _cam_desc_end );
+
+  /* img param */
+  PROVIDE(_ld_img_param_desc_start = _img_param_desc_start);
+  PROVIDE(_ld_img_param_desc_end   = _img_param_desc_end);
+
+
+  /* ram information */
+  PROVIDE( _ld_ram_size0 = LENGTH(flash) );
+  PROVIDE( _ld_ram_addr0 = ORIGIN(flash) );
+  PROVIDE( _ld_ram_size1 = LENGTH(ocram) );
+  PROVIDE( _ld_ram_addr1 = ORIGIN(ocram) );
+  PROVIDE( _ld_ram_size2 = LENGTH(hbnram) );
+  PROVIDE( _ld_ram_addr2 = ORIGIN(hbnram) );
+  PROVIDE( _ld_ram_size3 = SIZEOF(.stack) );
+  PROVIDE( _ld_ram_addr3 = ADDR(.stack) );
+
+@NVDS_PROVIDES@
+
+  /* EM size */
+  PROVIDE(__LD_CONFIG_EM_SEL = __EM_SIZE);
+}

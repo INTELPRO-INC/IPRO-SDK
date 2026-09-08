@@ -1,0 +1,25 @@
+menu "IPRO Meeting POC"
+
+config MEETING_EMBED_MODEL
+    bool "Link the .inm speaker model into the firmware"
+    default n
+    help
+      Embed the model in the image instead of reading it from the 'mfg' flash
+      partition at boot.
+
+      mbv2.inm is ~1.0 MB, so the resulting image is ~1.65 MB and only fits
+      the FW partition of partition_cfg_2M_noota.toml (2004 KB). Every
+      OTA-capable 2M table caps FW at 1180 KB, so turning this on gives up OTA
+      and makes the model un-swappable without a full firmware update.
+
+      Off by default: the flash-partition path is the shipping design. Turn
+      this on for bench work where flashing a second artefact is a nuisance.
+
+config MEETING_EMBED_MODEL_PATH
+    string "Path to the .inm to embed"
+    depends on MEETING_EMBED_MODEL
+    default "../../platform/ipro7_demo/demo/ai/ai_model/mbv2.inm"
+    help
+      Relative to apps/ai/ipro_meeting_poc/src, or absolute.
+
+endmenu

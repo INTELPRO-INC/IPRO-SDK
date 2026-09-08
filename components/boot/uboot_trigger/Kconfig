@@ -1,0 +1,20 @@
+config BOOT_UBOOT_TRIGGER_ENABLE
+    bool "Enable 1200-baud-touch trigger for re-entering u-boot rescue"
+    depends on COMPONENTS_CHERRYUSB_ENABLE
+    default n
+    help
+      Arm a small helper that reboots into the boot2 USB rescue mode
+      whenever the host drops DTR after setting the CDC baud to 1200 —
+      the same pattern the Arduino IDE uses to "touch" a sketch into
+      bootloader mode. Useful on boards where the only debug surface
+      is USB (no exposed UART for `reboot_usb`).
+
+config BOOT_UBOOT_TRIGGER_AUTO_CDC_HOOKS
+    bool "Auto-install CDC set_line_coding / set_dtr overrides"
+    depends on BOOT_UBOOT_TRIGGER_ENABLE
+    default y
+    help
+      Provide default usbd_cdc_acm_set_line_coding / usbd_cdc_acm_set_dtr
+      implementations that feed uboot_trigger. Disable this if your app
+      already overrides those callbacks and call uboot_trigger_note_baud
+      / uboot_trigger_note_dtr from your own handlers instead.

@@ -1,0 +1,28 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: IPRO7 GPIO controller
+
+compatible: "ipro,ipro7-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  ngpios:
+    type: int
+    required: true
+    description: |
+      Number of pins supported by the controller.
+
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags

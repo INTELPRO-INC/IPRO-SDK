@@ -1,0 +1,100 @@
+config COMPONENTS_UTILITY_API_ENABLE
+    bool "Enable Utility API Support"
+    default y
+    help
+      Enable utility function APIs such as memory operations, string helpers,
+      logging wrappers, or platform abstraction utilities.
+      This provides commonly-used helper functions for application and component development.
+
+menu "IPRO Logging System"
+    depends on COMPONENTS_UTILITY_API_ENABLE
+
+    config IPRO_LOG_ENABLE
+        bool "Enable IPRO Logging System"
+        default y
+        help
+          Enable the IPRO logging system for debug and runtime information.
+
+    choice LOG_DEFAULT_LEVEL
+        prompt "Default Log Level"
+        default LOG_DEFAULT_LEVEL_INFO
+        depends on IPRO_LOG_ENABLE
+        help
+          Select the default log level for the system.
+
+        config LOG_DEFAULT_LEVEL_NONE
+            bool "No output"
+        config LOG_DEFAULT_LEVEL_ERROR
+            bool "Error"
+        config LOG_DEFAULT_LEVEL_WARN
+            bool "Warning"
+        config LOG_DEFAULT_LEVEL_INFO
+            bool "Info"
+        config LOG_DEFAULT_LEVEL_DEBUG
+            bool "Debug"
+        config LOG_DEFAULT_LEVEL_VERBOSE
+            bool "Verbose"
+    endchoice
+
+    config LOG_DEFAULT_LEVEL
+        int
+        depends on IPRO_LOG_ENABLE
+        default 0 if LOG_DEFAULT_LEVEL_NONE
+        default 1 if LOG_DEFAULT_LEVEL_ERROR
+        default 2 if LOG_DEFAULT_LEVEL_WARN
+        default 3 if LOG_DEFAULT_LEVEL_INFO
+        default 4 if LOG_DEFAULT_LEVEL_DEBUG
+        default 5 if LOG_DEFAULT_LEVEL_VERBOSE
+
+    config LOG_COLORS
+        bool "Enable colored output"
+        default y
+        depends on IPRO_LOG_ENABLE
+        help
+          Enable colored log output for better readability.
+
+    config LOG_TIMESTAMP
+        bool "Enable timestamp"
+        default y
+        depends on IPRO_LOG_ENABLE
+        help
+          Enable timestamp in log output.
+
+    config LOG_THREAD_ID
+        bool "Enable thread ID"
+        default y
+        depends on IPRO_LOG_ENABLE && FREERTOS
+        help
+          Enable thread ID in log output for multi-threaded debugging.
+
+    config LOG_BUFFER_SIZE
+        int "Log buffer size"
+        default 512
+        range 128 2048
+        depends on IPRO_LOG_ENABLE
+        help
+          Size of the log buffer in bytes.
+
+    config LOG_USE_MUTEX
+        bool "Use mutex for thread safety"
+        default y
+        depends on IPRO_LOG_ENABLE && FREERTOS
+        help
+          Use mutex to ensure thread-safe logging.
+
+    choice LOG_OUTPUT_TYPE
+        prompt "Log Output Type"
+        default LOG_OUTPUT_UART
+        depends on IPRO_LOG_ENABLE
+        help
+          Select the output destination for log messages.
+
+        config LOG_OUTPUT_UART
+            bool "UART Output"
+        config LOG_OUTPUT_RTT
+            bool "RTT Output"
+        config LOG_OUTPUT_FILE
+            bool "File Output"
+    endchoice
+
+endmenu

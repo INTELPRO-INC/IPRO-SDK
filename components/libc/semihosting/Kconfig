@@ -1,0 +1,33 @@
+menuconfig SEMIHOSTING
+    bool "Semihosting support (debug only)"
+    default n
+    depends on COMPONENTS_NEW_LIBC_ENABLE
+    help
+      Enable semihosting for debugger communication.
+
+      Semihosting allows the target to communicate with the host debugger
+      (OpenOCD/GDB) for console I/O and file operations.
+
+      This is useful during FPGA bringup or debugging.
+      Remove components/libc/semihosting/ folder for production release.
+
+if SEMIHOSTING
+
+config SEMIHOSTING_PRINTF
+    bool "Redirect printf to semihosting"
+    default y
+    help
+      Printf output goes to GDB via semihosting instead of UART.
+
+      Requires a debugger connection (OpenOCD/GDB) to see output.
+
+config SEMIHOSTING_FILEIO
+    bool "Enable semihosting file I/O"
+    default n
+    help
+      Enable file operations (open/read/write/close) via semihosting.
+
+      Allows FPGA to read/write files on the host PC through debugger.
+      Provides semihost_open(), semihost_read(), semihost_write(), etc.
+
+endif # SEMIHOSTING

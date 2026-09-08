@@ -1,0 +1,3342 @@
+/*
+ * Copyright (c) 2026 IntelPro Technology Co., Ltd.
+ * All rights reserved.
+ *
+ * This software and associated documentation files (the "Software") are
+ * proprietary and confidential to IntelPro Technology Co., Ltd..
+ *
+ * Access to and use of this Software is limited exclusively to authorized 
+ * customers and partners of IntelPro Technology Co., Ltd. who have entered into a 
+ * valid license or non-disclosure agreement.
+ *
+ * Unauthorized copying, modification, distribution, or reverse engineering 
+ * of this Software, via any medium, is strictly prohibited without 
+ * prior written permission from IntelPro Technology Co., Ltd..
+ *
+ * SPDX-License-Identifier: Proprietary
+ */
+
+#ifndef  __TZC_SEC_REG_H__
+#define  __TZC_SEC_REG_H__
+
+#include "ipro7.h"
+
+/* 0x00 : tzc_rom_tzsrg_ctrl */
+#define TZC_SEC_TZC_ROM_TZSRG_CTRL_OFFSET                       (0x00)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN                          TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_POS                      (0U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN                          TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_POS                      (4U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN                          TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_POS                      (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN                          TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_POS                      (12U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R0_EN                             TZC_SEC_TZC_ROM_TZSRG_R0_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R0_EN_POS                         (16U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_EN_LEN                         (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_EN_MSK                         (((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R1_EN                             TZC_SEC_TZC_ROM_TZSRG_R1_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R1_EN_POS                         (17U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_EN_LEN                         (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_EN_MSK                         (((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R2_EN                             TZC_SEC_TZC_ROM_TZSRG_R2_EN
+#define TZC_SEC_TZC_ROM_TZSRG_R2_EN_POS                         (18U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_EN_LEN                         (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_EN_MSK                         (((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_RX_EN                             TZC_SEC_TZC_ROM_TZSRG_RX_EN
+#define TZC_SEC_TZC_ROM_TZSRG_RX_EN_POS                         (19U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_EN_LEN                         (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_EN_MSK                         (((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R0_LOCK                           TZC_SEC_TZC_ROM_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_POS                       (24U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_MSK                       (((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R1_LOCK                           TZC_SEC_TZC_ROM_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_POS                       (25U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_MSK                       (((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R2_LOCK                           TZC_SEC_TZC_ROM_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_POS                       (26U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_MSK                       (((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_RX_LOCK                           TZC_SEC_TZC_ROM_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_POS                       (27U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_MSK                       (((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_RX_LOCK_POS))
+#define TZC_SEC_TZC_SBOOT_DONE                                  TZC_SEC_TZC_SBOOT_DONE
+#define TZC_SEC_TZC_SBOOT_DONE_POS                              (28U)
+#define TZC_SEC_TZC_SBOOT_DONE_LEN                              (4U)
+#define TZC_SEC_TZC_SBOOT_DONE_MSK                              (((1U<<TZC_SEC_TZC_SBOOT_DONE_LEN)-1)<<TZC_SEC_TZC_SBOOT_DONE_POS)
+#define TZC_SEC_TZC_SBOOT_DONE_UMSK                             (~(((1U<<TZC_SEC_TZC_SBOOT_DONE_LEN)-1)<<TZC_SEC_TZC_SBOOT_DONE_POS))
+
+/* 0x4 : tzc_rom_tzsrg_adr_mask */
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_OFFSET                   (0x4)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK                          TZC_SEC_TZC_ROM_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_POS                      (0U)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LEN                      (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK                     TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_POS                 (16U)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_MSK                 (((1U<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x8 : tzc_rom_tzsrg_r0 */
+#define TZC_SEC_TZC_ROM_TZSRG_R0_OFFSET                         (0x8)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_END                            TZC_SEC_TZC_ROM_TZSRG_R0_END
+#define TZC_SEC_TZC_ROM_TZSRG_R0_END_POS                        (0U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_END_LEN                        (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_END_MSK                        (((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_END_UMSK                       (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R0_START                          TZC_SEC_TZC_ROM_TZSRG_R0_START
+#define TZC_SEC_TZC_ROM_TZSRG_R0_START_POS                      (16U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_START_LEN                      (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_START_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R0_START_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R0_START_POS))
+
+/* 0xC : tzc_rom_tzsrg_r1 */
+#define TZC_SEC_TZC_ROM_TZSRG_R1_OFFSET                         (0xC)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_END                            TZC_SEC_TZC_ROM_TZSRG_R1_END
+#define TZC_SEC_TZC_ROM_TZSRG_R1_END_POS                        (0U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_END_LEN                        (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_END_MSK                        (((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_END_UMSK                       (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R1_START                          TZC_SEC_TZC_ROM_TZSRG_R1_START
+#define TZC_SEC_TZC_ROM_TZSRG_R1_START_POS                      (16U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_START_LEN                      (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_START_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R1_START_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R1_START_POS))
+
+/* 0x10 : tzc_rom_tzsrg_r2 */
+#define TZC_SEC_TZC_ROM_TZSRG_R2_OFFSET                         (0x10)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_END                            TZC_SEC_TZC_ROM_TZSRG_R2_END
+#define TZC_SEC_TZC_ROM_TZSRG_R2_END_POS                        (0U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_END_LEN                        (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_END_MSK                        (((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_END_UMSK                       (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_ROM_TZSRG_R2_START                          TZC_SEC_TZC_ROM_TZSRG_R2_START
+#define TZC_SEC_TZC_ROM_TZSRG_R2_START_POS                      (16U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_START_LEN                      (8U)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_START_MSK                      (((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_ROM_TZSRG_R2_START_UMSK                     (~(((1U<<TZC_SEC_TZC_ROM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_ROM_TZSRG_R2_START_POS))
+
+/* 0x20 : tzc_ocram_tzsrg_ctrl */
+#define TZC_SEC_TZC_OCRAM_TZSRG_CTRL_OFFSET                     (0x20)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN                        TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_POS                    (0U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_LEN                    (4U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN                        TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_POS                    (4U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_LEN                    (4U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN                        TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_POS                    (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_LEN                    (4U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN                        TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_POS                    (12U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_LEN                    (4U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_EN                           TZC_SEC_TZC_OCRAM_TZSRG_R0_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_POS                       (16U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_LEN                       (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_MSK                       (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_EN                           TZC_SEC_TZC_OCRAM_TZSRG_R1_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_POS                       (17U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_LEN                       (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_MSK                       (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_EN                           TZC_SEC_TZC_OCRAM_TZSRG_R2_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_POS                       (18U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_LEN                       (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_MSK                       (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_EN                           TZC_SEC_TZC_OCRAM_TZSRG_RX_EN
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_POS                       (19U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_LEN                       (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_MSK                       (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK                         TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_POS                     (24U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_MSK                     (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK                         TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_POS                     (25U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_MSK                     (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK                         TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_POS                     (26U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_MSK                     (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK                         TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_POS                     (27U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_MSK                     (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_RX_LOCK_POS))
+
+/* 0x24 : tzc_ocram_tzsrg_adr_mask */
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_OFFSET                 (0x24)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK                        TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_POS                    (0U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LEN                    (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK                   TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_POS               (16U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_LEN               (1U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_MSK               (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_UMSK              (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x28 : tzc_ocram_tzsrg_r0 */
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_OFFSET                       (0x28)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_END                          TZC_SEC_TZC_OCRAM_TZSRG_R0_END
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_END_POS                      (0U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_END_LEN                      (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_END_MSK                      (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_END_UMSK                     (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_START                        TZC_SEC_TZC_OCRAM_TZSRG_R0_START
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_START_POS                    (16U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_START_LEN                    (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_START_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R0_START_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R0_START_POS))
+
+/* 0x2C : tzc_ocram_tzsrg_r1 */
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_OFFSET                       (0x2C)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_END                          TZC_SEC_TZC_OCRAM_TZSRG_R1_END
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_END_POS                      (0U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_END_LEN                      (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_END_MSK                      (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_END_UMSK                     (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_START                        TZC_SEC_TZC_OCRAM_TZSRG_R1_START
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_START_POS                    (16U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_START_LEN                    (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_START_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R1_START_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R1_START_POS))
+
+/* 0x30 : tzc_ocram_tzsrg_r2 */
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_OFFSET                       (0x30)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_END                          TZC_SEC_TZC_OCRAM_TZSRG_R2_END
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_END_POS                      (0U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_END_LEN                      (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_END_MSK                      (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_END_UMSK                     (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_START                        TZC_SEC_TZC_OCRAM_TZSRG_R2_START
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_START_POS                    (16U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_START_LEN                    (8U)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_START_MSK                    (((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_OCRAM_TZSRG_R2_START_UMSK                   (~(((1U<<TZC_SEC_TZC_OCRAM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_OCRAM_TZSRG_R2_START_POS))
+
+/* 0x40 : tzc_tcm_tzsrg_ctrl */
+#define TZC_SEC_TZC_TCM_TZSRG_CTRL_OFFSET                       (0x40)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN                          TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_POS                      (0U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN                          TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_POS                      (4U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN                          TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_POS                      (8U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN                          TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_POS                      (12U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R0_EN                             TZC_SEC_TZC_TCM_TZSRG_R0_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R0_EN_POS                         (16U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_EN_LEN                         (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_EN_MSK                         (((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R1_EN                             TZC_SEC_TZC_TCM_TZSRG_R1_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R1_EN_POS                         (17U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_EN_LEN                         (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_EN_MSK                         (((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R2_EN                             TZC_SEC_TZC_TCM_TZSRG_R2_EN
+#define TZC_SEC_TZC_TCM_TZSRG_R2_EN_POS                         (18U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_EN_LEN                         (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_EN_MSK                         (((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_RX_EN                             TZC_SEC_TZC_TCM_TZSRG_RX_EN
+#define TZC_SEC_TZC_TCM_TZSRG_RX_EN_POS                         (19U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_EN_LEN                         (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_EN_MSK                         (((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R0_LOCK                           TZC_SEC_TZC_TCM_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_POS                       (24U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_MSK                       (((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R1_LOCK                           TZC_SEC_TZC_TCM_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_POS                       (25U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_MSK                       (((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R2_LOCK                           TZC_SEC_TZC_TCM_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_POS                       (26U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_MSK                       (((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_RX_LOCK                           TZC_SEC_TZC_TCM_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_POS                       (27U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_MSK                       (((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_RX_LOCK_POS))
+
+/* 0x44 : tzc_tcm_tzsrg_adr_mask */
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_OFFSET                   (0x44)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK                          TZC_SEC_TZC_TCM_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_POS                      (0U)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LEN                      (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK                     TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_POS                 (16U)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_MSK                 (((1U<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x48 : tzc_tcm_tzsrg_r0 */
+#define TZC_SEC_TZC_TCM_TZSRG_R0_OFFSET                         (0x48)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_END                            TZC_SEC_TZC_TCM_TZSRG_R0_END
+#define TZC_SEC_TZC_TCM_TZSRG_R0_END_POS                        (0U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_END_LEN                        (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_END_MSK                        (((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_END_UMSK                       (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R0_START                          TZC_SEC_TZC_TCM_TZSRG_R0_START
+#define TZC_SEC_TZC_TCM_TZSRG_R0_START_POS                      (16U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_START_LEN                      (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_START_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R0_START_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R0_START_POS))
+
+/* 0x4C : tzc_tcm_tzsrg_r1 */
+#define TZC_SEC_TZC_TCM_TZSRG_R1_OFFSET                         (0x4C)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_END                            TZC_SEC_TZC_TCM_TZSRG_R1_END
+#define TZC_SEC_TZC_TCM_TZSRG_R1_END_POS                        (0U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_END_LEN                        (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_END_MSK                        (((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_END_UMSK                       (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R1_START                          TZC_SEC_TZC_TCM_TZSRG_R1_START
+#define TZC_SEC_TZC_TCM_TZSRG_R1_START_POS                      (16U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_START_LEN                      (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_START_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R1_START_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R1_START_POS))
+
+/* 0x50 : tzc_tcm_tzsrg_r2 */
+#define TZC_SEC_TZC_TCM_TZSRG_R2_OFFSET                         (0x50)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_END                            TZC_SEC_TZC_TCM_TZSRG_R2_END
+#define TZC_SEC_TZC_TCM_TZSRG_R2_END_POS                        (0U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_END_LEN                        (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_END_MSK                        (((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_END_UMSK                       (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_TCM_TZSRG_R2_START                          TZC_SEC_TZC_TCM_TZSRG_R2_START
+#define TZC_SEC_TZC_TCM_TZSRG_R2_START_POS                      (16U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_START_LEN                      (5U)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_START_MSK                      (((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_TCM_TZSRG_R2_START_UMSK                     (~(((1U<<TZC_SEC_TZC_TCM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_TCM_TZSRG_R2_START_POS))
+
+/* 0x60 : tzc_mm2ocram_tzsrg_ctrl */
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_CTRL_OFFSET                  (0x60)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_POS                 (0U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_LEN                 (4U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_POS                 (4U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_LEN                 (4U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_POS                 (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_LEN                 (4U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN                     TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_POS                 (12U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_LEN                 (4U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN                        TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_POS                    (16U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_MSK                    (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN                        TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_POS                    (17U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_MSK                    (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN                        TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_POS                    (18U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_LEN                    (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_MSK                    (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN                        TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_POS                    (19U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_LEN                    (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_MSK                    (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK                      TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_POS                  (24U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_LEN                  (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_MSK                  (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_UMSK                 (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK                      TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_POS                  (25U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_LEN                  (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_MSK                  (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_UMSK                 (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK                      TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_POS                  (26U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_LEN                  (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_MSK                  (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_UMSK                 (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK                      TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_POS                  (27U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_LEN                  (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_MSK                  (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_UMSK                 (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_RX_LOCK_POS))
+
+/* 0x64 : tzc_mm2ocram_tzsrg_adr_mask */
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_OFFSET              (0x64)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK                     TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_POS                 (0U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LEN                 (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK                TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_POS            (16U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_LEN            (1U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_MSK            (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_UMSK           (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x68 : tzc_mm2ocram_tzsrg_r0 */
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_OFFSET                    (0x68)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END                       TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_POS                   (0U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_LEN                   (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_MSK                   (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_UMSK                  (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_POS                 (16U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_LEN                 (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R0_START_POS))
+
+/* 0x6C : tzc_mm2ocram_tzsrg_r1 */
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_OFFSET                    (0x6C)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END                       TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_POS                   (0U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_LEN                   (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_MSK                   (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_UMSK                  (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_POS                 (16U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_LEN                 (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R1_START_POS))
+
+/* 0x70 : tzc_mm2ocram_tzsrg_r2 */
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_OFFSET                    (0x70)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END                       TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_POS                   (0U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_LEN                   (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_MSK                   (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_UMSK                  (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START                     TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_POS                 (16U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_LEN                 (8U)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_MSK                 (((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_UMSK                (~(((1U<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_MM2OCRAM_TZSRG_R2_START_POS))
+
+/* 0x80 : tzc_opi_tzsrg_ctrl */
+#define TZC_SEC_TZC_OPI_TZSRG_CTRL_OFFSET                       (0x80)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN                          TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_POS                      (0U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN                          TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_POS                      (4U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN                          TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_POS                      (8U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN                          TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_POS                      (12U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_LEN                      (4U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R0_EN                             TZC_SEC_TZC_OPI_TZSRG_R0_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R0_EN_POS                         (16U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_EN_LEN                         (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_EN_MSK                         (((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R1_EN                             TZC_SEC_TZC_OPI_TZSRG_R1_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R1_EN_POS                         (17U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_EN_LEN                         (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_EN_MSK                         (((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R2_EN                             TZC_SEC_TZC_OPI_TZSRG_R2_EN
+#define TZC_SEC_TZC_OPI_TZSRG_R2_EN_POS                         (18U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_EN_LEN                         (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_EN_MSK                         (((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_RX_EN                             TZC_SEC_TZC_OPI_TZSRG_RX_EN
+#define TZC_SEC_TZC_OPI_TZSRG_RX_EN_POS                         (19U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_EN_LEN                         (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_EN_MSK                         (((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R0_LOCK                           TZC_SEC_TZC_OPI_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_POS                       (24U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_MSK                       (((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R1_LOCK                           TZC_SEC_TZC_OPI_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_POS                       (25U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_MSK                       (((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R2_LOCK                           TZC_SEC_TZC_OPI_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_POS                       (26U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_MSK                       (((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_RX_LOCK                           TZC_SEC_TZC_OPI_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_POS                       (27U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_MSK                       (((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_RX_LOCK_POS))
+
+/* 0x84 : tzc_opi_tzsrg_adr_mask */
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_OFFSET                   (0x84)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK                          TZC_SEC_TZC_OPI_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_POS                      (0U)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LEN                      (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK                     TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_POS                 (16U)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_MSK                 (((1U<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x88 : tzc_opi_tzsrg_r0 */
+#define TZC_SEC_TZC_OPI_TZSRG_R0_OFFSET                         (0x88)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_END                            TZC_SEC_TZC_OPI_TZSRG_R0_END
+#define TZC_SEC_TZC_OPI_TZSRG_R0_END_POS                        (0U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_END_LEN                        (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_END_MSK                        (((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_END_UMSK                       (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R0_START                          TZC_SEC_TZC_OPI_TZSRG_R0_START
+#define TZC_SEC_TZC_OPI_TZSRG_R0_START_POS                      (16U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_START_LEN                      (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_START_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R0_START_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R0_START_POS))
+
+/* 0x8C : tzc_opi_tzsrg_r1 */
+#define TZC_SEC_TZC_OPI_TZSRG_R1_OFFSET                         (0x8C)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_END                            TZC_SEC_TZC_OPI_TZSRG_R1_END
+#define TZC_SEC_TZC_OPI_TZSRG_R1_END_POS                        (0U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_END_LEN                        (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_END_MSK                        (((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_END_UMSK                       (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R1_START                          TZC_SEC_TZC_OPI_TZSRG_R1_START
+#define TZC_SEC_TZC_OPI_TZSRG_R1_START_POS                      (16U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_START_LEN                      (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_START_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R1_START_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R1_START_POS))
+
+/* 0x90 : tzc_opi_tzsrg_r2 */
+#define TZC_SEC_TZC_OPI_TZSRG_R2_OFFSET                         (0x90)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_END                            TZC_SEC_TZC_OPI_TZSRG_R2_END
+#define TZC_SEC_TZC_OPI_TZSRG_R2_END_POS                        (0U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_END_LEN                        (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_END_MSK                        (((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_END_UMSK                       (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_OPI_TZSRG_R2_START                          TZC_SEC_TZC_OPI_TZSRG_R2_START
+#define TZC_SEC_TZC_OPI_TZSRG_R2_START_POS                      (16U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_START_LEN                      (14U)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_START_MSK                      (((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_OPI_TZSRG_R2_START_UMSK                     (~(((1U<<TZC_SEC_TZC_OPI_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_OPI_TZSRG_R2_START_POS))
+
+/* 0x100 : tzc_tzmid */
+#define TZC_SEC_TZC_TZMID_OFFSET                                (0x100)
+#define TZC_SEC_TZC_M154_TZMID                                  TZC_SEC_TZC_M154_TZMID
+#define TZC_SEC_TZC_M154_TZMID_POS                              (0U)
+#define TZC_SEC_TZC_M154_TZMID_LEN                              (1U)
+#define TZC_SEC_TZC_M154_TZMID_MSK                              (((1U<<TZC_SEC_TZC_M154_TZMID_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_POS)
+#define TZC_SEC_TZC_M154_TZMID_UMSK                             (~(((1U<<TZC_SEC_TZC_M154_TZMID_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_POS))
+#define TZC_SEC_TZC_CCI_TZMID                                   TZC_SEC_TZC_CCI_TZMID
+#define TZC_SEC_TZC_CCI_TZMID_POS                               (1U)
+#define TZC_SEC_TZC_CCI_TZMID_LEN                               (1U)
+#define TZC_SEC_TZC_CCI_TZMID_MSK                               (((1U<<TZC_SEC_TZC_CCI_TZMID_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_POS)
+#define TZC_SEC_TZC_CCI_TZMID_UMSK                              (~(((1U<<TZC_SEC_TZC_CCI_TZMID_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_POS))
+#define TZC_SEC_TZC_EMAC_TZMID                                  TZC_SEC_TZC_EMAC_TZMID
+#define TZC_SEC_TZC_EMAC_TZMID_POS                              (2U)
+#define TZC_SEC_TZC_EMAC_TZMID_LEN                              (1U)
+#define TZC_SEC_TZC_EMAC_TZMID_MSK                              (((1U<<TZC_SEC_TZC_EMAC_TZMID_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_POS)
+#define TZC_SEC_TZC_EMAC_TZMID_UMSK                             (~(((1U<<TZC_SEC_TZC_EMAC_TZMID_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_POS))
+#define TZC_SEC_TZC_USB_TZMID                                   TZC_SEC_TZC_USB_TZMID
+#define TZC_SEC_TZC_USB_TZMID_POS                               (3U)
+#define TZC_SEC_TZC_USB_TZMID_LEN                               (1U)
+#define TZC_SEC_TZC_USB_TZMID_MSK                               (((1U<<TZC_SEC_TZC_USB_TZMID_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_POS)
+#define TZC_SEC_TZC_USB_TZMID_UMSK                              (~(((1U<<TZC_SEC_TZC_USB_TZMID_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_POS))
+#define TZC_SEC_TZC_MCU_IPORT_TZMID                             TZC_SEC_TZC_MCU_IPORT_TZMID
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_POS                         (4U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LEN                         (1U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_MSK                         (((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_POS)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_UMSK                        (~(((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_POS))
+#define TZC_SEC_TZC_MCU_DPORT_TZMID                             TZC_SEC_TZC_MCU_DPORT_TZMID
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_POS                         (5U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LEN                         (1U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_MSK                         (((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_POS)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_UMSK                        (~(((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_POS))
+#define TZC_SEC_TZC_SDHA_TZMID                                  TZC_SEC_TZC_SDHA_TZMID
+#define TZC_SEC_TZC_SDHA_TZMID_POS                              (6U)
+#define TZC_SEC_TZC_SDHA_TZMID_LEN                              (1U)
+#define TZC_SEC_TZC_SDHA_TZMID_MSK                              (((1U<<TZC_SEC_TZC_SDHA_TZMID_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_POS)
+#define TZC_SEC_TZC_SDHA_TZMID_UMSK                             (~(((1U<<TZC_SEC_TZC_SDHA_TZMID_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_POS))
+#define TZC_SEC_TZC_M154_TZMID_SEL                              TZC_SEC_TZC_M154_TZMID_SEL
+#define TZC_SEC_TZC_M154_TZMID_SEL_POS                          (16U)
+#define TZC_SEC_TZC_M154_TZMID_SEL_LEN                          (1U)
+#define TZC_SEC_TZC_M154_TZMID_SEL_MSK                          (((1U<<TZC_SEC_TZC_M154_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_SEL_POS)
+#define TZC_SEC_TZC_M154_TZMID_SEL_UMSK                         (~(((1U<<TZC_SEC_TZC_M154_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_SEL_POS))
+#define TZC_SEC_TZC_CCI_TZMID_SEL                               TZC_SEC_TZC_CCI_TZMID_SEL
+#define TZC_SEC_TZC_CCI_TZMID_SEL_POS                           (17U)
+#define TZC_SEC_TZC_CCI_TZMID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_CCI_TZMID_SEL_MSK                           (((1U<<TZC_SEC_TZC_CCI_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_SEL_POS)
+#define TZC_SEC_TZC_CCI_TZMID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_CCI_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_SEL_POS))
+#define TZC_SEC_TZC_EMAC_TZMID_SEL                              TZC_SEC_TZC_EMAC_TZMID_SEL
+#define TZC_SEC_TZC_EMAC_TZMID_SEL_POS                          (18U)
+#define TZC_SEC_TZC_EMAC_TZMID_SEL_LEN                          (1U)
+#define TZC_SEC_TZC_EMAC_TZMID_SEL_MSK                          (((1U<<TZC_SEC_TZC_EMAC_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_SEL_POS)
+#define TZC_SEC_TZC_EMAC_TZMID_SEL_UMSK                         (~(((1U<<TZC_SEC_TZC_EMAC_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_SEL_POS))
+#define TZC_SEC_TZC_USB_TZMID_SEL                               TZC_SEC_TZC_USB_TZMID_SEL
+#define TZC_SEC_TZC_USB_TZMID_SEL_POS                           (19U)
+#define TZC_SEC_TZC_USB_TZMID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_USB_TZMID_SEL_MSK                           (((1U<<TZC_SEC_TZC_USB_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_SEL_POS)
+#define TZC_SEC_TZC_USB_TZMID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_USB_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_SEL_POS))
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_SEL                         TZC_SEC_TZC_MCU_IPORT_TZMID_SEL
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_POS                     (20U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_LEN                     (1U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_MSK                     (((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_POS)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_UMSK                    (~(((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_SEL_POS))
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_SEL                         TZC_SEC_TZC_MCU_DPORT_TZMID_SEL
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_POS                     (21U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_LEN                     (1U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_MSK                     (((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_POS)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_UMSK                    (~(((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_SEL_POS))
+#define TZC_SEC_TZC_SDHA_TZMID_SEL                              TZC_SEC_TZC_SDHA_TZMID_SEL
+#define TZC_SEC_TZC_SDHA_TZMID_SEL_POS                          (22U)
+#define TZC_SEC_TZC_SDHA_TZMID_SEL_LEN                          (1U)
+#define TZC_SEC_TZC_SDHA_TZMID_SEL_MSK                          (((1U<<TZC_SEC_TZC_SDHA_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_SEL_POS)
+#define TZC_SEC_TZC_SDHA_TZMID_SEL_UMSK                         (~(((1U<<TZC_SEC_TZC_SDHA_TZMID_SEL_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_SEL_POS))
+
+/* 0x104 : tzc_tzmid_lock */
+#define TZC_SEC_TZC_TZMID_LOCK_OFFSET                           (0x104)
+#define TZC_SEC_TZC_M154_TZMID_LOCK                             TZC_SEC_TZC_M154_TZMID_LOCK
+#define TZC_SEC_TZC_M154_TZMID_LOCK_POS                         (0U)
+#define TZC_SEC_TZC_M154_TZMID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_M154_TZMID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_M154_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_M154_TZMID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_M154_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_M154_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_CCI_TZMID_LOCK                              TZC_SEC_TZC_CCI_TZMID_LOCK
+#define TZC_SEC_TZC_CCI_TZMID_LOCK_POS                          (1U)
+#define TZC_SEC_TZC_CCI_TZMID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_CCI_TZMID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_CCI_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_CCI_TZMID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_CCI_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_CCI_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_EMAC_TZMID_LOCK                             TZC_SEC_TZC_EMAC_TZMID_LOCK
+#define TZC_SEC_TZC_EMAC_TZMID_LOCK_POS                         (2U)
+#define TZC_SEC_TZC_EMAC_TZMID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_EMAC_TZMID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_EMAC_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_EMAC_TZMID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_EMAC_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_EMAC_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_USB_TZMID_LOCK                              TZC_SEC_TZC_USB_TZMID_LOCK
+#define TZC_SEC_TZC_USB_TZMID_LOCK_POS                          (3U)
+#define TZC_SEC_TZC_USB_TZMID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_USB_TZMID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_USB_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_USB_TZMID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_USB_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_USB_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK                        TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_POS                    (4U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_LEN                    (1U)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_MSK                    (((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_UMSK                   (~(((1U<<TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_MCU_IPORT_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK                        TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_POS                    (5U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_LEN                    (1U)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_MSK                    (((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_UMSK                   (~(((1U<<TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_MCU_DPORT_TZMID_LOCK_POS))
+#define TZC_SEC_TZC_SDHA_TZMID_LOCK                             TZC_SEC_TZC_SDHA_TZMID_LOCK
+#define TZC_SEC_TZC_SDHA_TZMID_LOCK_POS                         (6U)
+#define TZC_SEC_TZC_SDHA_TZMID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_SDHA_TZMID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_SDHA_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_LOCK_POS)
+#define TZC_SEC_TZC_SDHA_TZMID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_SDHA_TZMID_LOCK_LEN)-1)<<TZC_SEC_TZC_SDHA_TZMID_LOCK_POS))
+
+/* 0x108 : tzc_tzsid_slv_ahb */
+#define TZC_SEC_TZC_TZSID_SLV_AHB_OFFSET                        (0x108)
+#define TZC_SEC_TZC_PWR_TZSID_EN                                TZC_SEC_TZC_PWR_TZSID_EN
+#define TZC_SEC_TZC_PWR_TZSID_EN_POS                            (0U)
+#define TZC_SEC_TZC_PWR_TZSID_EN_LEN                            (2U)
+#define TZC_SEC_TZC_PWR_TZSID_EN_MSK                            (((1U<<TZC_SEC_TZC_PWR_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_PWR_TZSID_EN_POS)
+#define TZC_SEC_TZC_PWR_TZSID_EN_UMSK                           (~(((1U<<TZC_SEC_TZC_PWR_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_PWR_TZSID_EN_POS))
+#define TZC_SEC_TZC_USB_TZSID_EN                                TZC_SEC_TZC_USB_TZSID_EN
+#define TZC_SEC_TZC_USB_TZSID_EN_POS                            (2U)
+#define TZC_SEC_TZC_USB_TZSID_EN_LEN                            (2U)
+#define TZC_SEC_TZC_USB_TZSID_EN_MSK                            (((1U<<TZC_SEC_TZC_USB_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_USB_TZSID_EN_POS)
+#define TZC_SEC_TZC_USB_TZSID_EN_UMSK                           (~(((1U<<TZC_SEC_TZC_USB_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_USB_TZSID_EN_POS))
+#define TZC_SEC_TZC_EMAC_TZSID_EN                               TZC_SEC_TZC_EMAC_TZSID_EN
+#define TZC_SEC_TZC_EMAC_TZSID_EN_POS                           (4U)
+#define TZC_SEC_TZC_EMAC_TZSID_EN_LEN                           (2U)
+#define TZC_SEC_TZC_EMAC_TZSID_EN_MSK                           (((1U<<TZC_SEC_TZC_EMAC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_EMAC_TZSID_EN_POS)
+#define TZC_SEC_TZC_EMAC_TZSID_EN_UMSK                          (~(((1U<<TZC_SEC_TZC_EMAC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_EMAC_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_TZSID_EN                                TZC_SEC_TZC_DMA_TZSID_EN
+#define TZC_SEC_TZC_DMA_TZSID_EN_POS                            (6U)
+#define TZC_SEC_TZC_DMA_TZSID_EN_LEN                            (2U)
+#define TZC_SEC_TZC_DMA_TZSID_EN_MSK                            (((1U<<TZC_SEC_TZC_DMA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_TZSID_EN_UMSK                           (~(((1U<<TZC_SEC_TZC_DMA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_TZSID_EN_POS))
+#define TZC_SEC_TZC_MM_TZSID_EN                                 TZC_SEC_TZC_MM_TZSID_EN
+#define TZC_SEC_TZC_MM_TZSID_EN_POS                             (8U)
+#define TZC_SEC_TZC_MM_TZSID_EN_LEN                             (2U)
+#define TZC_SEC_TZC_MM_TZSID_EN_MSK                             (((1U<<TZC_SEC_TZC_MM_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_MM_TZSID_EN_POS)
+#define TZC_SEC_TZC_MM_TZSID_EN_UMSK                            (~(((1U<<TZC_SEC_TZC_MM_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_MM_TZSID_EN_POS))
+#define TZC_SEC_TZC_SDHA_TZSID_EN                               TZC_SEC_TZC_SDHA_TZSID_EN
+#define TZC_SEC_TZC_SDHA_TZSID_EN_POS                           (10U)
+#define TZC_SEC_TZC_SDHA_TZSID_EN_LEN                           (2U)
+#define TZC_SEC_TZC_SDHA_TZSID_EN_MSK                           (((1U<<TZC_SEC_TZC_SDHA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SDHA_TZSID_EN_POS)
+#define TZC_SEC_TZC_SDHA_TZSID_EN_UMSK                          (~(((1U<<TZC_SEC_TZC_SDHA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SDHA_TZSID_EN_POS))
+#define TZC_SEC_TZC_PWR_TZSID_LOCK                              TZC_SEC_TZC_PWR_TZSID_LOCK
+#define TZC_SEC_TZC_PWR_TZSID_LOCK_POS                          (16U)
+#define TZC_SEC_TZC_PWR_TZSID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_PWR_TZSID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_PWR_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_PWR_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_PWR_TZSID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_PWR_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_PWR_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_USB_TZSID_LOCK                              TZC_SEC_TZC_USB_TZSID_LOCK
+#define TZC_SEC_TZC_USB_TZSID_LOCK_POS                          (17U)
+#define TZC_SEC_TZC_USB_TZSID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_USB_TZSID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_USB_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_USB_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_USB_TZSID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_USB_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_USB_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_EMAC_TZSID_LOCK                             TZC_SEC_TZC_EMAC_TZSID_LOCK
+#define TZC_SEC_TZC_EMAC_TZSID_LOCK_POS                         (18U)
+#define TZC_SEC_TZC_EMAC_TZSID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_EMAC_TZSID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_EMAC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_EMAC_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_EMAC_TZSID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_EMAC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_EMAC_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_TZSID_LOCK                              TZC_SEC_TZC_DMA_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_TZSID_LOCK_POS                          (19U)
+#define TZC_SEC_TZC_DMA_TZSID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_TZSID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_TZSID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_MM_TZSID_LOCK                               TZC_SEC_TZC_MM_TZSID_LOCK
+#define TZC_SEC_TZC_MM_TZSID_LOCK_POS                           (20U)
+#define TZC_SEC_TZC_MM_TZSID_LOCK_LEN                           (1U)
+#define TZC_SEC_TZC_MM_TZSID_LOCK_MSK                           (((1U<<TZC_SEC_TZC_MM_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_MM_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_MM_TZSID_LOCK_UMSK                          (~(((1U<<TZC_SEC_TZC_MM_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_MM_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SDHA_TZSID_LOCK                             TZC_SEC_TZC_SDHA_TZSID_LOCK
+#define TZC_SEC_TZC_SDHA_TZSID_LOCK_POS                         (21U)
+#define TZC_SEC_TZC_SDHA_TZSID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_SDHA_TZSID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_SDHA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SDHA_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SDHA_TZSID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_SDHA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SDHA_TZSID_LOCK_POS))
+
+/* 0x10C : tzc_tzsid_slv_apb_0 */
+#define TZC_SEC_TZC_TZSID_SLV_APB_0_OFFSET                      (0x10C)
+#define TZC_SEC_TZC_BMX_S00_TZSID_EN                            TZC_SEC_TZC_BMX_S00_TZSID_EN
+#define TZC_SEC_TZC_BMX_S00_TZSID_EN_POS                        (0U)
+#define TZC_SEC_TZC_BMX_S00_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S00_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S00_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S00_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S00_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S00_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S00_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S01_TZSID_EN                            TZC_SEC_TZC_BMX_S01_TZSID_EN
+#define TZC_SEC_TZC_BMX_S01_TZSID_EN_POS                        (2U)
+#define TZC_SEC_TZC_BMX_S01_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S01_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S01_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S01_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S01_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S01_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S01_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S02_TZSID_EN                            TZC_SEC_TZC_BMX_S02_TZSID_EN
+#define TZC_SEC_TZC_BMX_S02_TZSID_EN_POS                        (4U)
+#define TZC_SEC_TZC_BMX_S02_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S02_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S02_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S02_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S02_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S02_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S02_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S03_TZSID_EN                            TZC_SEC_TZC_BMX_S03_TZSID_EN
+#define TZC_SEC_TZC_BMX_S03_TZSID_EN_POS                        (6U)
+#define TZC_SEC_TZC_BMX_S03_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S03_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S03_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S03_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S03_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S03_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S03_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S04_TZSID_EN                            TZC_SEC_TZC_BMX_S04_TZSID_EN
+#define TZC_SEC_TZC_BMX_S04_TZSID_EN_POS                        (8U)
+#define TZC_SEC_TZC_BMX_S04_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S04_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S04_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S04_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S04_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S04_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S04_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S05_TZSID_EN                            TZC_SEC_TZC_BMX_S05_TZSID_EN
+#define TZC_SEC_TZC_BMX_S05_TZSID_EN_POS                        (10U)
+#define TZC_SEC_TZC_BMX_S05_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S05_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S05_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S05_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S05_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S05_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S05_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S06_TZSID_EN                            TZC_SEC_TZC_BMX_S06_TZSID_EN
+#define TZC_SEC_TZC_BMX_S06_TZSID_EN_POS                        (12U)
+#define TZC_SEC_TZC_BMX_S06_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S06_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S06_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S06_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S06_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S06_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S06_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S07_TZSID_EN                            TZC_SEC_TZC_BMX_S07_TZSID_EN
+#define TZC_SEC_TZC_BMX_S07_TZSID_EN_POS                        (14U)
+#define TZC_SEC_TZC_BMX_S07_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S07_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S07_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S07_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S07_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S07_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S07_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S08_TZSID_EN                            TZC_SEC_TZC_BMX_S08_TZSID_EN
+#define TZC_SEC_TZC_BMX_S08_TZSID_EN_POS                        (16U)
+#define TZC_SEC_TZC_BMX_S08_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S08_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S08_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S08_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S08_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S08_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S08_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S09_TZSID_EN                            TZC_SEC_TZC_BMX_S09_TZSID_EN
+#define TZC_SEC_TZC_BMX_S09_TZSID_EN_POS                        (18U)
+#define TZC_SEC_TZC_BMX_S09_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S09_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S09_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S09_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S09_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S09_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S09_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0A_TZSID_EN                            TZC_SEC_TZC_BMX_S0A_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0A_TZSID_EN_POS                        (20U)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0A_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0A_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0A_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0A_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0B_TZSID_EN                            TZC_SEC_TZC_BMX_S0B_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0B_TZSID_EN_POS                        (22U)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0B_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0B_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0B_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0B_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0C_TZSID_EN                            TZC_SEC_TZC_BMX_S0C_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0C_TZSID_EN_POS                        (24U)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0C_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0C_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0C_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0C_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0D_TZSID_EN                            TZC_SEC_TZC_BMX_S0D_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0D_TZSID_EN_POS                        (26U)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0D_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0D_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0D_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0D_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0E_TZSID_EN                            TZC_SEC_TZC_BMX_S0E_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0E_TZSID_EN_POS                        (28U)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0E_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0E_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0E_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0E_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S0F_TZSID_EN                            TZC_SEC_TZC_BMX_S0F_TZSID_EN
+#define TZC_SEC_TZC_BMX_S0F_TZSID_EN_POS                        (30U)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S0F_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0F_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S0F_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S0F_TZSID_EN_POS))
+
+/* 0x110 : tzc_tzsid_slv_apb_1 */
+#define TZC_SEC_TZC_TZSID_SLV_APB_1_OFFSET                      (0x110)
+#define TZC_SEC_TZC_BMX_S10_TZSID_EN                            TZC_SEC_TZC_BMX_S10_TZSID_EN
+#define TZC_SEC_TZC_BMX_S10_TZSID_EN_POS                        (0U)
+#define TZC_SEC_TZC_BMX_S10_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S10_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S10_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S10_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S10_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S10_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S10_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S11_TZSID_EN                            TZC_SEC_TZC_BMX_S11_TZSID_EN
+#define TZC_SEC_TZC_BMX_S11_TZSID_EN_POS                        (2U)
+#define TZC_SEC_TZC_BMX_S11_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S11_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S11_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S11_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S11_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S11_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S11_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S12_TZSID_EN                            TZC_SEC_TZC_BMX_S12_TZSID_EN
+#define TZC_SEC_TZC_BMX_S12_TZSID_EN_POS                        (4U)
+#define TZC_SEC_TZC_BMX_S12_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S12_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S12_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S12_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S12_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S12_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S12_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S13_TZSID_EN                            TZC_SEC_TZC_BMX_S13_TZSID_EN
+#define TZC_SEC_TZC_BMX_S13_TZSID_EN_POS                        (6U)
+#define TZC_SEC_TZC_BMX_S13_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S13_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S13_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S13_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S13_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S13_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S13_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S14_TZSID_EN                            TZC_SEC_TZC_BMX_S14_TZSID_EN
+#define TZC_SEC_TZC_BMX_S14_TZSID_EN_POS                        (8U)
+#define TZC_SEC_TZC_BMX_S14_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S14_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S14_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S14_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S14_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S14_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S14_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S15_TZSID_EN                            TZC_SEC_TZC_BMX_S15_TZSID_EN
+#define TZC_SEC_TZC_BMX_S15_TZSID_EN_POS                        (10U)
+#define TZC_SEC_TZC_BMX_S15_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S15_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S15_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S15_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S15_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S15_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S15_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S16_TZSID_EN                            TZC_SEC_TZC_BMX_S16_TZSID_EN
+#define TZC_SEC_TZC_BMX_S16_TZSID_EN_POS                        (12U)
+#define TZC_SEC_TZC_BMX_S16_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S16_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S16_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S16_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S16_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S16_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S16_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S17_TZSID_EN                            TZC_SEC_TZC_BMX_S17_TZSID_EN
+#define TZC_SEC_TZC_BMX_S17_TZSID_EN_POS                        (14U)
+#define TZC_SEC_TZC_BMX_S17_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S17_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S17_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S17_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S17_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S17_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S17_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S18_TZSID_EN                            TZC_SEC_TZC_BMX_S18_TZSID_EN
+#define TZC_SEC_TZC_BMX_S18_TZSID_EN_POS                        (16U)
+#define TZC_SEC_TZC_BMX_S18_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S18_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S18_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S18_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S18_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S18_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S18_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S19_TZSID_EN                            TZC_SEC_TZC_BMX_S19_TZSID_EN
+#define TZC_SEC_TZC_BMX_S19_TZSID_EN_POS                        (18U)
+#define TZC_SEC_TZC_BMX_S19_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S19_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S19_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S19_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S19_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S19_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S19_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1A_TZSID_EN                            TZC_SEC_TZC_BMX_S1A_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1A_TZSID_EN_POS                        (20U)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1A_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1A_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1A_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1A_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1B_TZSID_EN                            TZC_SEC_TZC_BMX_S1B_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1B_TZSID_EN_POS                        (22U)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1B_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1B_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1B_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1B_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1C_TZSID_EN                            TZC_SEC_TZC_BMX_S1C_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1C_TZSID_EN_POS                        (24U)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1C_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1C_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1C_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1C_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1D_TZSID_EN                            TZC_SEC_TZC_BMX_S1D_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1D_TZSID_EN_POS                        (26U)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1D_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1D_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1D_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1D_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1E_TZSID_EN                            TZC_SEC_TZC_BMX_S1E_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1E_TZSID_EN_POS                        (28U)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1E_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1E_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1E_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1E_TZSID_EN_POS))
+#define TZC_SEC_TZC_BMX_S1F_TZSID_EN                            TZC_SEC_TZC_BMX_S1F_TZSID_EN
+#define TZC_SEC_TZC_BMX_S1F_TZSID_EN_POS                        (30U)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_BMX_S1F_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1F_TZSID_EN_POS)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_BMX_S1F_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_BMX_S1F_TZSID_EN_POS))
+
+/* 0x114 : tzc_tzsid_slv_apb_lock */
+#define TZC_SEC_TZC_TZSID_SLV_APB_LOCK_OFFSET                   (0x114)
+#define TZC_SEC_TZC_BMX_S00_TZSID_LOCK                          TZC_SEC_TZC_BMX_S00_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S00_TZSID_LOCK_POS                      (0U)
+#define TZC_SEC_TZC_BMX_S00_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S00_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S00_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S00_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S00_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S00_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S00_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S01_TZSID_LOCK                          TZC_SEC_TZC_BMX_S01_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S01_TZSID_LOCK_POS                      (1U)
+#define TZC_SEC_TZC_BMX_S01_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S01_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S01_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S01_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S01_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S01_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S01_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S02_TZSID_LOCK                          TZC_SEC_TZC_BMX_S02_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S02_TZSID_LOCK_POS                      (2U)
+#define TZC_SEC_TZC_BMX_S02_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S02_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S02_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S02_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S02_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S02_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S02_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S03_TZSID_LOCK                          TZC_SEC_TZC_BMX_S03_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S03_TZSID_LOCK_POS                      (3U)
+#define TZC_SEC_TZC_BMX_S03_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S03_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S03_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S03_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S03_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S03_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S03_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S04_TZSID_LOCK                          TZC_SEC_TZC_BMX_S04_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S04_TZSID_LOCK_POS                      (4U)
+#define TZC_SEC_TZC_BMX_S04_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S04_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S04_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S04_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S04_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S04_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S04_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S05_TZSID_LOCK                          TZC_SEC_TZC_BMX_S05_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S05_TZSID_LOCK_POS                      (5U)
+#define TZC_SEC_TZC_BMX_S05_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S05_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S05_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S05_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S05_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S05_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S05_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S06_TZSID_LOCK                          TZC_SEC_TZC_BMX_S06_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S06_TZSID_LOCK_POS                      (6U)
+#define TZC_SEC_TZC_BMX_S06_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S06_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S06_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S06_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S06_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S06_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S06_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S07_TZSID_LOCK                          TZC_SEC_TZC_BMX_S07_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S07_TZSID_LOCK_POS                      (7U)
+#define TZC_SEC_TZC_BMX_S07_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S07_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S07_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S07_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S07_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S07_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S07_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S08_TZSID_LOCK                          TZC_SEC_TZC_BMX_S08_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S08_TZSID_LOCK_POS                      (8U)
+#define TZC_SEC_TZC_BMX_S08_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S08_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S08_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S08_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S08_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S08_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S08_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S09_TZSID_LOCK                          TZC_SEC_TZC_BMX_S09_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S09_TZSID_LOCK_POS                      (9U)
+#define TZC_SEC_TZC_BMX_S09_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S09_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S09_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S09_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S09_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S09_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S09_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0A_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0A_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_POS                      (10U)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0A_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0B_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0B_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_POS                      (11U)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0B_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0C_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0C_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_POS                      (12U)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0C_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0D_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0D_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_POS                      (13U)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0D_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0E_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0E_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_POS                      (14U)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0E_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S0F_TZSID_LOCK                          TZC_SEC_TZC_BMX_S0F_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_POS                      (15U)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S0F_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S10_TZSID_LOCK                          TZC_SEC_TZC_BMX_S10_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S10_TZSID_LOCK_POS                      (16U)
+#define TZC_SEC_TZC_BMX_S10_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S10_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S10_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S10_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S10_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S10_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S10_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S11_TZSID_LOCK                          TZC_SEC_TZC_BMX_S11_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S11_TZSID_LOCK_POS                      (17U)
+#define TZC_SEC_TZC_BMX_S11_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S11_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S11_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S11_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S11_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S11_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S11_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S12_TZSID_LOCK                          TZC_SEC_TZC_BMX_S12_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S12_TZSID_LOCK_POS                      (18U)
+#define TZC_SEC_TZC_BMX_S12_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S12_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S12_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S12_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S12_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S12_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S12_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S13_TZSID_LOCK                          TZC_SEC_TZC_BMX_S13_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S13_TZSID_LOCK_POS                      (19U)
+#define TZC_SEC_TZC_BMX_S13_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S13_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S13_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S13_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S13_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S13_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S13_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S14_TZSID_LOCK                          TZC_SEC_TZC_BMX_S14_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S14_TZSID_LOCK_POS                      (20U)
+#define TZC_SEC_TZC_BMX_S14_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S14_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S14_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S14_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S14_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S14_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S14_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S15_TZSID_LOCK                          TZC_SEC_TZC_BMX_S15_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S15_TZSID_LOCK_POS                      (21U)
+#define TZC_SEC_TZC_BMX_S15_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S15_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S15_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S15_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S15_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S15_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S15_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S16_TZSID_LOCK                          TZC_SEC_TZC_BMX_S16_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S16_TZSID_LOCK_POS                      (22U)
+#define TZC_SEC_TZC_BMX_S16_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S16_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S16_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S16_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S16_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S16_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S16_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S17_TZSID_LOCK                          TZC_SEC_TZC_BMX_S17_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S17_TZSID_LOCK_POS                      (23U)
+#define TZC_SEC_TZC_BMX_S17_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S17_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S17_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S17_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S17_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S17_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S17_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S18_TZSID_LOCK                          TZC_SEC_TZC_BMX_S18_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S18_TZSID_LOCK_POS                      (24U)
+#define TZC_SEC_TZC_BMX_S18_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S18_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S18_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S18_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S18_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S18_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S18_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S19_TZSID_LOCK                          TZC_SEC_TZC_BMX_S19_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S19_TZSID_LOCK_POS                      (25U)
+#define TZC_SEC_TZC_BMX_S19_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S19_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S19_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S19_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S19_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S19_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S19_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1A_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1A_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_POS                      (26U)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1A_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1B_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1B_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_POS                      (27U)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1B_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1C_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1C_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_POS                      (28U)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1C_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1D_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1D_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_POS                      (29U)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1D_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1E_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1E_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_POS                      (30U)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1E_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_BMX_S1F_TZSID_LOCK                          TZC_SEC_TZC_BMX_S1F_TZSID_LOCK
+#define TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_POS                      (31U)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_S1F_TZSID_LOCK_POS))
+
+/* 0x118 : tzc_tzsid_slv_apb_l0 */
+#define TZC_SEC_TZC_TZSID_SLV_APB_L0_OFFSET                     (0x118)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_EN                           TZC_SEC_TZC_BMX_APB_L0_ID0_EN
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_EN_POS                       (0U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_EN_LEN                       (2U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_EN_MSK                       (((1U<<TZC_SEC_TZC_BMX_APB_L0_ID0_EN_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID0_EN_POS)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_BMX_APB_L0_ID0_EN_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID0_EN_POS))
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_EN                           TZC_SEC_TZC_BMX_APB_L0_ID1_EN
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_EN_POS                       (2U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_EN_LEN                       (2U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_EN_MSK                       (((1U<<TZC_SEC_TZC_BMX_APB_L0_ID1_EN_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID1_EN_POS)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_BMX_APB_L0_ID1_EN_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID1_EN_POS))
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK                         TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_POS                     (16U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_MSK                     (((1U<<TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_POS)
+#define TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID0_LOCK_POS))
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK                         TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_POS                     (17U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_LEN                     (1U)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_MSK                     (((1U<<TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_POS)
+#define TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_UMSK                    (~(((1U<<TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_LEN)-1)<<TZC_SEC_TZC_BMX_APB_L0_ID1_LOCK_POS))
+
+/* 0x200 : tzc_dma_m_id */
+#define TZC_SEC_TZC_DMA_M_ID_OFFSET                             (0x200)
+#define TZC_SEC_TZC_DMA_M0_ID                                   TZC_SEC_TZC_DMA_M0_ID
+#define TZC_SEC_TZC_DMA_M0_ID_POS                               (0U)
+#define TZC_SEC_TZC_DMA_M0_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M0_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M0_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_POS)
+#define TZC_SEC_TZC_DMA_M0_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M0_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_POS))
+#define TZC_SEC_TZC_DMA_M1_ID                                   TZC_SEC_TZC_DMA_M1_ID
+#define TZC_SEC_TZC_DMA_M1_ID_POS                               (1U)
+#define TZC_SEC_TZC_DMA_M1_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M1_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M1_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_POS)
+#define TZC_SEC_TZC_DMA_M1_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M1_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_POS))
+#define TZC_SEC_TZC_DMA_M2_ID                                   TZC_SEC_TZC_DMA_M2_ID
+#define TZC_SEC_TZC_DMA_M2_ID_POS                               (2U)
+#define TZC_SEC_TZC_DMA_M2_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M2_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M2_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_POS)
+#define TZC_SEC_TZC_DMA_M2_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M2_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_POS))
+#define TZC_SEC_TZC_DMA_M3_ID                                   TZC_SEC_TZC_DMA_M3_ID
+#define TZC_SEC_TZC_DMA_M3_ID_POS                               (3U)
+#define TZC_SEC_TZC_DMA_M3_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M3_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M3_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_POS)
+#define TZC_SEC_TZC_DMA_M3_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M3_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_POS))
+#define TZC_SEC_TZC_DMA_M4_ID                                   TZC_SEC_TZC_DMA_M4_ID
+#define TZC_SEC_TZC_DMA_M4_ID_POS                               (4U)
+#define TZC_SEC_TZC_DMA_M4_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M4_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M4_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_POS)
+#define TZC_SEC_TZC_DMA_M4_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M4_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_POS))
+#define TZC_SEC_TZC_DMA_M5_ID                                   TZC_SEC_TZC_DMA_M5_ID
+#define TZC_SEC_TZC_DMA_M5_ID_POS                               (5U)
+#define TZC_SEC_TZC_DMA_M5_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M5_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M5_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_POS)
+#define TZC_SEC_TZC_DMA_M5_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M5_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_POS))
+#define TZC_SEC_TZC_DMA_M6_ID                                   TZC_SEC_TZC_DMA_M6_ID
+#define TZC_SEC_TZC_DMA_M6_ID_POS                               (6U)
+#define TZC_SEC_TZC_DMA_M6_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M6_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M6_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_POS)
+#define TZC_SEC_TZC_DMA_M6_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M6_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_POS))
+#define TZC_SEC_TZC_DMA_M7_ID                                   TZC_SEC_TZC_DMA_M7_ID
+#define TZC_SEC_TZC_DMA_M7_ID_POS                               (7U)
+#define TZC_SEC_TZC_DMA_M7_ID_LEN                               (1U)
+#define TZC_SEC_TZC_DMA_M7_ID_MSK                               (((1U<<TZC_SEC_TZC_DMA_M7_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_POS)
+#define TZC_SEC_TZC_DMA_M7_ID_UMSK                              (~(((1U<<TZC_SEC_TZC_DMA_M7_ID_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_POS))
+#define TZC_SEC_TZC_DMA_M0_ID_SEL                               TZC_SEC_TZC_DMA_M0_ID_SEL
+#define TZC_SEC_TZC_DMA_M0_ID_SEL_POS                           (16U)
+#define TZC_SEC_TZC_DMA_M0_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M0_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M0_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M0_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M0_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M1_ID_SEL                               TZC_SEC_TZC_DMA_M1_ID_SEL
+#define TZC_SEC_TZC_DMA_M1_ID_SEL_POS                           (17U)
+#define TZC_SEC_TZC_DMA_M1_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M1_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M1_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M1_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M1_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M2_ID_SEL                               TZC_SEC_TZC_DMA_M2_ID_SEL
+#define TZC_SEC_TZC_DMA_M2_ID_SEL_POS                           (18U)
+#define TZC_SEC_TZC_DMA_M2_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M2_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M2_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M2_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M2_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M3_ID_SEL                               TZC_SEC_TZC_DMA_M3_ID_SEL
+#define TZC_SEC_TZC_DMA_M3_ID_SEL_POS                           (19U)
+#define TZC_SEC_TZC_DMA_M3_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M3_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M3_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M3_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M3_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M4_ID_SEL                               TZC_SEC_TZC_DMA_M4_ID_SEL
+#define TZC_SEC_TZC_DMA_M4_ID_SEL_POS                           (20U)
+#define TZC_SEC_TZC_DMA_M4_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M4_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M4_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M4_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M4_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M5_ID_SEL                               TZC_SEC_TZC_DMA_M5_ID_SEL
+#define TZC_SEC_TZC_DMA_M5_ID_SEL_POS                           (21U)
+#define TZC_SEC_TZC_DMA_M5_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M5_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M5_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M5_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M5_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M6_ID_SEL                               TZC_SEC_TZC_DMA_M6_ID_SEL
+#define TZC_SEC_TZC_DMA_M6_ID_SEL_POS                           (22U)
+#define TZC_SEC_TZC_DMA_M6_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M6_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M6_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M6_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M6_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_SEL_POS))
+#define TZC_SEC_TZC_DMA_M7_ID_SEL                               TZC_SEC_TZC_DMA_M7_ID_SEL
+#define TZC_SEC_TZC_DMA_M7_ID_SEL_POS                           (23U)
+#define TZC_SEC_TZC_DMA_M7_ID_SEL_LEN                           (1U)
+#define TZC_SEC_TZC_DMA_M7_ID_SEL_MSK                           (((1U<<TZC_SEC_TZC_DMA_M7_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_SEL_POS)
+#define TZC_SEC_TZC_DMA_M7_ID_SEL_UMSK                          (~(((1U<<TZC_SEC_TZC_DMA_M7_ID_SEL_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_SEL_POS))
+
+/* 0x204 : tzc_dma_m_id_lock */
+#define TZC_SEC_TZC_DMA_M_ID_LOCK_OFFSET                        (0x204)
+#define TZC_SEC_TZC_DMA_M0_ID_LOCK                              TZC_SEC_TZC_DMA_M0_ID_LOCK
+#define TZC_SEC_TZC_DMA_M0_ID_LOCK_POS                          (0U)
+#define TZC_SEC_TZC_DMA_M0_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M0_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M0_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M0_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M0_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M0_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M1_ID_LOCK                              TZC_SEC_TZC_DMA_M1_ID_LOCK
+#define TZC_SEC_TZC_DMA_M1_ID_LOCK_POS                          (1U)
+#define TZC_SEC_TZC_DMA_M1_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M1_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M1_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M1_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M1_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M1_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M2_ID_LOCK                              TZC_SEC_TZC_DMA_M2_ID_LOCK
+#define TZC_SEC_TZC_DMA_M2_ID_LOCK_POS                          (2U)
+#define TZC_SEC_TZC_DMA_M2_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M2_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M2_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M2_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M2_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M2_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M3_ID_LOCK                              TZC_SEC_TZC_DMA_M3_ID_LOCK
+#define TZC_SEC_TZC_DMA_M3_ID_LOCK_POS                          (3U)
+#define TZC_SEC_TZC_DMA_M3_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M3_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M3_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M3_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M3_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M3_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M4_ID_LOCK                              TZC_SEC_TZC_DMA_M4_ID_LOCK
+#define TZC_SEC_TZC_DMA_M4_ID_LOCK_POS                          (4U)
+#define TZC_SEC_TZC_DMA_M4_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M4_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M4_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M4_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M4_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M4_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M5_ID_LOCK                              TZC_SEC_TZC_DMA_M5_ID_LOCK
+#define TZC_SEC_TZC_DMA_M5_ID_LOCK_POS                          (5U)
+#define TZC_SEC_TZC_DMA_M5_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M5_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M5_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M5_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M5_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M5_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M6_ID_LOCK                              TZC_SEC_TZC_DMA_M6_ID_LOCK
+#define TZC_SEC_TZC_DMA_M6_ID_LOCK_POS                          (6U)
+#define TZC_SEC_TZC_DMA_M6_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M6_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M6_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M6_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M6_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M6_ID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_M7_ID_LOCK                              TZC_SEC_TZC_DMA_M7_ID_LOCK
+#define TZC_SEC_TZC_DMA_M7_ID_LOCK_POS                          (7U)
+#define TZC_SEC_TZC_DMA_M7_ID_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_DMA_M7_ID_LOCK_MSK                          (((1U<<TZC_SEC_TZC_DMA_M7_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_M7_ID_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_DMA_M7_ID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_M7_ID_LOCK_POS))
+
+/* 0x208 : tzc_dma_s */
+#define TZC_SEC_TZC_DMA_S_OFFSET                                (0x208)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_EN                            TZC_SEC_TZC_DMA_CTL_TZSID_EN
+#define TZC_SEC_TZC_DMA_CTL_TZSID_EN_POS                        (0U)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CTL_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CTL_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CTL_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CTL_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH0_TZSID_EN                            TZC_SEC_TZC_DMA_CH0_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH0_TZSID_EN_POS                        (2U)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH0_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH0_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH0_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH0_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH1_TZSID_EN                            TZC_SEC_TZC_DMA_CH1_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH1_TZSID_EN_POS                        (4U)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH1_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH1_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH1_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH1_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH2_TZSID_EN                            TZC_SEC_TZC_DMA_CH2_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH2_TZSID_EN_POS                        (6U)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH2_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH2_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH2_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH2_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH3_TZSID_EN                            TZC_SEC_TZC_DMA_CH3_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH3_TZSID_EN_POS                        (8U)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH3_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH3_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH3_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH3_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH4_TZSID_EN                            TZC_SEC_TZC_DMA_CH4_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH4_TZSID_EN_POS                        (10U)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH4_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH4_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH4_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH4_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH5_TZSID_EN                            TZC_SEC_TZC_DMA_CH5_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH5_TZSID_EN_POS                        (12U)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH5_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH5_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH5_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH5_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH6_TZSID_EN                            TZC_SEC_TZC_DMA_CH6_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH6_TZSID_EN_POS                        (14U)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH6_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH6_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH6_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH6_TZSID_EN_POS))
+#define TZC_SEC_TZC_DMA_CH7_TZSID_EN                            TZC_SEC_TZC_DMA_CH7_TZSID_EN
+#define TZC_SEC_TZC_DMA_CH7_TZSID_EN_POS                        (16U)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_DMA_CH7_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH7_TZSID_EN_POS)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_DMA_CH7_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_DMA_CH7_TZSID_EN_POS))
+
+/* 0x20C : tzc_dma_s_lock */
+#define TZC_SEC_TZC_DMA_S_LOCK_OFFSET                           (0x20C)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_LOCK                          TZC_SEC_TZC_DMA_CTL_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_POS                      (0U)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CTL_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH0_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH0_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_POS                      (1U)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH0_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH1_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH1_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_POS                      (2U)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH1_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH2_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH2_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_POS                      (3U)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH2_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH3_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH3_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_POS                      (4U)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH3_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH4_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH4_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_POS                      (5U)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH4_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH5_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH5_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_POS                      (6U)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH5_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH6_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH6_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_POS                      (7U)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH6_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_DMA_CH7_TZSID_LOCK                          TZC_SEC_TZC_DMA_CH7_TZSID_LOCK
+#define TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_POS                      (8U)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_DMA_CH7_TZSID_LOCK_POS))
+
+/* 0x220 : tzc_tmr_s */
+#define TZC_SEC_TZC_TMR_S_OFFSET                                (0x220)
+#define TZC_SEC_TZC_WDT0_TZSID_EN                               TZC_SEC_TZC_WDT0_TZSID_EN
+#define TZC_SEC_TZC_WDT0_TZSID_EN_POS                           (0U)
+#define TZC_SEC_TZC_WDT0_TZSID_EN_LEN                           (2U)
+#define TZC_SEC_TZC_WDT0_TZSID_EN_MSK                           (((1U<<TZC_SEC_TZC_WDT0_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_WDT0_TZSID_EN_POS)
+#define TZC_SEC_TZC_WDT0_TZSID_EN_UMSK                          (~(((1U<<TZC_SEC_TZC_WDT0_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_WDT0_TZSID_EN_POS))
+#define TZC_SEC_TZC_TMR2_TZSID_EN                               TZC_SEC_TZC_TMR2_TZSID_EN
+#define TZC_SEC_TZC_TMR2_TZSID_EN_POS                           (2U)
+#define TZC_SEC_TZC_TMR2_TZSID_EN_LEN                           (2U)
+#define TZC_SEC_TZC_TMR2_TZSID_EN_MSK                           (((1U<<TZC_SEC_TZC_TMR2_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_TMR2_TZSID_EN_POS)
+#define TZC_SEC_TZC_TMR2_TZSID_EN_UMSK                          (~(((1U<<TZC_SEC_TZC_TMR2_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_TMR2_TZSID_EN_POS))
+#define TZC_SEC_TZC_TMR3_TZSID_EN                               TZC_SEC_TZC_TMR3_TZSID_EN
+#define TZC_SEC_TZC_TMR3_TZSID_EN_POS                           (4U)
+#define TZC_SEC_TZC_TMR3_TZSID_EN_LEN                           (2U)
+#define TZC_SEC_TZC_TMR3_TZSID_EN_MSK                           (((1U<<TZC_SEC_TZC_TMR3_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_TMR3_TZSID_EN_POS)
+#define TZC_SEC_TZC_TMR3_TZSID_EN_UMSK                          (~(((1U<<TZC_SEC_TZC_TMR3_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_TMR3_TZSID_EN_POS))
+
+/* 0x224 : tzc_tmr_s_lock */
+#define TZC_SEC_TZC_TMR_S_LOCK_OFFSET                           (0x224)
+#define TZC_SEC_TZC_WDT0_TZSID_LOCK                             TZC_SEC_TZC_WDT0_TZSID_LOCK
+#define TZC_SEC_TZC_WDT0_TZSID_LOCK_POS                         (0U)
+#define TZC_SEC_TZC_WDT0_TZSID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_WDT0_TZSID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_WDT0_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_WDT0_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_WDT0_TZSID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_WDT0_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_WDT0_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_TMR2_TZSID_LOCK                             TZC_SEC_TZC_TMR2_TZSID_LOCK
+#define TZC_SEC_TZC_TMR2_TZSID_LOCK_POS                         (1U)
+#define TZC_SEC_TZC_TMR2_TZSID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_TMR2_TZSID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_TMR2_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_TMR2_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_TMR2_TZSID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_TMR2_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_TMR2_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_TMR3_TZSID_LOCK                             TZC_SEC_TZC_TMR3_TZSID_LOCK
+#define TZC_SEC_TZC_TMR3_TZSID_LOCK_POS                         (2U)
+#define TZC_SEC_TZC_TMR3_TZSID_LOCK_LEN                         (1U)
+#define TZC_SEC_TZC_TMR3_TZSID_LOCK_MSK                         (((1U<<TZC_SEC_TZC_TMR3_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_TMR3_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_TMR3_TZSID_LOCK_UMSK                        (~(((1U<<TZC_SEC_TZC_TMR3_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_TMR3_TZSID_LOCK_POS))
+
+/* 0x280 : tzc_sf_tzsrg_ctrl */
+#define TZC_SEC_TZC_SF_TZSRG_CTRL_OFFSET                        (0x280)
+#define TZC_SEC_TZC_SF_TZSRG_R0_ID_EN                           TZC_SEC_TZC_SF_TZSRG_R0_ID_EN
+#define TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_POS                       (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_LEN                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_ID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_ID_EN                           TZC_SEC_TZC_SF_TZSRG_R1_ID_EN
+#define TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_POS                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_LEN                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_ID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_ID_EN                           TZC_SEC_TZC_SF_TZSRG_R2_ID_EN
+#define TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_POS                       (8U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_LEN                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_ID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_ID_EN                           TZC_SEC_TZC_SF_TZSRG_R3_ID_EN
+#define TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_POS                       (12U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_LEN                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_ID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_RX_ID_EN                           TZC_SEC_TZC_SF_TZSRG_RX_ID_EN
+#define TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_POS                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_LEN                       (4U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_ID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R0_EN                              TZC_SEC_TZC_SF_TZSRG_R0_EN
+#define TZC_SEC_TZC_SF_TZSRG_R0_EN_POS                          (20U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_EN_LEN                          (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_EN                              TZC_SEC_TZC_SF_TZSRG_R1_EN
+#define TZC_SEC_TZC_SF_TZSRG_R1_EN_POS                          (21U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_EN_LEN                          (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_EN                              TZC_SEC_TZC_SF_TZSRG_R2_EN
+#define TZC_SEC_TZC_SF_TZSRG_R2_EN_POS                          (22U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_EN_LEN                          (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_EN                              TZC_SEC_TZC_SF_TZSRG_R3_EN
+#define TZC_SEC_TZC_SF_TZSRG_R3_EN_POS                          (23U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_EN_LEN                          (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_RX_EN                              TZC_SEC_TZC_SF_TZSRG_RX_EN
+#define TZC_SEC_TZC_SF_TZSRG_RX_EN_POS                          (24U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_EN_LEN                          (1U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_EN_POS)
+#define TZC_SEC_TZC_SF_TZSRG_RX_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_TZSRG_RX_EN_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_EN_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R0_LOCK                            TZC_SEC_TZC_SF_TZSRG_R0_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_R0_LOCK_POS                        (25U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_LOCK_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_LOCK                            TZC_SEC_TZC_SF_TZSRG_R1_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_R1_LOCK_POS                        (26U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_LOCK_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_LOCK                            TZC_SEC_TZC_SF_TZSRG_R2_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_R2_LOCK_POS                        (27U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_LOCK_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_LOCK                            TZC_SEC_TZC_SF_TZSRG_R3_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_R3_LOCK_POS                        (28U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_LOCK_POS))
+#define TZC_SEC_TZC_SF_TZSRG_RX_LOCK                            TZC_SEC_TZC_SF_TZSRG_RX_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_RX_LOCK_POS                        (29U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_TZSRG_RX_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_RX_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_TZSRG_RX_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_RX_LOCK_POS))
+
+/* 0x284 : tzc_sf_tzsrg_adr_mask */
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_OFFSET                    (0x284)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK                           TZC_SEC_TZC_SF_TZSRG_ADR_MASK
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_POS                       (0U)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LEN                       (19U)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_POS))
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK                      TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_POS                  (31U)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_LEN                  (1U)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_MSK                  (((1U<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_UMSK                 (~(((1U<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_ADR_MASK_LOCK_POS))
+
+/* 0x288 : tzc_sf_tzsrg_r0 */
+#define TZC_SEC_TZC_SF_TZSRG_R0_OFFSET                          (0x288)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END                             TZC_SEC_TZC_SF_TZSRG_R0_END
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_POS                         (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_LEN                         (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSK                         (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_END_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_UMSK                        (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_END_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R0_START                           TZC_SEC_TZC_SF_TZSRG_R0_START
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_POS                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_LEN                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_START_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_START_POS))
+
+/* 0x28C : tzc_sf_tzsrg_r1 */
+#define TZC_SEC_TZC_SF_TZSRG_R1_OFFSET                          (0x28C)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END                             TZC_SEC_TZC_SF_TZSRG_R1_END
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_POS                         (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_LEN                         (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSK                         (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_END_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_UMSK                        (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_END_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_START                           TZC_SEC_TZC_SF_TZSRG_R1_START
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_POS                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_LEN                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_START_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_START_POS))
+
+/* 0x290 : tzc_sf_tzsrg_r2 */
+#define TZC_SEC_TZC_SF_TZSRG_R2_OFFSET                          (0x290)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END                             TZC_SEC_TZC_SF_TZSRG_R2_END
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_POS                         (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_LEN                         (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSK                         (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_END_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_UMSK                        (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_END_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_START                           TZC_SEC_TZC_SF_TZSRG_R2_START
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_POS                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_LEN                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_START_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_START_POS))
+
+/* 0x294 : tzc_sf_tzsrg_r3 */
+#define TZC_SEC_TZC_SF_TZSRG_R3_OFFSET                          (0x294)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END                             TZC_SEC_TZC_SF_TZSRG_R3_END
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_POS                         (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_LEN                         (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSK                         (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_END_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_UMSK                        (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_END_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_END_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_START                           TZC_SEC_TZC_SF_TZSRG_R3_START
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_POS                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_LEN                       (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSK                       (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_START_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_START_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_START_POS))
+
+/* 0x298 : tzc_sf_tzsrg_msb */
+#define TZC_SEC_TZC_SF_TZSRG_MSB_OFFSET                         (0x298)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSB                         TZC_SEC_TZC_SF_TZSRG_R0_END_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_POS                     (0U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_LEN                     (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_MSK                     (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_UMSK                    (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_END_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSB                       TZC_SEC_TZC_SF_TZSRG_R0_START_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_POS                   (4U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_LEN                   (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_MSK                   (((1U<<TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_UMSK                  (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R0_START_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSB                         TZC_SEC_TZC_SF_TZSRG_R1_END_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_POS                     (8U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_LEN                     (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_MSK                     (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_UMSK                    (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_END_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSB                       TZC_SEC_TZC_SF_TZSRG_R1_START_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_POS                   (12U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_LEN                   (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_MSK                   (((1U<<TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_UMSK                  (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R1_START_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSB                         TZC_SEC_TZC_SF_TZSRG_R2_END_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_POS                     (16U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_LEN                     (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_MSK                     (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_UMSK                    (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_END_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSB                       TZC_SEC_TZC_SF_TZSRG_R2_START_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_POS                   (20U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_LEN                   (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_MSK                   (((1U<<TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_UMSK                  (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R2_START_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSB                         TZC_SEC_TZC_SF_TZSRG_R3_END_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_POS                     (24U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_LEN                     (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_MSK                     (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_UMSK                    (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_END_MSB_POS))
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSB                       TZC_SEC_TZC_SF_TZSRG_R3_START_MSB
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_POS                   (28U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_LEN                   (3U)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_MSK                   (((1U<<TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_POS)
+#define TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_UMSK                  (~(((1U<<TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_LEN)-1)<<TZC_SEC_TZC_SF_TZSRG_R3_START_MSB_POS))
+
+/* 0xF00 : tzc_glb_ctrl_0 */
+#define TZC_SEC_TZC_GLB_CTRL_0_OFFSET                           (0xF00)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_POS                    (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_POS                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_POS                    (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_POS                    (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN                   TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_POS               (12U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN                   TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_POS               (13U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN                   TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_POS               (14U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_FLASH_ID0_EN                            TZC_SEC_TZC_GLB_FLASH_ID0_EN
+#define TZC_SEC_TZC_GLB_FLASH_ID0_EN_POS                        (24U)
+#define TZC_SEC_TZC_GLB_FLASH_ID0_EN_LEN                        (1U)
+#define TZC_SEC_TZC_GLB_FLASH_ID0_EN_MSK                        (((1U<<TZC_SEC_TZC_GLB_FLASH_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_FLASH_ID0_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_GLB_FLASH_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_MISC_ID0_EN                             TZC_SEC_TZC_GLB_MISC_ID0_EN
+#define TZC_SEC_TZC_GLB_MISC_ID0_EN_POS                         (25U)
+#define TZC_SEC_TZC_GLB_MISC_ID0_EN_LEN                         (1U)
+#define TZC_SEC_TZC_GLB_MISC_ID0_EN_MSK                         (((1U<<TZC_SEC_TZC_GLB_MISC_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_MISC_ID0_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_GLB_MISC_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SRAM_ID0_EN                             TZC_SEC_TZC_GLB_SRAM_ID0_EN
+#define TZC_SEC_TZC_GLB_SRAM_ID0_EN_POS                         (26U)
+#define TZC_SEC_TZC_GLB_SRAM_ID0_EN_LEN                         (1U)
+#define TZC_SEC_TZC_GLB_SRAM_ID0_EN_MSK                         (((1U<<TZC_SEC_TZC_GLB_SRAM_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SRAM_ID0_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_GLB_SRAM_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_BMX_ID0_EN                              TZC_SEC_TZC_GLB_BMX_ID0_EN
+#define TZC_SEC_TZC_GLB_BMX_ID0_EN_POS                          (28U)
+#define TZC_SEC_TZC_GLB_BMX_ID0_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_BMX_ID0_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_BMX_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_BMX_ID0_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_BMX_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_DBG_ID0_EN                              TZC_SEC_TZC_GLB_DBG_ID0_EN
+#define TZC_SEC_TZC_GLB_DBG_ID0_EN_POS                          (29U)
+#define TZC_SEC_TZC_GLB_DBG_ID0_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_DBG_ID0_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_DBG_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_DBG_ID0_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_DBG_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_MBIST_ID0_EN                            TZC_SEC_TZC_GLB_MBIST_ID0_EN
+#define TZC_SEC_TZC_GLB_MBIST_ID0_EN_POS                        (30U)
+#define TZC_SEC_TZC_GLB_MBIST_ID0_EN_LEN                        (1U)
+#define TZC_SEC_TZC_GLB_MBIST_ID0_EN_MSK                        (((1U<<TZC_SEC_TZC_GLB_MBIST_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_MBIST_ID0_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_GLB_MBIST_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_CLK_ID0_EN                              TZC_SEC_TZC_GLB_CLK_ID0_EN
+#define TZC_SEC_TZC_GLB_CLK_ID0_EN_POS                          (31U)
+#define TZC_SEC_TZC_GLB_CLK_ID0_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_CLK_ID0_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_CLK_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_CLK_ID0_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_CLK_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_ID0_EN_POS))
+
+/* 0xF04 : tzc_glb_ctrl_1 */
+#define TZC_SEC_TZC_GLB_CTRL_1_OFFSET                           (0xF04)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_POS                    (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_POS                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_POS                    (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_POS                    (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN                   TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_POS               (12U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN                   TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_POS               (13U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN                   TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_POS               (14U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_LEN               (1U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_MSK               (((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_UMSK              (~(((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_FLASH_ID1_EN                            TZC_SEC_TZC_GLB_FLASH_ID1_EN
+#define TZC_SEC_TZC_GLB_FLASH_ID1_EN_POS                        (24U)
+#define TZC_SEC_TZC_GLB_FLASH_ID1_EN_LEN                        (1U)
+#define TZC_SEC_TZC_GLB_FLASH_ID1_EN_MSK                        (((1U<<TZC_SEC_TZC_GLB_FLASH_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_FLASH_ID1_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_GLB_FLASH_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_MISC_ID1_EN                             TZC_SEC_TZC_GLB_MISC_ID1_EN
+#define TZC_SEC_TZC_GLB_MISC_ID1_EN_POS                         (25U)
+#define TZC_SEC_TZC_GLB_MISC_ID1_EN_LEN                         (1U)
+#define TZC_SEC_TZC_GLB_MISC_ID1_EN_MSK                         (((1U<<TZC_SEC_TZC_GLB_MISC_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_MISC_ID1_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_GLB_MISC_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SRAM_ID1_EN                             TZC_SEC_TZC_GLB_SRAM_ID1_EN
+#define TZC_SEC_TZC_GLB_SRAM_ID1_EN_POS                         (26U)
+#define TZC_SEC_TZC_GLB_SRAM_ID1_EN_LEN                         (1U)
+#define TZC_SEC_TZC_GLB_SRAM_ID1_EN_MSK                         (((1U<<TZC_SEC_TZC_GLB_SRAM_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SRAM_ID1_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_GLB_SRAM_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_BMX_ID1_EN                              TZC_SEC_TZC_GLB_BMX_ID1_EN
+#define TZC_SEC_TZC_GLB_BMX_ID1_EN_POS                          (28U)
+#define TZC_SEC_TZC_GLB_BMX_ID1_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_BMX_ID1_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_BMX_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_BMX_ID1_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_BMX_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_DBG_ID1_EN                              TZC_SEC_TZC_GLB_DBG_ID1_EN
+#define TZC_SEC_TZC_GLB_DBG_ID1_EN_POS                          (29U)
+#define TZC_SEC_TZC_GLB_DBG_ID1_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_DBG_ID1_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_DBG_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_DBG_ID1_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_DBG_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_MBIST_ID1_EN                            TZC_SEC_TZC_GLB_MBIST_ID1_EN
+#define TZC_SEC_TZC_GLB_MBIST_ID1_EN_POS                        (30U)
+#define TZC_SEC_TZC_GLB_MBIST_ID1_EN_LEN                        (1U)
+#define TZC_SEC_TZC_GLB_MBIST_ID1_EN_MSK                        (((1U<<TZC_SEC_TZC_GLB_MBIST_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_MBIST_ID1_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_GLB_MBIST_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_CLK_ID1_EN                              TZC_SEC_TZC_GLB_CLK_ID1_EN
+#define TZC_SEC_TZC_GLB_CLK_ID1_EN_POS                          (31U)
+#define TZC_SEC_TZC_GLB_CLK_ID1_EN_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_CLK_ID1_EN_MSK                          (((1U<<TZC_SEC_TZC_GLB_CLK_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_CLK_ID1_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_CLK_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_ID1_EN_POS))
+
+/* 0xF08 : tzc_glb_ctrl_2 */
+#define TZC_SEC_TZC_GLB_CTRL_2_OFFSET                           (0xF08)
+#define TZC_SEC_TZC_GLB_SWRST_S00_LOCK                          TZC_SEC_TZC_GLB_SWRST_S00_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S00_LOCK_POS                      (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S00_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S00_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S00_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S00_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S00_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S01_LOCK                          TZC_SEC_TZC_GLB_SWRST_S01_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S01_LOCK_POS                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S01_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S01_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S01_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S01_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S01_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S30_LOCK                          TZC_SEC_TZC_GLB_SWRST_S30_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S30_LOCK_POS                      (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S30_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S30_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S30_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S30_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S30_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S31_LOCK                          TZC_SEC_TZC_GLB_SWRST_S31_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S31_LOCK_POS                      (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S31_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S31_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S31_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S31_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S31_LOCK_POS))
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK                     TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_POS                 (12U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_MSK                 (((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_POS)
+#define TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_PWRON_RST_LOCK_POS))
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK                     TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_POS                 (13U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_MSK                 (((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_POS)
+#define TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_CPU_RESET_LOCK_POS))
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK                     TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_POS                 (14U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_LEN                 (1U)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_MSK                 (((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_POS)
+#define TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_UMSK                (~(((1U<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CTRL_SYS_RESET_LOCK_POS))
+#define TZC_SEC_TZC_GLB_FLASH_LOCK                              TZC_SEC_TZC_GLB_FLASH_LOCK
+#define TZC_SEC_TZC_GLB_FLASH_LOCK_POS                          (24U)
+#define TZC_SEC_TZC_GLB_FLASH_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_FLASH_LOCK_MSK                          (((1U<<TZC_SEC_TZC_GLB_FLASH_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_LOCK_POS)
+#define TZC_SEC_TZC_GLB_FLASH_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_FLASH_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_FLASH_LOCK_POS))
+#define TZC_SEC_TZC_GLB_MISC_LOCK                               TZC_SEC_TZC_GLB_MISC_LOCK
+#define TZC_SEC_TZC_GLB_MISC_LOCK_POS                           (25U)
+#define TZC_SEC_TZC_GLB_MISC_LOCK_LEN                           (1U)
+#define TZC_SEC_TZC_GLB_MISC_LOCK_MSK                           (((1U<<TZC_SEC_TZC_GLB_MISC_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_LOCK_POS)
+#define TZC_SEC_TZC_GLB_MISC_LOCK_UMSK                          (~(((1U<<TZC_SEC_TZC_GLB_MISC_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_MISC_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SRAM_LOCK                               TZC_SEC_TZC_GLB_SRAM_LOCK
+#define TZC_SEC_TZC_GLB_SRAM_LOCK_POS                           (26U)
+#define TZC_SEC_TZC_GLB_SRAM_LOCK_LEN                           (1U)
+#define TZC_SEC_TZC_GLB_SRAM_LOCK_MSK                           (((1U<<TZC_SEC_TZC_GLB_SRAM_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SRAM_LOCK_UMSK                          (~(((1U<<TZC_SEC_TZC_GLB_SRAM_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SRAM_LOCK_POS))
+#define TZC_SEC_TZC_GLB_BMX_LOCK                                TZC_SEC_TZC_GLB_BMX_LOCK
+#define TZC_SEC_TZC_GLB_BMX_LOCK_POS                            (28U)
+#define TZC_SEC_TZC_GLB_BMX_LOCK_LEN                            (1U)
+#define TZC_SEC_TZC_GLB_BMX_LOCK_MSK                            (((1U<<TZC_SEC_TZC_GLB_BMX_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_LOCK_POS)
+#define TZC_SEC_TZC_GLB_BMX_LOCK_UMSK                           (~(((1U<<TZC_SEC_TZC_GLB_BMX_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_BMX_LOCK_POS))
+#define TZC_SEC_TZC_GLB_DBG_LOCK                                TZC_SEC_TZC_GLB_DBG_LOCK
+#define TZC_SEC_TZC_GLB_DBG_LOCK_POS                            (29U)
+#define TZC_SEC_TZC_GLB_DBG_LOCK_LEN                            (1U)
+#define TZC_SEC_TZC_GLB_DBG_LOCK_MSK                            (((1U<<TZC_SEC_TZC_GLB_DBG_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_LOCK_POS)
+#define TZC_SEC_TZC_GLB_DBG_LOCK_UMSK                           (~(((1U<<TZC_SEC_TZC_GLB_DBG_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_DBG_LOCK_POS))
+#define TZC_SEC_TZC_GLB_MBIST_LOCK                              TZC_SEC_TZC_GLB_MBIST_LOCK
+#define TZC_SEC_TZC_GLB_MBIST_LOCK_POS                          (30U)
+#define TZC_SEC_TZC_GLB_MBIST_LOCK_LEN                          (1U)
+#define TZC_SEC_TZC_GLB_MBIST_LOCK_MSK                          (((1U<<TZC_SEC_TZC_GLB_MBIST_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_LOCK_POS)
+#define TZC_SEC_TZC_GLB_MBIST_LOCK_UMSK                         (~(((1U<<TZC_SEC_TZC_GLB_MBIST_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_MBIST_LOCK_POS))
+#define TZC_SEC_TZC_GLB_CLK_LOCK                                TZC_SEC_TZC_GLB_CLK_LOCK
+#define TZC_SEC_TZC_GLB_CLK_LOCK_POS                            (31U)
+#define TZC_SEC_TZC_GLB_CLK_LOCK_LEN                            (1U)
+#define TZC_SEC_TZC_GLB_CLK_LOCK_MSK                            (((1U<<TZC_SEC_TZC_GLB_CLK_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_LOCK_POS)
+#define TZC_SEC_TZC_GLB_CLK_LOCK_UMSK                           (~(((1U<<TZC_SEC_TZC_GLB_CLK_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_CLK_LOCK_POS))
+
+/* 0xF0C : tzc_glb_ctrl_3 */
+#define TZC_SEC_TZC_GLB_CTRL_3_OFFSET                           (0xF0C)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_POS                    (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_POS                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_POS                    (2U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_POS                    (3U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_POS                    (4U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_POS                    (5U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_POS                    (6U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_POS                    (7U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_POS                    (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_POS                    (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_POS                    (10U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_POS                    (11U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_POS                    (12U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_POS                    (13U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_POS                    (14U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_POS                    (15U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_POS                    (16U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_POS                    (17U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_POS                    (18U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_POS                    (19U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_POS                    (20U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_POS                    (21U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_POS                    (22U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_POS                    (23U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_POS                    (24U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_POS                    (25U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_POS                    (26U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_POS                    (27U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_POS                    (28U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_POS                    (29U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_POS                    (30U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_ID0_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN                        TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_POS                    (31U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_ID0_EN_POS))
+
+/* 0xF10 : tzc_glb_ctrl_4 */
+#define TZC_SEC_TZC_GLB_CTRL_4_OFFSET                           (0xF10)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_POS                    (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_POS                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_POS                    (2U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_POS                    (3U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_POS                    (4U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_POS                    (5U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_POS                    (6U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_POS                    (7U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_POS                    (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_POS                    (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_POS                    (10U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_POS                    (11U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_POS                    (12U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_POS                    (13U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_POS                    (14U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_POS                    (15U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_POS                    (16U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_POS                    (17U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_POS                    (18U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_POS                    (19U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_POS                    (20U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_POS                    (21U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_POS                    (22U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_POS                    (23U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_POS                    (24U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_POS                    (25U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_POS                    (26U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_POS                    (27U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_POS                    (28U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_POS                    (29U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_POS                    (30U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_ID1_EN_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN                        TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_POS                    (31U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_LEN                    (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_MSK                    (((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_UMSK                   (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_ID1_EN_POS))
+
+/* 0xF14 : tzc_glb_ctrl_5 */
+#define TZC_SEC_TZC_GLB_CTRL_5_OFFSET                           (0xF14)
+#define TZC_SEC_TZC_GLB_SWRST_S20_LOCK                          TZC_SEC_TZC_GLB_SWRST_S20_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S20_LOCK_POS                      (0U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S20_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S20_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S20_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S20_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S20_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S21_LOCK                          TZC_SEC_TZC_GLB_SWRST_S21_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S21_LOCK_POS                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S21_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S21_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S21_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S21_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S21_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S22_LOCK                          TZC_SEC_TZC_GLB_SWRST_S22_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S22_LOCK_POS                      (2U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S22_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S22_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S22_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S22_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S22_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S23_LOCK                          TZC_SEC_TZC_GLB_SWRST_S23_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S23_LOCK_POS                      (3U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S23_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S23_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S23_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S23_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S23_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S24_LOCK                          TZC_SEC_TZC_GLB_SWRST_S24_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S24_LOCK_POS                      (4U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S24_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S24_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S24_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S24_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S24_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S25_LOCK                          TZC_SEC_TZC_GLB_SWRST_S25_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S25_LOCK_POS                      (5U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S25_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S25_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S25_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S25_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S25_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S26_LOCK                          TZC_SEC_TZC_GLB_SWRST_S26_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S26_LOCK_POS                      (6U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S26_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S26_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S26_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S26_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S26_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S27_LOCK                          TZC_SEC_TZC_GLB_SWRST_S27_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S27_LOCK_POS                      (7U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S27_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S27_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S27_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S27_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S27_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S28_LOCK                          TZC_SEC_TZC_GLB_SWRST_S28_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S28_LOCK_POS                      (8U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S28_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S28_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S28_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S28_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S28_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S29_LOCK                          TZC_SEC_TZC_GLB_SWRST_S29_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S29_LOCK_POS                      (9U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S29_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S29_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S29_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S29_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S29_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2A_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2A_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_POS                      (10U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2A_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2B_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2B_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_POS                      (11U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2B_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2C_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2C_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_POS                      (12U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2C_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2D_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2D_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_POS                      (13U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2D_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2E_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2E_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_POS                      (14U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2E_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S2F_LOCK                          TZC_SEC_TZC_GLB_SWRST_S2F_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_POS                      (15U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S2F_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S10_LOCK                          TZC_SEC_TZC_GLB_SWRST_S10_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S10_LOCK_POS                      (16U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S10_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S10_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S10_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S10_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S10_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S11_LOCK                          TZC_SEC_TZC_GLB_SWRST_S11_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S11_LOCK_POS                      (17U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S11_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S11_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S11_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S11_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S11_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S12_LOCK                          TZC_SEC_TZC_GLB_SWRST_S12_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S12_LOCK_POS                      (18U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S12_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S12_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S12_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S12_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S12_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S13_LOCK                          TZC_SEC_TZC_GLB_SWRST_S13_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S13_LOCK_POS                      (19U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S13_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S13_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S13_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S13_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S13_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S14_LOCK                          TZC_SEC_TZC_GLB_SWRST_S14_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S14_LOCK_POS                      (20U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S14_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S14_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S14_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S14_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S14_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S15_LOCK                          TZC_SEC_TZC_GLB_SWRST_S15_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S15_LOCK_POS                      (21U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S15_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S15_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S15_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S15_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S15_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S16_LOCK                          TZC_SEC_TZC_GLB_SWRST_S16_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S16_LOCK_POS                      (22U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S16_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S16_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S16_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S16_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S16_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S17_LOCK                          TZC_SEC_TZC_GLB_SWRST_S17_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S17_LOCK_POS                      (23U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S17_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S17_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S17_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S17_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S17_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S18_LOCK                          TZC_SEC_TZC_GLB_SWRST_S18_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S18_LOCK_POS                      (24U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S18_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S18_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S18_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S18_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S18_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S19_LOCK                          TZC_SEC_TZC_GLB_SWRST_S19_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S19_LOCK_POS                      (25U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S19_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S19_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S19_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S19_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S19_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1A_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1A_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_POS                      (26U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1A_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1B_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1B_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_POS                      (27U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1B_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1C_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1C_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_POS                      (28U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1C_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1D_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1D_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_POS                      (29U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1D_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1E_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1E_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_POS                      (30U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1E_LOCK_POS))
+#define TZC_SEC_TZC_GLB_SWRST_S1F_LOCK                          TZC_SEC_TZC_GLB_SWRST_S1F_LOCK
+#define TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_POS                      (31U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_MSK                      (((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_POS)
+#define TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_LEN)-1)<<TZC_SEC_TZC_GLB_SWRST_S1F_LOCK_POS))
+
+/* 0xF40 : tzc_se_ctrl_0 */
+#define TZC_SEC_TZC_SE_CTRL_0_OFFSET                            (0xF40)
+#define TZC_SEC_TZC_SE_SHA_TZSID_EN                             TZC_SEC_TZC_SE_SHA_TZSID_EN
+#define TZC_SEC_TZC_SE_SHA_TZSID_EN_POS                         (0U)
+#define TZC_SEC_TZC_SE_SHA_TZSID_EN_LEN                         (2U)
+#define TZC_SEC_TZC_SE_SHA_TZSID_EN_MSK                         (((1U<<TZC_SEC_TZC_SE_SHA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_SHA_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_SHA_TZSID_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_SE_SHA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_SHA_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_AES_TZSID_EN                             TZC_SEC_TZC_SE_AES_TZSID_EN
+#define TZC_SEC_TZC_SE_AES_TZSID_EN_POS                         (2U)
+#define TZC_SEC_TZC_SE_AES_TZSID_EN_LEN                         (2U)
+#define TZC_SEC_TZC_SE_AES_TZSID_EN_MSK                         (((1U<<TZC_SEC_TZC_SE_AES_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_AES_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_AES_TZSID_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_SE_AES_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_AES_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_TRNG_TZSID_EN                            TZC_SEC_TZC_SE_TRNG_TZSID_EN
+#define TZC_SEC_TZC_SE_TRNG_TZSID_EN_POS                        (4U)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_SE_TRNG_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_TRNG_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_SE_TRNG_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_TRNG_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_PKA_TZSID_EN                             TZC_SEC_TZC_SE_PKA_TZSID_EN
+#define TZC_SEC_TZC_SE_PKA_TZSID_EN_POS                         (6U)
+#define TZC_SEC_TZC_SE_PKA_TZSID_EN_LEN                         (2U)
+#define TZC_SEC_TZC_SE_PKA_TZSID_EN_MSK                         (((1U<<TZC_SEC_TZC_SE_PKA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_PKA_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_PKA_TZSID_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_SE_PKA_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_PKA_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_CDET_TZSID_EN                            TZC_SEC_TZC_SE_CDET_TZSID_EN
+#define TZC_SEC_TZC_SE_CDET_TZSID_EN_POS                        (8U)
+#define TZC_SEC_TZC_SE_CDET_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_SE_CDET_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_SE_CDET_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_CDET_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_CDET_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_SE_CDET_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_CDET_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_GMAC_TZSID_EN                            TZC_SEC_TZC_SE_GMAC_TZSID_EN
+#define TZC_SEC_TZC_SE_GMAC_TZSID_EN_POS                        (10U)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_EN_LEN                        (2U)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_EN_MSK                        (((1U<<TZC_SEC_TZC_SE_GMAC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_GMAC_TZSID_EN_POS)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_EN_UMSK                       (~(((1U<<TZC_SEC_TZC_SE_GMAC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SE_GMAC_TZSID_EN_POS))
+#define TZC_SEC_TZC_SE_TZSID_CRMD                               TZC_SEC_TZC_SE_TZSID_CRMD
+#define TZC_SEC_TZC_SE_TZSID_CRMD_POS                           (12U)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LEN                           (1U)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_MSK                           (((1U<<TZC_SEC_TZC_SE_TZSID_CRMD_LEN)-1)<<TZC_SEC_TZC_SE_TZSID_CRMD_POS)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_UMSK                          (~(((1U<<TZC_SEC_TZC_SE_TZSID_CRMD_LEN)-1)<<TZC_SEC_TZC_SE_TZSID_CRMD_POS))
+#define TZC_SEC_TZC_SE_WDT_DLY                                  TZC_SEC_TZC_SE_WDT_DLY
+#define TZC_SEC_TZC_SE_WDT_DLY_POS                              (16U)
+#define TZC_SEC_TZC_SE_WDT_DLY_LEN                              (16U)
+#define TZC_SEC_TZC_SE_WDT_DLY_MSK                              (((1U<<TZC_SEC_TZC_SE_WDT_DLY_LEN)-1)<<TZC_SEC_TZC_SE_WDT_DLY_POS)
+#define TZC_SEC_TZC_SE_WDT_DLY_UMSK                             (~(((1U<<TZC_SEC_TZC_SE_WDT_DLY_LEN)-1)<<TZC_SEC_TZC_SE_WDT_DLY_POS))
+
+/* 0xF44 : tzc_se_ctrl_1 */
+#define TZC_SEC_TZC_SE_CTRL_1_OFFSET                            (0xF44)
+#define TZC_SEC_TZC_SF_CR_TZSID_EN                              TZC_SEC_TZC_SF_CR_TZSID_EN
+#define TZC_SEC_TZC_SF_CR_TZSID_EN_POS                          (0U)
+#define TZC_SEC_TZC_SF_CR_TZSID_EN_LEN                          (2U)
+#define TZC_SEC_TZC_SF_CR_TZSID_EN_MSK                          (((1U<<TZC_SEC_TZC_SF_CR_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SF_CR_TZSID_EN_POS)
+#define TZC_SEC_TZC_SF_CR_TZSID_EN_UMSK                         (~(((1U<<TZC_SEC_TZC_SF_CR_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SF_CR_TZSID_EN_POS))
+#define TZC_SEC_TZC_SF_SEC_TZSID_EN                             TZC_SEC_TZC_SF_SEC_TZSID_EN
+#define TZC_SEC_TZC_SF_SEC_TZSID_EN_POS                         (2U)
+#define TZC_SEC_TZC_SF_SEC_TZSID_EN_LEN                         (2U)
+#define TZC_SEC_TZC_SF_SEC_TZSID_EN_MSK                         (((1U<<TZC_SEC_TZC_SF_SEC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SF_SEC_TZSID_EN_POS)
+#define TZC_SEC_TZC_SF_SEC_TZSID_EN_UMSK                        (~(((1U<<TZC_SEC_TZC_SF_SEC_TZSID_EN_LEN)-1)<<TZC_SEC_TZC_SF_SEC_TZSID_EN_POS))
+#define TZC_SEC_TZC_SF_TZSID_CRMD                               TZC_SEC_TZC_SF_TZSID_CRMD
+#define TZC_SEC_TZC_SF_TZSID_CRMD_POS                           (4U)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LEN                           (1U)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_MSK                           (((1U<<TZC_SEC_TZC_SF_TZSID_CRMD_LEN)-1)<<TZC_SEC_TZC_SF_TZSID_CRMD_POS)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_UMSK                          (~(((1U<<TZC_SEC_TZC_SF_TZSID_CRMD_LEN)-1)<<TZC_SEC_TZC_SF_TZSID_CRMD_POS))
+
+/* 0xF48 : tzc_se_ctrl_2 */
+#define TZC_SEC_TZC_SE_CTRL_2_OFFSET                            (0xF48)
+#define TZC_SEC_TZC_SE_SHA_TZSID_LOCK                           TZC_SEC_TZC_SE_SHA_TZSID_LOCK
+#define TZC_SEC_TZC_SE_SHA_TZSID_LOCK_POS                       (0U)
+#define TZC_SEC_TZC_SE_SHA_TZSID_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_SE_SHA_TZSID_LOCK_MSK                       (((1U<<TZC_SEC_TZC_SE_SHA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_SHA_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_SHA_TZSID_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_SE_SHA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_SHA_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_AES_TZSID_LOCK                           TZC_SEC_TZC_SE_AES_TZSID_LOCK
+#define TZC_SEC_TZC_SE_AES_TZSID_LOCK_POS                       (1U)
+#define TZC_SEC_TZC_SE_AES_TZSID_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_SE_AES_TZSID_LOCK_MSK                       (((1U<<TZC_SEC_TZC_SE_AES_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_AES_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_AES_TZSID_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_SE_AES_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_AES_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_TRNG_TZSID_LOCK                          TZC_SEC_TZC_SE_TRNG_TZSID_LOCK
+#define TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_POS                      (2U)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_TRNG_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_PKA_TZSID_LOCK                           TZC_SEC_TZC_SE_PKA_TZSID_LOCK
+#define TZC_SEC_TZC_SE_PKA_TZSID_LOCK_POS                       (3U)
+#define TZC_SEC_TZC_SE_PKA_TZSID_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_SE_PKA_TZSID_LOCK_MSK                       (((1U<<TZC_SEC_TZC_SE_PKA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_PKA_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_PKA_TZSID_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_SE_PKA_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_PKA_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_CDET_TZSID_LOCK                          TZC_SEC_TZC_SE_CDET_TZSID_LOCK
+#define TZC_SEC_TZC_SE_CDET_TZSID_LOCK_POS                      (4U)
+#define TZC_SEC_TZC_SE_CDET_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_SE_CDET_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_SE_CDET_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_CDET_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_CDET_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_SE_CDET_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_CDET_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_GMAC_TZSID_LOCK                          TZC_SEC_TZC_SE_GMAC_TZSID_LOCK
+#define TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_POS                      (5U)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_MSK                      (((1U<<TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_GMAC_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LOCK                          TZC_SEC_TZC_SE_TZSID_CRMD_LOCK
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_POS                      (6U)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_MSK                      (((1U<<TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_POS)
+#define TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_LEN)-1)<<TZC_SEC_TZC_SE_TZSID_CRMD_LOCK_POS))
+#define TZC_SEC_TZC_SF_CR_TZSID_LOCK                            TZC_SEC_TZC_SF_CR_TZSID_LOCK
+#define TZC_SEC_TZC_SF_CR_TZSID_LOCK_POS                        (16U)
+#define TZC_SEC_TZC_SF_CR_TZSID_LOCK_LEN                        (1U)
+#define TZC_SEC_TZC_SF_CR_TZSID_LOCK_MSK                        (((1U<<TZC_SEC_TZC_SF_CR_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_CR_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SF_CR_TZSID_LOCK_UMSK                       (~(((1U<<TZC_SEC_TZC_SF_CR_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_CR_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SF_SEC_TZSID_LOCK                           TZC_SEC_TZC_SF_SEC_TZSID_LOCK
+#define TZC_SEC_TZC_SF_SEC_TZSID_LOCK_POS                       (17U)
+#define TZC_SEC_TZC_SF_SEC_TZSID_LOCK_LEN                       (1U)
+#define TZC_SEC_TZC_SF_SEC_TZSID_LOCK_MSK                       (((1U<<TZC_SEC_TZC_SF_SEC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_SEC_TZSID_LOCK_POS)
+#define TZC_SEC_TZC_SF_SEC_TZSID_LOCK_UMSK                      (~(((1U<<TZC_SEC_TZC_SF_SEC_TZSID_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_SEC_TZSID_LOCK_POS))
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LOCK                          TZC_SEC_TZC_SF_TZSID_CRMD_LOCK
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_POS                      (18U)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_LEN                      (1U)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_MSK                      (((1U<<TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_POS)
+#define TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_UMSK                     (~(((1U<<TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_LEN)-1)<<TZC_SEC_TZC_SF_TZSID_CRMD_LOCK_POS))
+
+
+struct  tzc_sec_reg {
+    /* 0x00 : tzc_rom_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_rom_tzsrg_r0_id_en         :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_rom_tzsrg_r1_id_en         :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_rom_tzsrg_r2_id_en         :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_rom_tzsrg_rx_id_en         :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_rom_tzsrg_r0_en            :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_r1_en            :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_r2_en            :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_rx_en            :  1; /* [   19],        r/w,        0x0 */
+            uint32_t reserved_20_23                 :  4; /* [23:20],       rsvd,        0x0 */
+            uint32_t tzc_rom_tzsrg_r0_lock          :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_r1_lock          :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_r2_lock          :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_rom_tzsrg_rx_lock          :  1; /* [   27],        r/w,        0x0 */
+            uint32_t tzc_sboot_done                 :  4; /* [31:28],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_rom_tzsrg_ctrl;
+
+    /* 0x4 : tzc_rom_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_rom_tzsrg_adr_mask         :  8; /* [ 7: 0],        r/w,        0x0 */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_rom_tzsrg_adr_mask_lock    :  1; /* [   16],        r/w,        0x0 */
+            uint32_t reserved_17_31                 : 15; /* [31:17],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_rom_tzsrg_adr_mask;
+
+    /* 0x8 : tzc_rom_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_rom_tzsrg_r0_end           :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_rom_tzsrg_r0_start         :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_rom_tzsrg_r0;
+
+    /* 0xC : tzc_rom_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_rom_tzsrg_r1_end           :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_rom_tzsrg_r1_start         :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_rom_tzsrg_r1;
+
+    /* 0x10 : tzc_rom_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_rom_tzsrg_r2_end           :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_rom_tzsrg_r2_start         :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_rom_tzsrg_r2;
+
+    /* 0x14  reserved */
+    uint8_t RESERVED0x14[12];
+
+    /* 0x20 : tzc_ocram_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_ocram_tzsrg_r0_id_en       :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_ocram_tzsrg_r1_id_en       :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_ocram_tzsrg_r2_id_en       :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_ocram_tzsrg_rx_id_en       :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_ocram_tzsrg_r0_en          :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r1_en          :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r2_en          :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_rx_en          :  1; /* [   19],        r/w,        0x0 */
+            uint32_t reserved_20_23                 :  4; /* [23:20],       rsvd,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r0_lock        :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r1_lock        :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r2_lock        :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_ocram_tzsrg_rx_lock        :  1; /* [   27],        r/w,        0x0 */
+            uint32_t reserved_28_31                 :  4; /* [31:28],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_ocram_tzsrg_ctrl;
+
+    /* 0x24 : tzc_ocram_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_ocram_tzsrg_adr_mask       :  8; /* [ 7: 0],        r/w,        0x0 */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_ocram_tzsrg_adr_mask_lock  :  1; /* [   16],        r/w,        0x0 */
+            uint32_t reserved_17_31                 : 15; /* [31:17],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_ocram_tzsrg_adr_mask;
+
+    /* 0x28 : tzc_ocram_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_ocram_tzsrg_r0_end         :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r0_start       :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_ocram_tzsrg_r0;
+
+    /* 0x2C : tzc_ocram_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_ocram_tzsrg_r1_end         :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r1_start       :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_ocram_tzsrg_r1;
+
+    /* 0x30 : tzc_ocram_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_ocram_tzsrg_r2_end         :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_ocram_tzsrg_r2_start       :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_ocram_tzsrg_r2;
+
+    /* 0x34  reserved */
+    uint8_t RESERVED0x34[12];
+
+    /* 0x40 : tzc_tcm_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_tcm_tzsrg_r0_id_en         :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_tcm_tzsrg_r1_id_en         :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_tcm_tzsrg_r2_id_en         :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_tcm_tzsrg_rx_id_en         :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_tcm_tzsrg_r0_en            :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r1_en            :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r2_en            :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_rx_en            :  1; /* [   19],        r/w,        0x0 */
+            uint32_t reserved_20_23                 :  4; /* [23:20],       rsvd,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r0_lock          :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r1_lock          :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r2_lock          :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_tcm_tzsrg_rx_lock          :  1; /* [   27],        r/w,        0x0 */
+            uint32_t reserved_28_31                 :  4; /* [31:28],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tcm_tzsrg_ctrl;
+
+    /* 0x44 : tzc_tcm_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_tcm_tzsrg_adr_mask         :  5; /* [ 4: 0],        r/w,        0x0 */
+            uint32_t reserved_5_15                  : 11; /* [15: 5],       rsvd,        0x0 */
+            uint32_t tzc_tcm_tzsrg_adr_mask_lock    :  1; /* [   16],        r/w,        0x0 */
+            uint32_t reserved_17_31                 : 15; /* [31:17],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tcm_tzsrg_adr_mask;
+
+    /* 0x48 : tzc_tcm_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_tcm_tzsrg_r0_end           :  5; /* [ 4: 0],        r/w,       0x1f */
+            uint32_t reserved_5_15                  : 11; /* [15: 5],       rsvd,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r0_start         :  5; /* [20:16],        r/w,        0x0 */
+            uint32_t reserved_21_31                 : 11; /* [31:21],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tcm_tzsrg_r0;
+
+    /* 0x4C : tzc_tcm_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_tcm_tzsrg_r1_end           :  5; /* [ 4: 0],        r/w,       0x1f */
+            uint32_t reserved_5_15                  : 11; /* [15: 5],       rsvd,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r1_start         :  5; /* [20:16],        r/w,        0x0 */
+            uint32_t reserved_21_31                 : 11; /* [31:21],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tcm_tzsrg_r1;
+
+    /* 0x50 : tzc_tcm_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_tcm_tzsrg_r2_end           :  5; /* [ 4: 0],        r/w,       0x1f */
+            uint32_t reserved_5_15                  : 11; /* [15: 5],       rsvd,        0x0 */
+            uint32_t tzc_tcm_tzsrg_r2_start         :  5; /* [20:16],        r/w,        0x0 */
+            uint32_t reserved_21_31                 : 11; /* [31:21],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tcm_tzsrg_r2;
+
+    /* 0x54  reserved */
+    uint8_t RESERVED0x54[12];
+
+    /* 0x60 : tzc_mm2ocram_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_mm2ocram_tzsrg_r0_id_en    :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_mm2ocram_tzsrg_r1_id_en    :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_mm2ocram_tzsrg_r2_id_en    :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_mm2ocram_tzsrg_rx_id_en    :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_mm2ocram_tzsrg_r0_en       :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r1_en       :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r2_en       :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_rx_en       :  1; /* [   19],        r/w,        0x0 */
+            uint32_t reserved_20_23                 :  4; /* [23:20],       rsvd,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r0_lock     :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r1_lock     :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r2_lock     :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_rx_lock     :  1; /* [   27],        r/w,        0x0 */
+            uint32_t reserved_28_31                 :  4; /* [31:28],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_mm2ocram_tzsrg_ctrl;
+
+    /* 0x64 : tzc_mm2ocram_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_mm2ocram_tzsrg_adr_mask    :  8; /* [ 7: 0],        r/w,        0x0 */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_adr_mask_lock :  1; /* [   16],        r/w,        0x0 */
+            uint32_t reserved_17_31                 : 15; /* [31:17],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_mm2ocram_tzsrg_adr_mask;
+
+    /* 0x68 : tzc_mm2ocram_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_mm2ocram_tzsrg_r0_end      :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r0_start    :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_mm2ocram_tzsrg_r0;
+
+    /* 0x6C : tzc_mm2ocram_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_mm2ocram_tzsrg_r1_end      :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r1_start    :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_mm2ocram_tzsrg_r1;
+
+    /* 0x70 : tzc_mm2ocram_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_mm2ocram_tzsrg_r2_end      :  8; /* [ 7: 0],        r/w,       0xff */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_mm2ocram_tzsrg_r2_start    :  8; /* [23:16],        r/w,        0x0 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_mm2ocram_tzsrg_r2;
+
+    /* 0x74  reserved */
+    uint8_t RESERVED0x74[12];
+
+    /* 0x80 : tzc_opi_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_opi_tzsrg_r0_id_en         :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_opi_tzsrg_r1_id_en         :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_opi_tzsrg_r2_id_en         :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_opi_tzsrg_rx_id_en         :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_opi_tzsrg_r0_en            :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_r1_en            :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_r2_en            :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_rx_en            :  1; /* [   19],        r/w,        0x0 */
+            uint32_t reserved_20_23                 :  4; /* [23:20],       rsvd,        0x0 */
+            uint32_t tzc_opi_tzsrg_r0_lock          :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_r1_lock          :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_r2_lock          :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_opi_tzsrg_rx_lock          :  1; /* [   27],        r/w,        0x0 */
+            uint32_t reserved_28_31                 :  4; /* [31:28],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_opi_tzsrg_ctrl;
+
+    /* 0x84 : tzc_opi_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_opi_tzsrg_adr_mask         : 14; /* [13: 0],        r/w,        0x0 */
+            uint32_t reserved_14_15                 :  2; /* [15:14],       rsvd,        0x0 */
+            uint32_t tzc_opi_tzsrg_adr_mask_lock    :  1; /* [   16],        r/w,        0x0 */
+            uint32_t reserved_17_31                 : 15; /* [31:17],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_opi_tzsrg_adr_mask;
+
+    /* 0x88 : tzc_opi_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_opi_tzsrg_r0_end           : 14; /* [13: 0],        r/w,     0x3fff */
+            uint32_t reserved_14_15                 :  2; /* [15:14],       rsvd,        0x0 */
+            uint32_t tzc_opi_tzsrg_r0_start         : 14; /* [29:16],        r/w,        0x0 */
+            uint32_t reserved_30_31                 :  2; /* [31:30],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_opi_tzsrg_r0;
+
+    /* 0x8C : tzc_opi_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_opi_tzsrg_r1_end           : 14; /* [13: 0],        r/w,     0x3fff */
+            uint32_t reserved_14_15                 :  2; /* [15:14],       rsvd,        0x0 */
+            uint32_t tzc_opi_tzsrg_r1_start         : 14; /* [29:16],        r/w,        0x0 */
+            uint32_t reserved_30_31                 :  2; /* [31:30],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_opi_tzsrg_r1;
+
+    /* 0x90 : tzc_opi_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_opi_tzsrg_r2_end           : 14; /* [13: 0],        r/w,     0x3fff */
+            uint32_t reserved_14_15                 :  2; /* [15:14],       rsvd,        0x0 */
+            uint32_t tzc_opi_tzsrg_r2_start         : 14; /* [29:16],        r/w,        0x0 */
+            uint32_t reserved_30_31                 :  2; /* [31:30],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_opi_tzsrg_r2;
+
+    /* 0x94  reserved */
+    uint8_t RESERVED0x94[108];
+
+    /* 0x100 : tzc_tzmid */
+    union {
+        struct {
+            uint32_t tzc_m154_tzmid                 :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_cci_tzmid                  :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_emac_tzmid                 :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_usb_tzmid                  :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_mcu_iport_tzmid            :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_mcu_dport_tzmid            :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_sdhA_tzmid                 :  1; /* [    6],        r/w,        0x0 */
+            uint32_t reserved_7_15                  :  9; /* [15: 7],       rsvd,        0x0 */
+            uint32_t tzc_m154_tzmid_sel             :  1; /* [   16],        r/w,        0x1 */
+            uint32_t tzc_cci_tzmid_sel              :  1; /* [   17],        r/w,        0x1 */
+            uint32_t tzc_emac_tzmid_sel             :  1; /* [   18],        r/w,        0x1 */
+            uint32_t tzc_usb_tzmid_sel              :  1; /* [   19],        r/w,        0x1 */
+            uint32_t tzc_mcu_iport_tzmid_sel        :  1; /* [   20],        r/w,        0x1 */
+            uint32_t tzc_mcu_dport_tzmid_sel        :  1; /* [   21],        r/w,        0x1 */
+            uint32_t tzc_sdhA_tzmid_sel             :  1; /* [   22],        r/w,        0x1 */
+            uint32_t reserved_23_31                 :  9; /* [31:23],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzmid;
+
+    /* 0x104 : tzc_tzmid_lock */
+    union {
+        struct {
+            uint32_t tzc_m154_tzmid_lock            :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_cci_tzmid_lock             :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_emac_tzmid_lock            :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_usb_tzmid_lock             :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_mcu_iport_tzmid_lock       :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_mcu_dport_tzmid_lock       :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_sdhA_tzmid_lock            :  1; /* [    6],        r/w,        0x0 */
+            uint32_t reserved_7_31                  : 25; /* [31: 7],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzmid_lock;
+
+    /* 0x108 : tzc_tzsid_slv_ahb */
+    union {
+        struct {
+            uint32_t tzc_pwr_tzsid_en               :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_usb_tzsid_en               :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_emac_tzsid_en              :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t tzc_dma_tzsid_en               :  2; /* [ 7: 6],        r/w,        0x3 */
+            uint32_t tzc_mm_tzsid_en                :  2; /* [ 9: 8],        r/w,        0x3 */
+            uint32_t tzc_sdhA_tzsid_en              :  2; /* [11:10],        r/w,        0x3 */
+            uint32_t reserved_12_15                 :  4; /* [15:12],       rsvd,        0x0 */
+            uint32_t tzc_pwr_tzsid_lock             :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_usb_tzsid_lock             :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_emac_tzsid_lock            :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_dma_tzsid_lock             :  1; /* [   19],        r/w,        0x0 */
+            uint32_t tzc_mm_tzsid_lock              :  1; /* [   20],        r/w,        0x0 */
+            uint32_t tzc_sdhA_tzsid_lock            :  1; /* [   21],        r/w,        0x0 */
+            uint32_t reserved_22_31                 : 10; /* [31:22],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzsid_slv_ahb;
+
+    /* 0x10C : tzc_tzsid_slv_apb_0 */
+    union {
+        struct {
+            uint32_t tzc_bmx_s00_tzsid_en           :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_bmx_s01_tzsid_en           :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_bmx_s02_tzsid_en           :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t tzc_bmx_s03_tzsid_en           :  2; /* [ 7: 6],        r/w,        0x3 */
+            uint32_t tzc_bmx_s04_tzsid_en           :  2; /* [ 9: 8],        r/w,        0x3 */
+            uint32_t tzc_bmx_s05_tzsid_en           :  2; /* [11:10],        r/w,        0x3 */
+            uint32_t tzc_bmx_s06_tzsid_en           :  2; /* [13:12],        r/w,        0x3 */
+            uint32_t tzc_bmx_s07_tzsid_en           :  2; /* [15:14],        r/w,        0x3 */
+            uint32_t tzc_bmx_s08_tzsid_en           :  2; /* [17:16],        r/w,        0x3 */
+            uint32_t tzc_bmx_s09_tzsid_en           :  2; /* [19:18],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0a_tzsid_en           :  2; /* [21:20],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0b_tzsid_en           :  2; /* [23:22],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0c_tzsid_en           :  2; /* [25:24],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0d_tzsid_en           :  2; /* [27:26],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0e_tzsid_en           :  2; /* [29:28],        r/w,        0x3 */
+            uint32_t tzc_bmx_s0f_tzsid_en           :  2; /* [31:30],        r/w,        0x3 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzsid_slv_apb_0;
+
+    /* 0x110 : tzc_tzsid_slv_apb_1 */
+    union {
+        struct {
+            uint32_t tzc_bmx_s10_tzsid_en           :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_bmx_s11_tzsid_en           :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_bmx_s12_tzsid_en           :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t tzc_bmx_s13_tzsid_en           :  2; /* [ 7: 6],        r/w,        0x3 */
+            uint32_t tzc_bmx_s14_tzsid_en           :  2; /* [ 9: 8],        r/w,        0x3 */
+            uint32_t tzc_bmx_s15_tzsid_en           :  2; /* [11:10],        r/w,        0x3 */
+            uint32_t tzc_bmx_s16_tzsid_en           :  2; /* [13:12],        r/w,        0x3 */
+            uint32_t tzc_bmx_s17_tzsid_en           :  2; /* [15:14],        r/w,        0x3 */
+            uint32_t tzc_bmx_s18_tzsid_en           :  2; /* [17:16],        r/w,        0x3 */
+            uint32_t tzc_bmx_s19_tzsid_en           :  2; /* [19:18],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1a_tzsid_en           :  2; /* [21:20],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1b_tzsid_en           :  2; /* [23:22],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1c_tzsid_en           :  2; /* [25:24],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1d_tzsid_en           :  2; /* [27:26],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1e_tzsid_en           :  2; /* [29:28],        r/w,        0x3 */
+            uint32_t tzc_bmx_s1f_tzsid_en           :  2; /* [31:30],        r/w,        0x3 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzsid_slv_apb_1;
+
+    /* 0x114 : tzc_tzsid_slv_apb_lock */
+    union {
+        struct {
+            uint32_t tzc_bmx_s00_tzsid_lock         :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_bmx_s01_tzsid_lock         :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_bmx_s02_tzsid_lock         :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_bmx_s03_tzsid_lock         :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_bmx_s04_tzsid_lock         :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_bmx_s05_tzsid_lock         :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_bmx_s06_tzsid_lock         :  1; /* [    6],        r/w,        0x0 */
+            uint32_t tzc_bmx_s07_tzsid_lock         :  1; /* [    7],        r/w,        0x0 */
+            uint32_t tzc_bmx_s08_tzsid_lock         :  1; /* [    8],        r/w,        0x0 */
+            uint32_t tzc_bmx_s09_tzsid_lock         :  1; /* [    9],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0a_tzsid_lock         :  1; /* [   10],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0b_tzsid_lock         :  1; /* [   11],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0c_tzsid_lock         :  1; /* [   12],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0d_tzsid_lock         :  1; /* [   13],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0e_tzsid_lock         :  1; /* [   14],        r/w,        0x0 */
+            uint32_t tzc_bmx_s0f_tzsid_lock         :  1; /* [   15],        r/w,        0x0 */
+            uint32_t tzc_bmx_s10_tzsid_lock         :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_bmx_s11_tzsid_lock         :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_bmx_s12_tzsid_lock         :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_bmx_s13_tzsid_lock         :  1; /* [   19],        r/w,        0x0 */
+            uint32_t tzc_bmx_s14_tzsid_lock         :  1; /* [   20],        r/w,        0x0 */
+            uint32_t tzc_bmx_s15_tzsid_lock         :  1; /* [   21],        r/w,        0x0 */
+            uint32_t tzc_bmx_s16_tzsid_lock         :  1; /* [   22],        r/w,        0x0 */
+            uint32_t tzc_bmx_s17_tzsid_lock         :  1; /* [   23],        r/w,        0x0 */
+            uint32_t tzc_bmx_s18_tzsid_lock         :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_bmx_s19_tzsid_lock         :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1a_tzsid_lock         :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1b_tzsid_lock         :  1; /* [   27],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1c_tzsid_lock         :  1; /* [   28],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1d_tzsid_lock         :  1; /* [   29],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1e_tzsid_lock         :  1; /* [   30],        r/w,        0x0 */
+            uint32_t tzc_bmx_s1f_tzsid_lock         :  1; /* [   31],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzsid_slv_apb_lock;
+
+    /* 0x118 : tzc_tzsid_slv_apb_l0 */
+    union {
+        struct {
+            uint32_t tzc_bmx_apb_l0_id0_en          :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_bmx_apb_l0_id1_en          :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t reserved_4_15                  : 12; /* [15: 4],       rsvd,        0x0 */
+            uint32_t tzc_bmx_apb_l0_id0_lock        :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_bmx_apb_l0_id1_lock        :  1; /* [   17],        r/w,        0x0 */
+            uint32_t reserved_18_31                 : 14; /* [31:18],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tzsid_slv_apb_l0;
+
+    /* 0x11c  reserved */
+    uint8_t RESERVED0x11c[228];
+
+    /* 0x200 : tzc_dma_m_id */
+    union {
+        struct {
+            uint32_t tzc_dma_m0_id                  :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_dma_m1_id                  :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_dma_m2_id                  :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_dma_m3_id                  :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_dma_m4_id                  :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_dma_m5_id                  :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_dma_m6_id                  :  1; /* [    6],        r/w,        0x0 */
+            uint32_t tzc_dma_m7_id                  :  1; /* [    7],        r/w,        0x0 */
+            uint32_t reserved_8_15                  :  8; /* [15: 8],       rsvd,        0x0 */
+            uint32_t tzc_dma_m0_id_sel              :  1; /* [   16],        r/w,        0x1 */
+            uint32_t tzc_dma_m1_id_sel              :  1; /* [   17],        r/w,        0x1 */
+            uint32_t tzc_dma_m2_id_sel              :  1; /* [   18],        r/w,        0x1 */
+            uint32_t tzc_dma_m3_id_sel              :  1; /* [   19],        r/w,        0x1 */
+            uint32_t tzc_dma_m4_id_sel              :  1; /* [   20],        r/w,        0x1 */
+            uint32_t tzc_dma_m5_id_sel              :  1; /* [   21],        r/w,        0x1 */
+            uint32_t tzc_dma_m6_id_sel              :  1; /* [   22],        r/w,        0x1 */
+            uint32_t tzc_dma_m7_id_sel              :  1; /* [   23],        r/w,        0x1 */
+            uint32_t reserved_24_31                 :  8; /* [31:24],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_dma_m_id;
+
+    /* 0x204 : tzc_dma_m_id_lock */
+    union {
+        struct {
+            uint32_t tzc_dma_m0_id_lock             :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_dma_m1_id_lock             :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_dma_m2_id_lock             :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_dma_m3_id_lock             :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_dma_m4_id_lock             :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_dma_m5_id_lock             :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_dma_m6_id_lock             :  1; /* [    6],        r/w,        0x0 */
+            uint32_t tzc_dma_m7_id_lock             :  1; /* [    7],        r/w,        0x0 */
+            uint32_t reserved_8_31                  : 24; /* [31: 8],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_dma_m_id_lock;
+
+    /* 0x208 : tzc_dma_s */
+    union {
+        struct {
+            uint32_t tzc_dma_ctl_tzsid_en           :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_dma_ch0_tzsid_en           :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_dma_ch1_tzsid_en           :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t tzc_dma_ch2_tzsid_en           :  2; /* [ 7: 6],        r/w,        0x3 */
+            uint32_t tzc_dma_ch3_tzsid_en           :  2; /* [ 9: 8],        r/w,        0x3 */
+            uint32_t tzc_dma_ch4_tzsid_en           :  2; /* [11:10],        r/w,        0x3 */
+            uint32_t tzc_dma_ch5_tzsid_en           :  2; /* [13:12],        r/w,        0x3 */
+            uint32_t tzc_dma_ch6_tzsid_en           :  2; /* [15:14],        r/w,        0x3 */
+            uint32_t tzc_dma_ch7_tzsid_en           :  2; /* [17:16],        r/w,        0x3 */
+            uint32_t reserved_18_31                 : 14; /* [31:18],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_dma_s;
+
+    /* 0x20C : tzc_dma_s_lock */
+    union {
+        struct {
+            uint32_t tzc_dma_ctl_tzsid_lock         :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_dma_ch0_tzsid_lock         :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_dma_ch1_tzsid_lock         :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_dma_ch2_tzsid_lock         :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_dma_ch3_tzsid_lock         :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_dma_ch4_tzsid_lock         :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_dma_ch5_tzsid_lock         :  1; /* [    6],        r/w,        0x0 */
+            uint32_t tzc_dma_ch6_tzsid_lock         :  1; /* [    7],        r/w,        0x0 */
+            uint32_t tzc_dma_ch7_tzsid_lock         :  1; /* [    8],        r/w,        0x0 */
+            uint32_t reserved_9_31                  : 23; /* [31: 9],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_dma_s_lock;
+
+    /* 0x210  reserved */
+    uint8_t RESERVED0x210[16];
+
+    /* 0x220 : tzc_tmr_s */
+    union {
+        struct {
+            uint32_t tzc_wdt0_tzsid_en              :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_tmr2_tzsid_en              :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_tmr3_tzsid_en              :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t reserved_6_31                  : 26; /* [31: 6],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tmr_s;
+
+    /* 0x224 : tzc_tmr_s_lock */
+    union {
+        struct {
+            uint32_t tzc_wdt0_tzsid_lock            :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_tmr2_tzsid_lock            :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_tmr3_tzsid_lock            :  1; /* [    2],        r/w,        0x0 */
+            uint32_t reserved_3_31                  : 29; /* [31: 3],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_tmr_s_lock;
+
+    /* 0x228  reserved */
+    uint8_t RESERVED0x228[88];
+
+    /* 0x280 : tzc_sf_tzsrg_ctrl */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r0_id_en          :  4; /* [ 3: 0],        r/w,        0xf */
+            uint32_t tzc_sf_tzsrg_r1_id_en          :  4; /* [ 7: 4],        r/w,        0xf */
+            uint32_t tzc_sf_tzsrg_r2_id_en          :  4; /* [11: 8],        r/w,        0xf */
+            uint32_t tzc_sf_tzsrg_r3_id_en          :  4; /* [15:12],        r/w,        0xf */
+            uint32_t tzc_sf_tzsrg_rx_id_en          :  4; /* [19:16],        r/w,        0xf */
+            uint32_t tzc_sf_tzsrg_r0_en             :  1; /* [   20],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r1_en             :  1; /* [   21],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r2_en             :  1; /* [   22],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r3_en             :  1; /* [   23],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_rx_en             :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r0_lock           :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r1_lock           :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r2_lock           :  1; /* [   27],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_r3_lock           :  1; /* [   28],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsrg_rx_lock           :  1; /* [   29],        r/w,        0x0 */
+            uint32_t reserved_30_31                 :  2; /* [31:30],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_ctrl;
+
+    /* 0x284 : tzc_sf_tzsrg_adr_mask */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_adr_mask          : 19; /* [18: 0],        r/w,        0x0 */
+            uint32_t reserved_19_30                 : 12; /* [30:19],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_adr_mask_lock     :  1; /* [   31],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_adr_mask;
+
+    /* 0x288 : tzc_sf_tzsrg_r0 */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r0_end            : 16; /* [15: 0],        r/w,     0xffff */
+            uint32_t tzc_sf_tzsrg_r0_start          : 16; /* [31:16],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_r0;
+
+    /* 0x28C : tzc_sf_tzsrg_r1 */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r1_end            : 16; /* [15: 0],        r/w,     0xffff */
+            uint32_t tzc_sf_tzsrg_r1_start          : 16; /* [31:16],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_r1;
+
+    /* 0x290 : tzc_sf_tzsrg_r2 */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r2_end            : 16; /* [15: 0],        r/w,     0xffff */
+            uint32_t tzc_sf_tzsrg_r2_start          : 16; /* [31:16],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_r2;
+
+    /* 0x294 : tzc_sf_tzsrg_r3 */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r3_end            : 16; /* [15: 0],        r/w,     0xffff */
+            uint32_t tzc_sf_tzsrg_r3_start          : 16; /* [31:16],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_r3;
+
+    /* 0x298 : tzc_sf_tzsrg_msb */
+    union {
+        struct {
+            uint32_t tzc_sf_tzsrg_r0_end_msb        :  3; /* [ 2: 0],        r/w,        0x0 */
+            uint32_t reserved_3                     :  1; /* [    3],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r0_start_msb      :  3; /* [ 6: 4],        r/w,        0x0 */
+            uint32_t reserved_7                     :  1; /* [    7],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r1_end_msb        :  3; /* [10: 8],        r/w,        0x0 */
+            uint32_t reserved_11                    :  1; /* [   11],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r1_start_msb      :  3; /* [14:12],        r/w,        0x0 */
+            uint32_t reserved_15                    :  1; /* [   15],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r2_end_msb        :  3; /* [18:16],        r/w,        0x0 */
+            uint32_t reserved_19                    :  1; /* [   19],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r2_start_msb      :  3; /* [22:20],        r/w,        0x0 */
+            uint32_t reserved_23                    :  1; /* [   23],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r3_end_msb        :  3; /* [26:24],        r/w,        0x0 */
+            uint32_t reserved_27                    :  1; /* [   27],       rsvd,        0x0 */
+            uint32_t tzc_sf_tzsrg_r3_start_msb      :  3; /* [30:28],        r/w,        0x0 */
+            uint32_t reserved_31                    :  1; /* [   31],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_sf_tzsrg_msb;
+
+    /* 0x29c  reserved */
+    uint8_t RESERVED0x29c[3172];
+
+    /* 0xF00 : tzc_glb_ctrl_0 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s00_id0_en       :  1; /* [    0],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s01_id0_en       :  1; /* [    1],        r/w,        0x1 */
+            uint32_t reserved_2_7                   :  6; /* [ 7: 2],       rsvd,        0x0 */
+            uint32_t tzc_glb_swrst_s30_id0_en       :  1; /* [    8],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s31_id0_en       :  1; /* [    9],        r/w,        0x1 */
+            uint32_t reserved_10_11                 :  2; /* [11:10],       rsvd,        0x0 */
+            uint32_t tzc_glb_ctrl_pwron_rst_id0_en  :  1; /* [   12],        r/w,        0x1 */
+            uint32_t tzc_glb_ctrl_cpu_reset_id0_en  :  1; /* [   13],        r/w,        0x1 */
+            uint32_t tzc_glb_ctrl_sys_reset_id0_en  :  1; /* [   14],        r/w,        0x1 */
+            uint32_t reserved_15_23                 :  9; /* [23:15],       rsvd,        0x0 */
+            uint32_t tzc_glb_flash_id0_en           :  1; /* [   24],        r/w,        0x1 */
+            uint32_t tzc_glb_misc_id0_en            :  1; /* [   25],        r/w,        0x1 */
+            uint32_t tzc_glb_sram_id0_en            :  1; /* [   26],        r/w,        0x1 */
+            uint32_t reserved_27                    :  1; /* [   27],       rsvd,        0x0 */
+            uint32_t tzc_glb_bmx_id0_en             :  1; /* [   28],        r/w,        0x1 */
+            uint32_t tzc_glb_dbg_id0_en             :  1; /* [   29],        r/w,        0x1 */
+            uint32_t tzc_glb_mbist_id0_en           :  1; /* [   30],        r/w,        0x1 */
+            uint32_t tzc_glb_clk_id0_en             :  1; /* [   31],        r/w,        0x1 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_0;
+
+    /* 0xF04 : tzc_glb_ctrl_1 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s00_id1_en       :  1; /* [    0],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s01_id1_en       :  1; /* [    1],        r/w,        0x1 */
+            uint32_t reserved_2_7                   :  6; /* [ 7: 2],       rsvd,        0x0 */
+            uint32_t tzc_glb_swrst_s30_id1_en       :  1; /* [    8],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s31_id1_en       :  1; /* [    9],        r/w,        0x1 */
+            uint32_t reserved_10_11                 :  2; /* [11:10],       rsvd,        0x0 */
+            uint32_t tzc_glb_ctrl_pwron_rst_id1_en  :  1; /* [   12],        r/w,        0x1 */
+            uint32_t tzc_glb_ctrl_cpu_reset_id1_en  :  1; /* [   13],        r/w,        0x1 */
+            uint32_t tzc_glb_ctrl_sys_reset_id1_en  :  1; /* [   14],        r/w,        0x1 */
+            uint32_t reserved_15_23                 :  9; /* [23:15],       rsvd,        0x0 */
+            uint32_t tzc_glb_flash_id1_en           :  1; /* [   24],        r/w,        0x1 */
+            uint32_t tzc_glb_misc_id1_en            :  1; /* [   25],        r/w,        0x1 */
+            uint32_t tzc_glb_sram_id1_en            :  1; /* [   26],        r/w,        0x1 */
+            uint32_t reserved_27                    :  1; /* [   27],       rsvd,        0x0 */
+            uint32_t tzc_glb_bmx_id1_en             :  1; /* [   28],        r/w,        0x1 */
+            uint32_t tzc_glb_dbg_id1_en             :  1; /* [   29],        r/w,        0x1 */
+            uint32_t tzc_glb_mbist_id1_en           :  1; /* [   30],        r/w,        0x1 */
+            uint32_t tzc_glb_clk_id1_en             :  1; /* [   31],        r/w,        0x1 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_1;
+
+    /* 0xF08 : tzc_glb_ctrl_2 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s00_lock         :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s01_lock         :  1; /* [    1],        r/w,        0x0 */
+            uint32_t reserved_2_7                   :  6; /* [ 7: 2],       rsvd,        0x0 */
+            uint32_t tzc_glb_swrst_s30_lock         :  1; /* [    8],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s31_lock         :  1; /* [    9],        r/w,        0x0 */
+            uint32_t reserved_10_11                 :  2; /* [11:10],       rsvd,        0x0 */
+            uint32_t tzc_glb_ctrl_pwron_rst_lock    :  1; /* [   12],        r/w,        0x0 */
+            uint32_t tzc_glb_ctrl_cpu_reset_lock    :  1; /* [   13],        r/w,        0x0 */
+            uint32_t tzc_glb_ctrl_sys_reset_lock    :  1; /* [   14],        r/w,        0x0 */
+            uint32_t reserved_15_23                 :  9; /* [23:15],       rsvd,        0x0 */
+            uint32_t tzc_glb_flash_lock             :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_glb_misc_lock              :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_glb_sram_lock              :  1; /* [   26],        r/w,        0x0 */
+            uint32_t reserved_27                    :  1; /* [   27],       rsvd,        0x0 */
+            uint32_t tzc_glb_bmx_lock               :  1; /* [   28],        r/w,        0x0 */
+            uint32_t tzc_glb_dbg_lock               :  1; /* [   29],        r/w,        0x0 */
+            uint32_t tzc_glb_mbist_lock             :  1; /* [   30],        r/w,        0x0 */
+            uint32_t tzc_glb_clk_lock               :  1; /* [   31],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_2;
+
+    /* 0xF0C : tzc_glb_ctrl_3 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s20_id0_en       :  1; /* [    0],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s21_id0_en       :  1; /* [    1],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s22_id0_en       :  1; /* [    2],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s23_id0_en       :  1; /* [    3],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s24_id0_en       :  1; /* [    4],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s25_id0_en       :  1; /* [    5],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s26_id0_en       :  1; /* [    6],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s27_id0_en       :  1; /* [    7],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s28_id0_en       :  1; /* [    8],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s29_id0_en       :  1; /* [    9],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2a_id0_en       :  1; /* [   10],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2b_id0_en       :  1; /* [   11],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2c_id0_en       :  1; /* [   12],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2d_id0_en       :  1; /* [   13],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2e_id0_en       :  1; /* [   14],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2f_id0_en       :  1; /* [   15],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s10_id0_en       :  1; /* [   16],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s11_id0_en       :  1; /* [   17],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s12_id0_en       :  1; /* [   18],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s13_id0_en       :  1; /* [   19],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s14_id0_en       :  1; /* [   20],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s15_id0_en       :  1; /* [   21],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s16_id0_en       :  1; /* [   22],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s17_id0_en       :  1; /* [   23],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s18_id0_en       :  1; /* [   24],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s19_id0_en       :  1; /* [   25],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1a_id0_en       :  1; /* [   26],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1b_id0_en       :  1; /* [   27],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1c_id0_en       :  1; /* [   28],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1d_id0_en       :  1; /* [   29],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1e_id0_en       :  1; /* [   30],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1f_id0_en       :  1; /* [   31],        r/w,        0x1 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_3;
+
+    /* 0xF10 : tzc_glb_ctrl_4 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s20_id1_en       :  1; /* [    0],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s21_id1_en       :  1; /* [    1],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s22_id1_en       :  1; /* [    2],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s23_id1_en       :  1; /* [    3],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s24_id1_en       :  1; /* [    4],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s25_id1_en       :  1; /* [    5],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s26_id1_en       :  1; /* [    6],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s27_id1_en       :  1; /* [    7],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s28_id1_en       :  1; /* [    8],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s29_id1_en       :  1; /* [    9],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2a_id1_en       :  1; /* [   10],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2b_id1_en       :  1; /* [   11],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2c_id1_en       :  1; /* [   12],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2d_id1_en       :  1; /* [   13],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2e_id1_en       :  1; /* [   14],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s2f_id1_en       :  1; /* [   15],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s10_id1_en       :  1; /* [   16],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s11_id1_en       :  1; /* [   17],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s12_id1_en       :  1; /* [   18],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s13_id1_en       :  1; /* [   19],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s14_id1_en       :  1; /* [   20],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s15_id1_en       :  1; /* [   21],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s16_id1_en       :  1; /* [   22],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s17_id1_en       :  1; /* [   23],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s18_id1_en       :  1; /* [   24],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s19_id1_en       :  1; /* [   25],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1a_id1_en       :  1; /* [   26],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1b_id1_en       :  1; /* [   27],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1c_id1_en       :  1; /* [   28],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1d_id1_en       :  1; /* [   29],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1e_id1_en       :  1; /* [   30],        r/w,        0x1 */
+            uint32_t tzc_glb_swrst_s1f_id1_en       :  1; /* [   31],        r/w,        0x1 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_4;
+
+    /* 0xF14 : tzc_glb_ctrl_5 */
+    union {
+        struct {
+            uint32_t tzc_glb_swrst_s20_lock         :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s21_lock         :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s22_lock         :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s23_lock         :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s24_lock         :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s25_lock         :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s26_lock         :  1; /* [    6],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s27_lock         :  1; /* [    7],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s28_lock         :  1; /* [    8],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s29_lock         :  1; /* [    9],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2a_lock         :  1; /* [   10],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2b_lock         :  1; /* [   11],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2c_lock         :  1; /* [   12],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2d_lock         :  1; /* [   13],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2e_lock         :  1; /* [   14],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s2f_lock         :  1; /* [   15],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s10_lock         :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s11_lock         :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s12_lock         :  1; /* [   18],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s13_lock         :  1; /* [   19],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s14_lock         :  1; /* [   20],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s15_lock         :  1; /* [   21],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s16_lock         :  1; /* [   22],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s17_lock         :  1; /* [   23],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s18_lock         :  1; /* [   24],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s19_lock         :  1; /* [   25],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1a_lock         :  1; /* [   26],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1b_lock         :  1; /* [   27],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1c_lock         :  1; /* [   28],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1d_lock         :  1; /* [   29],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1e_lock         :  1; /* [   30],        r/w,        0x0 */
+            uint32_t tzc_glb_swrst_s1f_lock         :  1; /* [   31],        r/w,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_glb_ctrl_5;
+
+    /* 0xf18  reserved */
+    uint8_t RESERVED0xf18[40];
+
+    /* 0xF40 : tzc_se_ctrl_0 */
+    union {
+        struct {
+            uint32_t tzc_se_sha_tzsid_en            :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_se_aes_tzsid_en            :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_se_trng_tzsid_en           :  2; /* [ 5: 4],        r/w,        0x3 */
+            uint32_t tzc_se_pka_tzsid_en            :  2; /* [ 7: 6],        r/w,        0x3 */
+            uint32_t tzc_se_cdet_tzsid_en           :  2; /* [ 9: 8],        r/w,        0x3 */
+            uint32_t tzc_se_gmac_tzsid_en           :  2; /* [11:10],        r/w,        0x3 */
+            uint32_t tzc_se_tzsid_crmd              :  1; /* [   12],        r/w,        0x0 */
+            uint32_t reserved_13_15                 :  3; /* [15:13],       rsvd,        0x0 */
+            uint32_t tzc_se_wdt_dly                 : 16; /* [31:16],        r/w,        0x5 */
+        }BF;
+        uint32_t WORD;
+    } tzc_se_ctrl_0;
+
+    /* 0xF44 : tzc_se_ctrl_1 */
+    union {
+        struct {
+            uint32_t tzc_sf_cr_tzsid_en             :  2; /* [ 1: 0],        r/w,        0x3 */
+            uint32_t tzc_sf_sec_tzsid_en            :  2; /* [ 3: 2],        r/w,        0x3 */
+            uint32_t tzc_sf_tzsid_crmd              :  1; /* [    4],        r/w,        0x0 */
+            uint32_t reserved_5_31                  : 27; /* [31: 5],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_se_ctrl_1;
+
+    /* 0xF48 : tzc_se_ctrl_2 */
+    union {
+        struct {
+            uint32_t tzc_se_sha_tzsid_lock          :  1; /* [    0],        r/w,        0x0 */
+            uint32_t tzc_se_aes_tzsid_lock          :  1; /* [    1],        r/w,        0x0 */
+            uint32_t tzc_se_trng_tzsid_lock         :  1; /* [    2],        r/w,        0x0 */
+            uint32_t tzc_se_pka_tzsid_lock          :  1; /* [    3],        r/w,        0x0 */
+            uint32_t tzc_se_cdet_tzsid_lock         :  1; /* [    4],        r/w,        0x0 */
+            uint32_t tzc_se_gmac_tzsid_lock         :  1; /* [    5],        r/w,        0x0 */
+            uint32_t tzc_se_tzsid_crmd_lock         :  1; /* [    6],        r/w,        0x0 */
+            uint32_t reserved_7_15                  :  9; /* [15: 7],       rsvd,        0x0 */
+            uint32_t tzc_sf_cr_tzsid_lock           :  1; /* [   16],        r/w,        0x0 */
+            uint32_t tzc_sf_sec_tzsid_lock          :  1; /* [   17],        r/w,        0x0 */
+            uint32_t tzc_sf_tzsid_crmd_lock         :  1; /* [   18],        r/w,        0x0 */
+            uint32_t reserved_19_31                 : 13; /* [31:19],       rsvd,        0x0 */
+        }BF;
+        uint32_t WORD;
+    } tzc_se_ctrl_2;
+
+};
+
+typedef volatile struct tzc_sec_reg tzc_sec_reg_t;
+
+
+#endif  /* __TZC_SEC_REG_H__ */

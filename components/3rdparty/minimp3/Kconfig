@@ -1,0 +1,7 @@
+config COMPONENTS_MINIMP3_ENABLE
+    bool "Enable minimp3 MP3 decoder library"
+    default n
+    help
+      minimp3 is a minimalistic MP3 decoder library.
+      Public domain, header-only, zero external dependencies.
+      https://github.com/lieff/minimp3

@@ -1,0 +1,12 @@
+{
+  "pass": false,
+  "device": "IPRO-LE-Audio",
+  "duration_s": 45.0,
+  "failures": [
+    "LE Audio advertising did not start",
+    "Android ACL connection not established",
+    "Android did not discover ASCS (0x184e)"
+  ],
+  "board_log": "apps/bluetooth/le_audio/ipro_le_audio_headset/le_audio_host_ecc.log",
+  "android_log": "--------- beginning of main\n08-23 19:38:27.239 15428 15428 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-BLE-CTL\n"
+}

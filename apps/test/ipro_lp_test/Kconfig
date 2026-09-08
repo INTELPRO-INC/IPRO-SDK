@@ -1,0 +1,5 @@
+mainmenu "IPRO Low Power Test Application"
+
+config LP_TEST_ENABLE
+    bool "Enable Low Power Test application"
+    default y

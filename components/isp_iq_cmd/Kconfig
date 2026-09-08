@@ -1,0 +1,6 @@
+config COMPONENTS_ISP_CMD_ENABLE
+    bool "Enable ISP CMD Parser"
+    default y
+    help
+      Enable the ISP CMD Parser
+

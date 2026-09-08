@@ -1,0 +1,8 @@
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_FREERTOS_ENABLE freertos)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_FREERTOS_POSIX_ENABLE freertos_posix)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_ZEPHYR_ENABLE zephyr)
+
+# IPRO OSAL - OS Abstraction Layer (works with FreeRTOS)
+__component_add_subdirectory_ifdef(CONFIG_IPRO_OSAL ipro_osal)
+
+

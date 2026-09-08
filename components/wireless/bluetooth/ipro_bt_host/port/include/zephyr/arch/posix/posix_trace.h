@@ -1,0 +1,7 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+#ifndef IPRO_BT_HOST_ZEPHYR_ARCH_POSIX_TRACE_H_
+#define IPRO_BT_HOST_ZEPHYR_ARCH_POSIX_TRACE_H_
+
+#define POSIX_TRACE(...)
+
+#endif /* IPRO_BT_HOST_ZEPHYR_ARCH_POSIX_TRACE_H_ */

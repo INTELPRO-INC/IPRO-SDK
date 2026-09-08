@@ -1,0 +1,8 @@
+# EVFS - Embedded Virtual Filesystem
+__component_add_subdirectory_ifdef(CONFIG_EVFS evfs)
+
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_FATFS_ENABLE fatfs)
+
+__component_add_subdirectory_ifdef(CONFIG_EASYFLASH4 easyflash4)
+
+__component_add_subdirectory_ifdef(CONFIG_LITTLEFS littlefs)

@@ -1,0 +1,152 @@
+/*
+ * Copyright (c) 2025 IPRO
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+/* Note: Using direct values instead of riscv-plic.h for compatibility */
+#define PLIC_IRQ_PRIORITY_DEFAULT 1
+
+/ {
+	model = "IPRO7 RISC-V Board";
+	compatible = "ipro,ipro7";
+
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	aliases {
+		uart0 = &uart0;
+		gpio0 = &gpio0;
+		spi0 = &spi0;
+		i2c0 = &i2c0;
+	};
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "riscv";
+			reg = <0>;
+			riscv,isa = "rv32imafc";
+			mmu-type = "riscv,sv32";
+
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x8000000>; /* 128MB */
+	};
+
+	sram0: sram@80000000 {
+		compatible = "mmio-sram";
+		reg = <0x80000000 0x8000000>; /* 128MB */
+	};
+
+	flash0: flash@80000000 {
+		compatible = "soc-nv-flash";
+		reg = <0x80000000 0x8000000>; /* 128MB */
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+                plic: interrupt-controller@c000000 {
+                        compatible = "sifive,plic-1.0.0";
+                        reg = <0xc000000 0x1000>,     /* prio */
+                              <0xc001000 0x1000>,     /* irq_en */  
+                              <0xc200000 0x1000>;     /* reg */
+                        reg-names = "prio", "irq_en", "reg";
+                        #interrupt-cells = <2>;
+                        interrupt-controller;
+                        interrupts-extended = <&cpu0_intc 11>;
+                        riscv,ndev = <127>;
+                        riscv,max-priority = <7>;
+                };
+
+		uart0: serial@10000000 {
+			compatible = "ns16550";
+			reg = <0x10000000 0x1000>;
+			interrupts = <10 PLIC_IRQ_PRIORITY_DEFAULT>;
+			interrupt-parent = <&plic>;
+			clock-frequency = <100000000>;
+			reg-shift = <2>;
+			status = "okay";
+		};
+
+		gpio0: gpio@10001000 {
+			compatible = "sifive,gpio0";
+			reg = <0x10001000 0x1000>;
+			interrupts = <11 PLIC_IRQ_PRIORITY_DEFAULT>;
+			interrupt-parent = <&plic>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <32>;
+			status = "okay";
+		};
+
+		spi0: spi@10002000 {
+			compatible = "sifive,spi0";
+			reg = <0x10002000 0x1000>;
+			interrupts = <12 PLIC_IRQ_PRIORITY_DEFAULT>;
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+		};
+
+		i2c0: i2c@10003000 {
+			compatible = "sifive,i2c0";
+			reg = <0x10003000 0x1000>;
+			interrupts = <13 PLIC_IRQ_PRIORITY_DEFAULT>;
+			interrupt-parent = <&plic>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <400000>;
+			status = "okay";
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+			label = "LED 0";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+			label = "LED 1";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 16 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Button 0";
+		};
+		button1: button_1 {
+			gpios = <&gpio0 17 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Button 1";
+		};
+	};
+};

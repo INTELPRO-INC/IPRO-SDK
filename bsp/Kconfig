@@ -1,0 +1,763 @@
+# BSP (Board Support Package) Configuration
+#
+# Hardware platform configuration including SoC selection, board type,
+# and RF frontend modules.
+
+menu "Hardware Platform Configuration"
+
+#
+# Select Target SoC
+#
+choice
+    prompt "Target SoC"
+    default IPRO7
+    help
+      Select the target System-on-Chip (SoC) for your hardware platform.
+
+config IPRO7
+    bool "IPRO7"
+    help
+      Select this option if your target hardware uses the IPRO7 SoC.
+
+config IPRO6
+    bool "IPRO6"
+    help
+      Select this option if your target hardware uses the IPRO6 SoC.
+      IPRO6 uses IPRO7's CPU with IPRO6LE's memory layout.
+
+config IPRO6LE
+    bool "IPRO6LE"
+    help
+      Select this option if your target hardware uses the IPRO6LE SoC.
+
+config IPRO7AI_EVK
+    bool "IPRO7AI EVK sub-board (QFN49, PSRAM + AI)"
+    select USE_PSRAM
+    help
+      IPRO7AI EVK sub-board, schematic IPRO7AI_MODULE_SUB_0805.
+
+      Carries a 2.4" 240x320 ST7789P3 SPI display, an SC101IOT DVP camera,
+      a TPA2037D1 speaker amplifier off the on-chip DAC, an IM69D129 PDM
+      microphone, a micro-SD slot on the SDH controller, and a Li-ion
+      charger (RT9527GQW) with the cell on CN4.
+
+      Console UART0 on GPIO20/21. Display on GPIO10/12/14-17. Camera DVP on
+      GPIO0-7 with SCCB on GPIO36/37 and MCLK on GPIO41. Speaker DAC on
+      GPIO23 with an ACTIVE-HIGH enable on GPIO22. PDM mic on GPIO18/19.
+      SD card on GPIO27-34.
+
+      Note: the camera bank (VDDIO1) must be jumpered to 1.8 V on J6
+      (PIN1/PIN3), and GPIO41 doubles as the BOOT strap. Firmware cannot
+      read battery voltage or charge status on this board - see the header
+      for why. Selects USE_PSRAM.
+
+endchoice
+
+config CHIP
+    string
+    default "IPRO7" if IPRO7
+    default "IPRO6" if IPRO6
+    default "IPRO6LE" if IPRO6LE
+
+config WIFI_LP_APP_SUPPORT
+    bool "Reserve OCRAM slot for the standalone lp_fw (WiFi low-power)"
+    depends on IPRO6
+    default n
+    help
+      Reserve the top 32K of OCRAM (0x11048000-0x11050000) for the standalone
+      lp_fw Stage-1 image used by the WiFi low-power (DTIM) app flow. When set,
+      ram_tcm shrinks from the full 320K to 288K so the lp_fw image has a fixed,
+      PDS-retained run slot. Leave disabled for apps that do not stage lp_fw —
+      they keep the full 320K of TCM.
+
+config IPRO_WIFI_PS
+    bool "WiFi datapath resume across PDS (macsw key RAM / MAC HW re-program)"
+    depends on WIFI_LP_APP_SUPPORT
+    default n
+    help
+      Enable the full-firmware WiFi datapath resume path (gates
+      -DCFG_IPRO_WIFI_PS_ENABLE in macsw). After a lp_fw WIFI-wake, the full FW
+      re-programs the MAC HW (STA context, CCMP keys via the on-chip key RAM,
+      MAC/BSSID filters, PHY/channel) from the SW state that survived PDS, so the
+      encrypted data path (e.g. ping) recovers. lp_demo snapshots the key RAM +
+      channel before PDS (rwnxl_pds_store / rwnxl_configs_restore) and calls
+      rwnxl_resume_wifi() after the wake. Requires the WiFi6 STA stack.
+
+#
+# Toolchain Configuration
+#
+config CPU_ID
+    string "CPU ID"
+    default "intelpro_ipro7" if IPRO7
+    default "intelpro_ipro7" if IPRO6
+    default "m0" if IPRO6LE
+    help
+      CPU identifier used for toolchain selection.
+      - IPRO7: intelpro_ipro7
+      - IPRO6: intelpro_ipro7 (uses IPRO7's CPU)
+      - IPRO6LE: m0 (RISC-V E906 with Thead extensions)
+
+config CROSS_COMPILE
+    string "Cross-compiler prefix"
+    default "/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-" if IPRO7
+    default "/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-" if IPRO6
+    default "/opt/toolchain/toolchain_riscv_thead_linux64/bin/riscv64-unknown-elf-" if IPRO6LE
+    help
+      Path to the cross-compiler toolchain prefix.
+
+      IPRO7 toolchain:
+        - Default: /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-
+        - Architecture: RISC-V 64-bit
+        - Features: Standard RISC-V extensions
+
+      IPRO6 toolchain (same as IPRO7):
+        - Default: /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-
+        - Architecture: RISC-V 64-bit (uses IPRO7's CPU)
+
+      IPRO6LE toolchain:
+        - Default: /opt/toolchain/toolchain_riscv_thead_linux64/bin/riscv64-unknown-elf-
+        - Architecture: RISC-V E906 (RV32IMAFC)
+        - Features: Thead custom extensions (P, zpsfoperand, xtheade)
+
+#
+# Select Board Type
+#
+choice
+    prompt "Board Type"
+    default NONE
+    help
+      Select the specific hardware board configuration.
+
+config NONE
+    bool "None"
+    help
+      No specific board selected.
+
+config FPGA
+    bool "FPGA Board"
+    help
+      Select this option if using the IPRO FPGA development board.
+
+config EVB
+    bool "Evaluation Board (EVB)"
+    help
+      Select this option if using the IPRO Evaluation Board.
+
+config DVK
+    bool "Development Kit (DVK)"
+    help
+      Select this option if using the IPRO Development Kit board.
+      Camera pins differ from EVB (no dedicated RST/PWDN GPIOs).
+
+config SLT
+    bool "SLT Board (System Level Test)"
+    help
+      Select this option for SLT (System Level Test) builds.
+      Disables board pinmux init to prevent output contention
+      during GPIO loopback testing. UART and clocks are kept.
+
+config DEMO_QFN32
+    bool "Demo Board QFN32 (no PSRAM / no AI)"
+    help
+      IPRO7 SEVB QFN32 demo board (NOT the EVB). No PSRAM, no AI/NPU.
+      UART console on GPIO20/21. Externally usable pins are the TB2 header
+      (TB2_1..12 = GPIO 0/1/2/11/40/39/33/30/29/28/31/32); the factory-reset
+      button is on GPIO32 (TB2_12). Selecting this board auto-applies its
+      pinmux via board_config.h.
+
+config DEMO_QFN56
+    bool "Demo Board QFN56 (PSRAM + AI)"
+    select USE_PSRAM
+    help
+      IPRO7 SEVB QFN56 demo board (NOT the EVB). Has PSRAM + AI/NPU + a DVP
+      camera interface. UART console on GPIO20/21. Externally usable pins are
+      TB0_1~12 (DVP) plus UART/I2C; the factory-reset button is on GPIO41
+      (TB0_12 / CAM_CLK). Selects USE_PSRAM. Enable AI separately with
+      CONFIG_AI_SUPPORT in the app .config.
+
+config IPRO7_ARDUINO
+    bool "IPRO7 Arduino Board (QFN56, PSRAM + AI)"
+    select USE_PSRAM
+    help
+      IPRO7 Arduino form-factor board (QFN56). Has PSRAM + AI/NPU + a DVP
+      camera interface. UART console on GPIO20/21. I2C0 on GPIO34 (SCL) /
+      GPIO35 (SDA). DVP camera on GPIO0-7 (DAT0-7) / GPIO37 (MCLK) /
+      GPIO38 (PCLK) / GPIO39 (FRAME_VLD) / GPIO40 (LINE_VLD). USB DP/DM on
+      GPIO8/9. GPIO41 is the BOOT_LOAD strap; no user LED or button.
+      Selects USE_PSRAM (raw per-app builds must still set
+      CONFIG_USE_PSRAM=y explicitly). Enable AI with CONFIG_AI_SUPPORT.
+
+endchoice
+
+config BOARD
+    string
+    default "EVB" if EVB
+    default "DVK" if DVK
+    default "FPGA" if FPGA
+    default "SLT" if SLT
+    default "DEMO_QFN32" if DEMO_QFN32
+    default "DEMO_QFN56" if DEMO_QFN56
+    default "IPRO7_ARDUINO" if IPRO7_ARDUINO
+    default "IPRO7AI_EVK" if IPRO7AI_EVK
+    default ""
+
+
+#
+# FPGA-specific RF Card Selection
+#
+if FPGA
+
+choice
+    prompt "RF Frontend Module"
+    default RF_AD9361
+    help
+      Select the RF frontend module for FPGA board.
+      This option is only available when FPGA board is selected.
+
+config RF_AD9361
+    bool "AD9361 (Analog Devices)"
+    help
+      Use the AD9361 RF frontend module from Analog Devices.
+      This is a highly integrated RF transceiver supporting multiple bands.
+
+config RF_T2
+    bool "Custom T2 Module"
+    help
+      Use a custom-designed T2 RF frontend module.
+
+endchoice
+
+config RF_DTB
+    string
+    default "RFDTB9361" if RF_AD9361
+    default "RFDTBT2" if RF_T2
+    default ""
+
+config FPGA_RAM_AS_HEAP
+    bool "Use remaining FPGA RAM as FreeRTOS Heap"
+    default n
+    depends on IPRO6
+    help
+      In FPGA environment, the "flash" region is actually RAM.
+      This option enables using the remaining FPGA RAM (after code/data)
+      as an additional FreeRTOS heap region.
+
+      Memory layout with this option:
+        - Code region: 2MB @ 0x12000000 (for program execution)
+        - Heap region: remaining space after code/rodata/data
+
+      When enabled:
+        - Linker script reserves first 2MB for code
+        - Remaining flash region becomes __heap_flash_start/size
+        - FreeRTOS heap includes both TCM heap and flash heap regions
+
+      This provides significantly more heap memory for FPGA development.
+
+      Say Y if you need more heap memory on FPGA board.
+
+endif  # FPGA
+
+#
+# Build Configuration
+#
+menu "Build Configuration"
+
+choice
+    prompt "IPRO7 flash layout"
+    depends on IPRO7
+    default IPRO7_FLASH_1M
+    help
+      Select the flash size used by the IPRO7 linker configuration
+      (bsp/board/linker/configs/ipro7_flash.cmake).
+
+      1MB matches the on-chip flash on mainstream IPRO7 boards.
+
+      2MB / 4MB / 8MB are only valid on boards with SF3 external flash
+      (efuse flash_cfg=2, typically using GPIO 28-33). Also set
+      CONFIG_DISABLE_SDC_PINMUX=y when enabling external flash to avoid
+      reinitializing the pins used by the external flash.
+
+      WARNING: selecting a larger size than the board physically carries
+      will produce a binary that fits the linker budget but cannot be
+      flashed / will fail to boot. Only enable on boards you have
+      physically verified to carry the external flash.
+
+config IPRO7_FLASH_1M
+    bool "1MB (on-chip, default)"
+
+config IPRO7_FLASH_2M
+    bool "2MB (SF3 external flash)"
+
+config IPRO7_FLASH_4M
+    bool "4MB (SF3 external flash)"
+
+config IPRO7_FLASH_8M
+    bool "8MB (SF3 external flash)"
+
+endchoice
+
+config HAL_PIO_SDH
+    bool "PIO-based 4-bit SD host (A/B vs hardware SDH)"
+    depends on IPRO7
+    default n
+    help
+      Software SD host built on the PIO state machines, on GPIO22-27
+      (CLK=22, CMD=23, D0-D3=24-27). Independent of the hardware SDH
+      (GPIO28-33), which is left untouched for A/B comparison.
+      Pulls in hal_pio_sdh.c, hal_pio_sdh_crc.c and drv_pio.c.
+
+config HAL_PIO_SDH_DAT_GAP
+    int "PIO-SDH read inter-nibble gap (CLK-low cycles, 0-30)"
+    depends on HAL_PIO_SDH
+    default 0
+    range 0 30
+    help
+      Extra CLK-low cycles inserted between DATA nibbles on the read path,
+      trading throughput for signal-integrity margin. The 24 MHz wire ceiling
+      is 48/(4+gap) MB/s: gap 0 = 12 MB/s (read ~9.4), gap 5 = 5.3 MB/s
+      (read ~4.6). gap 0 is clean with High-Speed mode + rising-latch sampling
+      (the default after enumeration) on this bench; raise it (e.g. 5) only if
+      the card does not grant HS or the wiring is marginal (CRC/data errors at
+      gap 0). Runtime override any time: `pio_sdcard gap <0-30>`.
+
+config HAL_PIO_SDH_PAD_DRIVE
+    int "PIO-SDH pad drive strength (0-3)"
+    depends on HAL_PIO_SDH
+    default 3
+    range 0 3
+    help
+      GPIO pad drive strength for all six PIO-SDH pins (CLK/CMD/D0-D3).
+      3 (max) holds the lines firmly against SSO coupling on the jumper
+      bench; a lower value doubles as source termination if a hard-driven
+      edge rings at the card. Runtime override: `pio_sdcard pad`.
+
+config HAL_PIO_SDH_PULL_NONE
+    bool "Disable internal pull-ups on PIO-SDH pads"
+    depends on HAL_PIO_SDH
+    default n
+    help
+      Leave CMD/D0-D3 (and CLK) without internal pull-ups. Select this
+      when the SD adapter board provides external pull-up resistors, so
+      the lines see a single defined pull instead of two in parallel.
+      Without external pulls this MUST stay off (CMD/DAT float during
+      bus turnaround). Runtime override: `pio_sdcard pad`.
+
+config LINK_FLASH
+    bool "Link from Flash (instead of RAM)"
+    default n
+    help
+      Select the linker script configuration:
+      
+      Flash boot (Y):
+        - Uses ipro7_flash.ld linker script
+        - Flash: 4MB @ 0x13000000
+        - OCRAM: 256KB @ 0x11010000
+        - Suitable for large applications (BLE 5.4, complex features)
+        - Production deployment configuration
+      
+      RAM boot (N):
+        - Uses ipro7_ram.ld linker script
+        - Flash: 128KB @ 0x11010000
+        - OCRAM: 128KB @ 0x11030000
+        - Faster development cycle (no flash programming)
+        - Limited code size - suitable for simple applications only
+      
+        - Say N for quick prototyping with small code size
+
+      Recommendation:
+        - Say Y for BLE 5.4 applications and production builds
+        - Say N for quick prototyping with small code size
+
+config LINKER_SCRIPT
+    string "Custom linker script filename"
+    default ""
+    help
+      Specify a custom linker script file located in the app directory.
+      Leave empty to use the default behavior:
+        1. apps/<project>/<project>.ld (if exists)
+        2. Generated linker script (from board config)
+
+      Example: Set to "custom_64k.ld" to use apps/<project>/custom_64k.ld
+
+config ENABLE_FRAME_POINTER
+    bool "Enable Frame Pointer"
+    default y
+    help
+      Enable compilation with frame pointers (-fno-omit-frame-pointer).
+      This allows for accurate stack backtracing during exceptions.
+
+      Impact:
+        - Slightly increased code size
+        - Reduced general purpose registers by 1 (s0 used as FP)
+        - Significantly improved debugging capability
+
+config FLASH_CFG_FROM_BOOTROM
+    bool "Use flash config from bootrom (tool-only flash porting)"
+    default y
+    depends on LINK_FLASH
+    help
+      Use the flash configuration passed from bootrom via boot2 parameters
+      instead of the SDK driver's hardcoded flash chip table.
+
+      When enabled:
+        - Adding a new flash chip only requires iprocube tool changes
+          (.conf file + flashcfg_list.csv + bootheader config)
+        - No SDK driver changes needed (no drv_sf_cfg_ext.c modification)
+        - Bootrom identifies the flash and passes config to FW
+
+      When disabled:
+        - FW detects flash via JEDEC ID and looks up in drv_sf_cfg_ext.c
+        - New flash chips require both tool and SDK driver changes
+
+      Say Y for production builds. Say N only if bootrom flash config
+      is not available or for debugging flash detection.
+
+config USE_ROM_DRIVERS
+    bool "Use ROM Drivers (smaller code size)"
+    default n
+    depends on IPRO7 || IPRO6
+    help
+      Use driver functions from ROM instead of full SDK implementations.
+      This reduces code size by calling pre-programmed ROM driver functions.
+
+      When enabled:
+        - Uses drv_romapi.c + drv_romapi_patch.c
+        - Smaller code size (drivers run from ROM)
+        - ROM drivers are fixed at ROM programming time
+
+      When disabled:
+        - Uses full SDK driver implementations
+        - Larger code size but more flexibility
+        - Can modify driver behavior
+
+      Note: Some APIs have changed signatures between ROM and SDK.
+      The drv_romapi_patch.c file handles these differences.
+      See docs/ROMDRIVER_API_DIFF.md for details.
+
+config SINGLE_PRECISION_FLOAT
+    bool "Use single-precision (float) instead of double"
+    default n
+    help
+      Add -fsingle-precision-constant to treat unsuffixed floating-point
+      literals as float instead of double. Also converts printf %f
+      internals and math library calls to float-only variants.
+      Saves ~10KB flash on RISC-V soft-float targets.
+      No precision impact for typical embedded use (ADC, sensor, ISP).
+
+config EXCEPTION_DUMP
+    bool "Enable exception crash dump over UART"
+    default y
+    help
+      Enable crash dump system that streams full memory state to a PC
+      tool over UART when an exception or configASSERT failure occurs.
+
+      When enabled:
+        - Exception handler waits for PC tool magic sequence
+        - Dumps OCRAM, PSRAM, peripheral registers, and CPU state
+        - Uses block transfer with CRC-16 checksums at 2 Mbaud
+        - PC tool provides automatic crash analysis with backtrace
+        - Code size: ~2.4 KB text, ~1 KB BSS (static TX buffer)
+
+      When disabled:
+        - Exception handler prints diagnostics and halts (original behavior)
+        - No DUMP_READY banner, no memory dump capability
+        - Saves ~2.4 KB flash
+
+      Say Y for development and debugging (default).
+      Say N for production builds where code size is critical.
+
+config EXCEPTION_AUTO_REBOOT
+    bool "Auto reboot on CPU exception"
+    default n
+    help
+      Automatically reboot the system when a CPU exception occurs.
+
+      When enabled:
+        - Exception handler prints debug info then reboots
+        - Reset reason is set to HAL_RST_REASON_EXCEPTION
+        - If EXCEPTION_DUMP is also enabled, dump runs first, then reboots
+        - Useful for production systems that need auto-recovery
+
+      When disabled (default):
+        - Exception handler prints debug info and loops forever
+        - Useful for development and debugging
+
+      Say N for development, Y for production auto-recovery.
+
+endmenu
+
+#
+# Memory Configuration
+#
+menu "Memory Configuration"
+
+config LINK_FLASH
+    bool "Enable XIP-Flash Link"
+    default y
+    help
+      Enable SPI Nor Flash XIP
+
+config USE_PSRAM
+    bool "Enable PSRAM"
+    default n
+    help
+      Enable PSRAM support
+
+config ENABLE_NVDS
+    bool "Enable NVDS (Non-Volatile Data Storage)"
+    default y
+    help
+      Enable NVDS (Non-Volatile Data Storage) section in linker script.
+      When enabled, reserves a RAM mirror for BLE/non-volatile data
+      storage. The linker default is 1KB and can be overridden with
+      NVDS_SIZE.
+
+      Memory impact:
+        - Enabled:  NVDS_SIZE bytes reserved from OCRAM by default
+        - Disabled: no RAM mirror reserved
+
+      This option is typically used for storing persistent configuration
+      and calibration data in RAM-based storage.
+
+      Say Y if you need persistent data storage.
+      Say N to maximize available RAM.
+
+config NVDS_SIZE
+    string "NVDS RAM mirror size"
+    depends on ENABLE_NVDS
+    default "1K"
+    help
+      Size of the linker-reserved NVDS RAM mirror. The default BLE
+      controller tags fit in 1KB. Increase only if an application adds more
+      NVDS tags or a larger mirror is explicitly required.
+
+      Accepted values are linker expressions such as 1024, 1K or 4K.
+
+config NVDS_IN_PSRAM
+    bool "Place NVDS RAM mirror in PSRAM"
+    depends on ENABLE_NVDS && USE_PSRAM
+    default n
+    help
+      Place .nvds in PSRAM instead of OCRAM. The IPRO7 linker generator
+      anchors __heap_psram_start after MAX(_bss_psram_end, __nvds_end), so
+      the FreeRTOS heap cannot overlap the NVDS mirror.
+
+      Leave disabled by default for existing applications. Enable for
+      PSRAM-equipped AI/MM/BLE builds where OCRAM headroom is tight.
+
+config DISABLE_EM_TCM_RET
+    bool "Disable em_tcm_ret section (merge TCM code into OCRAM)"
+    default n
+    depends on AI_SUPPORT && MM_SUPPORT
+    help
+      When AI and MM support are both enabled, the linker normally
+      creates a separate em_tcm_ret section (16KB at 0x1102C000)
+      for TCM code to maximize OCRAM space for data.
+
+      Enable this option to merge all TCM code back into OCRAM,
+      eliminating the em_tcm_ret section. This is useful when:
+        - Your OCRAM has enough space for both data and TCM code
+        - You want simpler memory layout
+
+      Memory impact (with AI+MM, EM_SIZE=0):
+        - Disabled (default): OCRAM=48KB data, em_tcm_ret=16KB code
+        - Enabled: OCRAM=48KB (data + TCM code merged)
+
+      Say N unless you know your OCRAM can fit all TCM code.
+
+endmenu
+
+#
+# Hardware Features
+#
+menu "Hardware Features"
+
+config MM_SUPPORT
+    bool "Enable Multimedia Support"
+    default n
+    depends on IPRO7
+    select USE_PSRAM
+    help
+      Enable multimedia hardware features including camera (ISP),
+      JPEG encoder/decoder, and related peripherals.
+      Note: This automatically enables PSRAM support.
+      Only available on IPRO7 platform.
+
+config LDO_SUPPORT
+    bool "Use LDO power supply (instead of DCDC)"
+    default n
+    depends on IPRO7
+    help
+      Select the primary power supply for the AON domain.
+
+      When disabled (default, DCDC mode):
+        - pu_ldo14_aon = 0 (LDO off)
+        - pu_dcdc_aon  = 1 (DCDC on)
+        - Lower power consumption, requires external inductor
+
+      When enabled (LDO mode):
+        - pu_ldo14_aon = 1 (LDO on)
+        - pu_dcdc_aon  = 0 (DCDC off)
+        - Simpler BOM, no inductor needed
+
+      Say N for boards with DCDC circuit (default).
+      Say Y for boards using LDO-only power supply.
+
+config SUPPORT_PURE_DCDC
+    bool "Skip DCDC/LDO re-init on HBN wake (requires DCDC mode)"
+    default n
+    depends on IPRO7 && !LDO_SUPPORT
+    help
+      Optimise HBN (deep sleep) wake-up path.
+
+      When disabled (default):
+        - board_power_init runs every boot, including HBN wake.
+        - Cold-boot flow is always applied.
+
+      When enabled:
+        - On cold boot (POR), board_power_init runs and programs the
+          DCDC + VDD14 bond option + LDO14 disable + vouts as usual.
+        - On warm boot (HBN wake, detected via HBN RAM sysinfo magic),
+          board_power_init returns immediately. All AON/HBN power
+          registers (HBN_CTL pu_dcdc_aon / pu_ldo14_aon, HBN_MISC
+          vdd14_bond_option_enb_aon, DCDC18_TOP_0 voutSel, LDO14_TOP
+          vout_sel) survive HBN 1-tick wake-up, so re-init is a no-op.
+        - Saves the ~10us of power-init overhead per HBN wake and
+          avoids transient glitches from redundant reg writes.
+
+      Requires DCDC mode (mutually exclusive with LDO_SUPPORT).
+
+config PURE_DCDC_AON_WDT_RECOVER
+    bool "AON WDT safety net for pure_dcdc wakeup"
+    default y
+    depends on SUPPORT_PURE_DCDC
+    help
+      Arm the AON watchdog (HBN_WDT) inside pure_dcdc_save_state with
+      mask_bit=6 (~3.9ms timeout) to cover the DCDC switch → HBN-1T
+      bounce → wakeup stub recovery path. The stub disables WDT at end
+      of recovery before FW main runs.
+
+      When enabled (default):
+        - Any hang between DCDC switch and end of stub recovery triggers
+          AON WDT chip reset (~3.9ms). HBN domain regs (HBN_MISC[11]
+          warm marker, HBN_RSV0=EHBN, HBN_RSV1=stub) survive the WDT
+          reset so BROM fastboot dispatches to stub on retry.
+        - Validated 10000-iter stress: 0 REAL_HANG over 7946 effective
+          iterations; ~2.7% WDT recovery rate (always single-fire).
+
+      When disabled:
+        - Saves ~30 bytes flash + ~10us setup time per cold boot.
+        - Wakeup hangs (silicon-corner-case during HBN bounce or stub
+          recovery) require relay/external POR to recover; chip will
+          appear bricked from RST_N perspective.
+
+config NMSIS_DSP
+    bool "Enable NMSIS DSP Library"
+    default y
+    depends on IPRO7
+    help
+      Enable the NMSIS DSP library for RISC-V DSP operations.
+      This provides optimized DSP functions including FFT, filters,
+      matrix operations, and statistical functions.
+
+      Code size impact: ~80KB (mostly lookup tables for FFT)
+
+      When enabled:
+        - Links libnmsis_dsp library
+        - Provides riscv_rfft_fast_f32 and other DSP functions
+        - Required for NIST DSP acceleration
+
+      When disabled:
+        - Saves ~80KB flash
+        - NIST spectral test uses software DFT (slower)
+        - Other DSP-dependent features may not work
+
+      Say Y if you need DSP functions or fast FFT.
+      Say N to save flash if DSP is not needed.
+
+config AON_WDT_ENABLE
+    bool "Enable AON Watchdog Timer in FW"
+    default n
+    depends on IPRO7
+    help
+      Enable AON WDT management in FW.
+      If disabled (default), FW disables AON WDT in system_init.
+      If enabled, FW extends WDT to ~32s timeout with 1s kick task.
+
+config DMA_CHANNEL_ALLOCATOR
+    bool "Enable runtime DMA channel allocator"
+    default n
+    help
+      Replace hardcoded DMA0_CHx_INDEX constants with a runtime
+      allocator that hands out channels by peripheral request ID
+      (DMA_REQUEST_DAC0, DMA_REQUEST_AUD_ADC, ...).
+
+      When enabled:
+        - bsp/hal exposes dma_request_channel/release_channel/
+          dump_allocation APIs.
+        - dma_init() splits into a one-shot dma_controller_init()
+          plus per-channel dma_channel_attach() so initialising
+          channel N does not disrupt in-flight transfers on
+          channels 0..N-1.
+        - dma_channel_attach() enables the per-channel DMA clock
+          via GLB_Set_DMA_CLK — required for CH4..CH7 which are
+          clock-gated at reset.
+
+      When disabled (default):
+        - Legacy behaviour: dma_init() does a global
+          DMA_Disable/Enable each call. CH4..CH7 remain
+          unusable (clock-gated).
+        - Raw DMA0_CHx_INDEX constants keep working.
+
+      Per-app opt-in: enable per project .config as each app is
+      ported onto the allocator. Mixing modes across apps in one
+      build is supported for migration.
+
+endmenu
+
+#
+# Debug UART Configuration
+#
+menu "Debug UART Configuration"
+
+config EARLY_PRINT
+    bool "Enable early boot print via UART1 TX FIFO"
+    default n
+    depends on IPRO7
+    help
+      Output boot stage markers before platform UART is initialized.
+      Bootrom leaves UART1 configured at 115200 baud on GPIO 17.
+      This remaps UART1 TX to GPIO 20 (debug UART pin) and writes
+      directly to the TX FIFO register — zero driver dependencies.
+
+      Markers printed:
+        [EP] _premain_init  — entered pre-main init
+        [EP] efuse_init     — about to read efuse
+        [EP] psram_init     — about to calibrate PSRAM
+        [EP] psram_done     — PSRAM calibration complete
+        [EP] main           — entered main()
+
+      Say Y to diagnose boot failures before UART is ready.
+      Say N for production builds.
+
+config PLATFORM_UART_BAUDRATE
+    int "Platform UART Baudrate"
+    default 115200
+    help
+      Configure the baudrate for platform debug UART.
+      
+      Common baudrate values:
+        - 9600
+        - 19200
+        - 38400
+        - 57600
+        - 115200 (default)
+        - 230400
+        - 460800
+        - 921600
+      
+      Default: 115200 bps
+
+endmenu
+
+endmenu

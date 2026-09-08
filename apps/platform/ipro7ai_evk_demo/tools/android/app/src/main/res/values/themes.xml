@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose paints everything, so the Android theme only has to give the
+         window a sane ground and stay out of the way. Pulling in the Material
+         Components library purely for one XML style would not earn its size. -->
+    <style name="Theme.EvkBench" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#EEF0F3</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

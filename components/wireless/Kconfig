@@ -1,0 +1,101 @@
+# Wireless Subsystem Configuration
+#
+# Configuration for wireless connectivity features including Bluetooth LE,
+# Wi-Fi, Zigbee, and other wireless protocols.
+
+menu "Wireless Configuration"
+
+config BLUETOOTH_LE_ENABLE
+    bool "Enable Bluetooth Low Energy (BLE)"
+    help
+      Enable support for Bluetooth Low Energy features and profiles.
+
+      This includes the BLE 5.4 stack with support for:
+      - GAP (Generic Access Profile)
+      - GATT (Generic Attribute Profile)
+      - GAF (Generic Audio Framework)
+      - BAP (Basic Audio Profile)
+      - LE Audio features
+
+# BLE Stack Configuration
+if BLUETOOTH_LE_ENABLE
+    osource "components/wireless/bluetooth/Kconfig"
+endif
+
+config WIFI6
+    bool "Enable Wi-Fi 6 (802.11ax)"
+    help
+      Enable Wi-Fi 6 (802.11ax) wireless connectivity support.
+
+config PHY_CLI
+    bool "Enable PHY/RF test CLI (phyrf bring-up)"
+    help
+      Build the IPRO6 PHY/RF driver with its shell/CLI test commands
+      (phy_init, txsin_start, tx11*_start, at_rx_start, rr/wr, ...) without
+      pulling in the full Wi-Fi 6 networking stack. For PHY/RF bring-up and
+      manufacturing test on the ASIC via the WiFi IP macbypass hardware.
+
+config PHY_LPFW
+    bool "Build the low-power-mode PHY variant (phy_lp.c)"
+    help
+      Select the low-power-mode PHY (phy_lp.c / agcmem_lp.c) instead of the
+      normal PHY (phy.c / agcmem.c). The low-power variant uses a reduced AGC
+      event memory and re-tuned RX gain-control / reference-level settings.
+      Leave unset for normal phyrf / Wi-Fi builds.
+
+config WIFI_HT40_ENABLE
+    bool "Permit HT40 (40 MHz) channel width by default"
+    depends on WIFI6
+    help
+      Boot default for the fhost HT40 permission flag. It only PERMITS 40 MHz:
+      the modem capability (phy_get_bw, read-only) and the AP's HT Operation IE
+      still decide the width actually used, so this is safe to leave on.
+
+      Leave unset to keep the historic 20 MHz-only behaviour. Either way the
+      `wifi_ht40` shell command overrides it at runtime, before stack_wifi.
+
+if WIFI6
+    osource "components/wireless/wifi6/sigma_dut/Kconfig"
+endif
+
+# ATBM6162 (Altobeam OCEANUS) external Wi-Fi 6 over SDIO
+osource "components/wireless/wifi_atbm6162/Kconfig"
+
+config LPAPP
+    bool "Enable Low Power Application Processor"
+    help
+      Enable low power application processor support for power-optimized
+      wireless applications.
+
+config ZIGBEE_STACK
+    bool "Enable Zigbee Stack"
+    select IEEE802154_ENABLE
+    help
+      Enable Zigbee wireless protocol stack support.
+
+# Hidden backward-compatibility alias (lmac154 is now part of ieee802154)
+config LOWER_MAC_15P4_LIB
+    bool
+    default IEEE802154_ENABLE
+
+osource "components/wireless/ieee802154/Kconfig"
+
+config OPENTHREAD_ENABLE
+    bool "Enable OpenThread Stack"
+    select IEEE802154_ENABLE
+    help
+      Enable OpenThread Thread protocol stack support for IoT mesh networking.
+
+      OpenThread is an open-source implementation of the Thread networking
+      protocol. Thread provides a reliable, secure, low-power mesh network
+      for IoT devices.
+
+if OPENTHREAD_ENABLE
+    osource "components/wireless/thread/Kconfig"
+endif
+
+# IPRO6S BLE controller compatibility configuration.  The historical BTDM
+# names are retained, but the implementation lives in ipro_ble_controller.
+osource "components/wireless/bluetooth/ipro_ble_controller/Kconfig.ipro6s"
+
+endmenu

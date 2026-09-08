@@ -1,0 +1,103 @@
+# IPRO7 Flash Configuration
+# Flash-based boot configuration without NVDS
+# Applies to all IPRO7 boards (EVB, FPGA, etc.)
+
+set(FLASH_ORIGIN "0x13000000")
+set(FLASH_SIZE   "1M")
+set(PSRAM_ORIGIN "0x1e000000")
+set(PSRAM_SIZE   "8M")
+
+# Memory Layout based on AI/MM support:
+# 1. AI=y, MM=y, EM_SIZE=0:
+#     OCRAM: 0x11010000, 48KB
+#     em_tcm_ret: 0x1102C000, 16KB (tcmcode split)
+# 2. AI=y, MM=y, EM_SIZE>0:
+#     OCRAM: 0x11010000, 48KB
+#     ocram_noret: 0x11020000, 64KB-EM_SIZE
+#     (no em_tcm_ret, all tcmcode in ocram)
+# 3. AI=n:
+#     OCRAM: 0x11010000, 256KB-EM_SIZE
+if(CONFIG_AI_SUPPORT AND CONFIG_MM_SUPPORT)
+    set(OCRAM_ORIGIN "0x11010000")
+
+    if(NOT DEFINED CONFIG_EM_SIZE OR CONFIG_EM_SIZE EQUAL 0)
+        # Case 1: AI=y, MM=y, EM_SIZE=0
+        set(OCRAM_SIZE "48K")
+
+        # Check if user wants to disable em_tcm_ret (merge TCM code into OCRAM)
+        if(CONFIG_DISABLE_EM_TCM_RET)
+            set(ENABLE_EM_TCM_RET OFF)
+            set(ENABLE_OCRAM_NORET OFF)
+            message(STATUS "AI+MM (EM=0): OCRAM=48KB, em_tcm_ret=DISABLED (TCM merged into OCRAM)")
+        else()
+            set(EM_TCM_RET_ORIGIN "0x1102C000")
+            set(EM_TCM_RET_SIZE "16K")
+            set(ENABLE_EM_TCM_RET ON)
+            set(ENABLE_OCRAM_NORET OFF)
+            message(STATUS "AI+MM (EM=0): OCRAM=48KB, em_tcm_ret=16KB")
+        endif()
+    else()
+        # Case 2: AI=y, MM=y, EM_SIZE>0
+        set(OCRAM_SIZE "48K")
+        set(ENABLE_EM_TCM_RET OFF)
+        set(ENABLE_OCRAM_NORET ON)
+        set(OCRAM_NORET_ORIGIN "0x11020000")
+        math(EXPR OCRAM_NORET_SIZE_KB "64 - ${CONFIG_EM_SIZE}")
+        set(OCRAM_NORET_SIZE "${OCRAM_NORET_SIZE_KB}K")
+        message(STATUS "AI+MM (EM=${CONFIG_EM_SIZE}K): OCRAM=48KB, ocram_noret=${OCRAM_NORET_SIZE_KB}KB")
+    endif()
+else()
+    # Case 3: AI=n (or MM=n)
+    set(OCRAM_ORIGIN "0x11010000")
+    set(ENABLE_EM_TCM_RET OFF)
+    set(ENABLE_OCRAM_NORET OFF)
+
+    if(DEFINED CONFIG_EM_SIZE AND CONFIG_EM_SIZE GREATER 0)
+        math(EXPR OCRAM_SIZE_KB "256 - ${CONFIG_EM_SIZE}")
+        set(OCRAM_SIZE "${OCRAM_SIZE_KB}K")
+        message(STATUS "AI disabled: OCRAM=${OCRAM_SIZE_KB}KB (256-${CONFIG_EM_SIZE})")
+    else()
+        set(OCRAM_SIZE "256K")
+        message(STATUS "AI disabled: OCRAM=256KB")
+    endif()
+
+    # Case 3b: Low Power without PSRAM
+    # OCRAM retention only covers first 64KB (banks 0-3: 0x11010000~0x11020000).
+    # Split OCRAM into retention (64KB) + non-retention to ensure critical data
+    # (stacks, BLE state, FreeRTOS kernel) survives PDS Level 31.
+    if(CONFIG_HAL_LP AND NOT CONFIG_USE_PSRAM)
+        set(OCRAM_SIZE "64K")
+        set(ENABLE_OCRAM_NORET ON)
+        set(OCRAM_NORET_ORIGIN "0x11020000")
+        if(DEFINED CONFIG_EM_SIZE AND CONFIG_EM_SIZE GREATER 0)
+            math(EXPR OCRAM_NORET_SIZE_KB "192 - ${CONFIG_EM_SIZE}")
+        else()
+            set(OCRAM_NORET_SIZE_KB "192")
+        endif()
+        set(OCRAM_NORET_SIZE "${OCRAM_NORET_SIZE_KB}K")
+        message(STATUS "LP no-PSRAM: OCRAM=64KB(retention) + ocram_noret=${OCRAM_NORET_SIZE_KB}KB")
+    endif()
+endif()
+
+set(HBNRAM_ORIGIN "0x20090000")
+set(HBNRAM_SIZE  "4K")
+
+set(RAM_REGION   "ocram")
+set(STACK_SIZE   "2K")
+set(HEAP_SIZE    "2K")
+
+# EM_SIZE for linker script (__EM_SIZE symbol)
+# Should match CONFIG_EM_SIZE from proj.conf for hardware configuration
+if(DEFINED CONFIG_EM_SIZE)
+    set(EM_SIZE "${CONFIG_EM_SIZE}K")
+else()
+    # Default: 0KB (no EM for non-BLE applications)
+    set(EM_SIZE "0K")
+endif()
+
+# NVDS configuration
+# Enable NVDS by default for all builds
+# Can be overridden by CONFIG_ENABLE_NVDS in proj.conf
+# RAM MODE: 16KB allocated from OCRAM
+# set(ENABLE_NVDS  ON)
+# set(NVDS_SIZE    "16K")

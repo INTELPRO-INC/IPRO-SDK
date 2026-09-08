@@ -1,0 +1,8 @@
+{
+  "pass": true,
+  "device": "IPRO-LE-Audio",
+  "duration_s": 30.0,
+  "failures": [],
+  "board_log": "apps/bluetooth/le_audio/ipro_le_audio_headset/le_audio_new_ctlr.log",
+  "android_log": "--------- beginning of main\n08-23 19:23:42.281 13321 13321 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-LE-Audio\n08-23 19:23:42.446 13321 13321 I IPRO_BLE_CTLR_VERIFY: FOUND 1E:0B:37:00:00:01 rssi=-42\n08-23 19:23:42.727 13321 13337 I IPRO_BLE_CTLR_VERIFY: CONNECTED status=0\n08-23 19:23:44.028 13321 13337 I IPRO_BLE_CTLR_VERIFY: SERVICES status=0 uuid16=1801,1800,184e,1853,1850,1844\n"
+}

@@ -1,0 +1,104 @@
+menu "File System Configuration"
+
+# EVFS - New unified VFS layer
+source "components/fs/evfs/Kconfig"
+
+config COMPONENTS_FATFS_ENABLE
+    bool "Enable FAT File System (FATFS)"
+    default n
+    help
+      Enable support for FAT file system (FAT12/16/32).
+      Commonly used with SD cards and USB mass storage devices.
+
+if COMPONENTS_FATFS_ENABLE
+
+choice FATFS_CODE_PAGE
+    prompt "FAT FS OEM Code Page"
+    default FATFS_CODE_PAGE_437
+    help
+      Select the OEM code page for FAT filesystem long filename support.
+      This affects the character encoding used for filenames.
+
+      Code size impact:
+        - Single-byte code pages (437, 850, etc.): ~1KB
+        - CJK code pages (932, 936, 949, 950): ~60KB each
+
+config FATFS_CODE_PAGE_437
+    bool "437 - U.S. (smallest)"
+    help
+      U.S. English code page. Smallest code size.
+
+config FATFS_CODE_PAGE_850
+    bool "850 - Latin 1 (Western European)"
+    help
+      Western European languages (French, German, Spanish, etc.)
+
+config FATFS_CODE_PAGE_932
+    bool "932 - Japanese (Shift_JIS) (~60KB)"
+    help
+      Japanese Shift_JIS encoding. Large code size due to CJK tables.
+
+config FATFS_CODE_PAGE_936
+    bool "936 - Simplified Chinese (GBK) (~60KB)"
+    help
+      Simplified Chinese GBK encoding. Large code size.
+
+config FATFS_CODE_PAGE_950
+    bool "950 - Traditional Chinese (Big5) (~60KB)"
+    help
+      Traditional Chinese Big5 encoding. Large code size.
+
+endchoice
+
+config FATFS_CODE_PAGE_VALUE
+    int
+    default 437 if FATFS_CODE_PAGE_437
+    default 850 if FATFS_CODE_PAGE_850
+    default 932 if FATFS_CODE_PAGE_932
+    default 936 if FATFS_CODE_PAGE_936
+    default 950 if FATFS_CODE_PAGE_950
+
+endif # COMPONENTS_FATFS_ENABLE
+
+config COMPONENTS_ROMFS_ENABLE
+    bool "Enable ROM File System (ROMFS)"
+    default n
+    help
+      Enable support for ROMFS, a simple read-only file system,
+      typically used for embedding static files in firmware.
+
+choice KV_STORAGE_BACKEND
+    prompt "Key-Value Storage Backend"
+    optional
+    help
+      Select the key-value storage backend for flash storage.
+      Only one can be enabled at a time.
+
+config EASYFLASH4
+    bool "EasyFlash4 - Lightweight embedded flash storage"
+    help
+      EasyFlash is a lightweight embedded flash storage library.
+      It supports key-value storage for environment variables.
+
+config LITTLEFS
+    bool "LittleFS - Little Fail-safe Filesystem"
+    help
+      LittleFS is a little fail-safe filesystem designed for microcontrollers.
+      Features:
+      - Power-loss resilience
+      - Dynamic wear leveling
+      - Bounded RAM/ROM usage
+
+endchoice
+
+# EasyFlash4 sub-options
+if EASYFLASH4
+source "components/fs/easyflash4/Kconfig.options"
+endif
+
+# LittleFS sub-options
+if LITTLEFS
+source "components/fs/littlefs/Kconfig.options"
+endif
+
+endmenu

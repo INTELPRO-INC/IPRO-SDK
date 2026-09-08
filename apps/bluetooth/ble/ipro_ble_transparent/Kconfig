@@ -1,0 +1,53 @@
+mainmenu "IPRO BLE Transparent Module"
+
+config BLE_TRANSPARENT_ENABLE
+    bool "Enable BLE Transparent module"
+    default y
+    help
+      Enable the BLE transparent UART-BLE bridge module
+
+config BLE_TRANSPARENT_DEVICE_NAME
+    string "BLE device name"
+    default "IPRO-Trans"
+    help
+      Default device name for advertising
+
+config BLE_TRANSPARENT_AUTO_ADV
+    bool "Auto-start advertising after initialization"
+    default y
+    help
+      Automatically start advertising after BLE initialization
+
+choice BLE_TRANSPARENT_TRANSPORT
+    prompt "AT command transport interface"
+    default BLE_TRANSPARENT_TRANSPORT_UART
+    help
+      Select the physical interface for AT commands and data bridge
+
+config BLE_TRANSPARENT_TRANSPORT_UART
+    bool "UART"
+    help
+      Use UART for AT commands and transparent data bridge
+
+config BLE_TRANSPARENT_TRANSPORT_CDC
+    bool "USB CDC ACM"
+    help
+      Use USB CDC ACM virtual serial port for AT commands and transparent data bridge
+
+endchoice
+
+if BLE_TRANSPARENT_TRANSPORT_UART
+
+config BLE_TRANSPARENT_UART_ID
+    int "UART port for external MCU (0=UART0, 1=UART1)"
+    default 1
+    help
+      UART port used for AT commands and data bridge
+
+config BLE_TRANSPARENT_UART_BAUDRATE
+    int "Default UART baudrate"
+    default 115200
+    help
+      Default baudrate for external MCU UART
+
+endif # BLE_TRANSPARENT_TRANSPORT_UART

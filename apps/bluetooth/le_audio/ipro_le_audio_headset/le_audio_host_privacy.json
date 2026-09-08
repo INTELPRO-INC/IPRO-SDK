@@ -1,0 +1,10 @@
+{
+  "pass": false,
+  "device": "IPRO-LE-Audio",
+  "duration_s": 45.0,
+  "failures": [
+    "Android disconnected during test"
+  ],
+  "board_log": "apps/bluetooth/le_audio/ipro_le_audio_headset/le_audio_host_privacy.log",
+  "android_log": "--------- beginning of main\n08-23 19:45:14.712 16304 16304 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-LE-Audio\n08-23 19:45:14.981 16304 16304 I IPRO_BLE_CTLR_VERIFY: FOUND 43:0B:E8:70:EB:62 rssi=-41\n08-23 19:45:14.985 16304 16304 I IPRO_BLE_CTLR_VERIFY: BOND requested=true\n08-23 19:45:15.373 16304 16316 I IPRO_BLE_CTLR_VERIFY: CONNECTED status=0\n08-23 19:45:16.739 16304 16316 I IPRO_BLE_CTLR_VERIFY: SERVICES status=0 uuid16=1801,1800,184e,1853,1850,1844\n08-23 19:45:24.487 16304 16316 I IPRO_BLE_CTLR_VERIFY: DISCONNECTED status=8\n08-23 19:45:25.488 16304 16304 I IPRO_BLE_CTLR_VERIFY: SCANNING IPRO-LE-Audio\n"
+}

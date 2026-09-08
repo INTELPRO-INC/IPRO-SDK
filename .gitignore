@@ -1,0 +1,8 @@
+# Local developer state and generated build products are not release source.
+.vscode/
+**/build/
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+Thumbs.db

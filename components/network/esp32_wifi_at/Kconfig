@@ -1,0 +1,45 @@
+menuconfig ESP32_WIFI_AT
+    bool "ESP32 WiFi (AT command slave)"
+    select AT_CLIENT
+    default n
+    help
+      Control an external ESP32 module running ESP-AT firmware
+      via UART AT commands. Provides WiFi STA connect/disconnect,
+      IP query, event callbacks, and shell commands.
+
+if ESP32_WIFI_AT
+
+config ESP32_WIFI_UART_ID
+    int "UART port index"
+    default 1
+
+config ESP32_WIFI_UART_BAUD
+    int "UART baudrate"
+    default 115200
+
+config ESP32_WIFI_GPIO_TX
+    int "UART TX GPIO (to ESP32 RX)"
+    default 4
+
+config ESP32_WIFI_GPIO_RX
+    int "UART RX GPIO (from ESP32 TX)"
+    default 3
+
+config ESP32_WIFI_GPIO_EN
+    int "ESP32 EN (reset) GPIO, -1 to disable"
+    default -1
+
+config ESP32_WIFI_RX_BUF_SIZE
+    int "AT RX ring buffer size"
+    default 2048
+    range 512 8192
+
+config ESP32_WIFI_TASK_STACK
+    int "RX task stack size (words)"
+    default 1536
+
+config ESP32_WIFI_TASK_PRIO
+    int "RX task priority"
+    default 20
+
+endif

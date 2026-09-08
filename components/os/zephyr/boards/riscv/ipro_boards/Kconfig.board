@@ -1,0 +1,10 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_IPRO7_FPGA
+	bool "IPRO7 FPGA Development Board"
+	depends on SOC_IPRO7
+
+config BOARD_IPRO7_EVB
+	bool "IPRO7 Evaluation Board"
+	depends on SOC_IPRO7

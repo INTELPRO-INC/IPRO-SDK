@@ -1,0 +1,50 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_IPRO7
+	bool "IPRO7 SoC"
+	select RISCV_ISA_RV32I
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+	select RISCV_ISA_EXT_C
+	select RISCV_ISA_EXT_F
+	select RISCV_ISA_EXT_ZBA
+	select RISCV_ISA_EXT_ZBB
+	select RISCV_ISA_EXT_ZBC
+	select RISCV_ISA_EXT_ZBS
+	select CPU_HAS_FPU
+	select INCLUDE_RESET_VECTOR
+	help
+	  IPRO7 RISC-V 32-bit SoC with FPU support
+
+if SOC_IPRO7
+
+config NUM_IRQS
+	int
+	default 128
+
+config CPU_HAS_FPU
+	bool
+	default y
+
+config 2ND_LVL_ISR_TBL_OFFSET
+	int
+	default 12
+
+config 2ND_LVL_INTR_00_OFFSET
+	int
+	default 11
+
+config MAX_IRQ_PER_AGGREGATOR
+	int
+	default 128
+
+config RISCV_MCAUSE_EXCEPTION_MASK
+	hex
+	default 0x7FFFFFFF
+
+config RISCV_MACHINE_TIMER_SYSTEM_CLOCK_DIVIDER
+	int
+	default 1
+
+endif # SOC_IPRO7

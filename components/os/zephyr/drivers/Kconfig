@@ -1,0 +1,39 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+# IPRO7 Zephyr Driver Configuration
+
+config GPIO_IPRO7
+	bool "IPRO7 GPIO driver"
+	default y
+	depends on GPIO && SOC_IPRO7
+	help
+	  Enable driver for IPRO7 GPIO controller.
+
+config PWM_IPRO7
+	bool "IPRO7 PWM driver"
+	default y
+	depends on PWM && SOC_IPRO7
+	help
+	  Enable driver for IPRO7 PWM controller.
+
+config SPI_IPRO7
+	bool "IPRO7 SPI driver"
+	default y
+	depends on SPI && SOC_IPRO7
+	help
+	  Enable driver for IPRO7 SPI controller.
+
+config I2C_IPRO7
+	bool "IPRO7 I2C driver"
+	default y
+	depends on I2C && SOC_IPRO7
+	help
+	  Enable driver for IPRO7 I2C controller.
+
+config ADC_IPRO7
+	bool "IPRO7 ADC driver"
+	default y
+	depends on ADC && SOC_IPRO7
+	help
+	  Enable driver for IPRO7 ADC controller.

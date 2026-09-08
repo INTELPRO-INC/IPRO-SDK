@@ -1,0 +1,86 @@
+# Zephyr RTOS Configuration for IPRO SDK
+
+if ZEPHYR
+
+config COMPONENTS_ZEPHYR_ENABLE
+    bool
+    default y
+    help
+      Internal symbol used to enable Zephyr-specific components and settings.
+
+config ZEPHYR_SUPPORT
+    bool
+    default y
+    help
+      Internal symbol indicating that Zephyr RTOS is enabled.
+
+menu "Zephyr Configuration"
+
+config ZEPHYR_KERNEL_VERSION
+    string "Zephyr Kernel Version"
+    default "3.4.0"
+    help
+      Specify the Zephyr kernel version to use.
+
+config ZEPHYR_BOARD
+    string "Target Board"
+    default "ipro7"
+    help
+      Specify the target board for Zephyr build.
+      Default is 'ipro7' for IPRO7 platform.
+
+config ZEPHYR_IPRO_UART_SUPPORT
+    bool "Enable UART support for IPRO platforms"
+    default y
+    help
+      Enable UART driver support for IPRO platforms in Zephyr.
+
+config ZEPHYR_IPRO_GPIO_SUPPORT
+    bool "Enable GPIO support for IPRO platforms"
+    default y
+    help
+      Enable GPIO driver support for IPRO platforms in Zephyr.
+
+config ZEPHYR_IPRO_SPI_SUPPORT
+    bool "Enable SPI support for IPRO platforms"
+    default y
+    help
+      Enable SPI driver support for IPRO platforms in Zephyr.
+
+config ZEPHYR_IPRO_I2C_SUPPORT
+    bool "Enable I2C support for IPRO platforms"
+    default y
+    help
+      Enable I2C driver support for IPRO platforms in Zephyr.
+
+config ZEPHYR_BLUETOOTH_SUPPORT
+    bool "Enable Bluetooth support in Zephyr"
+    default y if COMPONENTS_WIRELESS_BLE_ENABLE
+    help
+      Enable Bluetooth Low Energy support in Zephyr.
+      This integrates with IPRO's BLE stack.
+
+config ZEPHYR_NETWORKING_SUPPORT
+    bool "Enable networking support in Zephyr"
+    default y if COMPONENTS_NETWORK_ENABLE
+    help
+      Enable networking support in Zephyr.
+      This integrates with lwIP networking stack.
+
+config ZEPHYR_CRYPTO_SUPPORT
+    bool "Enable crypto support in Zephyr"
+    default y if COMPONENTS_CRYPTO_ENABLE
+    help
+      Enable cryptographic support in Zephyr.
+      This integrates with Mbed TLS.
+
+config ZEPHYR_FILESYSTEM_SUPPORT
+    bool "Enable filesystem support in Zephyr"
+    default y if COMPONENTS_FS_ENABLE
+    help
+      Enable filesystem support in Zephyr.
+      This integrates with FatFS and ROMFS.
+
+endmenu
+
+endif # ZEPHYR

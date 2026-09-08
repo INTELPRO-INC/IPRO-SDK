@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2025 IPRO
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include "ipro7.dts"
+
+/ {
+	model = "IPRO7 Evaluation Board";
+	compatible = "ipro,ipro7-evb";
+};
+
+/* NOTE: If running on FPGA hardware, the UART clock should be 32MHz */
+/* Uncomment the following to override for FPGA: */
+/* &uart0 { clock-frequency = <32000000>; }; */

@@ -1,0 +1,6 @@
+config COMPONENTS_SENSOR_ENABLE
+    bool "Enable Sensor Framework"
+    default n
+    help
+      Enable the sensor subsystem to support various hardware sensors.
+      This may include temperature, humidity, motion, or custom sensors.

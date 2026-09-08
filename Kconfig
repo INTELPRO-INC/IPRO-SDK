@@ -1,0 +1,15 @@
+# IPRO SDK Configuration
+#
+# Main Kconfig file for IPRO SDK.
+# This file uses Linux kernel-style organization where each subsystem
+# has its own Kconfig file in its directory.
+
+mainmenu "IPRO SDK Configuration"
+
+# Hardware Platform Configuration
+comment "Hardware Platform Settings"
+source "bsp/Kconfig"
+
+# Component Modules (includes RTOS, wireless, utilities, etc.)
+comment "Component Modules"
+source "components/Kconfig"

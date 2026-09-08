@@ -1,0 +1,9 @@
+board:
+  - name: ipro7_fpga
+    vendor: ipro
+    socs:
+      - name: ipro/ipro7
+  - name: ipro7_evb  
+    vendor: ipro
+    socs:
+      - name: ipro/ipro7

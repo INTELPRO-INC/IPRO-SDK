@@ -1,0 +1,19 @@
+# Copyright (c) 2025 IPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: IPRO7 I2C controller
+
+compatible: "ipro,ipro7-i2c"
+
+include: [i2c-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clock-frequency:
+    default: 100000
+    description: I2C bus clock frequency in Hz
