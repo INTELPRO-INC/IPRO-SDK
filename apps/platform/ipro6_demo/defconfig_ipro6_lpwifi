@@ -1,0 +1,119 @@
+#
+# IPRO6 Demo — Low Power + WiFi build (No PSRAM, No BLE, WiFi6 STA + lp_fw)
+#
+# Build:  make DEFCONFIG=defconfig_ipro6_lpwifi   (output in build_ipro6_lpwifi/)
+# Same as defconfig_ipro6_lp but with the full WiFi6 STA stack ENABLED so the
+# normal firmware can associate to an AP (e.g. LAB03), then seed iot2lp_para
+# from the live STA context (lpfw_populate_from_sta) before entering PDS/DTIM.
+# The lp_fw Stage-1 blob is still appended (CONFIG_WIFI_LP_APP_SUPPORT).
+# Mirrors the bl_iot_sdk bl616_sdio_wifi + bl616_lp_fw split (one WiFi image,
+# lp_fw blob loaded into retained OCRAM).
+#
+
+#
+# Hardware Platform Configuration
+#
+# CONFIG_IPRO7 is not set
+CONFIG_IPRO6=y
+# CONFIG_IPRO6LE is not set
+CONFIG_CHIP="IPRO6"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+# CONFIG_FPGA is not set
+CONFIG_EVB=y
+CONFIG_BOARD="EVB"
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_PARTITION=y
+# CONFIG_EASYFLASH4 is not set
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_IPRO_EVENT=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# WiFi6 STA stack — full networking (lwip + macsw + wifi6/fhost/wpa via the
+# component CMakeLists' if(CONFIG_WIFI6)/if(CONFIG_USE_MACSW) gates).
+#
+CONFIG_WIFI6=y
+CONFIG_USE_MACSW=y
+# MM_SUPPORT is multimedia (mjdec) demo, unrelated to WiFi — keep it off.
+# CONFIG_MM_SUPPORT is not set
+CONFIG_COMPONENTS_LWIP_ENABLE=y
+CONFIG_LWIP=y
+# iperf network throughput test (esp_iperf); registers `iperf` FinSH cmd. Depends on
+# COMPONENTS_LWIP_ENABLE (above) + CONFIG_SHELL (set) to compile iperf_cli.c.
+CONFIG_COMPONENTS_IPERF_ENABLE=y
+# STA DHCP client (net_al_ext.c dhcp_connect/set_vif_ip in fhost/wifi_mgmr).
+CONFIG_DHCPD=y
+# wpa_supplicant crypto backend (SAE/WPA3 on LAB03 needs mbedtls ECC/bignum).
+CONFIG_COMPONENTS_MBEDTLS_ENABLE=y
+# ipro6_rf cli_app.c is compiled under WIFI6; its phycli_intc glue (cli_intc.c)
+# needs PHY_CLI. Also gives back `lp rfcal`/`lp rfwarm` on this build.
+CONFIG_PHY_CLI=y
+
+#
+# Low Power (lp_fw blob co-resident with the WiFi image)
+#
+# CONFIG_USE_PSRAM is not set
+# CONFIG_BLUETOOTH_LE_ENABLE is not set
+CONFIG_HAL_LP=y
+CONFIG_FREERTOS_IDLE_HOOK=y
+# Tickless idle mode 2: portSUPPRESS_TICKS_AND_SLEEP -> vApplicationSleep
+# (lp_tickless.c) so FreeRTOS idle enters the DTIM PDS flow directly.
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=2
+# Reserve the top 32K of OCRAM for the staged lp_fw image (ram_tcm 320K->288K).
+CONFIG_WIFI_LP_APP_SUPPORT=y
+# WiFi datapath resume across PDS (macsw keyram/mm_ps_init/rwnxl_resume_wifi).
+# Gates -DCFG_IPRO_WIFI_PS_ENABLE in macsw so the full-FW side can re-program the
+# MAC HW (STA ctx, CCMP keys, TX/RX rings) after a lp_fw WIFI-wake -> ping resumes.
+CONFIG_IPRO_WIFI_PS=y
+
+#
+# Demos — low power only
+#
+CONFIG_DEMO_SOC=y
+CONFIG_DEMO_PERIPHERAL=y
+CONFIG_DEMO_LOWPOWER=y
+# CONFIG_DEMO_PERIPHERAL_BASIC is not set
+# CONFIG_DEMO_CPU_BENCH is not set
+# CONFIG_DEMO_PWM is not set
+# CONFIG_DEMO_SPI is not set
+# CONFIG_DEMO_I2S is not set
+# CONFIG_DEMO_LCD is not set
+# CONFIG_DEMO_EMAC is not set
+# CONFIG_DEMO_SPICAM is not set
+# CONFIG_DEMO_AUDIO is not set
+# CONFIG_DEMO_SECURITY is not set
+# CONFIG_DEMO_DSP is not set
+# CONFIG_DEMO_SEMIHOSTING is not set
+# CONFIG_DEMO_FS is not set
+# CONFIG_DEMO_SYS is not set
+# CONFIG_DEMO_USB is not set
+
+#
+# Platform UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+
+#
+# Compiler Optimization for Size
+#
+CONFIG_OPTIMIZATION_LEVEL_SIZE=y
+CONFIG_COMPILER_OPTIMIZATION_LEVEL_SIZE=y

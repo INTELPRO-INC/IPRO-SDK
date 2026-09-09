@@ -30,529 +30,418 @@
  *
  */
 
-/* lwIP includes. */
+/*
+ * lwIP 2.1 system-architecture layer on FreeRTOS (V11), shared by every
+ * IPRO SoC port in this SDK (ipro7, ipro6, ipro6le).
+ *
+ * Units and contracts, because every one of them has bitten a port before:
+ *
+ *   - lwIP timeouts are in MILLISECONDS; FreeRTOS waits are in TICKS. The
+ *     conversion rounds UP and never turns a non-zero wait into a poll
+ *     (sys_ms_to_ticks). sys_now() must go the other way and multiply.
+ *   - sys_thread_new()'s stacksize is passed to xTaskCreate() as-is, i.e. in
+ *     StackType_t WORDS, matching how lwipopts.h sizes TCPIP_THREAD_STACKSIZE.
+ *   - sys_arch_protect() may be reached from an ISR (SYS_LIGHTWEIGHT_PROT
+ *     paths, pbuf_free from a driver's RX interrupt). The port's
+ *     vPortEnterCritical() asserts when called with the interrupt threshold
+ *     raised, so the ISR case has to take the *_FROM_ISR pair.
+ *   - sys_current_is_tcpip() answers "is the caller the TCP/IP thread", and
+ *     only that thread: the handle is captured by name, not by "last thread
+ *     created".
+ */
+
+#include <string.h>
+
 #include "lwip/opt.h"
 #include "lwip/debug.h"
 #include "lwip/def.h"
 #include "lwip/sys.h"
 #include "lwip/mem.h"
 #include "lwip/stats.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+#include "semphr.h"
 
-xTaskHandle xTaskGetCurrentTaskHandle( void ) PRIVILEGED_FUNCTION;
+/* Handle of the thread named TCPIP_THREAD_NAME. Set once by sys_thread_new(). */
+static TaskHandle_t s_tcpip_task;
 
-/* This is the number of threads that can be started with sys_thread_new() */
-#define SYS_THREAD_MAX 6
+/*---------------------------------------------------------------------------*/
+/* Time conversion                                                            */
+/*---------------------------------------------------------------------------*/
 
-static u16_t s_nextthread = 0;
+/* Milliseconds to ticks, rounding up. A non-zero wait must never collapse to
+ * zero ticks: below one tick period pdMS_TO_TICKS() truncates to 0, which
+ * makes xQueueReceive()/xSemaphoreTake() return immediately and the caller
+ * reports a spurious SYS_ARCH_TIMEOUT. At configTICK_RATE_HZ == 1000 this is
+ * invisible; at any slower tick it is not. */
+static TickType_t sys_ms_to_ticks(u32_t ms)
+{
+    TickType_t ticks = pdMS_TO_TICKS(ms);
 
+    if (ms != 0 && ticks == 0) {
+        ticks = 1;
+    }
+    return ticks;
+}
 
-/*-----------------------------------------------------------------------------------*/
-//  Creates an empty mailbox.
+/* Milliseconds elapsed since `start`, as lwIP wants it returned from a wait.
+ * SYS_ARCH_TIMEOUT is reserved for "timed out", so a wait that genuinely
+ * lasted 0xFFFFFFFF ms (49.7 days) is reported one short rather than as a
+ * timeout. */
+static u32_t sys_elapsed_ms(TickType_t start)
+{
+    u32_t ms = (u32_t)((xTaskGetTickCount() - start) * portTICK_PERIOD_MS);
+
+    if (ms == SYS_ARCH_TIMEOUT) {
+        ms--;
+    }
+    return ms;
+}
+
+/*---------------------------------------------------------------------------*/
+/* Mailboxes                                                                  */
+/*---------------------------------------------------------------------------*/
+
 err_t sys_mbox_new(sys_mbox_t *mbox, int size)
 {
-	*mbox = xQueueCreate( size, sizeof( void * ) );
-
-#if SYS_STATS
-      ++lwip_stats.sys.mbox.used;
-      if (lwip_stats.sys.mbox.max < lwip_stats.sys.mbox.used) {
-         lwip_stats.sys.mbox.max = lwip_stats.sys.mbox.used;
-	  }
-#endif /* SYS_STATS */
- if (*mbox == NULL)
-  return ERR_MEM;
-
- return ERR_OK;
+    *mbox = xQueueCreate((UBaseType_t)size, sizeof(void *));
+    if (*mbox == NULL) {
+        SYS_STATS_INC(mbox.err);
+        return ERR_MEM;
+    }
+    SYS_STATS_INC_USED(mbox);
+    return ERR_OK;
 }
 
-/*-----------------------------------------------------------------------------------*/
-/*
-  Deallocates a mailbox. If there are messages still present in the
-  mailbox when the mailbox is deallocated, it is an indication of a
-  programming error in lwIP and the developer should be notified.
-*/
 void sys_mbox_free(sys_mbox_t *mbox)
 {
-	if( uxQueueMessagesWaiting( *mbox ) )
-	{
-		/* Line for breakpoint.  Should never break here! */
-		portNOP();
-#if SYS_STATS
-	    lwip_stats.sys.mbox.err++;
-#endif /* SYS_STATS */
-
-		// TODO notify the user of failure.
-	}
-
-	vQueueDelete( *mbox );
-
-#if SYS_STATS
-     --lwip_stats.sys.mbox.used;
-#endif /* SYS_STATS */
+    /* Messages left behind mean lwIP freed a live mailbox. Count it; do not
+     * hang here, the caller is on a teardown path. */
+    if (uxQueueMessagesWaiting(*mbox) != 0) {
+        SYS_STATS_INC(mbox.err);
+    }
+    vQueueDelete(*mbox);
+    SYS_STATS_DEC(mbox.used);
 }
 
-/*-----------------------------------------------------------------------------------*/
-//   Posts the "msg" to the mailbox.
-void sys_mbox_post(sys_mbox_t *mbox, void *data)
+/* Task context only. lwIP relies on this call never failing. */
+void sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
-	while ( xQueueSendToBack(*mbox, &data, portMAX_DELAY ) != pdTRUE ){}
+    while (xQueueSendToBack(*mbox, &msg, portMAX_DELAY) != pdTRUE) {
+    }
 }
 
-
-/*-----------------------------------------------------------------------------------*/
-//   Try to post the "msg" to the mailbox.
 err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 {
-err_t result;
-
-   if ( xQueueSend( *mbox, &msg, 0 ) == pdPASS )
-   {
-      result = ERR_OK;
-   }
-   else {
-      // could not post, queue must be full
-      result = ERR_MEM;
-
-#if SYS_STATS
-      lwip_stats.sys.mbox.err++;
-#endif /* SYS_STATS */
-
-   }
-
-   return result;
+    if (xQueueSendToBack(*mbox, &msg, 0) != pdTRUE) {
+        SYS_STATS_INC(mbox.err);
+        return ERR_MEM;
+    }
+    return ERR_OK;
 }
 
-/*-----------------------------------------------------------------------------------*/
-/*
-  Blocks the thread until a message arrives in the mailbox, but does
-  not block the thread longer than "timeout" milliseconds (similar to
-  the sys_arch_sem_wait() function). The "msg" argument is a result
-  parameter that is set by the function (i.e., by doing "*msg =
-  ptr"). The "msg" parameter maybe NULL to indicate that the message
-  should be dropped.
+/* The one mailbox entry point lwIP permits from an ISR
+ * (tcpip_callbackmsg_trycallback_fromisr). Must use the FromISR queue API and
+ * hand a pending context switch back to the port. */
+err_t sys_mbox_trypost_fromisr(sys_mbox_t *mbox, void *msg)
+{
+    BaseType_t woken = pdFALSE;
 
-  The return values are the same as for the sys_arch_sem_wait() function:
-  Number of milliseconds spent waiting or SYS_ARCH_TIMEOUT if there was a
-  timeout.
+    if (xQueueSendToBackFromISR(*mbox, &msg, &woken) != pdTRUE) {
+        SYS_STATS_INC(mbox.err);
+        return ERR_MEM;
+    }
+    portYIELD_FROM_ISR(woken);
+    return ERR_OK;
+}
 
-  Note that a function with a similar name, sys_mbox_fetch(), is
-  implemented by lwIP.
-*/
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
-void *dummyptr;
-portTickType StartTime, EndTime, Elapsed;
+    void *dummy;
+    TickType_t start = xTaskGetTickCount();
 
-	StartTime = xTaskGetTickCount();
+    if (msg == NULL) {
+        msg = &dummy;
+    }
 
-	if ( msg == NULL )
-	{
-		msg = &dummyptr;
-	}
+    if (timeout == 0) {
+        /* 0 means "wait forever" in this API. */
+        while (xQueueReceive(*mbox, msg, portMAX_DELAY) != pdTRUE) {
+        }
+        return sys_elapsed_ms(start);
+    }
 
-	if ( timeout != 0 )
-	{
-		if ( pdTRUE == xQueueReceive( *mbox, &(*msg), timeout / portTICK_RATE_MS ) )
-		{
-			EndTime = xTaskGetTickCount();
-			Elapsed = (EndTime - StartTime) * portTICK_RATE_MS;
-
-			return ( Elapsed );
-		}
-		else // timed out blocking for message
-		{
-			*msg = NULL;
-
-			return SYS_ARCH_TIMEOUT;
-		}
-	}
-	else // block forever for a message.
-	{
-		while( pdTRUE != xQueueReceive( *mbox, &(*msg), portMAX_DELAY ) ){} // time is arbitrary
-		EndTime = xTaskGetTickCount();
-		Elapsed = (EndTime - StartTime) * portTICK_RATE_MS;
-
-		return ( Elapsed ); // return time blocked TODO test
-	}
+    if (xQueueReceive(*mbox, msg, sys_ms_to_ticks(timeout)) != pdTRUE) {
+        *msg = NULL;
+        return SYS_ARCH_TIMEOUT;
+    }
+    return sys_elapsed_ms(start);
 }
 
-/*-----------------------------------------------------------------------------------*/
-/*
-  Similar to sys_arch_mbox_fetch, but if message is not ready immediately, we'll
-  return with SYS_MBOX_EMPTY.  On success, 0 is returned.
-*/
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 {
-void *dummyptr;
+    void *dummy;
 
-	if ( msg == NULL )
-	{
-		msg = &dummyptr;
-	}
-
-   if ( pdTRUE == xQueueReceive( *mbox, &(*msg), 0 ) )
-   {
-      return ERR_OK;
-   }
-   else
-   {
-      return SYS_MBOX_EMPTY;
-   }
+    if (msg == NULL) {
+        msg = &dummy;
+    }
+    if (xQueueReceive(*mbox, msg, 0) != pdTRUE) {
+        return SYS_MBOX_EMPTY;
+    }
+    return 0;
 }
-/*----------------------------------------------------------------------------------*/
+
 int sys_mbox_valid(sys_mbox_t *mbox)
 {
-  if (*mbox == SYS_MBOX_NULL)
-    return 0;
-  else
-    return 1;
+    return *mbox != SYS_MBOX_NULL;
 }
-/*-----------------------------------------------------------------------------------*/
+
 void sys_mbox_set_invalid(sys_mbox_t *mbox)
 {
-  *mbox = SYS_MBOX_NULL;
+    *mbox = SYS_MBOX_NULL;
 }
 
-/*-----------------------------------------------------------------------------------*/
-//  Creates a new semaphore. The "count" argument specifies
-//  the initial state of the semaphore.
+/*---------------------------------------------------------------------------*/
+/* Semaphores                                                                 */
+/*---------------------------------------------------------------------------*/
+
+/* lwIP only ever asks for count 0 or 1; a binary semaphore is the right
+ * object. xSemaphoreCreateBinary() hands it back EMPTY, so a non-zero initial
+ * count is one give. */
 err_t sys_sem_new(sys_sem_t *sem, u8_t count)
 {
-	vSemaphoreCreateBinary(*sem );
-	if(*sem == NULL)
-	{
-#if SYS_STATS
-      ++lwip_stats.sys.sem.err;
-#endif /* SYS_STATS */
-		return ERR_MEM;
-	}
-
-	if(count == 0)	// Means it can't be taken
-	{
-		xSemaphoreTake(*sem,1);
-	}
-
-#if SYS_STATS
-	++lwip_stats.sys.sem.used;
- 	if (lwip_stats.sys.sem.max < lwip_stats.sys.sem.used) {
-		lwip_stats.sys.sem.max = lwip_stats.sys.sem.used;
-	}
-#endif /* SYS_STATS */
-
-	return ERR_OK;
+    *sem = xSemaphoreCreateBinary();
+    if (*sem == NULL) {
+        SYS_STATS_INC(sem.err);
+        return ERR_MEM;
+    }
+    if (count != 0) {
+        (void)xSemaphoreGive(*sem);
+    }
+    SYS_STATS_INC_USED(sem);
+    return ERR_OK;
 }
 
-/*-----------------------------------------------------------------------------------*/
-/*
-  Blocks the thread while waiting for the semaphore to be
-  signaled. If the "timeout" argument is non-zero, the thread should
-  only be blocked for the specified time (measured in
-  milliseconds).
-
-  If the timeout argument is non-zero, the return value is the number of
-  milliseconds spent waiting for the semaphore to be signaled. If the
-  semaphore wasn't signaled within the specified time, the return value is
-  SYS_ARCH_TIMEOUT. If the thread didn't have to wait for the semaphore
-  (i.e., it was already signaled), the function may return zero.
-
-  Notice that lwIP implements a function with a similar name,
-  sys_sem_wait(), that uses the sys_arch_sem_wait() function.
-*/
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 {
-portTickType StartTime, EndTime, Elapsed;
+    TickType_t start = xTaskGetTickCount();
 
-	StartTime = xTaskGetTickCount();
+    if (timeout == 0) {
+        while (xSemaphoreTake(*sem, portMAX_DELAY) != pdTRUE) {
+        }
+        return sys_elapsed_ms(start);
+    }
 
-	if(	timeout != 0)
-	{
-		if( xSemaphoreTake( *sem, timeout / portTICK_RATE_MS ) == pdTRUE )
-		{
-			EndTime = xTaskGetTickCount();
-			Elapsed = (EndTime - StartTime) * portTICK_RATE_MS;
-
-			return (Elapsed); // return time blocked TODO test
-		}
-		else
-		{
-			return SYS_ARCH_TIMEOUT;
-		}
-	}
-	else // must block without a timeout
-	{
-		while( xSemaphoreTake(*sem, portMAX_DELAY) != pdTRUE){}
-		EndTime = xTaskGetTickCount();
-		Elapsed = (EndTime - StartTime) * portTICK_RATE_MS;
-
-		return ( Elapsed ); // return time blocked
-
-	}
+    if (xSemaphoreTake(*sem, sys_ms_to_ticks(timeout)) != pdTRUE) {
+        return SYS_ARCH_TIMEOUT;
+    }
+    return sys_elapsed_ms(start);
 }
 
-/*-----------------------------------------------------------------------------------*/
-// Signals a semaphore
 void sys_sem_signal(sys_sem_t *sem)
 {
-	xSemaphoreGive(*sem);
+    (void)xSemaphoreGive(*sem);
 }
 
-/*-----------------------------------------------------------------------------------*/
-// Deallocates a semaphore
 void sys_sem_free(sys_sem_t *sem)
 {
-#if SYS_STATS
-      --lwip_stats.sys.sem.used;
-#endif /* SYS_STATS */
-
-	vQueueDelete(*sem);
+    SYS_STATS_DEC(sem.used);
+    vSemaphoreDelete(*sem);
 }
-/*-----------------------------------------------------------------------------------*/
+
 int sys_sem_valid(sys_sem_t *sem)
 {
-  if (*sem == SYS_SEM_NULL)
-    return 0;
-  else
-    return 1;
+    return *sem != SYS_SEM_NULL;
 }
 
-/*-----------------------------------------------------------------------------------*/
 void sys_sem_set_invalid(sys_sem_t *sem)
 {
-  *sem = SYS_SEM_NULL;
+    *sem = SYS_SEM_NULL;
 }
 
-/*-----------------------------------------------------------------------------------*/
-// Initialize sys arch
-void sys_init(void)
-{
-	// keep track of how many threads have been created
-	s_nextthread = 0;
-}
-/*-----------------------------------------------------------------------------------*/
-                                      /* Mutexes*/
-/*-----------------------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+/* Mutexes                                                                    */
+/*---------------------------------------------------------------------------*/
+
 #if LWIP_COMPAT_MUTEX == 0
-/* Create a new mutex*/
-err_t sys_mutex_new(sys_mutex_t *mutex) {
 
-  *mutex = xSemaphoreCreateMutex();
-		if(*mutex == NULL)
-	{
-#if SYS_STATS
-      ++lwip_stats.sys.mutex.err;
-#endif /* SYS_STATS */
-		return ERR_MEM;
-	}
-
-#if SYS_STATS
-	++lwip_stats.sys.mutex.used;
- 	if (lwip_stats.sys.mutex.max < lwip_stats.sys.mutex.used) {
-		lwip_stats.sys.mutex.max = lwip_stats.sys.mutex.used;
-	}
-#endif /* SYS_STATS */
-        return ERR_OK;
+err_t sys_mutex_new(sys_mutex_t *mutex)
+{
+    *mutex = xSemaphoreCreateMutex();
+    if (*mutex == NULL) {
+        SYS_STATS_INC(mutex.err);
+        return ERR_MEM;
+    }
+    SYS_STATS_INC_USED(mutex);
+    return ERR_OK;
 }
-/*-----------------------------------------------------------------------------------*/
-/* Deallocate a mutex*/
+
 void sys_mutex_free(sys_mutex_t *mutex)
 {
-#if SYS_STATS
-      --lwip_stats.sys.mutex.used;
-#endif /* SYS_STATS */
-
-	vQueueDelete(*mutex);
+    SYS_STATS_DEC(mutex.used);
+    vSemaphoreDelete(*mutex);
 }
-/*-----------------------------------------------------------------------------------*/
-/* Lock a mutex*/
+
 void sys_mutex_lock(sys_mutex_t *mutex)
 {
-	sys_arch_sem_wait(mutex, 0);
+    while (xSemaphoreTake(*mutex, portMAX_DELAY) != pdTRUE) {
+    }
 }
 
-/*-----------------------------------------------------------------------------------*/
-/* Unlock a mutex*/
 void sys_mutex_unlock(sys_mutex_t *mutex)
 {
-	xSemaphoreGive(*mutex);
+    (void)xSemaphoreGive(*mutex);
 }
 
-/* Mutex is locked */
+/* Used by the Wi-Fi adapter's LWIP_ASSERT_CORE_LOCKED(). */
 int sys_mutex_is_locked(sys_mutex_t *mutex)
 {
-        return uxSemaphoreGetCount(*mutex) == 0;
+    return uxSemaphoreGetCount(*mutex) == 0;
 }
-#endif /*LWIP_COMPAT_MUTEX*/
 
-int sys_is_inside_interrupt()
+#endif /* LWIP_COMPAT_MUTEX == 0 */
+
+/*---------------------------------------------------------------------------*/
+/* Threads                                                                    */
+/*---------------------------------------------------------------------------*/
+
+void sys_init(void)
 {
-        return xPortIsInsideInterrupt();
+    s_tcpip_task = NULL;
 }
 
-/*-----------------------------------------------------------------------------------*/
-// TODO
-/*-----------------------------------------------------------------------------------*/
-/*
-  Starts a new thread with priority "prio" that will begin its execution in the
-  function "thread()". The "arg" argument will be passed as an argument to the
-  thread() function. The id of the new thread is returned. Both the id and
-  the priority are system dependent.
-*/
-xTaskHandle TcpipTask;
-int sys_current_is_tcpip()
+/* `stacksize` is in StackType_t words, exactly as xTaskCreate() takes it. */
+sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread, void *arg,
+                            int stacksize, int prio)
 {
-        return TcpipTask == xTaskGetCurrentTaskHandle();
+    TaskHandle_t handle = NULL;
+
+    if (stacksize <= 0) {
+        stacksize = SYS_DEFAULT_THREAD_STACK_DEPTH;
+    }
+    if (xTaskCreate(thread, name, (configSTACK_DEPTH_TYPE)stacksize, arg,
+                    (UBaseType_t)prio, &handle) != pdPASS) {
+        return NULL;
+    }
+
+    /* Remember the TCP/IP thread and nothing else. Recording "the last
+     * thread this function created" made sys_current_is_tcpip() answer for
+     * whichever helper thread happened to be started after tcpip_init(), and
+     * LWIP_ASSERT_CORE_LOCKED() then fired from the real TCP/IP thread. */
+    if (s_tcpip_task == NULL && strcmp(name, TCPIP_THREAD_NAME) == 0) {
+        s_tcpip_task = handle;
+    }
+    return handle;
 }
-sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread , void *arg, int stacksize, int prio)
+
+int sys_current_is_tcpip(void)
 {
-xTaskHandle CreatedTask;
-int result;
-
-   if ( s_nextthread < SYS_THREAD_MAX )
-   {
-      result = xTaskCreate( thread, name, stacksize, arg, prio, &CreatedTask );
-
-	   // For each task created, store the task handle (pid) in the timers array.
-	   // This scheme doesn't allow for threads to be deleted
-	   //s_timeoutlist[s_nextthread++].pid = CreatedTask;
-
-	   if(result == pdPASS)
-	   {
-		   TcpipTask = CreatedTask;
-		   return CreatedTask;
-	   }
-	   else
-	   {
-		   return NULL;
-	   }
-   }
-   else
-   {
-      return NULL;
-   }
+    return s_tcpip_task != NULL && s_tcpip_task == xTaskGetCurrentTaskHandle();
 }
 
-/*
-  This optional function does a "fast" critical region protection and returns
-  the previous protection level. This function is only called during very short
-  critical regions. An embedded system which supports ISR-based drivers might
-  want to implement this function by disabling interrupts. Task-based systems
-  might want to implement this by using a mutex or disabling tasking. This
-  function should support recursive calls from the same task or interrupt. In
-  other words, sys_arch_protect() could be called while already protected. In
-  that case the return value indicates that it is already protected.
+int sys_is_inside_interrupt(void)
+{
+    return xPortIsInsideInterrupt() ? 1 : 0;
+}
 
-  sys_arch_protect() is only required if your port is supporting an operating
-  system.
-*/
+/*---------------------------------------------------------------------------*/
+/* Critical sections                                                          */
+/*---------------------------------------------------------------------------*/
+
+/* Interrupt context takes the FromISR pair and carries the saved mask in the
+ * return value; task context nests through the ordinary critical section and
+ * the value is unused. The context cannot change between protect() and
+ * unprotect(), so unprotect() re-asks the port rather than encoding it. */
 sys_prot_t sys_arch_protect(void)
 {
-	taskENTER_CRITICAL();
-	return 1;
+    if (xPortIsInsideInterrupt()) {
+        return (sys_prot_t)taskENTER_CRITICAL_FROM_ISR();
+    }
+    taskENTER_CRITICAL();
+    return 0;
 }
 
-/*
-  This optional function does a "fast" set of critical region protection to the
-  value specified by pval. See the documentation for sys_arch_protect() for
-  more information. This function is only required if your port is supporting
-  an operating system.
-*/
 void sys_arch_unprotect(sys_prot_t pval)
 {
-	( void ) pval;
-	taskEXIT_CRITICAL();
+    if (xPortIsInsideInterrupt()) {
+        taskEXIT_CRITICAL_FROM_ISR((UBaseType_t)pval);
+    } else {
+        (void)pval;
+        taskEXIT_CRITICAL();
+    }
 }
 
-/*
- * Prints an assertion messages and aborts execution.
- */
-void sys_assert( const char *msg )
-{
-	( void ) msg;
-	/*FSL:only needed for debugging
-	printf(msg);
-	printf("\n\r");
-	*/
-    taskENTER_CRITICAL();
-    printf("[LWIP] sys_assert %s\r\n", msg);
-    for(;;)
-    ;
-}
+/*---------------------------------------------------------------------------*/
+/* Misc                                                                       */
+/*---------------------------------------------------------------------------*/
 
+/* Ticks to milliseconds. The previous port divided here, which only worked
+ * because the tick happens to be 1 ms; every lwIP timer (TCP retransmit,
+ * ARP, DHCP, PPP) is driven off this value. */
 u32_t sys_now(void)
 {
-    //FIXME any idea about efficiency
-    return xTaskGetTickCount() / portTICK_PERIOD_MS;
+    return (u32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
 }
+
+/*---------------------------------------------------------------------------*/
+/* Per-thread netconn semaphore (LWIP_NETCONN_SEM_PER_THREAD)                 */
+/*---------------------------------------------------------------------------*/
 
 #if LWIP_NETCONN_SEM_PER_THREAD
-#define PTHREAD_TLS_INDEX 0
 
-static void sys_thread_sem_free(void *data)
-{
-	sys_sem_t *sem = (sys_sem_t *)(data);
+#if configNUM_THREAD_LOCAL_STORAGE_POINTERS < 1
+#error "LWIP_NETCONN_SEM_PER_THREAD needs configNUM_THREAD_LOCAL_STORAGE_POINTERS >= 1 in FreeRTOSConfig.h"
+#endif
 
-	if (sem)
-	{
-		sys_sem_free(sem);
-		vPortFree(sem);
-	}
-}
+#define SYS_TLS_SEM_INDEX 0
 
-static void pthread_local_storage_thread_deleted_callback(int index, void *value)
-{
-	sys_sem_t *sem = (sys_sem_t *)value;
-
-	if (sem) {
-		sys_thread_sem_free(sem);
-	}
-}
-
+/* Standard FreeRTOS thread-local storage. There is no delete hook in stock
+ * FreeRTOS, so a thread that used the netconn API must call
+ * sys_thread_sem_deinit() (netconn_thread_cleanup()) before it exits, as
+ * lwIP documents. */
 static sys_sem_t *sys_thread_sem_alloc(void)
 {
-	sys_sem_t *sem;
-	err_t err;
-	int ret;
+    sys_sem_t *sem = (sys_sem_t *)pvPortMalloc(sizeof(*sem));
 
-	sem = (sys_sem_t *)pvPortMalloc(sizeof(sys_sem_t));
-	LWIP_ASSERT("failed to allocate memory for TLS semaphore", sem != NULL);
-	err = sys_sem_new(sem, 0);
-	LWIP_ASSERT("failed to initialise TLS semaphore", err == ERR_OK);
-	ret = vTaskSetThreadLocalStoragePointerAndDelCallback(NULL, PTHREAD_TLS_INDEX, (void *)sem,
-														  pthread_local_storage_thread_deleted_callback);
-	LWIP_ASSERT("failed to initialise TLS semaphore storage", ret == pdTRUE);
-
-#if SYS_STATS
-	++lwip_stats.sys.sem.used;
-	if (lwip_stats.sys.sem.max < lwip_stats.sys.sem.used)
-	{
-		lwip_stats.sys.sem.max = lwip_stats.sys.sem.used;
-	}
-#endif /* SYS_STATS */
-	return sem;
+    LWIP_ASSERT("failed to allocate memory for TLS semaphore", sem != NULL);
+    if (sem == NULL) {
+        return NULL;
+    }
+    if (sys_sem_new(sem, 0) != ERR_OK) {
+        LWIP_ASSERT("failed to initialise TLS semaphore", 0);
+        vPortFree(sem);
+        return NULL;
+    }
+    vTaskSetThreadLocalStoragePointer(NULL, SYS_TLS_SEM_INDEX, sem);
+    return sem;
 }
 
 void *sys_thread_sem_get(void)
 {
-	sys_sem_t *sem = (sys_sem_t *)pvTaskGetThreadLocalStoragePointer(NULL, PTHREAD_TLS_INDEX);
-	if (sem == NULL)
-	{
-		return sys_thread_sem_alloc();
-	}
+    sys_sem_t *sem = (sys_sem_t *)pvTaskGetThreadLocalStoragePointer(NULL, SYS_TLS_SEM_INDEX);
 
-	return sem;
+    if (sem == NULL) {
+        sem = sys_thread_sem_alloc();
+    }
+    return sem;
 }
 
 void sys_thread_sem_init(void)
 {
-	__attribute__((unused)) sys_sem_t *sem = sys_thread_sem_alloc();
+    (void)sys_thread_sem_alloc();
 }
 
 void sys_thread_sem_deinit(void)
 {
-	sys_sem_t *sem = (sys_sem_t *)pvTaskGetThreadLocalStoragePointer(NULL, PTHREAD_TLS_INDEX);
-	sys_thread_sem_free(sem);
-	vTaskSetThreadLocalStoragePointerAndDelCallback(NULL, PTHREAD_TLS_INDEX, NULL, NULL);
+    sys_sem_t *sem = (sys_sem_t *)pvTaskGetThreadLocalStoragePointer(NULL, SYS_TLS_SEM_INDEX);
+
+    if (sem != NULL) {
+        sys_sem_free(sem);
+        vPortFree(sem);
+        vTaskSetThreadLocalStoragePointer(NULL, SYS_TLS_SEM_INDEX, NULL);
+    }
 }
-#endif
+
+#endif /* LWIP_NETCONN_SEM_PER_THREAD */

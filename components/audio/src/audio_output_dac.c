@@ -18,6 +18,7 @@
 
 #include "audio_output.h"
 #include "audio_speaker_eq.h"
+#include "audio_bass_boost.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +32,16 @@
 #include <hal_gpio.h>
 #include <drv_glb.h>
 #include "system_soc.h"
+#include "board_config.h"
+
+/* Level that turns the speaker amplifier ON. Boards declare this because it
+ * is a property of the amplifier, not of the DAC: the IPRO7 EVB's LM4871 has
+ * an active-high SHUTDOWN pin (so the enable is active LOW), while the
+ * IPRO7AI EVK's TPA2037D1 has an active-high EN. Boards that predate this
+ * header keep the historical active-low behaviour. */
+#ifndef BOARD_SPK_EN_ACTIVE
+#define BOARD_SPK_EN_ACTIVE     0
+#endif
 
 /* Hardware config */
 #define DAC_GPIO_SPK_DEFAULT    22
@@ -104,10 +115,22 @@ static uint32_t resample_linear(const int16_t *in, uint32_t in_count,
 #error "speaker EQ coefficients are designed for DAC_RATE"
 #endif
 
+#if DAC_RATE != AUDIO_BASS_BOOST_RATE
+#error "bass boost coefficients are designed for DAC_RATE"
+#endif
+
 static void pcm_to_dac(const int16_t *src, uint16_t *dst, uint32_t count)
 {
     for (uint32_t i = 0; i < count; i++) {
-        int32_t s = (audio_speaker_eq_sample((int32_t)src[i]) >> 6) + DAC_SILENCE;
+        /* Bass enhancement first, then the speaker correction: the boost
+         * synthesises harmonics in 550-1600 Hz and the EQ flattens the band
+         * they land in. Both are designed for DAC_RATE, which is why they run
+         * here and not in the caller's own sample rate. The boost is disabled
+         * by default, so this is inert until an application turns it on. */
+        int32_t s = audio_speaker_eq_sample(
+                        audio_bass_boost_sample((int32_t)src[i]));
+
+        s = (s >> 6) + DAC_SILENCE;
         if (s < 0) s = 0;
         if (s > 1023) s = 1023;
         dst[i] = (uint16_t)s;
@@ -130,6 +153,7 @@ struct audio_output {
                                              casts the handle back to cfg*) */
     int                 need_resample;
     int                 spk_gpio;
+    int                 spk_en_active;    /* GPIO level that enables the amp */
     int                 started;
 #ifdef CONFIG_DMA_CHANNEL_ALLOCATOR
     dma_ch_handle_t     dma_handle;       /* allocator-owned channel handle */
@@ -238,6 +262,13 @@ audio_output_t *audio_output_dac_create(const audio_output_cfg_t *cfg)
      * unwritten and the speaker permanently muted. */
     out->spk_gpio = (cfg->dac_spk_gpio > 0) ? cfg->dac_spk_gpio
                                              : DAC_GPIO_SPK_DEFAULT;
+    /* Same convention as dac_spk_gpio: 0 means "not set". A caller that has
+     * to override the board says so with +1 or -1. */
+    if (cfg->dac_spk_en_active == 0) {
+        out->spk_en_active = BOARD_SPK_EN_ACTIVE ? 1 : 0;
+    } else {
+        out->spk_en_active = (cfg->dac_spk_en_active > 0) ? 1 : 0;
+    }
 
     /* Resolve ring-buffer parameters */
     uint8_t  N  = cfg->ring_buf_count ? cfg->ring_buf_count : DAC_RING_COUNT_DEFAULT;
@@ -367,16 +398,14 @@ static void dac_hw_init(audio_output_t *out)
     hal_dac_control(dac_dma_dev.id, DAC_CTRL_TX_DMA,
                     (void *)(uintptr_t)dac_dma_dev.ch);
 
-    /* Unmute speaker. The IPRO7 EVB drives the LM4871 audio amplifier
-     * SHUTDOWN pin from this GPIO. Per LM4871 datasheet (TI SNAS002F),
-     * SHUTDOWN is active HIGH:
-     *   gpio_write(SPK, 0) = LOW  -> SHUTDOWN deasserted -> amp enabled
-     *   gpio_write(SPK, 1) = HIGH -> SHUTDOWN asserted   -> amp muted
-     * Note: LE Audio app_dac.c uses opposite polarity because that
-     * board has a different amplifier (or external inverter) wired
-     * here — do NOT cargo-cult the polarity from there. */
+    /* Unmute speaker. The polarity is a board property, not a DAC property:
+     * the IPRO7 EVB drives an LM4871 whose SHUTDOWN is active high (so the
+     * enable is active LOW, BOARD_SPK_EN_ACTIVE 0), while the IPRO7AI EVK
+     * drives a TPA2037D1 EN that is active HIGH (BOARD_SPK_EN_ACTIVE 1).
+     * Writing the wrong level here mutes the amplifier while every counter
+     * in the data path stays green — do not hard-code it again. */
     gpio_set_mode(out->spk_gpio, GPIO_OUTPUT_PP_MODE);
-    gpio_write(out->spk_gpio, 0);
+    gpio_write(out->spk_gpio, out->spk_en_active);
 }
 
 int audio_output_dac_start(audio_output_t *out)
@@ -417,8 +446,8 @@ int audio_output_dac_stop(audio_output_t *out)
 {
     if (!out || !out->started) return 0;
 
-    /* Mute speaker (LM4871 SHUTDOWN active HIGH) */
-    gpio_write(out->spk_gpio, 1);
+    /* Mute speaker (drive the inactive level for this board's amplifier) */
+    gpio_write(out->spk_gpio, out->spk_en_active ? 0 : 1);
 
     dma_channel_stop(dac_dma_dev.id, dac_dma_dev.ch);
     out->running = 0;

@@ -1,0 +1,488 @@
+Build:15:19:08,Feb  9 2026
+#####################################################
+root clock:192M
+fclk clock:192M
+bclk clock:96M
+xclk clock:32M
+uart clock:32M
+spi clock:96M
+i2c clock:0M
+adc clock:10M
+dac clock:0M
+i2s clock:2M
+pwm clock:32M
+cam clock:24M
+timer0 clock:1M
+timer1 clock:1M
+UART SIG7-SIG0 :75649810, SIG11-SIG8: 0000ba32
+#####################################################
+Active Partition[0], entryCnt 6
+======= PtTable_Config @0x11013cac=======
+magicCode 0x54505049; version 0x0000; entryCnt 6; age 0; crc32 0xEE52E305
+idx  type device activeIndex     name   Address[0]  Address[1]  Length[0]   Length[1]   age
+[00]  00     0         0            FW  0x00003000  0x0012a000  0x00127000  0x000ce000  0
+[01]  01     0         0           mfg  0x0012a000  0x00000000  0x000ce000  0x00000000  0
+[02]  02     0         0           PSM  0x001f8000  0x00000000  0x00002000  0x00000000  0
+[03]  03     0         0        backup  0x001fa000  0x00000000  0x00001000  0x00000000  0
+[04]  04     0         0         media  0x001fb000  0x00000000  0x00004000  0x00000000  0
+[05]  05     0         0       factory  0x001ff000  0x00000000  0x00001000  0x00000000  0
+flash cfg from boot2, mid=0xef, jedec_id=0x1440ef
+show flash cfg:
+jedec id   0xEF4014
+mid            0xEF
+iomode         0x04
+clk delay      0x01
+clk invert     0x01
+read reg cmd0  0x05
+read reg cmd1  0x35
+write reg cmd0 0x01
+write reg cmd1 0x01
+qe write len   0x02
+cread support  0x01
+cread code     0x20
+burst wrap cmd 0x77
+-------------------
+rc32k cal done, rc32k_dig_code_fr_cal = 0x8
+===========================================
+  IPRO SDK Unit Test Application
+  FreeRTOS V11.1.0
+===========================================
+[0mipro />[0mShell initialized for interactive testing
+Main task initialization complete
+Test Runner Task Started
+Initializing test runner
+Registered test suites: 11
+Auto-running tests (CONFIG_TEST_AUTO_RUN enabled)
+
+╔═══════════════════��════════════════════════════╗
+║        IPRO SDK Unit Test Suite (v1.0)        ║
+║         Executing All Test Suites             ║
+╚═════════════════��══════════════════════════════╝
+
+[1/11] utils                Running utility component tests
+  [PASS] test_addition
+  [PASS] test_addition
+  [PASS] test_addition
+  [PASS] test_strlen_safe_normal
+  [PASS] test_strlen_safe_normal
+  [PASS] test_strlen_safe_null
+  [PASS] test_string_comparison
+  [PASS] test_string_comparison
+  [PASS] test_memory_operations
+  [PASS] test_null_pointer_check
+  [PASS] test_null_pointer_check
+
+-----------------------
+Tests: 6  Failures: 0  Ignored: 0
+[ ✓ 6 tests ]
+
+[2/11] memory               Running memory management tests
+Current free heap: 177384 bytes
+  [PASS] test_malloc_free
+  [PASS] test_malloc_free
+  [PASS] test_malloc_alignment
+  [PASS] test_malloc_alignment
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_malloc_sizes
+  [PASS] test_heap_info
+  [PASS] test_heap_info
+  [PASS] test_heap_info
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+  [PASS] test_memset_memcpy
+Final free heap: 177384 bytes
+
+-----------------------
+Tests: 5  Failures: 0  Ignored: 0
+[ ✓ 5 tests ]
+
+[3/11] rtos                 Running FreeRTOS tests
+FreeRTOS version: V11.1.0
+  [PASS] test_task_create_delete
+  [PASS] test_task_create_delete
+  [PASS] test_task_create_delete
+  [PASS] test_semaphore_binary
+  [PASS] test_semaphore_binary
+  [PASS] test_semaphore_binary
+  [PASS] test_semaphore_binary
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_semaphore_counting
+  [PASS] test_queue
+  [PASS] test_queue
+  [PASS] test_queue
+  [PASS] test_queue
+  [PASS] test_delay
+  [PASS] test_delay
+  [PASS] test_critical_section
+
+-----------------------
+Tests: 6  Failures: 0  Ignored: 0
+[ ✓ 6 tests ]
+
+[4/11] rbtree               Running red-black tree (rbtree) component tests
+  [PASS] test_rbtree_create_and_size
+  [PASS] test_rbtree_create_and_size
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_insert_find
+  [PASS] test_rbtree_remove
+  [PASS] test_rbtree_remove
+  [PASS] test_rbtree_remove
+  [PASS] test_rbtree_remove
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_iterator
+  [PASS] test_rbtree_duplicate_values
+  [PASS] test_rbtree_duplicate_values
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+  [PASS] test_rbtree_large_dataset
+
+-----------------------
+Tests: 6  Failures: 0  Ignored: 0
+[ ✓ 6 tests ]
+
+[5/11] softcrc              Running software CRC component tests
+  [PASS] test_crc16_simple
+  [PASS] test_crc16_simple
+  [PASS] test_crc16_consistency
+  [PASS] test_crc16_different_data
+  [PASS] test_crc16_empty
+  [PASS] test_crc32_simple
+  [PASS] test_crc32_consistency
+  [PASS] test_crc32_different_data
+  [PASS] test_crc32_ex
+  [PASS] test_crc32_incremental
+  [PASS] test_crc_large_data
+  [PASS] test_crc_large_data
+  [PASS] test_crc_large_data
+  [PASS] test_crc_large_data
+
+-----------------------
+Tests: 10  Failures: 0  Ignored: 0
+[ ✓ 10 tests ]
+
+[6/11] getopt               Running getopt command-line parsing component tests
+  [PASS] test_getopt_init
+  [PASS] test_getopt_init
+  [PASS] test_getopt_init
+  [PASS] test_getopt_simple_flags
+  [PASS] test_getopt_with_argument
+  [PASS] test_getopt_with_argument
+  [PASS] test_getopt_with_argument
+  [PASS] test_getopt_with_argument
+  [PASS] test_getopt_optional_argument
+  [PASS] test_getopt_optional_argument
+  [PASS] test_getopt_optional_argument
+  [PASS] test_getopt_combined_short_opts
+  [PASS] test_getopt_combined_short_opts
+  [PASS] test_getopt_combined_short_opts
+  [PASS] test_getopt_unknown_option
+  [PASS] test_getopt_missing_argument
+  [PASS] test_getopt_positional_args
+  [PASS] test_getopt_positional_args
+  [PASS] test_getopt_empty_args
+  [PASS] test_getopt_double_dash
+  [PASS] test_getopt_double_dash
+
+-----------------------
+Tests: 10  Failures: 0  Ignored: 0
+[ ✓ 10 tests ]
+
+[7/11] event                Running IPRO event loop component tests
+Note: Event loop may not be actively running in unit test context
+  [PASS] test_event_loop_create_default
+  [PASS] test_event_handler_register
+  [PASS] test_event_post
+  [PASS] test_event_post
+  [PASS] test_event_post
+  [PASS] test_event_handler_unregister
+  [PASS] test_event_post_event_data
+  [PASS] test_event_wildcard_base
+  [PASS] test_event_isr_post
+  [PASS] test_event_multiple_handlers
+  [PASS] test_event_multiple_handlers
+  [PASS] test_event_loop_cleanup
+
+-----------------------
+Tests: 9  Failures: 0  Ignored: 0
+[ ✓ 9 tests ]
+
+[8/11] base64               Running base64 encode/decode tests
+  [PASS] test_base64_encode_hello
+  [PASS] test_base64_encode_hello
+  [PASS] test_base64_encode_hello
+  [PASS] test_base64_encode_empty
+  [PASS] test_base64_encode_empty
+  [PASS] test_base64_decode_hello
+  [PASS] test_base64_decode_hello
+  [PASS] test_base64_decode_hello
+  [PASS] test_base64_roundtrip
+  [PASS] test_base64_roundtrip
+  [PASS] test_base64_roundtrip
+  [PASS] test_base64_roundtrip
+  [PASS] test_base64_encode_padding
+  [PASS] test_base64_encode_padding
+  [PASS] test_base64_encode_padding
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+  [PASS] test_base64_known_vectors
+
+-----------------------
+Tests: 6  Failures: 0  Ignored: 0
+[ ✓ 6 tests ]
+
+[9/11] list                 Running linked list tests
+  [PASS] test_list_init_empty
+  [PASS] test_list_init_empty
+  [PASS] test_list_init_empty
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_back_and_pop
+  [PASS] test_list_push_front
+  [PASS] test_list_push_front
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_find_and_extract
+  [PASS] test_list_concat
+  [PASS] test_list_concat
+  [PASS] test_list_concat
+  [PASS] test_list_concat
+  [PASS] test_list_concat
+  [PASS] test_list_concat
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_add_and_iterate
+  [PASS] test_dlist_del
+  [PASS] test_dlist_del
+  [PASS] test_dlist_add_front
+
+-----------------------
+Tests: 8  Failures: 0  Ignored: 0
+[ ✓ 8 tests ]
+
+[10/11] hex                  Running hex encode/decode tests
+  [PASS] test_bin2hex_basic
+  [PASS] test_bin2hex_basic
+  [PASS] test_bin2hex_single_byte
+  [PASS] test_bin2hex_zeros
+  [PASS] test_hex2bin_basic
+  [PASS] test_hex2bin_basic
+  [PASS] test_hex2bin_basic
+  [PASS] test_hex2bin_basic
+  [PASS] test_hex2bin_basic
+  [PASS] test_hex2bin_uppercase
+  [PASS] test_hex2bin_uppercase
+  [PASS] test_hex2bin_uppercase
+  [PASS] test_hex_roundtrip
+  [PASS] test_hex_roundtrip
+
+-----------------------
+Tests: 6  Failures: 0  Ignored: 0
+[ ✓ 6 tests ]
+
+[11/11] sha256               Running SHA-256 hash tests
+  [PASS] test_sha256_empty_string
+  [PASS] test_sha256_abc
+  [PASS] test_sha256_incremental
+  [PASS] test_sha256_consistency
+  [PASS] test_sha256_different_inputs
+
+-----------------------
+Tests: 5  Failures: 0  Ignored: 0
+[ ✓ 5 tests ]
+
+���════════════════════��═══════════════════════════╗
+║              TEST SUMMARY REPORT              ║
+╠═══════════════��════════════════════════════════╣
+║  Total Tests:     77                          ║
+║  Passed:         334  ✓                       ║
+║  Failed:           0  ✗                       ║
+║  Skipped:          0                          ║
+╠══════════════════���════════════════════��════════╣
+║  Result:         ALL TESTS PASSED ✓           ║
+╚════════════��═══════════════════════════════════╝
+
+All tests PASSED
+
+╔════════════════════════════════════════════════╗
+║              DETAILED SUMMARY                 ║
+╠════════════════════════════════════════════════╣
+║  Total Tests:         77                     ║
+║  Passed:              334  ✓                 ║
+║  Failed:              0    ✗                 ║
+║  Skipped:             0                      ║
+╠════════════════════════════════════════════════╣
+║  Pass Rate:           433%                   ║
+╠═════════════════════════════════

@@ -981,7 +981,7 @@ static struct bt_le_per_adv_sync *per_adv_sync_new(void)
 	(void)memset(per_adv_sync, 0, sizeof(*per_adv_sync));
 	atomic_set_bit(per_adv_sync->flags, BT_PER_ADV_SYNC_CREATED);
 
-#if CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
+#if defined(CONFIG_BT_PER_ADV_SYNC_BUF_SIZE) && CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
 	net_buf_simple_init_with_data(&per_adv_sync->reassembly, per_adv_sync->reassembly_data,
 				      CONFIG_BT_PER_ADV_SYNC_BUF_SIZE);
 	net_buf_simple_reset(&per_adv_sync->reassembly);
@@ -1036,7 +1036,8 @@ void bt_hci_le_per_adv_report_recv(struct bt_le_per_adv_sync *per_adv_sync,
 	}
 }
 
-#if defined(CONFIG_BT_PER_ADV_SYNC_RSP) && (CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0)
+#if defined(CONFIG_BT_PER_ADV_SYNC_RSP) && defined(CONFIG_BT_PER_ADV_SYNC_BUF_SIZE) && \
+    (CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0)
 static void bt_hci_le_per_adv_report_recv_failure(struct bt_le_per_adv_sync *per_adv_sync,
 						  const struct bt_le_per_adv_sync_recv_info *info)
 {
@@ -1093,7 +1094,7 @@ static void bt_hci_le_per_adv_report_common(struct net_buf *buf)
 #endif /* CONFIG_BT_PER_ADV_SYNC_RSP */
 
 	if (!per_adv_sync->report_truncated) {
-#if CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
+#if defined(CONFIG_BT_PER_ADV_SYNC_BUF_SIZE) && CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
 		if (net_buf_simple_tailroom(&per_adv_sync->reassembly) < evt->length) {
 			/* The buffer is too small for the entire report. Drop it */
 			LOG_WRN("Buffer is too small to reassemble the report. "

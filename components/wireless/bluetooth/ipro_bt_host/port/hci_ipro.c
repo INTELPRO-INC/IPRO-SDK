@@ -478,6 +478,21 @@ static void rx_discard(uint16_t len)
 	}
 }
 
+#include "hci_event_bounds.h"
+volatile uint32_t ipro_bt_host_h4_evt_oversize_count;
+
+static bool event_buffer_fits(struct net_buf *buf, const struct bt_hci_evt_hdr *hdr)
+{
+	if (ipro_hci_event_fits(net_buf_tailroom(buf), hdr->len)) return true;
+	ipro_bt_host_h4_evt_oversize_count++;
+	if (ipro_bt_host_h4_evt_oversize_count == 1U) {
+		IPRO_LOGW(LOG_TAG, "DROP oversized HCI event type=0x%02x len=%u room=%u",
+			  hdr->evt, hdr->len, (unsigned)net_buf_tailroom(buf));
+	}
+	net_buf_unref(buf);
+	return false;
+}
+
 static void rx_event(const struct device *dev)
 {
 	struct bt_hci_evt_hdr hdr;
@@ -492,7 +507,7 @@ static void rx_event(const struct device *dev)
 			subevent == BT_HCI_EVT_LE_EXT_ADVERTISING_REPORT;
 		buf = bt_buf_get_evt(hdr.evt, discardable,
 				     discardable ? K_NO_WAIT : K_FOREVER);
-		if (buf == NULL) {
+		if (buf == NULL || !event_buffer_fits(buf, &hdr)) {
 			rx_discard((uint16_t)(hdr.len - 1U));
 			return;
 		}
@@ -503,7 +518,7 @@ static void rx_event(const struct device *dev)
 		}
 	} else {
 		buf = bt_buf_get_evt(hdr.evt, false, K_FOREVER);
-		if (buf == NULL) {
+		if (buf == NULL || !event_buffer_fits(buf, &hdr)) {
 			rx_discard(hdr.len);
 			return;
 		}
@@ -727,6 +742,10 @@ const struct device ipro_bt_hci_device = {
 
 int hci_driver_ipro_ble_ctlr_init(void)
 {
+#if defined(CONFIG_BT_GATT_GAP_SERVICE)
+	extern void ipro_bt_gatt_gap_service_link_anchor(void);
+	ipro_bt_gatt_gap_service_link_anchor();
+#endif
 	return 0;
 }
 

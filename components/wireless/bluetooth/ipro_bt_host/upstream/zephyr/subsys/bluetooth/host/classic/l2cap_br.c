@@ -878,8 +878,17 @@ int bt_l2cap_br_send_cb(struct bt_conn *conn, uint16_t cid, struct net_buf *buf,
 	LOG_DBG("push PDU: cb %p userdata %p", cb, user_data);
 
 	make_closure(buf->user_data, cb, user_data);
+	/* The BR/EDR TX processor removes nodes from this intrusive list while
+	 * profile/workqueue contexts append to it. Zephyr normally serializes
+	 * these paths through cooperative scheduling. The FreeRTOS host port must
+	 * make the append and data-ready publication indivisible as well;
+	 * otherwise a dequeue of the former tail can race this append and leave
+	 * the new PDU unreachable while its buffer remains referenced.
+	 */
+	k_sched_lock();
 	sys_slist_append(&br_chan->_pdu_tx_queue, &buf->node);
 	raise_data_ready(br_chan);
+	k_sched_unlock();
 
 	return 0;
 }

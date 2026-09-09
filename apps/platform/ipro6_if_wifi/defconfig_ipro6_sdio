@@ -1,0 +1,285 @@
+
+#
+# Hardware Platform Configuration
+#
+# CONFIG_IPRO7 is not set
+CONFIG_IPRO6=y
+# CONFIG_IPRO6LE is not set
+CONFIG_CHIP="IPRO6"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+# CONFIG_NONE is not set
+# CONFIG_FPGA is not set
+# CONFIG_PHY_FPGA is not set
+CONFIG_EVB=y
+CONFIG_BOARD="EVB"
+#CONFIG_FPGA_RAM_AS_HEAP=y
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_LINKER_SCRIPT="ipro6_if_wifi_flash.ld"
+CONFIG_ENABLE_FRAME_POINTER=y
+# CONFIG_EXCEPTION_AUTO_REBOOT is not set
+# end of Build Configuration
+
+#
+# Memory Configuration
+#
+# CONFIG_USE_PSRAM is not set
+# CONFIG_ENABLE_NVDS is not set
+# end of Memory Configuration
+
+#
+# Hardware Features
+#
+# CONFIG_MM_SUPPORT is not set
+# end of Hardware Features
+
+#
+# Debug UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+# end of Debug UART Configuration
+CONFIG_USE_ROM_DRIVERS=y
+# end of Hardware Platform Configuration
+
+#
+# Component Modules
+#
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+# CONFIG_ZEPHYR is not set
+# CONFIG_NO_RTOS is not set
+
+#
+# FreeRTOS Configuration
+#
+# CONFIG_COMPONENTS_FREERTOS_POSIX_ENABLE is not set
+# end of FreeRTOS Configuration
+
+CONFIG_IPRO_OSAL=y
+# end of RTOS Configuration
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_CMD_SCHEDULER=y
+# CONFIG_COMPONENTS_CLI_CMD_ENABLE is not set
+CONFIG_IPRO_EVENT=y
+CONFIG_IPRO_EVENT_DEFAULT_QUEUE_SIZE=32
+CONFIG_IPRO_EVENT_DEFAULT_TASK_STACK=2048
+CONFIG_IPRO_EVENT_DEFAULT_TASK_PRIORITY=5
+CONFIG_IPRO_EVENT_POST_FROM_ISR=y
+# end of System Services
+
+#
+# Wireless Configuration
+#
+# CONFIG_BLUETOOTH_LE_ENABLE is not set
+# CONFIG_WIFI6 is not set
+# CONFIG_LPAPP is not set
+# CONFIG_ZIGBEE_STACK is not set
+# CONFIG_LOWER_MAC_15P4_LIB is not set
+# CONFIG_IEEE802154_ENABLE is not set
+# CONFIG_OPENTHREAD_ENABLE is not set
+# end of Wireless Configuration
+
+#
+# AI/NPU Configuration
+#
+# CONFIG_AI_SUPPORT is not set
+# end of AI/NPU Configuration
+
+#
+# Third-Party Components
+#
+# CONFIG_COMPONENTS_OPUS_ENABLE is not set
+# CONFIG_COMPONENTS_XZ_ENABLE is not set
+# CONFIG_COMPONENTS_ZMODEM_ENABLE is not set
+CONFIG_COMPONENTS_IPERF_ENABLE=y
+# end of Third-Party Components
+
+# CONFIG_COMPONENTS_CHERRYUSB_ENABLE is not set
+
+#
+# CherryUSB Configuration
+#
+CONFIG_CHERRYUSB_DEVICE=y
+CONFIG_USB_HS=y
+CONFIG_CHERRYUSB_DEVICE_CDC=y
+# CONFIG_DEBUG_CONSOLE_USB is not set
+# CONFIG_DEBUG_CONSOLE_USB_OWN_DISPATCHER is not set
+CONFIG_CHERRYUSB_DEVICE_HID=y
+CONFIG_CHERRYUSB_DEVICE_MSC=y
+# CONFIG_CHERRYUSB_DEVICE_AUDIO is not set
+# CONFIG_CHERRYUSB_DEVICE_VIDEO is not set
+# CONFIG_CHERRYUSB_DEVICE_VENDOR_TP is not set
+# CONFIG_CHERRYUSB_HOST is not set
+# end of CherryUSB Configuration
+
+CONFIG_COMPONENTS_MBEDTLS_ENABLE=y
+# CONFIG_COMPONENTS_CIPHER_SUITE_ENABLE is not set
+# CONFIG_COMPONENTS_NIST_SP800_22_ENABLE is not set
+
+#
+# mbedTLS Configuration
+#
+
+#
+# File System Configuration
+#
+# CONFIG_EVFS is not set
+# CONFIG_EVFS_USE_FATFS is not set
+# CONFIG_EVFS_USE_FATFS_IMAGE is not set
+# CONFIG_EVFS_USE_LITTLEFS is not set
+# CONFIG_EVFS_USE_ROMFS is not set
+# CONFIG_EVFS_USE_TAR is not set
+# CONFIG_EVFS_USE_SEMIHOST is not set
+# CONFIG_EVFS_POSIX is not set
+
+#
+# EVFS Shim Layers
+#
+# CONFIG_EVFS_USE_SHIM_TRACE is not set
+# CONFIG_EVFS_USE_SHIM_JAIL is not set
+# CONFIG_EVFS_USE_SHIM_ROTATE is not set
+# end of EVFS Shim Layers
+
+# CONFIG_COMPONENTS_FATFS_ENABLE is not set
+# CONFIG_COMPONENTS_ROMFS_ENABLE is not set
+# end of File System Configuration
+
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# Network Configuration
+#
+# CONFIG_COMPONENTS_LWIP_ENABLE is not set
+# end of Network Configuration
+
+# CONFIG_COMPONENTS_SENSOR_ENABLE is not set
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+
+#
+# IPRO Logging System
+#
+CONFIG_IPRO_LOG_ENABLE=y
+# CONFIG_LOG_DEFAULT_LEVEL_NONE is not set
+# CONFIG_LOG_DEFAULT_LEVEL_ERROR is not set
+# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# CONFIG_LOG_DEFAULT_LEVEL_DEBUG is not set
+# CONFIG_LOG_DEFAULT_LEVEL_VERBOSE is not set
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_THREAD_ID=y
+CONFIG_LOG_BUFFER_SIZE=512
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_LOG_OUTPUT_UART=y
+# CONFIG_LOG_OUTPUT_RTT is not set
+# CONFIG_LOG_OUTPUT_FILE is not set
+# end of IPRO Logging System
+# end of Component Modules
+
+#
+# Demo Configuration
+#
+# CONFIG_DEMO_SOC is not set
+
+#
+# Peripheral Demos
+#
+# CONFIG_DEMO_PERIPHERAL is not set
+# CONFIG_DEMO_PERIPHERAL_BASIC is not set
+# CONFIG_DEMO_CPU_BENCH is not set
+# CONFIG_DEMO_DHRYSTONE is not set
+# CONFIG_DEMO_CACHE_TEST is not set
+# CONFIG_DEMO_PWM is not set
+# CONFIG_DEMO_SPI is not set
+# CONFIG_DEMO_I2S is not set
+# CONFIG_DEMO_LCD is not set
+# CONFIG_DEMO_EMAC is not set
+# CONFIG_DEMO_LOWPOWER is not set
+# CONFIG_DEMO_SPICAM is not set
+# end of Peripheral Demos
+
+#
+# Audio Demos (disabled)
+#
+# CONFIG_DEMO_AUDIO is not set
+# end of Audio Demos
+
+#
+# Security Demos
+#
+# CONFIG_DEMO_SECURITY is not set
+# end of Security Demos
+
+#
+# DSP Demos
+#
+# CONFIG_DEMO_DSP is not set
+# end of DSP Demos
+
+#
+# Filesystem Demos
+#
+# CONFIG_DEMO_FS is not set
+# end of Filesystem Demos
+
+#
+# System Demos
+#
+# CONFIG_DEMO_SYS is not set
+# end of System Demos
+
+#
+# USB Demos
+#
+# CONFIG_DEMO_USB is not set
+# end of USB Demos
+
+# CONFIG_APP_SPI_SENSOR is not set
+# end of Demo Configuration
+
+#
+# Semihosting Configuration
+#
+CONFIG_SEMIHOSTING=y
+# CONFIG_SEMIHOSTING_PRINTF is not set
+CONFIG_SEMIHOSTING_FILEIO=y
+# CONFIG_DEMO_SEMIHOSTING is not set
+# end of Semihosting Configuration
+
+CONFIG_WIFI6=y
+CONFIG_USE_MACSW=y
+CONFIG_PHY_CLI=y
+CONFIG_COMPONENTS_LWIP_ENABLE=y
+CONFIG_DHCPD=y
+
+# P3: SDIO-WiFi device (SMID transport) — bridge to RPi ipronet host.
+CONFIG_COMPONENTS_SDIOWIFI_ENABLE=y
+# CONFIG_SMID_RAW_TX_TEST: raw dev->host flood for transport-ceiling measurement.
+# Costs ~24KB ram_tcm (4x6144 static pool) -> heap-starves the WiFi build; enable
+# only for dedicated transport tests, never with wifi_sta_connect.
+# CONFIG_SMID_RAW_TX_TEST is not set
+CONFIG_COMPONENTS_REMOTE_NET_MANAGER_ENABLE=y
+CONFIG_COMPONENTS_NET_PKT_FILTER_ENABLE=y
+CONFIG_DHCP_IN_EMB=y
+
+# Run the bring-up the host interface cannot work without (WiFi firmware task,
+# then the transport bridge) at boot instead of from the console. Must be stated
+# here, not left to the Kconfig default: project.build copies this file verbatim
+# to .config, so a symbol absent here never reaches autoconf.h.
+CONFIG_IF_WIFI_AUTO_START=y

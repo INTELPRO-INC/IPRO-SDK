@@ -46,6 +46,31 @@ config BTDM_MAX_BR_ACL_CONNECTIONS
 menu "BLE Configuration"
     depends on BTDM_BLE_ENABLE
 
+config BTDM_PER_ADV
+    bool "IPRO6S periodic advertising and synchronization"
+    default n
+    help
+      Compile the BLE 5.x periodic advertiser and periodic synchronizer.
+      Host advertiser/observer roles must be enabled separately.
+
+config BTDM_PAST
+    bool "IPRO6S periodic advertising sync transfer"
+    default n
+    select BTDM_PER_ADV
+    help
+      Compile Periodic Advertising Sync Transfer (PAST) without enabling
+      PAwR. Host sender/receiver roles must be enabled separately.
+
+config BTDM_PAWR
+    bool "IPRO6S periodic advertising with responses (experimental)"
+    default n
+    select BTDM_PER_ADV
+    select BTDM_PAST
+    help
+      Compile PAwR advertiser/scanner with required periodic advertising and
+      PAST support. Host roles must be enabled separately. This experimental
+      configuration requires runtime qualification before customer release.
+
 config BTDM_MAX_ACL_CONNECTIONS
     int "Maximum ACL Connections"
     range 1 8
@@ -66,6 +91,13 @@ config BTDM_MAX_SCAN_SETS
     default 1
     help
       Maximum number of scanning sets.
+
+config IPRO_BLE_CTLR_CH_CLASS_TEST
+    bool "Enable deterministic BLE 5.3 channel-classification test input"
+    default n
+    help
+      Test-only hook that replaces local RF channel assessment with one forced
+      bad data channel. Keep disabled in customer controller builds.
 
 endmenu
 

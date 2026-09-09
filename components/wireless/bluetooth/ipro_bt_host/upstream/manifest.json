@@ -8,6 +8,10 @@
   "license": "Apache-2.0",
   "files": [
     {
+      "path": "subsys/bluetooth/lib/ead.c",
+      "sha256": "5eadf6d21d1976789e00acaa312cc4e6d9b57814c97b45080193e2b6d62bec3c"
+    },
+    {
       "path": "include/zephyr/arch/common/addr_types.h",
       "sha256": "407363b6fbc93f82bddcfc1fa7bff9834a3838af360c11d713af1dc1dcccbc16"
     },

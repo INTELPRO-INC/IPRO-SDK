@@ -18,6 +18,12 @@ set(IPRO_BT_HOST_TINYCRYPT ${CMAKE_CURRENT_SOURCE_DIR}/tinycrypt)
 # Kconfig's dependency expansion.
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/resolve_config.cmake)
 
+# Application autoconf may explicitly undefine dependencies enabled above.
+# Include resolved role declarations after it in the Zephyr port wrapper.
+configure_file(cmake/periodic_config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/ipro_bt_host_periodic_config.h)
+__component_add_include_dirs(${CMAKE_CURRENT_BINARY_DIR}/generated)
+
 # Mirror Zephyr Host's default TX processing model.  Without a dedicated TX
 # workqueue, synchronous HCI commands issued by bt_enable() from sysworkq must
 # self-drain the command queue from the same work item, which is fragile during
@@ -26,6 +32,12 @@ sdk_ifndef(CONFIG_BT_TX_PROCESSOR_THREAD 1)
 sdk_ifndef(CONFIG_BT_TX_PROCESSOR_THREAD_PRIO 6)
 sdk_ifndef(CONFIG_BT_TX_PROCESSOR_STACK_SIZE 1024)
 sdk_ifndef(CONFIG_BT_RX_STACK_SIZE 2048)
+if(CONFIG_BT_SMP)
+    # The SDK consumes .config directly rather than resolving Zephyr's Kconfig
+    # defaults. Preserve upstream's default: authenticated I/O capabilities
+    # must advertise MITM, or a responder silently makes Level 4 unreachable.
+    sdk_ifndef(CONFIG_BT_SMP_ENFORCE_MITM 1)
+endif()
 
 __component_add_include_dirs(
     port/include
@@ -42,6 +54,7 @@ __component_add_sources(
     port/crypto.c
     port/ecc.c
     port/hci_ipro.c
+    port/channel_map.c
     port/util.c
     port/uuid_port.c
     ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/uuid.c
@@ -68,6 +81,24 @@ __component_add_sources(
     ${IPRO_BT_HOST_TINYCRYPT}/source/ecc.c
     ${IPRO_BT_HOST_TINYCRYPT}/source/ecc_dh.c
 )
+
+if(CONFIG_BT_GATT_GAP_SERVICE)
+    __component_add_sources(
+        port/gatt_security_levels_value.c
+        port/gatt_gap_service.c
+        ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/gatt_gap_svc_validate.c
+    )
+endif()
+
+# Host-side EAD uses the upstream software CCM implementation and IPRO AES.
+if(CONFIG_BT_EAD)
+    __component_add_sources(${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/lib/ead.c)
+    __component_add_compile_definitions(-DCONFIG_BT_EAD=1 -DCONFIG_BT_EAD_LOG_LEVEL=2)
+endif()
+if(CONFIG_BT_HOST_CCM)
+    __component_add_sources(${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/aes_ccm.c)
+    __component_add_compile_definitions(-DCONFIG_BT_HOST_CCM=1)
+endif()
 
 # Match Zephyr's host build graph: conn.c always calls the SMP interface, but
 # the full pairing/key implementation is valid only when CONFIG_BT_SMP is on.
@@ -134,13 +165,35 @@ if(CONFIG_BT_BREDR)
     if(CONFIG_BT_A2DP)
         __component_add_sources(
             ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/classic/a2dp.c
+            ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/classic/a2dp_codec_sbc.c
         )
-        # Codec encode/decode is intentionally a separate application-facing
-        # module.  The imported conversion helper includes Zephyr LIBSBC's
-        # private sbc_encoder.h/sbc_decoder.h, which are not part of this Host
-        # import yet. A2DP signaling and encoded media delivery do not depend
-        # on those private codec sources.
         sdk_ifndef(CONFIG_BT_A2DP_LOG_LEVEL 3)
+    endif()
+
+    if(CONFIG_LIBSBC)
+        set(IPRO_LIBSBC ${CMAKE_SOURCE_DIR}/components/3rdparty/libsbc)
+        __component_add_include_dirs(
+            ${IPRO_LIBSBC}/encoder/include
+            ${IPRO_LIBSBC}/decoder/include
+            ${IPRO_LIBSBC}/decoder/srce
+        )
+        __component_add_sources(
+            ${IPRO_LIBSBC}/sbc.c
+            ${IPRO_LIBSBC}/decoder/srce/alloc.c
+            ${IPRO_LIBSBC}/decoder/srce/bitalloc.c
+            ${IPRO_LIBSBC}/decoder/srce/bitalloc-sbc.c
+            ${IPRO_LIBSBC}/decoder/srce/bitstream-decode.c
+            ${IPRO_LIBSBC}/decoder/srce/decoder-oina.c
+            ${IPRO_LIBSBC}/decoder/srce/decoder-private.c
+            ${IPRO_LIBSBC}/decoder/srce/decoder-sbc.c
+            ${IPRO_LIBSBC}/decoder/srce/dequant.c
+            ${IPRO_LIBSBC}/decoder/srce/framing.c
+            ${IPRO_LIBSBC}/decoder/srce/framing-sbc.c
+            ${IPRO_LIBSBC}/decoder/srce/oi_codec_version.c
+            ${IPRO_LIBSBC}/decoder/srce/synthesis-8-generated.c
+            ${IPRO_LIBSBC}/decoder/srce/synthesis-dct8.c
+            ${IPRO_LIBSBC}/decoder/srce/synthesis-sbc.c
+        )
     endif()
 
     if(CONFIG_BT_AVCTP)
@@ -858,6 +911,10 @@ set_source_files_properties(
 
 __component_add_compile_definitions(
     -DIPRO_BT_HOST_ZEPHYR_VERSION=0x040400
+    # This component is the HCI Host.  Zephyr's public buffer helpers gate
+    # BT_BUF_ACL_RX_COUNT on CONFIG_BT_HCI_HOST; omitting it made RFCOMM derive
+    # RFCOMM_MAX_CREDITS from zero and advertise an underflowed 255 credits.
+    -DCONFIG_BT_HCI_HOST=1
     -DCONFIG_RISCV=1
     -DCONFIG_LITTLE_ENDIAN=1
     -DCONFIG_NET_BUF_ALIGNMENT=0
@@ -870,9 +927,8 @@ __component_add_compile_definitions(
     -DCONFIG_BT_BUF_ACL_RX_SIZE=${CONFIG_BT_BUF_ACL_RX_SIZE}
     -DCONFIG_BT_BUF_EVT_RX_SIZE=255
     -DCONFIG_BT_BUF_EVT_DISCARDABLE_COUNT=3
-    -DCONFIG_BT_BUF_EVT_DISCARDABLE_SIZE=43
+    -DCONFIG_BT_BUF_EVT_DISCARDABLE_SIZE=${CONFIG_BT_BUF_EVT_DISCARDABLE_SIZE}
     -DCONFIG_BT_BUF_SYNC_EVT_POOL_COUNT=1
-    -DCONFIG_BT_PER_ADV_SYNC_BUF_SIZE=0
     -DCONFIG_BT_ID_MAX=1
     -DCONFIG_BT_MAX_CONN=${CONFIG_BT_CONN}
     -DCONFIG_BT_CREATE_CONN_TIMEOUT=3
@@ -926,12 +982,18 @@ endif()
 # than appearing literally in autoconf.h. Forward them uniformly so source
 # selection and preprocessor selection always describe the same Host image.
 foreach(_ipro_host_bool
+        CONFIG_BT_GATT_GAP_SERVICE CONFIG_BT_GATT_GAP_SVC_VALIDATE
+        CONFIG_BT_GATT_SECURITY_LEVELS
+        CONFIG_BT_SMP_ENFORCE_MITM
+        CONFIG_BT_EXT_ADV_CODING_SELECTION
+        CONFIG_BT_SUBRATING
         CONFIG_BT_L2CAP_DYNAMIC_CHANNEL
         CONFIG_BT_L2CAP_ECRED
         CONFIG_BT_L2CAP_ENH_RET CONFIG_BT_L2CAP_RET_FC
         CONFIG_BT_GATT_CLIENT CONFIG_BT_GATT_AUTO_DISCOVER_CCC
         CONFIG_BT_GATT_AUTO_UPDATE_MTU CONFIG_BT_GATT_DYNAMIC_DB
         CONFIG_BT_EATT CONFIG_BT_EATT_AUTO_CONNECT
+        CONFIG_BT_GATT_READ_MULT_VAR_LEN
         CONFIG_BT_PER_ADV CONFIG_BT_PER_ADV_SYNC
         CONFIG_BT_PER_ADV_RSP CONFIG_BT_PER_ADV_SYNC_RSP
         CONFIG_BT_PER_ADV_SYNC_TRANSFER_SENDER

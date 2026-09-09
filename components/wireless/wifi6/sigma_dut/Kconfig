@@ -1,0 +1,10 @@
+config SIGMA_DUT
+    bool "Enable WFA Sigma-DUT CAPI Agent"
+    depends on WIFI6 && COMPONENTS_LWIP_ENABLE
+    default n
+    help
+      Enable the WFA sigma-dut CAPI agent (TCP port 9000) for
+      Wi-Fi Alliance certification testing.
+
+      The agent listens for CAPI commands from the WFA UCC test bed
+      and translates them into WiFi stack API calls.

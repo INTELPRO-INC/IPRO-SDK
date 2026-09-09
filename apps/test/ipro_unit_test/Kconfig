@@ -1,0 +1,114 @@
+# IPRO SDK Unit Test Project Kconfig
+
+config UNIT_TEST_FRAMEWORK
+    bool "Enable Unit Test Framework"
+    default y
+    help
+      Enable the built-in unit test framework based on Unity.
+
+menu "Test Suites"
+
+config TEST_UTILS
+    bool "Utility Component Tests"
+    default y
+    help
+      Enable tests for utility components (string, buffer, etc.)
+
+config TEST_MEMORY
+    bool "Memory Management Tests"
+    default y
+    help
+      Enable tests for memory allocation and management.
+
+config TEST_CRYPTO
+    bool "Cryptography Tests"
+    default n
+    select MBEDTLS
+    help
+      Enable tests for cryptographic functions.
+
+config TEST_NETWORK
+    bool "Network Stack Tests"
+    default n
+    select LWIP
+    help
+      Enable tests for network stack (lwIP).
+
+config TEST_BLE
+    bool "BLE Stack Tests"
+    default n
+    select IPRO_BLE_LIB
+    help
+      Enable tests for BLE stack components.
+
+config TEST_RTOS
+    bool "RTOS Tests"
+    default y
+    help
+      Enable tests for FreeRTOS functionality.
+
+config TEST_DRIVERS
+    bool "Driver Tests"
+    default n
+    help
+      Enable tests for hardware drivers.
+
+config TEST_CUSTOM
+    bool "Custom Test Suites"
+    default n
+    help
+      Enable custom user-defined test suites.
+
+config TEST_RINGBUF
+    bool "Ring Buffer Tests"
+    default n
+    help
+      Enable tests for ring buffer component.
+
+config TEST_RBTREE
+    bool "Red-Black Tree Tests"
+    default n
+    help
+      Enable tests for red-black tree (utils_rbtree) component.
+
+config TEST_SOFTCRC
+    bool "Software CRC Tests"
+    default n
+    help
+      Enable tests for software CRC component.
+
+config TEST_GETOPT
+    bool "Getopt Tests"
+    default n
+    help
+      Enable tests for command-line argument parsing (getopt) component.
+
+config TEST_EVENT
+    bool "Event Loop Tests"
+    default n
+    help
+      Enable tests for IPRO event loop component.
+
+endmenu
+
+menu "Test Runner Options"
+
+config TEST_AUTO_RUN
+    bool "Auto-run tests on boot"
+    default n
+    help
+      Automatically run all tests when the system boots.
+
+config TEST_VERBOSE
+    bool "Verbose test output"
+    default y
+    help
+      Enable detailed output for test execution.
+
+config TEST_STOP_ON_FAIL
+    bool "Stop on first failure"
+    default n
+    help
+      Stop test execution when the first test fails.
+
+endmenu

@@ -1,0 +1,44 @@
+config COMPONENTS_TFLM_ENABLE
+    bool "Enable TFLM (TensorFlow Lite for Microcontrollers)"
+    default n
+    help
+      Enable TensorFlow Lite for Microcontrollers, so that customer-supplied
+      .tflite models can run on the CPU.
+
+      This is independent of the .inm NPU path in components/ai: the NPU
+      yields the core while it computes, so a TFLM model and a .inm model can
+      run concurrently on IPRO7. TFLM cannot drive the NPU itself - the NPU
+      consumes an offline-compiled instruction stream and TFLM has no delegate
+      mechanism. License: Apache 2.0.
+
+if COMPONENTS_TFLM_ENABLE
+
+config TFLM_NMSIS_NN_KERNELS
+    bool "Use NMSIS-NN optimized kernels"
+    default y
+    select COMPONENTS_NMSIS_NN_ENABLE
+    help
+      Replace 14 reference kernels (conv, depthwise_conv, fully_connected,
+      pooling, softmax, svdf, lstm, ...) with the NMSIS-NN backend, which uses
+      the RISC-V P-extension when the app is built with an xxldsp march.
+
+      Costs flash - the SIMD kernels are several times larger than the
+      reference ones - and buys speed. Turn off to measure the difference or
+      when flash is tight.
+
+config TFLM_SIGNAL_OPS
+    bool "Include signal processing ops (FFT, filter bank)"
+    default n
+    help
+      Audio front-end operators used by micro_speech style models. Pulls in
+      kissfft. Leave off for vision-only models.
+
+config TFLM_STRIP_ERROR_STRINGS
+    bool "Strip error strings"
+    default n
+    help
+      Compile out human-readable error messages to save flash. Debugging a
+      model that fails to allocate gets considerably harder - keep this off
+      during bring-up.
+
+endif

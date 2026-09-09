@@ -1447,7 +1447,16 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 	LOG_DBG("local RPA %s", bt_addr_str(&evt->local_rpa));
 
 #if defined(CONFIG_BT_SMP)
-	bt_id_pending_keys_update();
+	/* Extended advertising terminates in a separate HCI event. Updating the
+	 * resolving list before that event can pause/resume a stale enabled
+	 * advertiser and leave the Controller running a handle the Host frees.
+	 * The terminated handler performs the deferred update after cleanup.
+	 */
+	if (!(evt->role == BT_HCI_ROLE_PERIPHERAL &&
+	      IS_ENABLED(CONFIG_BT_EXT_ADV) &&
+	      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
+		bt_id_pending_keys_update();
+	}
 #endif
 
 	id = evt->role == BT_HCI_ROLE_PERIPHERAL ? bt_dev.adv_conn_id : BT_ID_DEFAULT;

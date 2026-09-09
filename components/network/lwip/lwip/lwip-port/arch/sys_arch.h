@@ -29,39 +29,36 @@
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
-#ifndef __SYS_RTXC_H__
-#define __SYS_RTXC_H__
+
+/*
+ * lwIP system-architecture types for the FreeRTOS port. This is the header
+ * lwip/sys.h includes as "arch/sys_arch.h"; the implementation lives in
+ * ../FreeRTOS/sys_arch.c. Names are the FreeRTOS V8+ typedefs, so the port
+ * does not depend on configENABLE_BACKWARD_COMPATIBILITY.
+ */
+
+#ifndef LWIP_ARCH_SYS_ARCH_H
+#define LWIP_ARCH_SYS_ARCH_H
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
 
-#define SYS_MBOX_NULL (xQueueHandle)0
-#define SYS_SEM_NULL  (xSemaphoreHandle)0
-#define SYS_DEFAULT_THREAD_STACK_DEPTH	configMINIMAL_STACK_SIZE
+typedef SemaphoreHandle_t sys_sem_t;
+typedef SemaphoreHandle_t sys_mutex_t;
+typedef QueueHandle_t     sys_mbox_t;
+typedef TaskHandle_t      sys_thread_t;
 
-typedef xSemaphoreHandle sys_sem_t;
-typedef xSemaphoreHandle sys_mutex_t;
-typedef xQueueHandle sys_mbox_t;
-typedef xTaskHandle sys_thread_t;
+#define SYS_MBOX_NULL   ((sys_mbox_t)0)
+#define SYS_SEM_NULL    ((sys_sem_t)0)
 
-typedef struct _sys_arch_state_t
-{
-	// Task creation data.
-	char cTaskName[configMAX_TASK_NAME_LEN];
-	unsigned short nStackDepth;
-	unsigned short nTaskCount;
-} sys_arch_state_t;
+/* Stack depth handed to xTaskCreate() when a caller passes 0: in StackType_t
+ * words, like every other stack size in this port. */
+#define SYS_DEFAULT_THREAD_STACK_DEPTH  configMINIMAL_STACK_SIZE
 
+/* lwIP's fallback sys_msleep() builds a semaphore just to wait on it.
+ * FreeRTOS has a delay primitive; use it. */
+#define sys_msleep(ms)  vTaskDelay(pdMS_TO_TICKS(ms))
 
-
-//extern sys_arch_state_t s_sys_arch_state;
-
-//void sys_set_default_state();
-//void sys_set_state(signed char *pTaskName, unsigned short nStackSize);
-
-/* Message queue constants. */
-#define archMESG_QUEUE_LENGTH	( 6 )
-#endif /* __SYS_RTXC_H__ */
-
+#endif /* LWIP_ARCH_SYS_ARCH_H */

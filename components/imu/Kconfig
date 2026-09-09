@@ -1,0 +1,21 @@
+menu "IMU Sensors"
+
+config COMPONENTS_IMU_MPU6500_ENABLE
+    bool "Enable MPU-6500 / GY-6500 IMU driver"
+    default n
+    help
+      I2C driver for InvenSense MPU-6500 (GY-6500 module).
+      Provides accelerometer (±2/4/8/16g), gyroscope (±250~2000°/s),
+      and temperature readings via burst read.
+
+config MPU6500_GPIO_SDA
+    int "I2C SDA GPIO pin"
+    default 3
+    depends on COMPONENTS_IMU_MPU6500_ENABLE
+
+config MPU6500_GPIO_SCL
+    int "I2C SCL GPIO pin"
+    default 2
+    depends on COMPONENTS_IMU_MPU6500_ENABLE
+
+endmenu

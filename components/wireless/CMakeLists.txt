@@ -27,7 +27,10 @@ if(CONFIG_USE_MACSW)
 # call site): every build that compiles the coex block must link this, and the
 # PHY_LPFW beacon-RX trim, which drops coex entirely, must not.
 if(NOT CONFIG_PHY_LPFW)
+add_subdirectory(ipro_coex)
 endif()
+add_subdirectory(macsw)
+add_subdirectory(wifi6)
 else()
 endif()
 endif()

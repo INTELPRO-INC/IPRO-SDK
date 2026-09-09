@@ -7,6 +7,7 @@ __component_add_include_dirs(include)
 ############## Add source files ###########
 # Resampler is always built (small, used by output backends and app code)
 __component_add_sources(src/audio_resampler.c)
+__component_add_sources(src/audio_pcm_ring.c)
 
 # Speaker correction is a property of the board's speaker, not of the output
 # framework: apps with their own DAC driver (the LE Audio headset) use it too,

@@ -1,0 +1,268 @@
+# IPRO6 BTDM Demo Application Kconfig
+# ====================================
+
+menu "BTDM Demo Configuration"
+
+config IPRO6_CLASSIC_BRINGUP
+    bool "Enable IPRO6S BR/EDR host bring-up"
+    default n
+    depends on IPRO6 && BTDM_ENABLE && BTDM_BT_ENABLE && !BLE_HOST_DISABLE
+    select BT_BREDR
+    help
+      Start the IPRO6 btblestack host over the source-built dual-mode
+      controller, then make the DUT BR/EDR connectable and discoverable for
+      PTS testing.
+
+config BTDM_ENABLE
+    bool "Enable BTDM Controller"
+    default y
+    help
+      Enable BTDM controller (HCI interface only).
+      This provides Bluetooth Low Energy controller functionality.
+
+if BTDM_ENABLE
+
+config BTDM_BLE_ENABLE
+    bool "Enable BLE"
+    default y
+    help
+      Enable Bluetooth Low Energy support.
+
+config BTDM_BT_ENABLE
+    bool "Enable BT Classic"
+    default n
+    help
+      Enable the official RW v13.0.18 BR/EDR controller sources.
+
+config BTDM_EM_SIZE_64K
+    bool "Use the IPRO6S 64 KiB controller EM split"
+    default n
+    depends on BTDM_ENABLE && IPRO6
+    help
+      Select the hardware-supported 96 KiB WRAM + 64 KiB controller EM
+      partition for this application.  The default remains 128 KiB WRAM +
+      32 KiB EM.  This option exists so controller releases can qualify both
+      bridge modes without changing the platform default; the BL616/BL616D
+      btblecontroller_test reference application uses a 64 KiB EM carve.
+
+config BTDM_CLOCK_320_80_TEST
+    bool "Use the diagnostic 320/80 MHz clock tuple"
+    default n
+    depends on BTDM_ENABLE && IPRO6
+    help
+      Diagnostic-only application policy.  Select the 320 MHz MCU root and
+      divide-by-four 80 MHz peripheral bus so it can be tested without
+      changing IPRO6S's 240/80 MHz platform default.  The BL616D reference is
+      actually 320/160 MHz, not 320/80 MHz.
+
+config BTDM_CLOCK_320_160_TEST
+    bool "Use the BL616D-reference 320/160 MHz clock tuple"
+    default n
+    depends on BTDM_ENABLE && IPRO6 && !BTDM_CLOCK_320_80_TEST
+    help
+      Diagnostic-only application policy.  Match the BL616D board clock
+      implementation: 320 MHz MCU and divide-by-two 160 MHz peripheral bus.
+
+config BTDM_CLOCK_240_120_TEST
+    bool "Use the diagnostic 240/120 MHz clock tuple"
+    default n
+    depends on BTDM_ENABLE && IPRO6 && !BTDM_CLOCK_320_80_TEST && !BTDM_CLOCK_320_160_TEST
+    help
+      Diagnostic-only application policy.  Keep the IPRO6S 240 MHz MCU root
+      while raising the peripheral bus from 80 MHz to 120 MHz.
+
+config BTDM_MAX_BR_ACL_CONNECTIONS
+    int "Maximum BR/EDR ACL connections"
+    range 1 3
+    default 1
+    depends on BTDM_BT_ENABLE
+
+config BTDM_MAX_SCO_CONNECTIONS
+    int "Maximum BR/EDR SCO/eSCO connections"
+    range 0 3
+    default 1 if BT_HFP
+    default 0
+    depends on BTDM_BT_ENABLE
+    help
+      Controller-side synchronous-link allocation. Keep this at zero for
+      ACL-only products; HFP/HSP products must allocate at least one link.
+      This is independent from the Host CONFIG_BT_MAX_SCO_CONN pool size.
+
+config BTDM_VOICE_OVER_HCI
+    bool "Route SCO/eSCO audio over the on-chip H4 transport"
+    default n
+    depends on BTDM_BT_ENABLE && BTDM_MAX_SCO_CONNECTIONS > 0
+    help
+      Build the controller with CFG_VOHCI and enable HCI Synchronous Data
+      packet type 0x03 on the internal byte-stream transport. Applications
+      that use a hardware PCM/I2S voice path should leave this disabled.
+
+config BTDM_MAX_ACL_CONNECTIONS
+    int "Maximum ACL connections"
+    range 1 8
+    default 4
+    depends on BTDM_BLE_ENABLE
+    help
+      Maximum number of simultaneous BLE ACL connections.
+
+config BTDM_MAX_ADV_SETS
+    int "Maximum advertising sets"
+    range 1 8
+    default 2
+    depends on BTDM_BLE_ENABLE
+    help
+      Maximum number of advertising sets for extended advertising.
+
+config BTDM_MAX_SCAN_SETS
+    int "Maximum scan sets"
+    range 1 4
+    default 1
+    depends on BTDM_BLE_ENABLE
+    help
+      Maximum number of scanning sets.
+
+config BTDM_TX_PWR_DBM
+    int "Default TX Power (dBm)"
+    range -20 10
+    default 0
+    help
+      Default transmit power in dBm.
+
+config BTDM_SLEEP_ENABLE
+    bool "Enable deep sleep"
+    default n
+    help
+      Enable BTDM deep sleep mode for power saving.
+
+config BTDM_HCI_UART
+    bool "Enable HCI over UART"
+    default n
+    help
+      Enable HCI transport over UART for external host communication.
+
+if BTDM_HCI_UART
+
+config BTDM_HCI_UART_INDEX
+    int "HCI UART index"
+    range 0 2
+    default 0
+    help
+      UART peripheral index for HCI transport.
+
+config BTDM_HCI_UART_BAUDRATE
+    int "HCI UART baudrate"
+    default 115200
+    help
+      UART baudrate for HCI transport.
+
+endif # BTDM_HCI_UART
+
+endif # BTDM_ENABLE
+
+config BTDM_DEBUG
+    bool "Enable BTDM debug output"
+    default y
+    help
+      Enable debug output for BTDM stack.
+
+config BTDM_DEBUG_VERBOSE
+    bool "Enable verbose debug output"
+    default n
+    depends on BTDM_DEBUG
+    help
+      Enable verbose debug output for detailed tracing.
+
+config BTDM_CCI_DIAG
+    bool "Enable IPRO6S S-CCI bring-up diagnostics"
+    default y
+    help
+      Route GPIO10..13 to the IPRO6S S-CCI slave and publish boot/controller
+      status in TCM.  This is an application diagnostic policy; it does not
+      change the released controller library's default pinmux.
+
+config BTDM_H4_SELFTEST
+    bool "Run on-chip H4 HCI Reset self-test"
+    default y
+    depends on BTDM_ENABLE
+    help
+      Send a standard H4 HCI Reset command through the unified controller's
+      byte-stream transport after the scheduler starts and require the
+      corresponding Command Complete event.  The result is retained in the
+      application bring-up status for later CCI inspection; no UART or CCI
+      connection is required for the test itself.
+
+config BTDM_HOST_BRINGUP
+    bool "Start unified host and connectable advertising"
+    default y
+    depends on BTDM_ENABLE && BT_HOST_IPRO_V44
+    help
+      Run the unified Zephyr 4.4 host over the IPRO6S H4 transport, complete
+      bt_enable(), and start connectable IPRO6S-BLE advertising.  Retain each
+      result in the application bring-up status for CCI qualification.
+
+config BTDM_HOST_LE_ADV
+    bool "Enable LE advertising control in the host demo"
+    default y
+    depends on BTDM_HOST_BRINGUP && BTDM_BLE_ENABLE
+    help
+      Build the IPRO6S-BLE advertising path and its runtime control API. This
+      is application policy; it does not remove BLE from the released
+      controller library.
+
+config BTDM_HOST_LE_ADV_DEFAULT_ON
+    bool "Start LE advertising automatically after host bring-up"
+    default n
+    depends on BTDM_HOST_LE_ADV
+    help
+      Start connectable LE advertising automatically. Keep this disabled for
+      the IPRO6S A0 Classic baseline because LE advertising and BR/EDR Inquiry
+      Scan share controller scheduler state. LE remains available through the
+      runtime API and shell command when no Classic ACL is active.
+
+config BTDM_SINGLE_BR_LINK_RADIO_POLICY
+    bool "Suspend discovery activities while the single BR/EDR ACL is active"
+    default y
+    depends on BTDM_HOST_BRINGUP && BTDM_BT_ENABLE
+    help
+      Stop LE advertising and BR/EDR Inquiry Scan asynchronously after the
+      single Classic ACL connects, while retaining Page Scan. Restore the
+      requested discovery activities after disconnect. This is an application
+      safety policy for IPRO6S A0, whose shared scheduler/crypto path is not yet
+      reliable when LE advertising overlaps Classic AES-CCM traffic.
+
+config BT_DEVICE_NAME
+    string "Classic Bluetooth local name"
+    default "IPRO6S-BTDM"
+    depends on BTDM_HOST_BRINGUP && BTDM_BT_ENABLE
+    help
+      BR/EDR local name programmed by the unified Host during bt_enable().
+      This is an application identity and must not be fixed in the reusable
+      Host component.
+
+config BT_COD
+    hex "Classic Bluetooth Class of Device"
+    default 0x240404
+    depends on BTDM_HOST_BRINGUP && BTDM_BT_ENABLE
+    help
+      Class of Device advertised during inquiry.  The default identifies an
+      audio-rendering wearable/headset, matching this A2DP Sink test image.
+
+endmenu
+
+# Platform configuration
+menu "Platform Configuration"
+
+config BTDM_FPGA
+    bool "FPGA platform"
+    default y
+    help
+      Build for FPGA platform.
+
+config BTDM_RF_T2
+    bool "T2 RF daughter board"
+    default y
+    depends on BTDM_FPGA
+    help
+      Use T2 RF daughter board for FPGA testing.
+
+endmenu

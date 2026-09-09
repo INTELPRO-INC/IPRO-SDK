@@ -175,17 +175,33 @@ void k_fifo_init(struct k_fifo *fifo)
 
 void k_fifo_put(struct k_fifo *fifo, void *data)
 {
+	BaseType_t gave;
+
 	ensure_queue(&fifo->queue);
 	if (fifo->queue.sem == NULL) {
 		return;
 	}
-	taskENTER_CRITICAL();
-	sys_slist_append(&fifo->queue.data_q, data);
-	taskEXIT_CRITICAL();
 	if (!semaphore_handle_is_valid("fifo_put", fifo->queue.sem, fifo)) {
 		return;
 	}
-	(void)xSemaphoreGive((SemaphoreHandle_t)fifo->queue.sem);
+
+	/* Keep the intrusive list and its counting semaphore observable as one
+	 * operation.  Without suspending the scheduler here, a higher-priority
+	 * consumer can run after the append but before xSemaphoreGive().  It then
+	 * sees a non-empty list while a non-blocking semaphore take still fails.
+	 * RFCOMM exposed this as an intermittent NULL dequeue under sustained TX.
+	 */
+	vTaskSuspendAll();
+	taskENTER_CRITICAL();
+	sys_slist_append(&fifo->queue.data_q, data);
+	taskEXIT_CRITICAL();
+	gave = xSemaphoreGive((SemaphoreHandle_t)fifo->queue.sem);
+	if (gave != pdPASS) {
+		taskENTER_CRITICAL();
+		(void)sys_slist_find_and_remove(&fifo->queue.data_q, data);
+		taskEXIT_CRITICAL();
+	}
+	(void)xTaskResumeAll();
 }
 
 void *k_fifo_get(struct k_fifo *fifo, k_timeout_t timeout)
@@ -775,14 +791,27 @@ bool k_work_flush(struct k_work *work, struct k_work_sync *sync)
 
 void k_queue_prepend(struct k_queue *queue, void *data)
 {
+	BaseType_t gave;
+
 	ensure_queue(queue);
+	if (queue->sem == NULL ||
+	    !semaphore_handle_is_valid("queue_prepend", queue->sem, queue)) {
+		return;
+	}
+
+	/* Match k_fifo_put(): the list node must never become visible to a task
+	 * before the corresponding semaphore token exists. */
+	vTaskSuspendAll();
 	taskENTER_CRITICAL();
 	sys_slist_prepend(&queue->data_q, data);
 	taskEXIT_CRITICAL();
-	if (!semaphore_handle_is_valid("queue_prepend", queue->sem, queue)) {
-		return;
+	gave = xSemaphoreGive((SemaphoreHandle_t)queue->sem);
+	if (gave != pdPASS) {
+		taskENTER_CRITICAL();
+		(void)sys_slist_find_and_remove(&queue->data_q, data);
+		taskEXIT_CRITICAL();
 	}
-	(void)xSemaphoreGive((SemaphoreHandle_t)queue->sem);
+	(void)xTaskResumeAll();
 }
 
 void *k_lifo_get(struct k_lifo *lifo, k_timeout_t timeout)

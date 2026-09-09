@@ -1,0 +1,91 @@
+#
+# IPRO6 Demo — Low Power build (No PSRAM, No BLE, No WiFi)
+#
+# Build:  make DEFCONFIG=defconfig_ipro6_lp   (output in build_ipro6_lp/)
+# Enables only the low-power demo (CONFIG_DEMO_LOWPOWER) so the `lp` shell
+# command + PDS/HBN/DTIM app flow run on the IPRO6 DUT with a minimal,
+# low-floor configuration. Shell enabled for interactive control.
+#
+
+#
+# Hardware Platform Configuration
+#
+# CONFIG_IPRO7 is not set
+CONFIG_IPRO6=y
+# CONFIG_IPRO6LE is not set
+CONFIG_CHIP="IPRO6"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+# CONFIG_FPGA is not set
+CONFIG_EVB=y
+CONFIG_BOARD="EVB"
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_PARTITION=y
+# CONFIG_EASYFLASH4 is not set
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_IPRO_EVENT=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# Low Power
+#
+# IPRO6 has no internal PSRAM — deep-sleep all domains in PDS31.
+# CONFIG_USE_PSRAM is not set
+# CONFIG_WIFI6 is not set
+# CONFIG_BLUETOOTH_LE_ENABLE is not set
+# CONFIG_MM_SUPPORT is not set
+CONFIG_HAL_LP=y
+CONFIG_FREERTOS_IDLE_HOOK=y
+# Reserve the top 32K of OCRAM for the staged lp_fw image (ram_tcm 320K->288K).
+CONFIG_WIFI_LP_APP_SUPPORT=y
+
+#
+# Demos — low power only
+#
+CONFIG_DEMO_SOC=y
+CONFIG_DEMO_PERIPHERAL=y
+CONFIG_DEMO_LOWPOWER=y
+# CONFIG_DEMO_PERIPHERAL_BASIC is not set
+# CONFIG_DEMO_CPU_BENCH is not set
+# CONFIG_DEMO_PWM is not set
+# CONFIG_DEMO_SPI is not set
+# CONFIG_DEMO_I2S is not set
+# CONFIG_DEMO_LCD is not set
+# CONFIG_DEMO_EMAC is not set
+# CONFIG_DEMO_SPICAM is not set
+# CONFIG_DEMO_AUDIO is not set
+# CONFIG_DEMO_SECURITY is not set
+# CONFIG_DEMO_DSP is not set
+# CONFIG_DEMO_SEMIHOSTING is not set
+# CONFIG_DEMO_FS is not set
+# CONFIG_DEMO_SYS is not set
+# CONFIG_DEMO_USB is not set
+
+#
+# Platform UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+
+#
+# Compiler Optimization for Size
+#
+CONFIG_OPTIMIZATION_LEVEL_SIZE=y
+CONFIG_COMPILER_OPTIMIZATION_LEVEL_SIZE=y

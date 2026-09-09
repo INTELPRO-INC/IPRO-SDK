@@ -1,0 +1,8 @@
+config COMPONENTS_TINYMAIX_ENABLE
+    bool "Enable TinyMaix (Lightweight NN Inference)"
+    default n
+    help
+      Enable TinyMaix, a tiny neural network inference library
+      designed for microcontrollers. Supports INT8/FP32 models.
+      Only ~3-10KB flash for the core library.
+      License: Apache 2.0.

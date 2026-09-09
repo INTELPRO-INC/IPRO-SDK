@@ -109,6 +109,14 @@ typedef struct {
                                          designated-initializer default)
                                          OR negative -> use board default.
                                          Only positive values override. */
+    int8_t   dac_spk_en_active;     /**< GPIO level that turns the amplifier
+                                         ON. 0 (the designated-initializer
+                                         default) -> use the board header's
+                                         BOARD_SPK_EN_ACTIVE. Use +1 to force
+                                         active high or -1 to force active
+                                         low; 0 cannot mean "active low"
+                                         here because it is indistinguishable
+                                         from an unset field. */
 
     /* AUDIO_OUTPUT_DUMP config (ignored by other backends) */
     const char        *dump_path;   /**< SD card path (used when dump_hook is NULL) */

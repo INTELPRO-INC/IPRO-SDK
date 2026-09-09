@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Resolved periodic advertising dependencies, after application autoconf. */
+#ifndef IPRO_BT_HOST_PERIODIC_CONFIG_H_
+#define IPRO_BT_HOST_PERIODIC_CONFIG_H_
+#cmakedefine CONFIG_BT_EXT_ADV 1
+#cmakedefine CONFIG_BT_EXT_ADV_CODING_SELECTION 1
+#cmakedefine CONFIG_BT_PER_ADV 1
+#cmakedefine CONFIG_BT_PER_ADV_SYNC 1
+#cmakedefine CONFIG_BT_BROADCASTER 1
+#cmakedefine CONFIG_BT_OBSERVER 1
+#endif

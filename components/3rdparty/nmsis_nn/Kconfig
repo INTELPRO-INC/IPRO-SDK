@@ -1,0 +1,14 @@
+config COMPONENTS_NMSIS_NN_ENABLE
+    bool "Enable NMSIS-NN (Nuclei RISC-V NN kernels)"
+    default n
+    help
+      Enable NMSIS-NN, the Nuclei neural network kernel library for RISC-V.
+      Provides int8/int4/int16 convolution, depthwise convolution, pooling,
+      fully-connected, softmax and LSTM kernels.
+
+      DSP (P-extension) acceleration is enabled automatically when the app is
+      built with an xxldsp march - no extra option is required.
+
+      This is the int8 world used by TFLM. It is independent of the uint8
+      kernels in components/ai that serve the .inm NPU path; the two can
+      coexist. License: Apache 2.0.

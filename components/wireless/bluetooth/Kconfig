@@ -94,6 +94,24 @@ menu "Controller Configuration"
         default "bt52" if IPRO_BLE_CTLR_FEATURE_BT52
         default "bt54_iso2" if IPRO_BLE_CTLR_FEATURE_BT54_ISO2
 
+    config IPRO_BLE_CTLR_SUBRATING
+        bool "Enable IPRO7 Connection Subrating controller implementation"
+        depends on BT_CTLR_IPRO && IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+        default n
+        help
+          Build CFG_LE_SUBRATING for the Bluetooth 5.3+ link layer. This
+          opt-in implementation is validated separately from the base profile.
+          Source build is required; existing prebuilt archives lack this flag.
+
+    config IPRO_BLE_CTLR_CSSA
+        bool "Enable IPRO7 BLE 5.4 advertising coding selection"
+        depends on BT_CTLR_IPRO && IPRO_BLE_CTLR_FEATURE_BT54_ISO2
+        default n
+        help
+          Build CFG_CSSA in a separate experimental _cssa controller archive.
+          Source build is forced until S=2/S=8 radio qualification completes.
+          Enable BT_EXT_ADV_CODING_SELECTION separately in the Host.
+
     config IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
         bool "Force ipro_ble_controller source build"
         depends on BT_CTLR_IPRO
@@ -495,6 +513,28 @@ menu "BLE Features"
         default n
         depends on BT_DATA_LEN_UPDATE
 
+    config BT_HOST_CCM
+        bool
+        default n
+
+    config BT_EAD
+        bool "BLE 5.4 Encrypted Advertising Data library"
+        default n
+        select BT_HOST_CCM
+        help
+          Host encryption/authentication of advertising data. Applications
+          must provision session keys and IVs securely. This does not enable
+          PAwR or distribute keys automatically.
+
+    config BT_SUBRATING
+        bool "BLE 5.3 connection subrating Host procedures"
+        default n
+        depends on BT_CENTRAL || BT_PERIPHERAL
+        help
+          Enable subrate requests, central defaults and Subrate Change events.
+          This enables Host support; the local controller and peer must also
+          support Connection Subrating. It does not enable platform PDS.
+
     config BT_PER_ADV
         bool "Periodic advertiser"
         default n
@@ -516,6 +556,16 @@ menu "BLE Features"
         range 0 1650
         default 0
         depends on BT_PER_ADV_SYNC
+
+    config BT_BUF_EVT_DISCARDABLE_SIZE
+        int "Discardable HCI event parameter capacity"
+        range 43 255
+        default 255 if BT_EXT_ADV
+        default 43
+        help
+          Extended advertising reports may use the full 255-byte HCI event
+          parameter length. Smaller buffers drop oversized reports safely,
+          but cannot provide complete extended-advertising reception.
 
     config BT_PER_ADV_SYNC_TRANSFER_SENDER
         bool "Periodic Advertising Sync Transfer sender"
@@ -572,6 +622,16 @@ menu "Host Stack Options"
           ADV_EXTENSION capability so an app can use a controller that supports
           extended advertising while still forcing legacy scan/advertise during
           interoperability bring-up.
+
+    config BT_EXT_ADV_CODING_SELECTION
+        bool "BLE 5.4 advertising coding selection Host API"
+        default n
+        depends on BT_HOST_IPRO_V44
+        select BT_EXT_ADV
+        help
+          Enable coded advertising S=2/S=8 selection through the extended
+          advertising v2 HCI command when the controller advertises support.
+          This enables Host machinery, not controller or RF qualification.
 
     choice BT_AUTO_PHY_CENTRAL
         prompt "Zephyr host automatic PHY preference for central role"
@@ -673,6 +733,16 @@ menu "Host Stack Options"
         default n
         depends on BT_SMP
 
+    config BT_SMP_ENFORCE_MITM
+        bool "Enforce MITM when local I/O permits authenticated pairing"
+        default y
+        depends on BT_SMP
+        help
+          Match the upstream Zephyr Host default. When an application
+          registers suitable authentication callbacks, include MITM in the
+          local SMP Authentication Requirements instead of silently reducing
+          a peer's Level 3/4 request to Just Works.
+
     config BT_SIGNING
         bool "ATT data signing"
         default y
@@ -759,6 +829,15 @@ menu "Host Stack Options"
         bool "Automatically discover GATT CCC descriptors"
         default n
         depends on BT_GATT_CLIENT
+
+    config BT_GATT_SECURITY_LEVELS
+        bool "BLE 5.4 LE GATT Security Levels characteristic"
+        default n
+        depends on BT_HOST_IPRO_V44
+        help
+          Provide the Core 5.4 LE GATT Security Levels characteristic in the
+          built-in GAP service. The default value is Mode 1 Level 1. Apps may
+          set one or more Mode 1/2 requirements before bt_enable().
 
     config BT_L2CAP_DYNAMIC_CHANNEL
         bool "Dynamic L2CAP channels"
@@ -904,6 +983,20 @@ menu "Classic Bluetooth Profiles"
           Enable the media Sink role and deliver received encoded media frames
           to the application. Codec decode and audio rendering remain APP
           policy and are independently selectable.
+
+    config BT_A2DP_SBC_CODEC
+        bool "SBC codec for A2DP media"
+        default n
+        select LIBSBC
+        help
+          Build the Zephyr 4.4 SBC codec adapter and its pinned upstream
+          libsbc implementation. Enable this only in applications which need
+          to encode or decode SBC media; A2DP signaling alone does not require
+          the codec.
+
+    config LIBSBC
+        bool
+        default n
 
     endif # BT_A2DP
 
@@ -1252,6 +1345,31 @@ menu "Debug and Testing"
         depends on BLE_MFG
         help
           Enable HCI commands for manufacturing tests.
+
+    config IPRO_BT_HOST_GATT_SECURITY_TEST
+        bool "GATT Security Levels board fixture"
+        default n
+        depends on BT_HOST_IPRO_V44 && BT_GATT_CLIENT && SHELL
+        help
+          Add the board-test command that reads and validates UUID 0x2BF5.
+          This fixture is excluded from customer-release configurations.
+
+    config IPRO_BT_HOST_GATT_SECURITY_POLICY_TEST
+        bool "GATT Security Levels Level 4 policy fixture"
+        default n
+        depends on IPRO_BT_HOST_GATT_SECURITY_TEST && BT_SMP
+        help
+          Add a test characteristic requiring authenticated LE Secure
+          Connections and commands for testing access before and after a
+          security upgrade. This fixture is excluded from customer releases.
+
+    config IPRO_BT_HOST_PAST_TEST
+        bool "Periodic Advertising Sync Transfer board fixture"
+        default n
+        depends on BT_HOST_IPRO_V44 && SHELL && BT_CONN
+        help
+          Add shell-driven local periodic-set transfer and receiver checks.
+          This fixture is excluded from customer-release configurations.
 
 endmenu
 

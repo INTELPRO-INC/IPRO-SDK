@@ -192,7 +192,7 @@ uint8_t bt_le_ext_adv_get_index(struct bt_le_ext_adv *adv)
 	return (uint8_t)ARRAY_INDEX(adv_pool, adv);
 }
 
-static struct bt_le_ext_adv *adv_new(void)
+static struct bt_le_ext_adv *adv_new(int *err)
 {
 	struct bt_le_ext_adv *adv = NULL;
 	int i;
@@ -205,7 +205,20 @@ static struct bt_le_ext_adv *adv_new(void)
 	}
 
 	if (!adv) {
+		*err = -ENOMEM;
 		return NULL;
+	}
+
+	/* Legacy termination releases only the Host object in RX context.
+	 * Reclaim its Controller set (including AD/scan-response buffers) here,
+	 * before memset loses the handle's state. Creation may send sync HCI;
+	 * the event callback must not perform this deferred reclamation.
+	 */
+	if (atomic_test_bit(adv->flags, BT_ADV_PARAMS_SET)) {
+		*err = bt_le_ext_adv_delete(adv);
+		if (*err) {
+			return NULL;
+		}
 	}
 
 	(void)memset(adv, 0, sizeof(*adv));
@@ -217,6 +230,9 @@ static struct bt_le_ext_adv *adv_new(void)
 
 static void adv_delete(struct bt_le_ext_adv *adv)
 {
+#if defined(CONFIG_BT_PER_ADV_RSP)
+	bt_pawr_reassembly_reset(&adv->pawr_reassembly);
+#endif
 	atomic_clear_bit(adv->flags, BT_ADV_CREATED);
 }
 
@@ -256,19 +272,25 @@ static void clear_ext_adv_instance(struct bt_le_ext_adv *adv, void *data)
 void bt_adv_reset_adv_pool(void)
 {
 	bt_le_ext_adv_foreach(clear_ext_adv_instance, NULL);
+#if defined(CONFIG_BT_EXT_ADV)
+	/* Include retired legacy slots, no longer visited by foreach. */
+	(void)memset(adv_pool, 0, sizeof(adv_pool));
+#endif
 	(void)memset(&bt_dev.adv, 0, sizeof(bt_dev.adv));
 }
 
 static int adv_create_legacy(void)
 {
 #if defined(CONFIG_BT_EXT_ADV)
+	int err;
+
 	if (bt_dev.adv) {
 		return -EALREADY;
 	}
 
-	bt_dev.adv = adv_new();
+	bt_dev.adv = adv_new(&err);
 	if (bt_dev.adv == NULL) {
-		return -ENOMEM;
+		return err;
 	}
 #endif
 	return 0;
@@ -1433,9 +1455,9 @@ int bt_le_ext_adv_create(const struct bt_le_adv_param *param,
 		return -EINVAL;
 	}
 
-	adv = adv_new();
+	adv = adv_new(&err);
 	if (!adv) {
-		return -ENOMEM;
+		return err;
 	}
 
 	adv->id = param->id;
@@ -1651,6 +1673,7 @@ int bt_le_ext_adv_delete(struct bt_le_ext_adv *adv)
 		return err;
 	}
 
+	atomic_clear_bit(adv->flags, BT_ADV_PARAMS_SET);
 	adv_delete(adv);
 
 	return 0;
@@ -1915,10 +1938,18 @@ static int bt_le_per_adv_enable(struct bt_le_ext_adv *adv, bool enable)
 	bt_hci_cmd_state_set_init(buf, &state, adv->flags,
 				  BT_PER_ADV_ENABLED, enable);
 
+#if defined(CONFIG_BT_PER_ADV_RSP)
+	if (enable) bt_pawr_reassembly_reset(&adv->pawr_reassembly);
+#endif
+
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_PER_ADV_ENABLE, buf, NULL);
 	if (err) {
 		return err;
 	}
+
+#if defined(CONFIG_BT_PER_ADV_RSP)
+	if (!enable) bt_pawr_reassembly_reset(&adv->pawr_reassembly);
+#endif
 
 	return 0;
 }
@@ -1987,6 +2018,20 @@ void bt_hci_le_per_adv_response_report(struct net_buf *buf)
 	info.subevent = evt->subevent;
 	info.tx_status = evt->tx_status;
 
+	/* Validate every response before dispatch, so a malformed later entry cannot
+	 * leave a pending fragment that gets joined to an unrelated later report. */
+	const uint8_t *cursor = buf->data;
+	size_t remaining = buf->len;
+	for (uint8_t i = 0; i < evt->num_responses; i++) {
+		if (remaining < sizeof(*response)) goto malformed_pawr_report;
+		response = (void *)cursor;
+		size_t size = sizeof(*response) + response->data_length;
+		if (remaining < size) goto malformed_pawr_report;
+		cursor += size;
+		remaining -= size;
+	}
+	if (remaining) goto malformed_pawr_report;
+
 	for (uint8_t i = 0; i < evt->num_responses; i++) {
 		if (buf->len < sizeof(struct bt_hci_evt_le_per_adv_response)) {
 			LOG_ERR("Invalid response report");
@@ -2006,28 +2051,30 @@ void bt_hci_le_per_adv_response_report(struct net_buf *buf)
 			return;
 		}
 
-		if (response->data_status == BT_HCI_LE_ADV_EVT_TYPE_DATA_STATUS_PARTIAL) {
-			LOG_WRN("Incomplete response report received, discarding");
-			(void)net_buf_pull_mem(buf, response->data_length);
-		} else if (response->data_status == BT_HCI_LE_ADV_EVT_TYPE_DATA_STATUS_RX_FAILED) {
-			(void)net_buf_pull_mem(buf, response->data_length);
-
-			if (adv->cb && adv->cb->pawr_response) {
-				adv->cb->pawr_response(adv, &info, NULL);
-			}
-		} else if (response->data_status == BT_HCI_LE_ADV_EVT_TYPE_DATA_STATUS_COMPLETE) {
-			net_buf_simple_init_with_data(&data,
-						      net_buf_pull_mem(buf, response->data_length),
-						      response->data_length);
-
-			if (adv->cb && adv->cb->pawr_response) {
-				adv->cb->pawr_response(adv, &info, &data);
-			}
-		} else {
-			LOG_ERR("Invalid data status %d", response->data_status);
-			(void)net_buf_pull_mem(buf, response->data_length);
+		uint8_t *payload = net_buf_pull_mem(buf, response->data_length);
+		uint8_t *complete;
+		uint16_t complete_len;
+		uint32_t metadata = (uint32_t)evt->tx_status |
+			((uint32_t)(uint8_t)response->tx_power << 8) |
+			((uint32_t)(uint8_t)response->rssi << 16) |
+			((uint32_t)response->cte_type << 24);
+		bool was_poisoned = adv->pawr_reassembly.poisoned;
+		int result = bt_pawr_fragment(&adv->pawr_reassembly, evt->subevent,
+			response->response_slot, metadata, response->data_status,
+			payload, response->data_length, &complete, &complete_len);
+		if (result < 0) {
+			if (!was_poisoned) LOG_ERR("PAwR response reassembly failed; restart periodic advertising");
+		} else if (result == 1 || result == 2) {
+			if (result == 1) net_buf_simple_init_with_data(&data, complete, complete_len);
+			if (adv->cb && adv->cb->pawr_response)
+				adv->cb->pawr_response(adv, &info, result == 1 ? &data : NULL);
 		}
 	}
+	return;
+
+malformed_pawr_report:
+	adv->pawr_reassembly.poisoned = true;
+	LOG_ERR("Invalid PAwR response report; restart periodic advertising");
 }
 #endif /* CONFIG_BT_PER_ADV_RSP */
 
@@ -2181,6 +2228,12 @@ void bt_hci_le_adv_set_terminated(struct net_buf *buf)
 	if (adv == bt_dev.adv) {
 		bt_le_adv_delete_legacy();
 	}
+#if defined(CONFIG_BT_SMP)
+	/* Connection Complete defers this until the advertiser is no longer
+	 * enabled or eligible for resolving-list pause/resume.
+	 */
+	bt_id_pending_keys_update();
+#endif
 }
 
 void bt_hci_le_scan_req_received(struct net_buf *buf)

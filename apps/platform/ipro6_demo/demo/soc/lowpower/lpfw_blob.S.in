@@ -1,0 +1,19 @@
+/*
+ * Embed the standalone IPRO6 lp_fw Stage-1 image into the full firmware.
+ *
+ * GENERATED from lpfw_blob.S.in by CMake (configure_file): the @LPFW_BIN@
+ * placeholder is replaced with the absolute path of the separately-built
+ * ipro6_lpfw.bin. Do not edit the generated copy.
+ *
+ * The image is a raw, position-fixed blob; this places it in flash (.rodata)
+ * and exports __lpfw_start/__lpfw_end so the boot path can memcpy it to its
+ * run address (reserved OCRAM slot 0x11048000).
+ */
+    .section .rodata.lpfw, "a", @progbits
+    .balign 32
+    .globl  __lpfw_start
+__lpfw_start:
+    .incbin "@LPFW_BIN@"
+    .balign 4
+    .globl  __lpfw_end
+__lpfw_end:

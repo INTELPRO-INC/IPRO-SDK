@@ -9,6 +9,7 @@ if("${CONFIG_CHIP}" STREQUAL "IPRO6")
         # BTDM FPGA: use ipro6_phyrf_fpga (T2/AD9361/GPM RF boards)
     else()
         # WiFi6/BLE: use ipro6_rf (comprehensive RF driver)
+        add_subdirectory(ipro6_rf)
     endif()
 endif()
 

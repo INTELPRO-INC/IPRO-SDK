@@ -69,10 +69,8 @@ SET(MABI "ilp32f")
 # The patched (vendor) GCC supports: -mtune=intelpro-ipro7, xxldsp/xxldspn2x extensions
 # Standard GCC only supports the standard extensions + zifencei (for fence.i instruction)
 # Note: Always re-detect to avoid stale cache issues in CI environments
-set(_vendor_probe_src "${CMAKE_BINARY_DIR}/ipro_vendor_probe.c")
-file(WRITE "${_vendor_probe_src}" "")
 execute_process(
-    COMMAND ${CMAKE_C_COMPILER} -march=rv32imafc_xxldsp -mtune=intelpro-ipro7 -mabi=ilp32f -x c -c "${_vendor_probe_src}" -o "${_vendor_probe_src}.o"
+    COMMAND ${CMAKE_C_COMPILER} -march=rv32imafc_xxldsp -mtune=intelpro-ipro7 -mabi=ilp32f -x c -c /dev/null -o /dev/null
     OUTPUT_QUIET ERROR_QUIET
     RESULT_VARIABLE _vendor_test_result
 )

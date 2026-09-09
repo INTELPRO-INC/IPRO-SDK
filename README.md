@@ -1,6 +1,23 @@
 # IPRO SDK
 
-**Professional embedded development kit for IPRO7 RISC-V platforms with BLE 5.4 and LE Audio support.**
+**Embedded development kit for the IntelPro IPRO7 and IPRO6S RISC-V SoCs:
+FreeRTOS, Bluetooth 5.4 with LE Audio, BR/EDR, Wi-Fi 6, and on-device AI.**
+
+---
+
+## Supported SoCs
+
+| | IPRO7 | IPRO6S |
+|---|---|---|
+| Core | RISC-V RV32IMAFC + DSP extensions | RISC-V RV32IMAFC + DSP extensions |
+| Bluetooth | BLE 5.4, LE Audio (ISO) | BLE 5.4 + BR/EDR: A2DP, AVRCP, HFP-HF, SCO |
+| Wi-Fi | external SDIO module (ATBM6162) | on-chip Wi-Fi 6 |
+| NPU / ISP | yes | - |
+| Reference boards | IPRO7 EVB, IPRO7AI EVK | IPRO6S EVB |
+
+Both SoCs build from the same tree with the same toolchain. They share the
+RTOS, the Bluetooth host, the HAL and the utility components; they differ in
+the SoC driver layer, the RF driver and the Bluetooth controller.
 
 ---
 
@@ -9,153 +26,288 @@
 ### Prerequisites
 
 ```bash
-# RISC-V toolchain
-/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-gcc
+# RISC-V toolchain - obtain it from IntelPro; it is not part of the SDK
+/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-gcc     # GCC 14, rv32imafc / ilp32f
 
 # Build tools
-cmake >= 3.19
-ninja
+cmake >= 3.19          # tools/cmake/ carries a Linux x86-64 build
+ninja or GNU make
 python3 >= 3.8
 ```
 
-### Build & Run
+`cmake/toolchain.cmake` looks for the toolchain at the path above; set
+`CROSS_COMPILE` to point elsewhere.
+
+### Build
 
 ```bash
-# List available projects
+# List all projects
 ./build_freertos.sh -l
 
-# Build a BLE application
+# Build a project (the name is the last path segment)
 ./build_freertos.sh ipro_ble_remote build
-
-# Build + flash + monitor serial output
-./build_freertos.sh ipro_ble_remote build flash monitor
+make -C apps/bluetooth/ble/ipro_ble_remote        # equivalent
 
 # Clean
 ./build_freertos.sh ipro_ble_remote clean
 ```
 
-Build output: `apps/<category>/<project>/build/build_out/<project>_IPRO7.bin`
+Build output: `apps/<category>/<project>/build/build_out/<project>_<SOC>.bin`,
+with `<SOC>` = `IPRO7` or `IPRO6`. The linker prints flash and RAM usage at
+the end of every build.
+
+Some projects carry more than one board configuration and select it with
+`BOARD=`:
+
+```bash
+make -C apps/multimedia/ipro_pdm_mic_demo BOARD=evk    # IPRO7AI EVK; uses config_evk, builds in build_config_evk/
+```
+
+### Flash and monitor
+
+Firmware is downloaded over the serial port with the IntelPro flash tool
+(obtained separately from the SDK):
+
+```bash
+ipro_iot_tool_lite --chipname ipro7 --port /dev/cu.usbserial-XXXX --baudrate 921600 \
+    --flash-pin 0x02 --firmware apps/bluetooth/ble/ipro_ble_remote/build/build_out/ipro_ble_remote_IPRO7.bin
+```
+
+The console runs at 115200 baud on the IPRO7 EVB and 921600 on the IPRO7AI
+EVK. On macOS use `/dev/cu.*`, not `/dev/tty.*` (the latter blocks on
+carrier detect).
 
 ---
 
 ## Applications
 
-### BLE Applications
+### Platform references
 
-| Application | Description | Documentation |
-|-------------|-------------|---------------|
-| `ipro_ble_remote` | GATT services (LED, Button, UART, OTA) + PIR image transfer | [README](apps/bluetooth/ble/ipro_ble_remote/README.md) |
-| `ipro_throughput_test` | Bidirectional throughput testing, up to 999 Kbps | [README](apps/bluetooth/ble/ipro_throughput_test/README.md) |
-| `ipro_ble_hid_keyboard` | HID over GATT (HOGP) keyboard | - |
-| `ipro_ble_transparent` | BLE transparent data transfer | - |
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro7_demo` | Full-chip reference: GPIO, UART, SPI, USB, ISP camera, audio, Ethernet, NPU person detection | IPRO7 |
+| `ipro7ai_evk_demo` | IPRO7AI EVK board: ST7789 panel, camera, PDM mic, speaker, SD card, BLE, LE Audio; prebuilt images and an Android control app under `release/` | IPRO7 |
+| `ipro7_sdio_wifi` | Wi-Fi over SDIO host (ATBM6162): transport, netif, DHCP, iperf | IPRO7 |
+| `ipro6_demo` | Wi-Fi 6 reference: station, soft-AP, lwIP, shell | IPRO6S |
+| `ipro6_if_wifi` | Wi-Fi interface example | IPRO6S |
+| `ipro6_btdm_phyrf` | BLE + BR/EDR: A2DP sink (SBC), AVRCP, HFP-HF, SCO audio over I2S | IPRO6S |
 
-### LE Audio Applications
+### Bluetooth LE
 
-| Application | Description | Documentation |
-|-------------|-------------|---------------|
-| `ipro_le_audio_headset` | GAF/BAP unicast/broadcast headset with LC3 codec | [README](apps/bluetooth/le_audio/ipro_le_audio_headset/README.md) |
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro_ble_remote` | GATT services (LED, button, UART, OTA) - the reference for GATT + OTA | IPRO7 |
+| `ipro_ble_transparent` | Transparent data pipe over BLE with an AT-style interface | IPRO7 |
+| `ipro_ble_hid_keyboard` | HID over GATT (HOGP) keyboard | IPRO7 |
+| `ipro_throughput_test` | Bidirectional throughput test, 2M PHY + DLE | IPRO7 |
+| `ipro_le_audio_headset` | LE Audio unicast headset: GAF / BAP, VCP, MCP, LC3 | IPRO7 |
 
+### Audio and AI
 
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro_pdm_mic_demo` | PDM capture, DAC playback, BLE audio transfer with SMP bonding, PDS31 sleep with bonded reconnect, 2M bulk transfer; EVB and EVK boards | IPRO7 |
+| `ipro_meeting_poc` | Speaker recognition on the NPU; the model is loaded at boot from the `mfg` flash partition | IPRO7 |
+| `ipro_npu_yolo` | YOLOv8 person detection on the NPU | IPRO7 |
+| `ipro_ai_bench` | NPU vs CPU inference timing | IPRO7 |
+| `ipro_tflm_test` | TensorFlow Lite Micro with NMSIS-NN kernels | IPRO7 |
+| `ipro_tflm_yolo` | YOLO on TensorFlow Lite Micro | IPRO7 |
+| `ipro_nmsis_nn_test` | NMSIS-NN operator tests | IPRO7 |
+| `ipro_tinymaix_demo` | TinyMaix inference | IPRO7 |
 
-### Platform Applications
+### Displays, sensors and peripherals
 
-| Application | Description | Documentation |
-|-------------|-------------|---------------|
-| `ipro7_demo` | Platform demo (GPIO, UART, SPI, USB, ISP, Audio, Ethernet) | [README](apps/platform/ipro7_demo/README.md) |
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro_gh7007_test` | GH7007 5" SPI LCD bring-up | IPRO7 |
+| `ipro_gh7007_video` | Video playback on the GH7007 panel | IPRO7 |
+| `ipro_epd_test` | E-paper display driver | IPRO7 |
+| `ipro_epd_el036` | EL036 e-paper panel | IPRO7 |
+| `kw307_radar_test` | KW307 24 GHz radar module over UART | IPRO7 |
+| `mpu6500_test` | MPU6500 IMU over I2C | IPRO7 |
+| `ipro_enc28j60_test` | ENC28J60 Ethernet over SPI | IPRO7 |
 
+### Storage, SDIO and low power
 
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro_pio_sdh_test` | Software (PIO) SD host validation | IPRO7 |
+| `ipro_sdio_probe` | SDIO bring-up probe | IPRO7 |
+| `ipro_atbm_probe` | ATBM6162 SDIO Wi-Fi module probe | IPRO7 |
+| `ipro_lp_test` | PDS entry/exit and wake sources | IPRO7 |
+
+### Test
+
+| Application | Description | SoC |
+|-------------|-------------|-----|
+| `ipro_unit_test` | Unit tests for the HAL and the shared components | IPRO7 |
 
 ---
 
 ## Architecture
 
 ```
-apps/              Application projects (each with .config + CMakeLists.txt)
-  bluetooth/         BLE and LE Audio applications
-  multimedia/        Audio/video applications (Agora, PIR camera)
-  networking/        Thread, Matter networking apps
-  platform/          Platform demos (ipro6, ipro7)
-  test/              Unit tests and validation
-components/        Middleware & libraries
-  wireless/          BLE 5.4: ipro_bt_host (Zephyr 4.4 host) + ipro_ble_controller
-  3rdparty/          Agora SDK, liblc3, mbedTLS (via crypto/)
-  cherryusb/         USB device classes (CDC, MSC, HID, UAC, UVC)
-  network/           lwIP networking
-  os/                FreeRTOS kernel + shared app hooks
-  audio/             Audio processing
-  fs/                FatFS, SPIFFS
-bsp/               Board Support Package (HAL, drivers, linker scripts)
-cmake/             Build system (toolchain.cmake, extension.cmake)
-tools/             Flash tool, serial monitor, release scripts
+apps/               Application projects (each with .config + CMakeLists.txt + Makefile)
+  ai/                 NPU applications
+  bluetooth/          BLE and LE Audio applications
+  multimedia/         Audio applications
+  platform/           SoC references (ipro7, ipro6), bootloaders
+  test/               Driver examples, probes, unit tests
+  platform/common/    Shared OTA helpers
+  turnkey/common/     Shared USB console
+components/         Middleware and libraries
+  wireless/bluetooth/ipro_bt_host          Bluetooth host (Zephyr 4.4)
+  wireless/bluetooth/ipro_ble_controller   Bluetooth controllers (prebuilt archives)
+  wireless/macsw                           Wi-Fi 6 MAC (prebuilt archive)
+  wireless/wifi6                           Wi-Fi 6 upper layers: fhost, wpa_supplicant, lwIP adapter
+  wireless/rf                              RF drivers (prebuilt archives)
+  ai/                                      NPU inference engine (libai.a + headers)
+  network/                                 lwIP 2.1.2, SDIO Wi-Fi host, network utilities
+  os/                                      FreeRTOS V11 kernel + shared application hooks
+  sys/                                     Shell, logging, USB console
+  audio/                                   Audio output, resampling, speaker correction
+  fs/                                      FatFS, EasyFlash
+  crypto/                                  mbedTLS
+  cherryusb/                               USB device classes (CDC, MSC, HID, UAC, UVC)
+  3rdparty/                                LC3, TensorFlow Lite Micro, NMSIS-NN, TinyMaix, zmodem, ...
+bsp/                Board Support Package
+  board/              Board files and linker scripts (ipro7, ipro6)
+  drivers/            SoC drivers (IPRO7_soc, ipro6_soc, soc_common)
+  hal/                HAL; lp_framework/ipro7 is the low-power (PDS) framework
+cmake/              Toolchain and build-system macros
+tools/              Bundled CMake, Kconfig parser, Android companion app
 ```
 
-### BLE Stack
+### Prebuilt libraries
 
-The BLE stack is a **Zephyr 4.4 host** (`components/wireless/bluetooth/ipro_bt_host`)
-over the **IPRO BLE controller** (`components/wireless/bluetooth/ipro_ble_controller`),
-joined by an in-memory HCI byte stream:
+A few components are provided as prebuilt archives with their public
+headers rather than as source: the Bluetooth controllers, the Wi-Fi 6 MAC,
+the RF drivers, the low-power framework, the AI engine, the ISP algorithms
+and the LC3 codec. The build picks them up automatically; nothing has to be
+configured to use them. Debug information is stripped from the archives;
+symbol names are kept so map files and `nm` still work.
+
+### Bluetooth stack
+
+A **Zephyr 4.4 host** (`components/wireless/bluetooth/ipro_bt_host`) runs
+over the **IntelPro Bluetooth controller**
+(`components/wireless/bluetooth/ipro_ble_controller`), joined by an in-memory
+HCI byte stream:
 
 ```
 Application (Zephyr bt_* APIs)
     |
     v
-ipro_bt_host -- Zephyr 4.4: GAP, GATT, L2CAP, SMP, ISO, LE Audio (source)
+ipro_bt_host -- Zephyr 4.4: GAP, GATT, L2CAP, SMP, ISO, LE Audio, BR/EDR profiles (source)
     |  HCI byte stream (ipro_ble_ctlr_hcitl)
     v
-ipro_ble_controller -- prebuilt archive, selected per app (lib/)
+ipro_ble_controller -- prebuilt archive, one per configuration (lib/)
     |
     v
-RF Drivers (ipro7_rf)
+RF driver (ipro7_rf / ipro6_rf)
 ```
 
-Applications use the Zephyr `bt_*` callback-based API. The controller ships as
-a matrix of prebuilt archives; an app selects one with three config keys:
+Applications use the Zephyr `bt_*` callback-based API. The controller is a
+matrix of prebuilt archives; the archive is chosen by config keys, and the
+build stops at configure time if no archive matches the configuration.
+
+**IPRO7** - `libipro_ble_controller_ipro7_<link>[_<feature>][_release].a`
 
 | Key | Values | Meaning |
 |-----|--------|---------|
+| `CONFIG_IPRO_BLE_CTLR_LIB` | `link1_periph`, `link1`, `link2`, `link4` | connection count and roles; `_periph` is peripheral + broadcaster only |
+| `CONFIG_IPRO_BLE_CTLR_FEATURE` | `bt52`, `bt54_iso2` | feature profile; `bt54_iso2` adds ISO (LE Audio) and needs `CONFIG_EM_SIZE=32` |
+| `CONFIG_IPRO_BLE_CTLR_CFG_DBG` | set / not set | controller debug profile; not set selects the `_release` archive |
 
 `CONFIG_BT_CONN` must match the variant's connection count. The application
-brings the controller up itself, then the HCI driver, then the host:
+brings the controller up, then the HCI driver, then the host:
 
 ```c
 ipro_ble_ctlr_controller_init(configMAX_PRIORITIES - 1);
 vTaskDelay(pdMS_TO_TICKS(50));
 hci_driver_ipro_ble_ctlr_init();
 vTaskDelay(pdMS_TO_TICKS(50));
-bt_enable(bt_ready_cb);          /* with CONFIG_BT_SETTINGS: settings_load_subtree("bt") in bt_ready_cb, before advertising */
+bt_enable(bt_ready_cb);   /* with CONFIG_BT_SETTINGS: settings_load_subtree("bt") in bt_ready_cb, before advertising */
 ```
 
-`apps/bluetooth/ble/ipro_ble_remote` is the reference for GATT + OTA;
-`apps/multimedia/ipro_pdm_mic_demo` for SMP bonding persisted to flash,
-PDS31 sleep with bonded reconnect on wake, and 2M/DLE bulk transfer.
+`ipro_ble_remote` is the reference for GATT + OTA; `ipro_pdm_mic_demo` for
+SMP bonding persisted to flash, PDS31 sleep with bonded reconnect, and 2M/DLE
+bulk transfer.
 
-### Configuration System
+**IPRO6S** - `libipro_ble_controller_ipro6s_link<N>[_br][_pawr][_release].a`
 
-Linux kernel-style Kconfig. Each app has `.config` with `CONFIG_*` variables:
+| Key | Values | Meaning |
+|-----|--------|---------|
+| `CONFIG_BTDM_ENABLE` | y | selects the IPRO6S dual-mode controller |
+| `CONFIG_BTDM_MAX_ACL_CONNECTIONS` | 1, 2, 4 | `link<N>` - sizes the controller's connection environment |
+| `CONFIG_BTDM_BT_ENABLE` | y | `_br` - BR/EDR compiled in (all provided archives are `_br`) |
+| `CONFIG_BTDM_PAWR` | y | `_pawr` - periodic advertising with responses |
+| `CONFIG_BTDM_DEBUG` | set / not set | controller debug profile; not set selects `_release` |
+
+`ipro6_btdm_phyrf` is the reference for the BR/EDR path, including the SCO
+audio bridge to I2S.
+
+### Wi-Fi 6 (IPRO6S)
 
 ```conf
+CONFIG_WIFI6=y
+CONFIG_USE_MACSW=y
+```
+
+The MAC (`components/wireless/macsw`) is a prebuilt archive. Everything above
+it - the fhost API, wpa_supplicant, the lwIP adapter under
+`components/wireless/wifi6` - is source, so the network stack and supplicant
+configuration can be adapted. `CONFIG_PHY_LPFW` (the beacon-RX low-power
+firmware trim) requires the `libmacsw_lpfw.a` variant of the MAC archive.
+
+`ipro6_demo` is the reference: station and soft-AP bring-up, DHCP, and the
+shell commands that drive them.
+
+### Configuration system
+
+Linux kernel-style Kconfig. Each application has a `.config` of `CONFIG_*`
+variables, from which the build generates `generated/autoconf.h`. The SoC is
+one of those variables; IPRO6S is IPRO6 with the dual-mode controller enabled:
+
+```conf
+# IPRO7
 CONFIG_IPRO7=y
-CONFIG_BLUETOOTH_LE_ENABLE=y
-CONFIG_BT_CTLR_IPRO=y
-CONFIG_IPRO_BLE_CTLR_LIB="link1_periph"
-CONFIG_IPRO_BLE_CTLR_FEATURE="bt52"
-CONFIG_BT_HOST_IPRO_V44=y
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_BOARD="EVB"                 # or "IPRO7AI_EVK"
+CONFIG_FREERTOS_SUPPORT=y
+
+# IPRO6S
+CONFIG_IPRO6=y
+CONFIG_CPU_ID="intelpro_ipro7"     # same toolchain
+CONFIG_BOARD="EVB"
+CONFIG_BTDM_ENABLE=y
 CONFIG_FREERTOS_SUPPORT=y
 ```
 
-The build generates `generated/autoconf.h` from `.config`.
+Start a new project from the `.config` of the application closest to it
+rather than from scratch; Kconfig `select` relations are not resolved by a
+per-project build, so dependent options such as `CONFIG_USE_PSRAM` must be
+stated explicitly.
 
-### Hardware Specs (IPRO7)
+### Hardware specs
 
-| Feature | Details |
-|---------|---------|
-| Processor | RISC-V RV32IMAFC with custom DSP extensions |
-| Flash | 1 MB @ 0x13000000 |
-| PSRAM | 8 MB @ 0x1e000000 |
-| OCRAM | 256 KB @ 0x11010000 |
-| HBNRAM | 4 KB @ 0x20090000 |
-| Wireless | BLE 5.4 with LE Audio |
-| USB | CDC, MSC, HID, UAC, UVC via CherryUSB |
+**IPRO7**
+
+| Region | Size | Address | Notes |
+|--------|------|---------|-------|
+| Flash | 1 MB | `0x13000000` | 2 / 4 / 8 MB with an external SF3 flash (`CONFIG_IPRO7_FLASH_2M` etc.) |
+| PSRAM | 8 MB | `0x1e000000` | required by AI/NPU and ISP applications (`CONFIG_USE_PSRAM`) |
+| OCRAM | 256 KB | `0x11010000` | fully retained through PDS31 |
+| HBNRAM | 4 KB | `0x20090000` | retained through hibernate |
+
+**IPRO6S**
+
+| Region | Size | Address | Notes |
+|--------|------|---------|-------|
+| Flash | 2 MB | `0x13000000` | |
+| TCM RAM | 320 KB | `0x11000000` | code + data; 280 KB in the reduced layout |
+| Wi-Fi RAM | 160 KB | `0x21050000` | the Bluetooth exchange memory (`CONFIG_EM_SIZE`) is carved from the top |
+| HBNRAM | 4 KB | `0x20090000` | |
 
 ---
 
@@ -163,102 +315,75 @@ The build generates `generated/autoconf.h` from `.config`.
 
 | Tool | Path | Description |
 |------|------|-------------|
-| Build script | `build_freertos.sh` | Unified build/flash/monitor/test CLI |
-| Flash tool | `tools/ipro_iot_tool_lite/` | Firmware download via serial |
-| Serial monitor | `tools/serial_monitor.py` | Python3 termios-based monitor |
-| Board test | `tools/board_test.sh` | Automated build + flash + test |
-| Release tool | `tools/release/release.py` | SDK release packaging |
-
-### Flashing & Monitoring
-
-```bash
-# Flash firmware
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite \
-  --chipname ipro7 --port /dev/cu.usbserial-2120 \
-  --firmware apps/bluetooth/ble/ipro_ble_remote/build/build_out/ipro_ble_remote_IPRO7.bin \
-  --baudrate 921600 --flash-pin 0x02
-
-# Monitor serial output (macOS: always use /dev/cu.*, not /dev/tty.*)
-python3 tools/serial_monitor.py /dev/cu.usbserial-2120
-
-# Or use build_freertos.sh shortcuts
-./build_freertos.sh ipro_ble_remote flash monitor
-```
-
----
-
-## Documentation
-
-| Topic | Location |
-|-------|----------|
-| FreeRTOS app development | [docs/development/FreeRTOS_App_Guide.md](docs/development/FreeRTOS_App_Guide.md) |
-| BLE development overview | [docs/ble/README.md](docs/ble/README.md) |
-| BLE Host architecture | [docs/ble/guides/BLE_HOST_ARCHITECTURE_GUIDE.md](docs/ble/guides/BLE_HOST_ARCHITECTURE_GUIDE.md) |
-| Configuration system | [docs/Configuration_System.md](docs/Configuration_System.md) |
-| Configuration quick reference | [docs/Configuration_Quick_Reference.md](docs/Configuration_Quick_Reference.md) |
-| Hardware adaptation | [docs/IPRO7_HARDWARE_ADAPTATION.md](docs/IPRO7_HARDWARE_ADAPTATION.md) |
-| FreeRTOS hooks migration plan | [docs/plans/freertos-hooks-migration.md](docs/plans/freertos-hooks-migration.md) |
-| CI/CD pipeline | [docs/CI_CD_README_EN.md](docs/CI_CD_README_EN.md) |
-| CI quick start | [docs/CI_QUICK_START.md](docs/CI_QUICK_START.md) |
+| Build script | `build_freertos.sh` | Build / clean front end for every project |
+| CMake | `tools/cmake/` | Bundled CMake (Linux x86-64), for hosts without one |
+| Kconfig parser | `tools/script/parse_kconfig_dynamic.py` | Used by the build to turn `.config` into `autoconf.h` |
+| Android companion app | `tools/android/IproMicDemo/` | Pairing, bonded reconnect, 2M bulk transfer and LC3 streaming against `ipro_pdm_mic_demo` (source) |
 
 ---
 
 ## Creating a New Application
 
-All FreeRTOS apps use a shared hooks component (`freertos_app_hooks`) that provides default heap setup, FreeRTOS hooks, and platform init. See [FreeRTOS App Development Guide](docs/development/FreeRTOS_App_Guide.md) for details.
+All FreeRTOS applications share `components/os/freertos/freertos_app_hooks`,
+which provides the heap, the FreeRTOS hooks, assert and platform init as
+weak defaults.
 
-1. Create directory and files:
+1. Create the project directory:
    ```
    apps/<category>/my_app/
      CMakeLists.txt
-     .config
+     .config           # copy from the closest shipped application
+     Makefile          # copy from ipro_ble_remote
      main.c
-     Makefile          # copy from ipro_ble_remote as template
    ```
 
-2. Configure `.config` (copy from a similar app as template)
-
-3. Write a minimal `main.c`:
+2. Write a minimal `main.c`:
    ```c
    #include "freertos_app_hooks.h"
    #include <FreeRTOS.h>
    #include <task.h>
 
-   static void app_task(void *arg) {
-       // Your application code
+   static void app_task(void *arg)
+   {
+       for (;;) {
+           /* your code */
+       }
    }
 
-   int main(void) {
-       ipro_platform_init();  // heap, boot2, log, shell — all handled
+   int main(void)
+   {
+       ipro_platform_init();   /* heap, boot2, log, shell */
        xTaskCreate(app_task, "app", 1024, NULL, 5, NULL);
        vTaskStartScheduler();
-       while (1) {}
+       for (;;) {}
    }
    ```
 
-4. Build:
+3. Build:
    ```bash
    make -C apps/<category>/my_app
    ```
 
+Do not add heap, hook or assert boilerplate to `main.c`. To override a hook
+(for example `vApplicationIdleHook`), define a non-weak version in your own
+source; the linker picks it automatically.
+
 ---
 
-## SDK Release
+## Testing
 
-Package the BLE SDK for distribution (strips source, includes prebuilt libraries):
-
-```bash
-python3 tools/release/release.py \
-  -c tools/release/config/release_config_ble_sdk.yaml \
-  -o /tmp/ble_sdk_release -v
-```
-
-The release tool builds all apps, extracts library `.a` files, adds license headers, strips development-only config keys, and verifies all apps build successfully in the released SDK.
+`apps/test/ipro_unit_test` exercises the HAL and the shared components and
+prints `ALL TESTS PASSED` or `SOME TESTS FAILED` on the console. Build and
+run it after porting to a new board.
 
 ---
 
 ## License
 
-Proprietary. See [LICENSE](LICENSE) for details.
+This SDK is provided under the terms of your IntelPro license agreement.
+Source files carry an IntelPro copyright header; third-party components keep
+their own notices (lwIP, mbedTLS, Zephyr, wpa_supplicant, FreeRTOS,
+TensorFlow Lite Micro and others are under their respective open-source
+licenses).
 
-**Last Updated**: March 7, 2026
+**SDK version**: IPRO-SDK-V2.0.0 (2026-09-09)

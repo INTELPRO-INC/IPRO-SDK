@@ -1,0 +1,308 @@
+# IPRO6 Demo Application Configuration
+#
+# This file contains configuration options specific to the IPRO6 demo application.
+# When building in this directory, these options are always available.
+
+menu "Demo Configuration"
+
+#
+# SOC Demo Master Switch
+#
+config DEMO_SOC
+    bool "Enable SOC demos"
+    default y
+    depends on SHELL
+    help
+      Master switch for all SOC-related demos.
+      Disabling this will exclude all peripheral, audio, security,
+      filesystem, and system demos from the build.
+
+#
+# Peripheral Demos
+#
+menu "Peripheral Demos"
+    depends on DEMO_SOC
+
+config DEMO_PERIPHERAL
+    bool "Enable peripheral demos"
+    default y
+    help
+      Enable peripheral hardware demos (timer, PWM, SPI, I2S, LCD, etc.)
+
+config DEMO_PERIPHERAL_BASIC
+    bool "Basic peripherals (timer, WDT, UART)"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable basic peripheral demos: timer_test, tick_test, wdt_test,
+      uart_dma.
+
+config DEMO_CPU_BENCH
+    bool "CPU benchmark (memory, DMA, cache)"
+    default n
+    depends on DEMO_PERIPHERAL
+    help
+      Enable CPU and memory benchmark demos: mem_rw_test, mem_dma_test,
+      ddr_test, cache_test, dhrystone, opus.
+      This adds ~60KB to BSS (RAM).
+
+config DEMO_DHRYSTONE
+    bool "Dhrystone benchmark"
+    default n
+    depends on DEMO_CPU_BENCH
+    help
+      Enable Dhrystone CPU benchmark test.
+      This adds ~10KB to BSS (RAM).
+
+config DEMO_CACHE_TEST
+    bool "Cache test with primes array"
+    default n
+    depends on DEMO_CPU_BENCH
+    help
+      Enable cache performance test using primes array.
+      This adds ~40KB to BSS (RAM).
+
+config DEMO_PWM
+    bool "PWM demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable PWM control demo: pwm_test, pwm_set_duty, pwm_set_freq.
+
+config DEMO_SPI
+    bool "SPI and Flash demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable SPI and flash demos: spi_test, flash_test, flash_readReg.
+
+config DEMO_I2S
+    bool "I2S audio interface demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable I2S audio interface demos: i2s_test, i2s_vol, i2s_rx_test.
+
+config DEMO_LCD
+    bool "LCD display demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable LCD display demo: lcd_demo.
+
+config DEMO_EMAC
+    bool "Ethernet MAC demo"
+    default y
+    depends on DEMO_PERIPHERAL && COMPONENTS_LWIP_ENABLE
+    help
+      Enable Ethernet MAC demo: emac_lwip.
+      Requires LWIP network stack.
+
+config DEMO_LOWPOWER
+    bool "Low power demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    select WIFI_LP_APP_SUPPORT if IPRO6
+    help
+      Enable low power mode demos: lp_test, lp_gpio_test, pds_demo, hbn_demo.
+      On IPRO6 this also stages the standalone lp_fw image, so it selects
+      WIFI_LP_APP_SUPPORT to reserve the lp_fw OCRAM slot (ram_tcm 320K->288K).
+
+config DEMO_SPICAM
+    bool "SPI camera demo"
+    default y
+    depends on DEMO_PERIPHERAL
+    help
+      Enable SPI camera demo.
+
+config DEMO_ROMAPI_TEST
+    bool "ROM API test suite"
+    default n
+    depends on DEMO_PERIPHERAL && USE_ROM_DRIVERS
+    help
+      Enable ROM API test suite that verifies all ROM driver APIs
+      including CPU timer, AON, EF_Ctrl, GLB, HBN, Clock, PDS,
+      SF_Ctrl, UART, arch_*, and utils_* functions.
+      Command: romapi_test
+
+endmenu # Peripheral Demos
+
+#
+# Audio Demos
+#
+menu "Audio Demos"
+    depends on DEMO_SOC
+
+config DEMO_AUDIO
+    bool "Enable audio demos"
+    default y
+    help
+      Enable audio demos (ADC, DAC).
+
+config DEMO_ADC
+    bool "Audio ADC demo"
+    default y
+    depends on DEMO_AUDIO
+    help
+      Enable audio ADC demos: auadc_demo, aupdm_demo, replay_record, adc_demo.
+
+config DEMO_DAC
+    bool "Audio DAC demo"
+    default y
+    depends on DEMO_AUDIO
+    help
+      Enable audio DAC demo: dac_demo.
+
+config DEMO_DAC_AUDIO_DATA
+    bool "Include DAC demo audio data"
+    default n
+    depends on DEMO_DAC
+    help
+      Include the built-in audio sample data for DAC demo.
+      This adds ~320KB to rodata (flash).
+      When disabled, DAC demo can still play audio from filesystem.
+
+endmenu # Audio Demos
+
+#
+# Security Demos
+#
+config DEMO_SECURITY
+    bool "Enable security demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable security hardware demos: aes_test, sha_test, trng_test,
+      gmac_test, pka_test, ecdsa_demo, xip_decrypt.
+
+#
+# DSP Demos
+#
+config DEMO_DSP
+    bool "Enable DSP library demos"
+    default y
+    depends on DEMO_SOC && IPRO6
+    help
+      Enable NMSIS-DSP library demos demonstrating:
+        - FFT (Real FFT computation)
+        - Matrix operations (multiplication)
+        - FIR filtering (low-pass filter)
+        - Statistics (mean, std, max, min, variance)
+
+      Commands:
+        dsp_fft [size]   - FFT demo (32-4096 points)
+        dsp_mat [size]   - Matrix multiply (2-32 size)
+        dsp_fir [taps]   - FIR filter (4-128 taps)
+        dsp_stat [size]  - Statistics (16-10000 samples)
+        dsp_all          - Run all demos
+
+#
+# Semihosting Demos
+#
+config DEMO_SEMIHOSTING
+    bool "Enable semihosting file I/O demos"
+    default n
+    depends on DEMO_SOC && SEMIHOSTING_FILEIO
+    help
+      Enable semihosting file I/O demos for host communication.
+      Requires debugger (OpenOCD/GDB) with semihosting enabled.
+
+      Commands:
+        sh_read <file>       - Read file from host
+        sh_write <file> <msg> - Write message to host file
+        sh_append <file> <msg> - Append to host file
+        sh_cwd               - Get host working directory
+        sh_test              - Test semihosting connectivity
+
+#
+# Filesystem Demos
+#
+config DEMO_FS
+    bool "Enable filesystem demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable filesystem demos: lfs_test, fatfs_test, fs_test.
+
+#
+# System Demos
+#
+config DEMO_SYS
+    bool "Enable system demos"
+    default y
+    depends on DEMO_SOC
+    help
+      Enable system demos: event_init, event_post, event_test.
+
+#
+# USB Demos
+#
+menu "USB Demos"
+    depends on DEMO_SOC && COMPONENTS_CHERRYUSB_ENABLE
+
+config DEMO_USB
+    bool "Enable USB demos"
+    default y
+    help
+      Enable USB device demos (CDC, MSC, UVC, UAC).
+
+choice
+    prompt "Select USB Device Class"
+    default APP_USB_DEVICE_CDC
+    depends on DEMO_USB
+    help
+      Select which USB device class demo to enable.
+
+config APP_USB_DEVICE_MSC
+    bool "Mass Storage (MSC)"
+    help
+      Enable the USB Mass Storage Class (MSC) device for file transfer.
+      This allows the device to appear as a USB flash drive.
+
+config APP_USB_DEVICE_CDC
+    bool "Communication Device Class (CDC)"
+    help
+      Enable the USB Communication Device Class (CDC) device for virtual serial communication.
+      This provides a virtual COM port over USB.
+
+config APP_USB_DEVICE_UVC
+    bool "USB Video Class (UVC)"
+    help
+      Enable the USB Video Class device for video transfer.
+      This provides a video device over USB.
+
+endchoice
+
+endmenu # USB Demos
+
+#
+# Sensor Configuration
+#
+config APP_SPI_SENSOR
+    bool "Enable SPI Sensor Demo"
+    default y
+    help
+      Enable SPI-based sensor interface in the demo application.
+      This demonstrates SPI communication with external sensors.
+
+endmenu # Demo Configuration
+
+#
+# Host-interface bring-up
+#
+config IF_WIFI_AUTO_START
+    bool "Auto-start the host-interface bring-up at boot"
+    default y
+    depends on WIFI6
+    help
+      Run the bring-up this interface cannot work without - the WiFi firmware
+      task, then the transport bridge - from boot, instead of requiring
+      stack_wifi and sdiowifi/usbwifi to be typed on the console.
+
+      The bridge starts on CODE_WIFI_ON_MGMR_DONE, so the WiFi MAC is up
+      before a host can enumerate; without the WiFi stack the first host
+      HELLO takes an uninitialised semaphore and hangs the device, and
+      without the bridge the host enumeration answers 207.
+
+      The shell commands stay, and become no-ops once this has run. Say n
+      to keep the device sitting at a bare shell after reset.

@@ -157,7 +157,13 @@ enum {
 	BT_ADV_NUM_FLAGS,
 };
 
+#if defined(CONFIG_BT_PER_ADV_RSP)
+#include "pawr_reassembly.h"
+#endif
 struct bt_le_ext_adv {
+#if defined(CONFIG_BT_PER_ADV_RSP)
+	struct bt_pawr_reassembly pawr_reassembly;
+#endif
 	/* ID Address used for advertising */
 	uint8_t                 id;
 
@@ -245,7 +251,7 @@ struct bt_le_per_adv_sync {
 	uint8_t cte_types;
 #endif /* CONFIG_BT_DF_CONNECTIONLESS_CTE_RX */
 
-#if CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
+#if defined(CONFIG_BT_PER_ADV_SYNC_BUF_SIZE) && CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0
 	/** Reassembly buffer for advertising reports */
 	struct net_buf_simple reassembly;
 
@@ -576,4 +582,3 @@ int bt_hci_le_read_max_data_len(uint16_t *tx_octets, uint16_t *tx_time);
 bool bt_drv_quirk_no_auto_dle(void);
 
 void bt_tx_irq_raise(void);
-

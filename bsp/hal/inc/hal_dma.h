@@ -109,8 +109,16 @@ enum {
 #define DMA_REQUEST_IR_TX    0x00000008 /*!< DMA request peripheral:IR TX */
 #define DMA_REQUEST_AUD_ADC  0x00000009 /*!< DMA request peripheral:AUD ADC */
 
-#define DMA_REQUEST_I2S_RX   0x0000000A /*!< DMA request peripheral:I2S RX */
-#define DMA_REQUEST_I2S_TX   0x0000000B /*!< DMA request peripheral:I2S TX */
+/* IPRO6/IPRO6LE use the BL616-class DMA mux, where I2S is request 16/17.
+ * IPRO7 uses request 10/11.  The 20/21 values in the IPRO7 drv_dma.h enum
+ * are stale legacy values and do not match the implemented peripheral mux. */
+#if defined(CONFIG_IPRO6) || defined(IPRO6) || defined(CONFIG_IPRO6LE) || defined(IPRO6LE)
+#define DMA_REQUEST_I2S_RX   0x00000010 /*!< IPRO6 DMA request peripheral:I2S RX */
+#define DMA_REQUEST_I2S_TX   0x00000011 /*!< IPRO6 DMA request peripheral:I2S TX */
+#else
+#define DMA_REQUEST_I2S_RX   0x0000000A /*!< IPRO7 DMA mux: I2S RX */
+#define DMA_REQUEST_I2S_TX   0x0000000B /*!< IPRO7 DMA mux: I2S TX */
+#endif
 #define DMA_REQUEST_ADC0     0x0000000C /*!< DMA request peripheral:ADC0 */
 #define DMA_REQUEST_DAC0     0x0000000D /*!< DMA request peripheral:DAC0 */
 /* IPRO7 DMA peripheral mux (vault IPRO7/Reference/SoC/IPRO7 DMA Peripheral ID.md):

@@ -22,8 +22,10 @@ __component_add_subdirectory_ifdef(CONFIG_FREERTOS_SUPPORT crypto)
 __component_add_subdirectory_ifdef(CONFIG_AT_CLIENT at_client)
 __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_CHERRYUSB_ENABLE cherryusb)
 if (NOT CONFIG_BOOTROM)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_RADAR_KW307_ENABLE radar)
 add_subdirectory(audio)
 endif()
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_IMU_MPU6500_ENABLE imu)
 __component_add_subdirectory_ifdef(CONFIG_UNIT_TEST_FRAMEWORK test)
 
 # Shared utility components

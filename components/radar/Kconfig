@@ -1,0 +1,27 @@
+menu "Radar Sensors"
+
+config COMPONENTS_RADAR_KW307_ENABLE
+    bool "Enable Keywave KW307 24 GHz presence radar"
+    default n
+    help
+      UART driver for the Keywave KW307-P 24 GHz human-presence module.
+      The module streams a 27-byte detection frame at 20 Hz carrying a
+      presence flag and up to three tracked targets (two moving, one
+      stationary), each with distance, angle, magnitude and tracker state.
+
+      The module is 3.3 V logic and is NOT 5 V tolerant, so the pads it is
+      wired to must sit in a bank whose VDDIO is 3.3 V.
+
+config RADAR_KW307_HISTORY_SECONDS
+    int "Seconds of frame history to retain in PSRAM"
+    default 900
+    depends on COMPONENTS_RADAR_KW307_ENABLE
+    help
+      The module emits 20 frames per second and each retained sample is 26
+      bytes, so a second of history costs 520 bytes: 900 s is 457 KB and an
+      hour is 1.79 MB. This history is what separates the part from an M0
+      host - it is the input to any analysis whose window is longer than a
+      single frame (dwell statistics, breathing, behavioural baselines, and
+      the time axis of a range-time map). Set to 0 to compile the ring out.
+
+endmenu
