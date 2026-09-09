@@ -110,8 +110,8 @@ static struct {
 static bool     s_bulk_seq_en = true;   /* 封包插入序號位元組(2M 亂序校正,
                                            APP v1.1+ 按序號定位寫入;pdm_seq off 可關) */
 static uint8_t  s_bulk_seq;             /* 遞增序號(get_audio 開始時歸零) */
-static uint16_t s_pace_bytes = 4096;    /* 每送 N bytes 讓出一次 */
-static uint16_t s_pace_ms    = 2;       /* 讓出時長 ms */
+static uint16_t s_pace_bytes;           /* 0 = full speed; shell-adjustable */
+static uint16_t s_pace_ms;
 static bool     s_auto_conn_param_update; /* default off: central/test controls CI */
 static bool     s_auto_data_len_update = true; /* the phone cannot raise our TX octets; see DLE_REQUEST_DELAY_MS */
 static bool     s_auto_phy_update;      /* default off: phone/app controls high-speed mode */
@@ -216,6 +216,7 @@ static struct {
  * ble_audio_init() clears: the sleep path needs to know the stack was up even
  * while s_ble itself is being reset. */
 static volatile bool s_ble_started;
+static volatile bool s_sending;
 
 bool ipro_ble_ctlr_app_pds_tickless_allowed(void)
 {
@@ -223,6 +224,9 @@ bool ipro_ble_ctlr_app_pds_tickless_allowed(void)
         return false;
     }
     if (!s_ble.conn) {
+        return false;
+    }
+    if (s_sending) {
         return false;
     }
     if (s_ble.recorder) {
@@ -236,9 +240,13 @@ bool ipro_ble_ctlr_app_pds_tickless_allowed(void)
     return true;
 }
 
+#define SEND_KIND_FULL   0
+#define SEND_KIND_CHUNK  1
+
 /* Audio send task */
 static TaskHandle_t s_send_task_handle;
-static SemaphoreHandle_t s_send_sem;
+static QueueHandle_t s_send_q;
+static uint32_t s_chunk_sent;  /* GET_CHUNK watermark into rec buffer */
 
 /* --- Forward declarations --- */
 static int start_advertising(void);
@@ -394,9 +402,11 @@ static void send_status_response(void)
     buf[0] = BLE_RSP_STATUS;
 
     if (s_ble.recorder) {
-        if (s_ble.recorder->is_streaming && s_ble.recorder->is_streaming())
+        if (s_sending)
+            buf[1] = BLE_STATUS_SENDING;
+        else if (s_ble.recorder->is_streaming && s_ble.recorder->is_streaming())
             buf[1] = BLE_STATUS_STREAMING;
-        else if (s_ble.recorder->is_recording())
+        else if (s_ble.recorder->is_recording && s_ble.recorder->is_recording())
             buf[1] = BLE_STATUS_RECORDING;
         else
             buf[1] = BLE_STATUS_IDLE;
@@ -409,6 +419,129 @@ static void send_status_response(void)
     memcpy(&buf[2], &bytes, 4);
 
     ble_send(buf, sizeof(buf));
+}
+
+static void send_recorded_status_response(void)
+{
+    uint8_t buf[6];
+    uint32_t bytes = s_ble.recorder ? s_ble.recorder->get_bytes() : 0;
+
+    buf[0] = BLE_RSP_STATUS;
+    buf[1] = BLE_STATUS_RECORDED;
+    memcpy(&buf[2], &bytes, 4);
+    ble_send(buf, sizeof(buf));
+}
+
+static void send_chunk_ready_status_response(void)
+{
+    uint8_t buf[6];
+    uint32_t bytes = s_ble.recorder ? s_ble.recorder->get_bytes() : 0;
+
+    buf[0] = BLE_RSP_STATUS;
+    buf[1] = BLE_STATUS_CHUNK_READY;
+    memcpy(&buf[2], &bytes, 4);
+    ble_send(buf, sizeof(buf));
+}
+
+static void enqueue_send(uint8_t kind)
+{
+    if (!s_send_q)
+        return;
+    if (xQueueSend(s_send_q, &kind, 0) != pdTRUE)
+        IPRO_LOGW(TAG, "send queue full (kind=%u)", kind);
+}
+
+/**
+ * Send total_bytes from ring [base, cap) starting at absolute byte abs_start.
+ * Recording may continue; caller must not let the ring overwrite this range.
+ */
+static uint32_t send_pcm_ring(const uint8_t *base, uint32_t cap,
+                              uint32_t abs_start, uint32_t total_bytes)
+{
+    uint8_t hdr[7];
+    uint16_t sr = 16000;
+    uint16_t mtu;
+    uint16_t max_payload;
+    uint16_t hdr_len;
+    uint16_t data_chunk;
+    uint32_t sent = 0;
+
+    hdr[0] = BLE_RSP_AUDIO_HDR;
+    memcpy(&hdr[1], &sr, 2);
+    memcpy(&hdr[3], &total_bytes, 4);
+    ble_send(hdr, sizeof(hdr));
+
+    if (total_bytes == 0 || !base) {
+        uint8_t done[5];
+        done[0] = BLE_RSP_AUDIO_DONE;
+        memcpy(&done[1], &sent, 4);
+        ble_send(done, sizeof(done));
+        IPRO_LOGI(TAG, "Audio send complete: 0 bytes");
+        return 0;
+    }
+    if (cap == 0)
+        cap = total_bytes;
+
+    mtu = bt_gatt_get_mtu(s_ble.conn);
+    max_payload = (mtu > 3) ? (mtu - 3) : 20;
+    hdr_len = s_bulk_seq_en ? 2 : 1;
+    data_chunk = (max_payload > hdr_len) ? (max_payload - hdr_len) : 1;
+    s_bulk_seq = 0;
+    s_st.bulk_pkts = 0;
+    s_st.bulk_retry = 0;
+
+    IPRO_LOGI(TAG, "Sending %lu bytes audio (MTU=%u, chunk=%u, seq=%s, ring=%lu)",
+              (unsigned long)total_bytes, mtu, data_chunk,
+              s_bulk_seq_en ? "on" : "off", (unsigned long)cap);
+
+    while (sent < total_bytes) {
+        uint8_t pkt[252];
+        uint32_t off = (abs_start + sent) % cap;
+        uint32_t contig = cap - off;
+        uint16_t remain;
+        int ret;
+
+        if (!s_ble.conn || !s_ble.tx_notify_enabled)
+            break;
+
+        remain = (total_bytes - sent > data_chunk)
+                 ? data_chunk : (uint16_t)(total_bytes - sent);
+        if (remain > contig)
+            remain = (uint16_t)contig;
+
+        pkt[0] = BLE_RSP_AUDIO_DATA;
+        if (s_bulk_seq_en)
+            pkt[1] = s_bulk_seq;
+        memcpy(&pkt[hdr_len], base + off, remain);
+
+        ret = bt_gatt_notify(s_ble.conn, &attr_nus_svc[1],
+                             pkt, remain + hdr_len);
+        if (ret) {
+            s_st.bulk_retry++;
+            vTaskDelay(1);
+            continue;
+        }
+        sent += remain;
+        s_st.bulk_pkts++;
+        if (s_bulk_seq_en)
+            s_bulk_seq++;
+
+        if (s_pace_bytes && (sent % s_pace_bytes) < data_chunk)
+            vTaskDelay(pdMS_TO_TICKS(s_pace_ms));
+    }
+
+    {
+        uint8_t done[5];
+        done[0] = BLE_RSP_AUDIO_DONE;
+        memcpy(&done[1], &sent, 4);
+        ble_send(done, sizeof(done));
+    }
+
+    IPRO_LOGI(TAG, "Audio send complete: %lu bytes (%lu pkts, notify refused %lu)",
+              (unsigned long)sent,
+              (unsigned long)s_st.bulk_pkts,
+              (unsigned long)s_st.bulk_retry);
+    return sent;
 }
 
 static void send_error(uint8_t code)
@@ -510,21 +643,93 @@ static void audio_send_task(void *arg)
     (void)arg;
 
     for (;;) {
-        /* Wait for GET_AUDIO trigger */
-        xSemaphoreTake(s_send_sem, portMAX_DELAY);
+        uint8_t kind = SEND_KIND_FULL;
+        const int16_t *pcm;
+        uint32_t rec_bytes;
+        uint32_t cap;
+        uint32_t total_bytes;
+
+        if (!s_send_q || xQueueReceive(s_send_q, &kind, portMAX_DELAY) != pdTRUE)
+            continue;
 
         if (!s_ble.conn || !s_ble.tx_notify_enabled || !s_ble.recorder) {
             send_error(0x01); /* not ready */
             continue;
         }
 
-        const int16_t *pcm = s_ble.recorder->get_buf();
-        uint32_t total_bytes = s_ble.recorder->get_bytes();
+        pcm = s_ble.recorder->get_buf();
+        rec_bytes = s_ble.recorder->get_bytes();
+        cap = rec_bytes;
+        if (s_ble.recorder->get_capacity) {
+            uint32_t c = s_ble.recorder->get_capacity();
+            if (c > 0)
+                cap = c;
+        }
+        if (cap == 0)
+            cap = 1;
 
-        if (!pcm || total_bytes == 0) {
+        s_sending = true;
+        send_status_response();
+
+        if (kind == SEND_KIND_CHUNK) {
+            uint32_t start = s_chunk_sent;
+            uint32_t avail;
+            uint32_t n;
+            uint32_t sent;
+
+            if (!pcm) {
+                s_sending = false;
+                send_pcm_ring((const uint8_t *)&s_bulk_seq, 1, 0, 0);
+                send_status_response();
+                continue;
+            }
+            if (rec_bytes > cap && start < rec_bytes - cap) {
+                IPRO_LOGW(TAG, "ring overrun, skip %lu bytes",
+                          (unsigned long)(rec_bytes - cap - start));
+                start = rec_bytes - cap;
+            }
+            if (start > rec_bytes)
+                start = rec_bytes;
+            avail = rec_bytes - start;
+            n = (avail > BLE_AUDIO_CHUNK_BYTES) ? BLE_AUDIO_CHUNK_BYTES : avail;
+            IPRO_LOGI(TAG, "GET_CHUNK off=%lu n=%lu rec=%lu cap=%lu",
+                      (unsigned long)start, (unsigned long)n,
+                      (unsigned long)rec_bytes, (unsigned long)cap);
+            sent = send_pcm_ring((const uint8_t *)pcm, cap, start, n);
+            s_chunk_sent = start + sent;
+            s_sending = false;
+
+            if (s_ble.recorder->is_recording && s_ble.recorder->is_recording()) {
+                uint32_t unsent = 0;
+                uint32_t now = s_ble.recorder->get_bytes();
+                if (now > s_chunk_sent)
+                    unsent = now - s_chunk_sent;
+                if (unsent >= BLE_AUDIO_CHUNK_BYTES)
+                    send_chunk_ready_status_response();
+                else
+                    send_status_response();
+            } else {
+                send_recorded_status_response();
+            }
+            continue;
+        }
+
+        if (!pcm || rec_bytes == 0) {
+            s_sending = false;
+            send_status_response();
             send_error(0x02); /* no data */
             continue;
         }
+
+        /* Wrapped ring: send the last `cap` bytes via modular addressing */
+        if (rec_bytes > cap) {
+            send_pcm_ring((const uint8_t *)pcm, cap, rec_bytes - cap, cap);
+            s_sending = false;
+            send_status_response();
+            continue;
+        }
+
+        total_bytes = rec_bytes;
 
         /* Send audio header: sample rate (16-bit LE) + total bytes (32-bit LE) */
         uint8_t hdr[7];
@@ -656,6 +861,8 @@ static void audio_send_task(void *arg)
                           (unsigned long)(events ? (pkts_fast * 10U / events) % 10U : 0));
             }
         }
+        s_sending = false;
+        send_status_response();
     }
 }
 
@@ -772,10 +979,13 @@ static void handle_command(const uint8_t *data, uint16_t len)
     switch (cmd) {
     case BLE_CMD_START_REC: {
         int seconds = 5;
-        if (len >= 2)
+        if (len >= 3)
+            seconds = (int)((uint16_t)data[1] | ((uint16_t)data[2] << 8));
+        else if (len >= 2)
             seconds = data[1];
         if (seconds < 1) seconds = 1;
-        if (seconds > 30) seconds = 30;
+        if (seconds > BLE_MAX_RECORD_SECONDS)
+            seconds = BLE_MAX_RECORD_SECONDS;
 
         IPRO_LOGI(TAG, "CMD: START_REC %d sec", seconds);
         if (s_ble.recorder && s_ble.recorder->start_rec)
@@ -793,7 +1003,12 @@ static void handle_command(const uint8_t *data, uint16_t len)
 
     case BLE_CMD_GET_AUDIO:
         IPRO_LOGI(TAG, "CMD: GET_AUDIO");
-        xSemaphoreGive(s_send_sem);
+        enqueue_send(SEND_KIND_FULL);
+        break;
+
+    case BLE_CMD_GET_CHUNK:
+        IPRO_LOGI(TAG, "CMD: GET_CHUNK");
+        enqueue_send(SEND_KIND_CHUNK);
         break;
 
     case BLE_CMD_GET_STATUS:
@@ -1306,8 +1521,8 @@ int ble_audio_init(const ble_audio_recorder_t *recorder)
     memset(&s_ble, 0, sizeof(s_ble));
     s_ble.recorder = recorder;
 
-    /* Create audio send semaphore and task */
-    s_send_sem = xSemaphoreCreateBinary();
+    /* Create audio send queue (GET_AUDIO / GET_CHUNK) and task */
+    s_send_q = xQueueCreate(4, sizeof(uint8_t));
 
     xTaskCreate(audio_send_task, "ble_send", SEND_TASK_STACK, NULL,
                 SEND_TASK_PRIO, &s_send_task_handle);
@@ -1366,6 +1581,26 @@ int ble_audio_init(const ble_audio_recorder_t *recorder)
 
 void ble_audio_notify_recording_done(void)
 {
+    IPRO_LOGI(TAG, "Notify RECORDED (%lu bytes)",
+              (unsigned long)(s_ble.recorder ? s_ble.recorder->get_bytes() : 0));
+    send_recorded_status_response();
+}
+
+void ble_audio_notify_chunk_ready(void)
+{
+    IPRO_LOGI(TAG, "Notify CHUNK_READY (%lu bytes, sent=%lu)",
+              (unsigned long)(s_ble.recorder ? s_ble.recorder->get_bytes() : 0),
+              (unsigned long)s_chunk_sent);
+    send_chunk_ready_status_response();
+}
+
+void ble_audio_reset_chunk_cursor(void)
+{
+    s_chunk_sent = 0;
+}
+
+void ble_audio_notify_status(void)
+{
     send_status_response();
 }
 
@@ -1378,6 +1613,17 @@ void ble_audio_set_lc3(bool enable)
 bool ble_audio_get_lc3(void)
 {
     return s_use_lc3;
+}
+
+void ble_audio_set_seq(bool enable)
+{
+    s_bulk_seq_en = enable;
+    IPRO_LOGI(TAG, "Bulk audio seq: %s", enable ? "ON" : "OFF");
+}
+
+bool ble_audio_get_seq(void)
+{
+    return s_bulk_seq_en;
 }
 
 bool ble_audio_is_started(void)

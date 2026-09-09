@@ -23,13 +23,19 @@
 #include <stdbool.h>
 
 /* --- Command IDs (phone → device) --- */
-#define BLE_CMD_START_REC   0x01
+#define BLE_CMD_START_REC   0x01  /* payload: u16 LE seconds (legacy: 1 byte) */
 #define BLE_CMD_STOP_REC    0x02
 #define BLE_CMD_GET_AUDIO   0x03
 #define BLE_CMD_GET_STATUS  0x04
 #define BLE_CMD_SET_GAIN    0x05
 #define BLE_CMD_START_STREAM 0x06
 #define BLE_CMD_STOP_STREAM  0x07
+#define BLE_CMD_GET_CHUNK    0x0C  /* next unsent audio, up to 30s */
+
+/* Live STT: device notifies every 30s; phone GET_CHUNK that slice */
+#define BLE_AUDIO_CHUNK_SECONDS  30
+#define BLE_AUDIO_CHUNK_BYTES    (16000u * 2u * BLE_AUDIO_CHUNK_SECONDS)
+#define BLE_MAX_RECORD_SECONDS   14400  /* 4 hours */
 
 /* --- Response IDs (device → phone) --- */
 #define BLE_RSP_STATUS      0x81
@@ -44,12 +50,15 @@
 #define BLE_STATUS_RECORDING 0x01
 #define BLE_STATUS_SENDING   0x02
 #define BLE_STATUS_STREAMING 0x03
+#define BLE_STATUS_RECORDED  0x04  /* Local recording finish */
+#define BLE_STATUS_CHUNK_READY 0x06  /* 30s slice ready; phone GET_CHUNK */
 
 /* Callbacks for PDM recorder integration */
 typedef void (*ble_audio_start_rec_fn)(int seconds);
 typedef void (*ble_audio_stop_rec_fn)(void);
 typedef const int16_t *(*ble_audio_get_buf_fn)(void);
 typedef uint32_t (*ble_audio_get_bytes_fn)(void);
+typedef uint32_t (*ble_audio_get_capacity_fn)(void);
 typedef bool (*ble_audio_is_recording_fn)(void);
 typedef void (*ble_audio_set_gain_fn)(int gain_db);
 typedef void (*ble_audio_start_stream_fn)(void);
@@ -61,6 +70,7 @@ typedef struct {
     ble_audio_stop_rec_fn     stop_rec;
     ble_audio_get_buf_fn      get_buf;
     ble_audio_get_bytes_fn    get_bytes;
+    ble_audio_get_capacity_fn get_capacity; /* PSRAM ring size; 0 = linear */
     ble_audio_is_recording_fn is_recording;
     ble_audio_set_gain_fn     set_gain;
     ble_audio_start_stream_fn start_stream;
@@ -75,12 +85,29 @@ typedef struct {
  */
 int ble_audio_init(const ble_audio_recorder_t *recorder);
 
-/** Notify BLE module that recording completed (sends status to phone) */
+/** Notify BLE module that recording completed (sends RECORDED status) */
 void ble_audio_notify_recording_done(void);
+
+/** 30s PCM slice is ready — phone should GET_CHUNK (recording continues) */
+void ble_audio_notify_chunk_ready(void);
+
+/** Reset GET_CHUNK watermark (call when a new recording starts) */
+void ble_audio_reset_chunk_cursor(void);
+
+/** Push current device status to phone. */
+void ble_audio_notify_status(void);
 
 /** Toggle LC3 encoding for streaming (true=LC3, false=raw PCM) */
 void ble_audio_set_lc3(bool enable);
 bool ble_audio_get_lc3(void);
+
+/**
+ * Toggle 8-bit sequence number in bulk audio packets (GET_AUDIO / GET_CHUNK).
+ * When on, payload format is [0x83][seq][PCM...]; when off, [0x83][PCM...].
+ * Default: on (required for 2M PHY reordering on Android).
+ */
+void ble_audio_set_seq(bool enable);
+bool ble_audio_get_seq(void);
 
 /* 2M 破音驗證儀表：DMIC ISR 塞 stream_queue 失敗時呼叫(ISR-safe 純計數) */
 void ble_audio_stats_producer_drop(void);

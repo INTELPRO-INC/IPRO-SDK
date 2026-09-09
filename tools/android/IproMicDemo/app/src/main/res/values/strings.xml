@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">IPRO Mic Demo</string>
+    <string name="ble_fg_channel_name">BLE background</string>
+    <string name="ble_fg_channel_desc">Keeps the Bluetooth link while the app is in the background</string>
+    <string name="ble_fg_notification_title">IPRO BLE active</string>
+    <string name="ble_fg_notification_text">Connected — background ready</string>
 </resources>

@@ -25,7 +25,7 @@
  * commands or BLE NUS from a phone app.
  *
  * Shell commands:
- *   pdm_rec [seconds]   — record (default 5s, max 10s)
+ *   pdm_rec [seconds]   — record (default 5s, max 4 hours)
  *   pdm_dump [off] [n]  — hex dump PCM samples
  *   pdm_stats           — show recording statistics
  *   pdm_gain <dB>       — set digital gain at runtime
@@ -91,15 +91,19 @@
 #define IPRO_GLB_PARM_ADDR              0x30000090UL
 #define IPRO_GLB_PARM_CCI_TRANSPORT_MSK ((1UL << 16) | (1UL << 19))
 
-/* --- Recording buffer (PSRAM) --- */
-#define MAX_RECORD_SECONDS  30
-#define MAX_RECORD_BYTES    (SAMPLE_RATE * sizeof(int16_t) * MAX_RECORD_SECONDS)  /* 320 KB */
+/* --- Recording buffer (PSRAM ring, last 240 s; logical cap 4 hours) --- */
+#define MAX_RECORD_SECONDS  BLE_MAX_RECORD_SECONDS
+#define REC_BUF_SECONDS     240
+#define MAX_RECORD_BYTES    (SAMPLE_RATE * sizeof(int16_t) * REC_BUF_SECONDS)
 
-static int16_t *s_rec_buf = NULL;      /* PSRAM recording buffer */
-static volatile uint32_t s_write_pos;  /* current write position in bytes */
+static int16_t *s_rec_buf = NULL;      /* PSRAM recording ring */
+static uint32_t s_rec_cap = MAX_RECORD_BYTES; /* physical ring bytes (may shrink) */
+static volatile uint32_t s_write_pos;  /* logical write position in bytes */
 static volatile uint32_t s_target_bytes; /* target recording size in bytes */
 static volatile bool s_recording;
 static volatile uint32_t s_discard_count; /* frames to discard at startup */
+static SemaphoreHandle_t s_chunk_ready_sem = NULL;
+static uint32_t s_next_chunk_bytes;
 
 /* Streaming mode — sends frames to BLE in near real-time */
 static QueueHandle_t s_stream_queue = NULL;
@@ -201,9 +205,17 @@ static void pdm_frame_callback(int buf_idx)
         }
 
         uint32_t copy_bytes = (remaining < FRAME_BYTES) ? remaining : FRAME_BYTES;
-        memcpy((uint8_t *)s_rec_buf + s_write_pos, src, copy_bytes);
+        uint32_t off = s_write_pos % s_rec_cap;
+        memcpy((uint8_t *)s_rec_buf + off, src, copy_bytes);
         s_write_pos += copy_bytes;
         s_frames_captured++;
+
+        /* Live STT: signal every 30s of PCM (task sends CHUNK_READY over BLE) */
+        while (s_write_pos >= s_next_chunk_bytes) {
+            s_next_chunk_bytes += BLE_AUDIO_CHUNK_BYTES;
+            if (s_chunk_ready_sem)
+                xSemaphoreGiveFromISR(s_chunk_ready_sem, &woken);
+        }
 
         /* Update stats (quick scan in ISR — 320 samples is fast) */
         uint16_t n = copy_bytes / sizeof(int16_t);
@@ -233,16 +245,22 @@ static int pdm_hw_init(void)
     s_dma_buf[0] = &s_dma_raw[0];
     s_dma_buf[1] = &s_dma_raw[FRAME_SAMPLES];
 
-    /* Allocate PSRAM recording buffer */
+    /* Allocate PSRAM recording ring (240 s). Speaker-ID + model also sit
+     * in PSRAM, so fall back to a 30 s buffer if the large ring will not fit. */
     if (!s_rec_buf) {
-        s_rec_buf = pvPortMalloc(MAX_RECORD_BYTES);
+        s_rec_cap = MAX_RECORD_BYTES;
+        s_rec_buf = pvPortMalloc(s_rec_cap);
         if (!s_rec_buf) {
-            IPRO_LOGE(TAG, "PSRAM rec buf alloc failed (%u bytes)",
-                      (unsigned)MAX_RECORD_BYTES);
+            s_rec_cap = SAMPLE_RATE * sizeof(int16_t) * 30;
+            s_rec_buf = pvPortMalloc(s_rec_cap);
+        }
+        if (!s_rec_buf) {
+            IPRO_LOGE(TAG, "PSRAM rec buf alloc failed");
             return -1;
         }
-        IPRO_LOGI(TAG, "Recording buffer: %p (%u KB)",
-                  s_rec_buf, (unsigned)(MAX_RECORD_BYTES / 1024));
+        IPRO_LOGI(TAG, "Recording buffer: %p (%u KB, %lu s ring)",
+                  s_rec_buf, (unsigned)(s_rec_cap / 1024),
+                  (unsigned long)(s_rec_cap / (SAMPLE_RATE * sizeof(int16_t))));
     }
 
     IPRO_LOGI(TAG, "DMA buffers in OCRAM: %p, %p", s_dma_buf[0], s_dma_buf[1]);
@@ -270,6 +288,26 @@ static int pdm_hw_init(void)
 /* ===================================================================
  * Recording monitor task — handles cleanup for both shell and BLE
  * =================================================================== */
+static void pdm_chunk_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        xSemaphoreTake(s_chunk_ready_sem, portMAX_DELAY);
+        ble_audio_notify_chunk_ready();
+    }
+}
+
+static void pdm_cache_clean_rec_buf(void)
+{
+    uint32_t n;
+
+    if (!s_rec_buf)
+        return;
+    n = (s_write_pos < s_rec_cap) ? s_write_pos : s_rec_cap;
+    if (n)
+        L1C_DCACHE_CLEAN_RANGE(s_rec_buf, n);
+}
+
 static void pdm_monitor_task(void *arg)
 {
     (void)arg;
@@ -277,11 +315,13 @@ static void pdm_monitor_task(void *arg)
         /* Wait for ISR to signal recording complete */
         xSemaphoreTake(s_rec_done_sem, portMAX_DELAY);
         hal_auadc_stop();
-        L1C_DCACHE_CLEAN_RANGE(s_rec_buf, s_write_pos);
+        pdm_cache_clean_rec_buf();
         IPRO_LOGI(TAG, "Recording complete: %lu bytes, %lu frames",
                   (unsigned long)s_write_pos, (unsigned long)s_frames_captured);
-        /* Notify BLE phone that recording is done */
-        ble_audio_notify_recording_done();
+        if (s_write_pos > 0)
+            ble_audio_notify_recording_done();
+        else
+            ble_audio_notify_status();
         /* Signal shell command (if waiting) */
         xSemaphoreGive(s_cleanup_done_sem);
     }
@@ -301,8 +341,17 @@ void pdm_start_recording(int seconds)
     if (seconds < 1) seconds = 1;
     if (seconds > MAX_RECORD_SECONDS) seconds = MAX_RECORD_SECONDS;
 
+    if (s_rec_buf == NULL) {
+        IPRO_LOGE(TAG, "No recording buffer — pdm_hw_init failed?");
+        return;
+    }
+
     s_write_pos = 0;
     s_target_bytes = SAMPLE_RATE * sizeof(int16_t) * seconds;
+    s_next_chunk_bytes = BLE_AUDIO_CHUNK_BYTES;
+    ble_audio_reset_chunk_cursor();
+    if (s_chunk_ready_sem)
+        xSemaphoreTake(s_chunk_ready_sem, 0);
     s_frames_captured = 0;
     s_peak_sample = 0;
     s_energy_acc = 0;
@@ -311,10 +360,11 @@ void pdm_start_recording(int seconds)
      * report this, not the live setting — changing pdm_gain and replaying an
      * older buffer otherwise labels it with a gain it was never recorded at. */
     s_rec_gain = s_pdm_gain;
-    memset(s_rec_buf, 0, s_target_bytes);
+    memset(s_rec_buf, 0, s_rec_cap);
 
     /* Update gain (no full reinit — reinit breaks DMA) */
     hal_auadc_set_digital_gain(s_pdm_gain);
+    hal_auadc_set_high_pass_filter(5, 0);
 
     IPRO_LOGI(TAG, "Recording %d sec (ch=%s, gain=%d dB)",
               seconds,
@@ -322,7 +372,12 @@ void pdm_start_recording(int seconds)
               s_pdm_gain);
 
     s_recording = true;
-    hal_auadc_start();
+    if (hal_auadc_start() != 0) {
+        s_recording = false;
+        IPRO_LOGE(TAG, "hal_auadc_start failed");
+        return;
+    }
+    ble_audio_notify_status();
 }
 
 void pdm_stop_recording(void)
@@ -331,8 +386,12 @@ void pdm_stop_recording(void)
         return;
     hal_auadc_stop();
     s_recording = false;
-    L1C_DCACHE_CLEAN_RANGE(s_rec_buf, s_write_pos);
+    pdm_cache_clean_rec_buf();
     IPRO_LOGI(TAG, "Recording stopped: %lu bytes", (unsigned long)s_write_pos);
+    if (s_write_pos > 0)
+        ble_audio_notify_recording_done();
+    else
+        ble_audio_notify_status();
 }
 
 const int16_t *pdm_get_buffer(void)
@@ -343,6 +402,11 @@ const int16_t *pdm_get_buffer(void)
 uint32_t pdm_get_recorded_bytes(void)
 {
     return s_write_pos;
+}
+
+uint32_t pdm_get_buf_capacity(void)
+{
+    return s_rec_cap;
 }
 
 bool pdm_is_recording(void)
@@ -487,21 +551,27 @@ static int cmd_pdm_dump(int argc, char **argv)
     if (argc > 1) offset = (uint32_t)strtoul(argv[1], NULL, 0);
     if (argc > 2) count  = (uint32_t)strtoul(argv[2], NULL, 0);
 
-    uint32_t total_samples = s_write_pos / sizeof(int16_t);
+    uint32_t ring_samples = s_rec_cap / sizeof(int16_t);
+    uint32_t playable = (s_write_pos < s_rec_cap)
+                        ? (s_write_pos / sizeof(int16_t)) : ring_samples;
+    uint32_t origin = (s_write_pos > s_rec_cap)
+                      ? ((s_write_pos % s_rec_cap) / sizeof(int16_t)) : 0;
+    uint32_t total_samples = playable;
+
     if (offset >= total_samples) {
-        printf("Offset %lu beyond recorded data (%lu samples)\r\n",
+        printf("Offset %lu beyond recorded data (%lu samples in ring)\r\n",
                (unsigned long)offset, (unsigned long)total_samples);
         return 0;
     }
     if (offset + count > total_samples)
         count = total_samples - offset;
 
-    printf("Samples [%lu..%lu] of %lu:\r\n",
+    printf("Samples [%lu..%lu] of %lu (logical %lu bytes):\r\n",
            (unsigned long)offset, (unsigned long)(offset + count - 1),
-           (unsigned long)total_samples);
+           (unsigned long)total_samples, (unsigned long)s_write_pos);
 
     for (uint32_t i = 0; i < count; i++) {
-        printf("%6d ", s_rec_buf[offset + i]);
+        printf("%6d ", s_rec_buf[(origin + offset + i) % ring_samples]);
         if ((i + 1) % 10 == 0)
             printf("\r\n");
     }
@@ -518,10 +588,14 @@ static int cmd_pdm_stats(int argc, char **argv)
 
     uint32_t total_samples = s_write_pos / sizeof(int16_t);
     printf("=== PDM Recording Stats ===\r\n");
-    printf("Recorded:     %lu bytes (%lu samples, %.2f sec)\r\n",
+    printf("Recorded:     %lu bytes (%lu samples, %.2f sec logical)\r\n",
            (unsigned long)s_write_pos,
            (unsigned long)total_samples,
            (float)total_samples / SAMPLE_RATE);
+    printf("Ring:         %lu s (%u KB)%s\r\n",
+           (unsigned long)(s_rec_cap / (SAMPLE_RATE * sizeof(int16_t))),
+           (unsigned)(s_rec_cap / 1024),
+           s_write_pos > s_rec_cap ? " WRAP" : "");
     printf("Frames:       %lu\r\n", (unsigned long)s_frames_captured);
     printf("Peak sample:  %d (of 32767)\r\n", s_peak_sample);
 
@@ -539,7 +613,7 @@ static int cmd_pdm_stats(int argc, char **argv)
                s_peak_sample > 0 ? 20.0f * log10f((float)s_peak_sample / 32767.0f) : -96.0f);
     }
     printf("Buffer:       %p, max %u KB\r\n",
-           s_rec_buf, (unsigned)(MAX_RECORD_BYTES / 1024));
+           s_rec_buf, (unsigned)(s_rec_cap / 1024));
 
     return 0;
 }
@@ -556,16 +630,16 @@ static int cmd_pds(int argc, char **argv)
     printf("PDS31: OCRAM is retained, so the recording buffer and the BLE\r\n");
     printf("       state survive; the console is reset and restored on wake.\r\n");
     if (sec) {
-        printf("       timed wake in %lu s, or press any button.\r\n",
+        printf("       timed wake in %lu s, or press GPIO7.\r\n",
                (unsigned long)sec);
     } else {
-        printf("       press power / vol-up / vol-down to wake.\r\n");
+        printf("       press GPIO7 to wake (vol keys do not wake).\r\n");
     }
 
     extern int pdm_sleep_enter(uint32_t seconds);
     return pdm_sleep_enter(sec);
 }
-SHELL_CMD_EXPORT_ALIAS(cmd_pds, pds, Sleep in PDS31 wake on any button [sec]);
+SHELL_CMD_EXPORT_ALIAS(cmd_pds, pds, Sleep in PDS31 wake on GPIO7 [sec]);
 
 /*
  * Button diagnostics.
@@ -581,7 +655,7 @@ static int cmd_btn(int argc, char **argv)
 {
     extern int GLB_Get_GPIO_IntStatus(int gpioPin);
     extern GLB_GPIO_INT_CONTROL_Type GLB_Get_GPIO_IntCtlMod(int gpioPin);
-    const uint32_t pins[3] = { 5U, 6U, 7U };
+    const uint32_t pins[3] = { 7U, 5U, 6U };
     const char *names[3] = { "power", "vol_up", "vol_down" };
 
     if (argc > 1 && strcmp(argv[1], "watch") == 0) {
@@ -683,6 +757,7 @@ static ble_audio_recorder_t s_recorder = {
     .stop_rec     = pdm_stop_recording,
     .get_buf      = pdm_get_buffer,
     .get_bytes    = pdm_get_recorded_bytes,
+    .get_capacity = pdm_get_buf_capacity,
     .is_recording = pdm_is_recording,
     .set_gain     = pdm_set_gain,
     .start_stream = pdm_start_streaming,
@@ -698,7 +773,8 @@ static void main_task(void *arg)
 {
     (void)arg;
 
-    IPRO_LOGI(TAG, "PDM DMIC Recording Demo + BLE");
+    IPRO_LOGI(TAG, "PDM DMIC Recording Demo + BLE (4h / %ds PSRAM ring)",
+              REC_BUF_SECONDS);
     /* Which image this is, in the first line that matters. The EVB and EVK
      * builds differ only in pins and a polarity, are the same size, and both
      * say "PDM configured" - an EVB image on an EVK records silence and mutes
@@ -707,7 +783,7 @@ static void main_task(void *arg)
               CONFIG_BOARD, PDM_CLK_PIN, PDM_DATA_PIN,
               CONFIG_IPRO_PDM_MIC_SPK_GPIO,
               CONFIG_IPRO_PDM_MIC_SPK_UNMUTE ? "HIGH" : "LOW",
-              CONFIG_IPRO_PDM_MIC_BUTTONS ? "on (G5/6/7)" : "off");
+              CONFIG_IPRO_PDM_MIC_BUTTONS ? "on (G7 power, G5/G6 vol)" : "off");
 
     if (pdm_hw_init() != 0) {
         IPRO_LOGE(TAG, "PDM init failed, halting");
@@ -747,7 +823,7 @@ static void main_task(void *arg)
     shell_init_with_task(UART0_INDEX);
 #endif
 #if defined(CONFIG_SHELL)
-    IPRO_LOGI(TAG, "  pds [sec]            - sleep in PDS31, wake on any button");
+    IPRO_LOGI(TAG, "  pds [sec]            - sleep in PDS31, wake on GPIO7");
 #endif
     IPRO_LOGI(TAG, "Ready. Shell %s",
 #if defined(CONFIG_SHELL)
@@ -757,7 +833,8 @@ static void main_task(void *arg)
 #endif
     );
 #if defined(CONFIG_SHELL)
-    IPRO_LOGI(TAG, "  pdm_rec [seconds]    - record (1-%d sec)", MAX_RECORD_SECONDS);
+    IPRO_LOGI(TAG, "  pdm_rec [seconds]    - record (1-%d sec, ring %d s)",
+              MAX_RECORD_SECONDS, REC_BUF_SECONDS);
     IPRO_LOGI(TAG, "  pdm_dump [off] [n]   - dump samples");
     IPRO_LOGI(TAG, "  pdm_stats            - show stats");
     IPRO_LOGI(TAG, "  pdm_gain <dB>        - set digital gain");
@@ -767,9 +844,11 @@ static void main_task(void *arg)
     IPRO_LOGI(TAG, "  pdm_loop [sec] [dB]  - live PDM -> DAC loopback");
     IPRO_LOGI(TAG, "  dac_tone [f] [s] [%%] - reference tone via DAC");
     IPRO_LOGI(TAG, "  dac_gain [dB]        - software makeup gain");
+    IPRO_LOGI(TAG, "  bat                  - GPIO22 battery ADC");
+    IPRO_LOGI(TAG, "  epd_demo [clear|colors|text] - e-Paper");
 #endif
 #if !defined(CONFIG_IPRO_PDM_MIC_BUTTONS) || CONFIG_IPRO_PDM_MIC_BUTTONS != 0
-    IPRO_LOGI(TAG, "Buttons active-low: GPIO5 power, GPIO6 volume up, GPIO7 volume down");
+    IPRO_LOGI(TAG, "Buttons: GPIO7 short=record 4h, long=sleep/wake; GPIO5/6 vol (no wake)");
 #endif
 
     /* Keep task alive (BLE stack needs it) */
@@ -785,11 +864,13 @@ int main(void)
 
     s_rec_done_sem = xSemaphoreCreateBinary();
     s_cleanup_done_sem = xSemaphoreCreateBinary();
+    s_chunk_ready_sem = xSemaphoreCreateBinary();
     s_stream_queue = xQueueCreate(STREAM_QUEUE_LEN, sizeof(int16_t *));
     s_stream_ring = pvPortMalloc(STREAM_QUEUE_LEN * FRAME_BYTES);
     s_recorder.stream_queue = s_stream_queue;
 
     xTaskCreate(pdm_monitor_task, "pdm_mon", 512, NULL, 12, NULL);
+    xTaskCreate(pdm_chunk_task, "pdm_chk", 512, NULL, 11, NULL);
     xTaskCreate(main_task, "pdm_main", 2048, NULL, 10, NULL);
 
     vTaskStartScheduler();

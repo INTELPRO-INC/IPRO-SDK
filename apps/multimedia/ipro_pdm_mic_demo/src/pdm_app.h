@@ -32,6 +32,11 @@ bool pdm_is_streaming(void);
 void pdm_set_gain(int gain_db);
 int pdm_get_gain(void);
 
+const int16_t *pdm_get_buffer(void);
+uint32_t pdm_get_recorded_bytes(void);
+uint32_t pdm_get_buf_capacity(void);
+
+
 void pdm_audio_power_set(bool on);
 void pdm_audio_power_toggle(void);
 bool pdm_audio_power_is_on(void);

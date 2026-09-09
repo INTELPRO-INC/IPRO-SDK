@@ -3,10 +3,14 @@ package com.ipro.micdemo
 import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.*
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.ParcelUuid
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.nio.ByteBuffer
@@ -40,6 +44,23 @@ class BleManager(private val context: Context) {
         const val CMD_SET_GAIN: Byte = 0x05
         const val CMD_START_STREAM: Byte = 0x06
         const val CMD_STOP_STREAM: Byte = 0x07
+        const val CMD_EPD_TEXT: Byte = 0x08
+        const val CMD_DAC_PLAY: Byte = 0x09
+        const val CMD_DAC_STOP: Byte = 0x0A
+        const val CMD_EPD_PAGE: Byte = 0x0B
+        const val CMD_GET_CHUNK: Byte = 0x0C
+        const val CMD_EPD_IMG: Byte = 0x0D
+
+        const val STATUS_IDLE: Int = 0x00
+        const val STATUS_RECORDING: Int = 0x01
+        const val STATUS_SENDING: Int = 0x02
+        const val STATUS_STREAMING: Int = 0x03
+        const val STATUS_RECORDED: Int = 0x04
+        const val STATUS_PLAYING: Int = 0x05
+        const val STATUS_CHUNK_READY: Int = 0x06
+
+        const val MAX_RECORD_SECONDS: Int = 14400
+        const val EPD_TEXT_MAX: Int = 2000
 
         // Responses (device -> phone)
         const val RSP_STATUS: Int = 0x81
@@ -48,6 +69,18 @@ class BleManager(private val context: Context) {
         const val RSP_AUDIO_DONE: Int = 0x84
         const val RSP_ERROR: Int = 0x85
         const val RSP_AUDIO_LC3: Int = 0x86
+        const val RSP_EPD_PAGE: Int = 0x87
+
+        fun stateName(state: Int) = when (state) {
+            STATUS_IDLE -> "Idle"
+            STATUS_RECORDING -> "Recording"
+            STATUS_SENDING -> "Sending"
+            STATUS_STREAMING -> "Streaming"
+            STATUS_RECORDED -> "Recorded"
+            STATUS_PLAYING -> "Playing"
+            STATUS_CHUNK_READY -> "Chunk ready"
+            else -> "Unknown($state)"
+        }
 
         /*
          * Keep the connection bring-up conservative by default. The IPRO
@@ -60,16 +93,36 @@ class BleManager(private val context: Context) {
 
     enum class ConnectionState { DISCONNECTED, SCANNING, CONNECTING, CONNECTED }
 
+    /** Mirrors BluetoothDevice.BOND_*, so the UI does not have to know the constants. */
+    enum class BondState { NONE, BONDING, BONDED }
+
     data class DeviceStatus(
         val state: Int = 0,
         val recordedBytes: Int = 0,
         val sampleRate: Int = 16000,
-        val gain: Int = 0
-    )
+        val gain: Int = 0,
+        val epdIndex: Int = 0,
+        val epdCount: Int = 0
+    ) {
+        val canStartRecording: Boolean
+            get() = state == STATUS_IDLE || state == STATUS_RECORDED
+        val canStopRecording: Boolean
+            get() = state == STATUS_RECORDING || state == STATUS_CHUNK_READY
+        val canDacPlay: Boolean
+            get() = recordedBytes > 0 &&
+                (state == STATUS_IDLE || state == STATUS_RECORDED)
+    }
 
     // Public state
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState
+
+    private val _bondState = MutableStateFlow(BondState.NONE)
+    val bondState: StateFlow<BondState> = _bondState
+
+    /** Address of the device this phone is paired with, or null. */
+    private val _pairedAddress = MutableStateFlow<String?>(null)
+    val pairedAddress: StateFlow<String?> = _pairedAddress
 
     private val _statusText = MutableStateFlow("Disconnected")
     val statusText: StateFlow<String> = _statusText
@@ -135,10 +188,280 @@ class BleManager(private val context: Context) {
     private var rxCharacteristic: BluetoothGattCharacteristic? = null
     private var txCharacteristic: BluetoothGattCharacteristic? = null
 
+    // --- Bonding -------------------------------------------------------------
+    //
+    // The device asks for encryption as soon as it connects (it calls
+    // bt_conn_set_security(L2) in its connected callback), which is what makes
+    // the reconnect after a power-button sleep free of a pairing prompt: the
+    // key is already on both sides.
+    //
+    // The cost is that bonding now overlaps connection bring-up, and Android
+    // does not serialise the two. Requesting an MTU or discovering services
+    // while the stack is in the middle of pairing is the classic way to get
+    // status 133 and a half-populated service database, and it looks like a
+    // device fault rather than a sequencing one. So bring-up waits for the
+    // bond, and starts it explicitly rather than waiting to be asked - an
+    // explicit createBond() gives a deterministic order instead of racing the
+    // peripheral's security request.
+
+    private var pendingBringUp = false
+
+    /** Set by disconnect()/forgetDevice() so a user-requested drop is not re-armed. */
+    private var userDisconnect = false
+
+    /**
+     * Re-arm the background connection when the device drops the link by
+     * itself. The user can switch this off; it is what makes a device that
+     * slept on its power button come back with no tap on this end.
+     */
+    private val _autoReconnect = MutableStateFlow(true)
+    val autoReconnect: StateFlow<Boolean> = _autoReconnect
+    fun setAutoReconnect(on: Boolean) { _autoReconnect.value = on }
+
+    /** On CHUNK_READY, pull the next 30 s slice (live STT path). */
+    private val _autoChunk = MutableStateFlow(true)
+    val autoChunk: StateFlow<Boolean> = _autoChunk
+    fun setAutoChunk(on: Boolean) { _autoChunk.value = on }
+
+    private val _chunkCount = MutableStateFlow(0)
+    val chunkCount: StateFlow<Int> = _chunkCount
+    private var audioBusy = false
+    private var receivingChunk = false
+    private var recordingRequested = false
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val prefs by lazy {
+        context.getSharedPreferences("ipro_mic_ble", Context.MODE_PRIVATE)
+    }
+
+    private fun hasPermission(permission: String): Boolean =
+        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S ||
+        ContextCompat.checkSelfPermission(context, permission) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun bondStateOf(v: Int) = when (v) {
+        BluetoothDevice.BOND_BONDED -> BondState.BONDED
+        BluetoothDevice.BOND_BONDING -> BondState.BONDING
+        else -> BondState.NONE
+    }
+
+    private val bondReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: Intent) {
+            if (intent.action != BluetoothDevice.ACTION_BOND_STATE_CHANGED) return
+            @Suppress("DEPRECATION")
+            val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                ?: return
+
+            // Other devices bond too; only ours is interesting. With nothing
+            // connected and nothing remembered there is no "ours", and taking
+            // a stranger's bond event here would remember the wrong address.
+            val ours = gatt?.device?.address ?: _pairedAddress.value ?: return
+            if (device.address != ours) return
+
+            val now = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE,
+                                         BluetoothDevice.BOND_NONE)
+            val was = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE,
+                                         BluetoothDevice.BOND_NONE)
+            _bondState.value = bondStateOf(now)
+            Log.i(TAG, "Bond ${device.address}: ${bondStateOf(was)} -> ${bondStateOf(now)}")
+
+            when (now) {
+                BluetoothDevice.BOND_BONDED -> {
+                    rememberDevice(device.address)
+                    _statusText.value = "Paired"
+                    if (pendingBringUp) {
+                        pendingBringUp = false
+                        mainHandler.removeCallbacks(bondPoll)
+                        // The bond is written before the stack has finished
+                        // settling; going straight into discovery from the
+                        // broadcast is the case that returns a partial
+                        // database. A short hop off this callback is enough.
+                        mainHandler.postDelayed({ gatt?.let { beginBringUp(it) } }, 400)
+                    }
+                }
+                BluetoothDevice.BOND_NONE -> {
+                    if (was == BluetoothDevice.BOND_BONDING) {
+                        Log.w(TAG, "Pairing failed or was rejected")
+                        _statusText.value = "Pairing failed"
+                        pendingBringUp = false
+                        gatt?.disconnect()
+                    } else {
+                        // The bond went away without us asking - the user
+                        // removed it in Settings, or the device was reflashed
+                        // and its identity address changed.
+                        forgetRemembered()
+                    }
+                }
+            }
+        }
+    }
+
+    init {
+        /*
+         * RECEIVER_EXPORTED, deliberately. NOT_EXPORTED admits broadcasts
+         * from this app and from the system, and the bond broadcast is sent
+         * by neither: since Android 12 the Bluetooth stack is a mainline
+         * module running as uid `bluetooth` (com.google.android.bluetooth on
+         * a Pixel), and a NOT_EXPORTED receiver never sees it. Observed on
+         * hardware as the phone reaching BOND_BONDED, logcat showing the
+         * broadcast go out to every other listener, and this app sitting on
+         * "Pairing..." indefinitely.
+         *
+         * Exporting is safe here: ACTION_BOND_STATE_CHANGED is a protected
+         * broadcast that only the platform may send.
+         */
+        ContextCompat.registerReceiver(
+            context,
+            bondReceiver,
+            IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED),
+            ContextCompat.RECEIVER_EXPORTED
+        )
+
+        /*
+         * Trust the platform, not the preference. A bond can disappear while
+         * the app is not running - removed in Settings, or the device was
+         * reflashed and came up on a different identity address - and a
+         * remembered address that is no longer bonded sends reconnectPaired()
+         * after something that will only ever pair again.
+         */
+        val saved = prefs.getString("paired_address", null)
+        if (saved != null) {
+            val bonded = runCatching {
+                bluetoothAdapter?.getRemoteDevice(saved)?.bondState
+            }.getOrNull()
+            if (bonded == BluetoothDevice.BOND_BONDED) {
+                _pairedAddress.value = saved
+                _bondState.value = BondState.BONDED
+            } else {
+                Log.i(TAG, "Remembered $saved is no longer bonded; forgetting it")
+                prefs.edit().remove("paired_address").apply()
+            }
+        }
+    }
+
+    /*
+     * Belt and braces for the broadcast: poll the bond state while bring-up
+     * is waiting on it. If a broadcast is ever missed again - another OEM,
+     * another Android release - this notices within half a second instead of
+     * leaving the UI on "Pairing..." until the user gives up.
+     */
+    private val bondPoll = object : Runnable {
+        override fun run() {
+            val g = gatt ?: return
+            if (!pendingBringUp) return
+            val state = g.device.bondState
+            _bondState.value = bondStateOf(state)
+            when (state) {
+                BluetoothDevice.BOND_BONDED -> {
+                    Log.i(TAG, "Bond observed by polling (broadcast not seen)")
+                    pendingBringUp = false
+                    rememberDevice(g.device.address)
+                    _statusText.value = "Paired"
+                    mainHandler.postDelayed({ gatt?.let { beginBringUp(it) } }, 400)
+                }
+                BluetoothDevice.BOND_BONDING -> mainHandler.postDelayed(this, 500)
+                else -> {
+                    // NONE while we were waiting: pairing failed or was
+                    // dismissed. The broadcast path handles the same case;
+                    // this just stops the poll.
+                }
+            }
+        }
+    }
+
+    private fun startBondPoll() {
+        mainHandler.removeCallbacks(bondPoll)
+        mainHandler.postDelayed(bondPoll, 500)
+    }
+
+    private fun rememberDevice(address: String) {
+        _pairedAddress.value = address
+        prefs.edit().putString("paired_address", address).apply()
+    }
+
+    private fun forgetRemembered() {
+        _pairedAddress.value = null
+        prefs.edit().remove("paired_address").apply()
+    }
+
+    /**
+     * Reconnect to the paired device without scanning.
+     *
+     * autoConnect = true on purpose. It is slower to establish than a direct
+     * connect, and that is exactly the property wanted here: the request stays
+     * pending in the Android stack while the device is away, and completes on
+     * its own when it starts advertising again. After the device sleeps on its
+     * power button there is nothing to press on this end.
+     *
+     * @return false if no device has been paired yet
+     */
+    fun reconnectPaired(): Boolean {
+        val address = _pairedAddress.value ?: return false
+        if (_connectionState.value != ConnectionState.DISCONNECTED) return true
+        if (!hasPermission(android.Manifest.permission.BLUETOOTH_CONNECT)) {
+            _statusText.value = "Grant the Bluetooth permission, then tap again"
+            return true
+        }
+
+        val device = try {
+            bluetoothAdapter?.getRemoteDevice(address) ?: return false
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Stored address $address is not valid", e)
+            forgetRemembered()
+            return false
+        }
+
+        _connectionState.value = ConnectionState.CONNECTING
+        _statusText.value = "Waiting for $address..."
+        _bondState.value = bondStateOf(device.bondState)
+        gatt = device.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        return true
+    }
+
+    /**
+     * Drop the pairing on this phone.
+     *
+     * BluetoothDevice.removeBond() has never been public API, and there is no
+     * supported replacement - Settings is the only sanctioned route. Reflection
+     * is how every app does this; it is wrapped so a future Android that hides
+     * it for real degrades to a log line instead of a crash.
+     *
+     * The device keeps its own copy of the bond either way. Clearing only one
+     * side leaves the two disagreeing, which shows up as the phone pairing
+     * again on the next connection, so clear the device too with its `bond
+     * clear` shell command when you want a genuinely clean slate.
+     */
+    fun forgetDevice() {
+        val address = _pairedAddress.value
+        val device = gatt?.device
+            ?: address?.let { runCatching { bluetoothAdapter?.getRemoteDevice(it) }.getOrNull() }
+
+        disconnect()
+        if (device != null) {
+            val removed = runCatching {
+                device.javaClass.getMethod("removeBond").invoke(device) as? Boolean
+            }.getOrNull()
+            if (removed != true) {
+                Log.w(TAG, "removeBond() unavailable - remove the pairing in Settings")
+                _statusText.value = "Remove the pairing in Android Settings"
+            }
+        }
+        forgetRemembered()
+        _bondState.value = BondState.NONE
+    }
+
     // --- Scanning ---
 
     fun startScan() {
         if (_connectionState.value != ConnectionState.DISCONNECTED) return
+
+        /* First launch: the permission dialog is still up when this runs,
+         * because the button requests permissions and starts the scan in the
+         * same tap. startScan() threw SecurityException and took the app
+         * down. Refuse politely; the user taps again after granting. */
+        if (!hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
+            _statusText.value = "Grant the Bluetooth permission, then tap again"
+            return
+        }
 
         scanner = bluetoothAdapter?.bluetoothLeScanner
         if (scanner == null) {
@@ -196,6 +519,11 @@ class BleManager(private val context: Context) {
     }
 
     fun disconnect() {
+        // Also the way out of a pending reconnectPaired(): autoConnect waits
+        // indefinitely, and close() is what withdraws the request.
+        if (_connectionState.value == ConnectionState.SCANNING) stopScan()
+        pendingBringUp = false
+        userDisconnect = true
         gatt?.let {
             it.disconnect()
             it.close()
@@ -207,26 +535,88 @@ class BleManager(private val context: Context) {
         _statusText.value = "Disconnected"
     }
 
+    /** MTU then service discovery - only ever entered on a settled bond. */
+    private fun beginBringUp(g: BluetoothGatt) {
+        if (REQUEST_MTU_ON_CONNECT) {
+            Log.i(TAG, "Requesting MTU...")
+            _statusText.value = "Connected, requesting MTU..."
+            if (!g.requestMtu(251)) {
+                Log.w(TAG, "requestMtu failed to start; discovering services directly")
+                discoverServices(g)
+            }
+        } else {
+            Log.i(TAG, "Discovering services...")
+            discoverServices(g)
+        }
+    }
+
+    private fun discoverServices(g: BluetoothGatt) {
+        _statusText.value = "Discovering services..."
+        if (!g.discoverServices()) {
+            Log.e(TAG, "discoverServices failed to start")
+            _statusText.value = "Service discovery failed to start"
+            g.disconnect()
+        }
+    }
+
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    if (REQUEST_MTU_ON_CONNECT) {
-                        Log.i(TAG, "Connected, requesting MTU...")
-                        _statusText.value = "Connected, requesting MTU..."
-                        if (!g.requestMtu(251)) {
-                            Log.w(TAG, "requestMtu failed to start; discovering services directly")
-                            discoverServices(g)
+                    val bond = g.device.bondState
+                    _bondState.value = bondStateOf(bond)
+                    when (bond) {
+                        BluetoothDevice.BOND_BONDED -> {
+                            rememberDevice(g.device.address)
+                            beginBringUp(g)
                         }
-                    } else {
-                        Log.i(TAG, "Connected, discovering services...")
-                        discoverServices(g)
+                        BluetoothDevice.BOND_BONDING -> {
+                            Log.i(TAG, "Connected while pairing; waiting for the bond")
+                            _statusText.value = "Pairing..."
+                            pendingBringUp = true
+                            startBondPoll()
+                        }
+                        else -> {
+                            Log.i(TAG, "Connected, not bonded - pairing first")
+                            _statusText.value = "Pairing..."
+                            pendingBringUp = true
+                            startBondPoll()
+                            if (!g.device.createBond()) {
+                                // Refused usually means pairing is already
+                                // running - the peripheral's security request
+                                // beat us to it. That pairing still completes
+                                // (as a shade notification rather than a
+                                // dialog), so wait for it like any other;
+                                // bringing up the link underneath it is how
+                                // discovery ends up racing SMP.
+                                if (g.device.bondState == BluetoothDevice.BOND_BONDING) {
+                                    Log.i(TAG, "Pairing already in progress (remote-initiated); waiting")
+                                    _bondState.value = BondState.BONDING
+                                } else {
+                                    Log.w(TAG, "createBond() refused; bringing up unbonded")
+                                    pendingBringUp = false
+                                    beginBringUp(g)
+                                }
+                            }
+                        }
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.i(TAG, "Disconnected (status=$status)")
+                    pendingBringUp = false
                     _connectionState.value = ConnectionState.DISCONNECTED
-                    _statusText.value = "Disconnected"
+                    /*
+                     * 133 is Android's catch-all GATT error and it is what an
+                     * authentication problem surfaces as. Naming it saves the
+                     * next person from reading it as a radio fault: the usual
+                     * cause is the two sides disagreeing about the bond, which
+                     * `Forget` here plus `bond clear` on the device resolves.
+                     */
+                    _statusText.value = if (status == 133) {
+                        "Disconnected (GATT 133 - try Forget, then reconnect)"
+                    } else {
+                        "Disconnected"
+                    }
                     rxCharacteristic = null
                     txCharacteristic = null
                     gatt?.close()
@@ -235,6 +625,8 @@ class BleManager(private val context: Context) {
                     afterLinkUpdate = null
                     mainHandler.removeCallbacks(linkUpdateTimeout)
                     phyText = "PHY 1M"; intervalText = ""; _linkInfo.value = ""
+                    audioBusy = false
+                    receivingChunk = false
 
                     /*
                      * The device dropped the link on its own - it went to
@@ -269,15 +661,6 @@ class BleManager(private val context: Context) {
                 g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
             }
             discoverServices(g)
-        }
-
-        private fun discoverServices(g: BluetoothGatt) {
-            _statusText.value = "Discovering services..."
-            if (!g.discoverServices()) {
-                Log.e(TAG, "discoverServices failed to start")
-                _statusText.value = "Service discovery failed to start"
-                g.disconnect()
-            }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
@@ -452,6 +835,7 @@ class BleManager(private val context: Context) {
             RSP_AUDIO_DONE -> parseAudioDone(data)
             RSP_ERROR -> parseError(data)
             RSP_AUDIO_LC3 -> parseLc3Frame(data)
+            RSP_EPD_PAGE -> parseEpdPage(data)
             else -> Log.w(TAG, "Unknown response 0x${rspId.toString(16)}")
         }
     }
@@ -463,21 +847,29 @@ class BleManager(private val context: Context) {
         val state = bb.get().toInt() and 0xFF
         val recordedBytes = bb.int
 
-        val stateStr = when (state) {
-            0 -> "Idle"
-            1 -> "Recording"
-            2 -> "Sending"
-            3 -> "Streaming"
-            else -> "Unknown($state)"
-        }
-        _deviceStatus.value = DeviceStatus(
-            state = state,
-            recordedBytes = recordedBytes,
-            sampleRate = _deviceStatus.value.sampleRate,
-            gain = _deviceStatus.value.gain
-        )
-        _statusText.value = "Device: $stateStr, ${recordedBytes} bytes"
+        val prev = _deviceStatus.value
+        val stateStr = stateName(state)
+        _deviceStatus.value = prev.copy(state = state, recordedBytes = recordedBytes)
+        _statusText.value = "Device: $stateStr, $recordedBytes bytes"
         Log.i(TAG, "Status: state=$stateStr, bytes=$recordedBytes")
+
+        recordingRequested = LinkPriorityPolicy.recordingRequestedForStatus(
+            state, STATUS_RECORDING, STATUS_CHUNK_READY,
+            STATUS_IDLE, STATUS_RECORDED, recordingRequested)
+
+        if (state == STATUS_CHUNK_READY && _autoChunk.value && !audioBusy) {
+            Log.i(TAG, "CHUNK_READY — auto GET_CHUNK")
+            requestChunk()
+        }
+    }
+
+    private fun parseEpdPage(data: ByteArray) {
+        if (data.size < 3) return
+        val index = data[1].toInt() and 0xFF
+        val count = data[2].toInt() and 0xFF
+        _deviceStatus.value = _deviceStatus.value.copy(epdIndex = index, epdCount = count)
+        _statusText.value = if (count == 0) "EPD summary cleared"
+            else "EPD page ${index + 1}/$count"
     }
 
     private fun parseAudioHeader(data: ByteArray) {
@@ -491,6 +883,7 @@ class BleManager(private val context: Context) {
         audioBuffer = ByteArray(audioTotalBytes)
         _audioTransferProgress.value = 0f
         _audioReady.value = false
+        audioBusy = true
         bulkPkts = 0
         bulkStartMs = SystemClock.elapsedRealtime()
         seqLast = -1
@@ -604,11 +997,18 @@ class BleManager(private val context: Context) {
         }
         _audioTransferProgress.value = 1f
         _audioReady.value = true
+        audioBusy = false
+        if (receivingChunk) {
+            _chunkCount.value = _chunkCount.value + 1
+            receivingChunk = false
+        }
 
         // --- 2M 斷音判決 ---
         val elapsedMs = SystemClock.elapsedRealtime() - bulkStartMs
         val kBps = if (elapsedMs > 0) audioReceivedBytes / elapsedMs else 0
-        setLinkPriority(high = false)
+        if (LinkPriorityPolicy.shouldDowngradeAfterAudio(recordingRequested)) {
+            setLinkPriority(high = false)
+        }
         val lostBytes = audioTotalBytes - audioReceivedBytes
         val verdict = when {
             _seqDebug.value && seqGaps == 0 && lostBytes == 0 ->
@@ -636,6 +1036,8 @@ class BleManager(private val context: Context) {
     private fun parseError(data: ByteArray) {
         val code = if (data.size > 1) data[1].toInt() and 0xFF else 0
         val msg = if (data.size > 2) String(data, 2, data.size - 2) else ""
+        audioBusy = false
+        receivingChunk = false
         _statusText.value = "Error $code: $msg"
         Log.e(TAG, "Device error: code=$code, msg=$msg")
     }
@@ -692,11 +1094,20 @@ class BleManager(private val context: Context) {
     }
 
     fun startRecording(seconds: Int) {
+        val sec = seconds.coerceIn(1, MAX_RECORD_SECONDS)
+        recordingRequested = true
         _audioReady.value = false
-        sendCommand(byteArrayOf(CMD_START_REC, seconds.toByte()))
+        _chunkCount.value = 0
+        receivingChunk = false
+        val payload = ByteArray(3)
+        payload[0] = CMD_START_REC
+        payload[1] = (sec and 0xFF).toByte()
+        payload[2] = ((sec shr 8) and 0xFF).toByte()
+        sendCommand(payload)
     }
 
     fun stopRecording() {
+        recordingRequested = false
         sendCommand(byteArrayOf(CMD_STOP_REC))
     }
 
@@ -770,8 +1181,57 @@ class BleManager(private val context: Context) {
     fun requestAudio() {
         _audioTransferProgress.value = 0f
         _audioReady.value = false
+        receivingChunk = false
+        audioBusy = true
         setLinkPriority(high = true) {
             sendCommand(byteArrayOf(CMD_GET_AUDIO))
+        }
+    }
+
+    fun requestChunk() {
+        if (audioBusy) {
+            Log.w(TAG, "GET_CHUNK skipped — transfer in progress")
+            return
+        }
+        _audioTransferProgress.value = 0f
+        _audioReady.value = false
+        receivingChunk = true
+        audioBusy = true
+        setLinkPriority(high = true) {
+            sendCommand(byteArrayOf(CMD_GET_CHUNK))
+        }
+    }
+
+    fun dacPlay() {
+        sendCommand(byteArrayOf(CMD_DAC_PLAY))
+    }
+
+    fun dacStop() {
+        sendCommand(byteArrayOf(CMD_DAC_STOP))
+    }
+
+    fun epdPage(delta: Int) {
+        sendCommand(byteArrayOf(CMD_EPD_PAGE, delta.toByte()))
+    }
+
+    // Chunked EPD_TEXT: offset u16 LE, total u16 LE, then utf8
+    fun sendEpdText(text: String) {
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        if (bytes.isEmpty()) return
+        val total = minOf(bytes.size, EPD_TEXT_MAX)
+        var offset = 0
+        val maxData = 180
+        while (offset < total) {
+            val n = minOf(maxData, total - offset)
+            val pkt = ByteArray(5 + n)
+            pkt[0] = CMD_EPD_TEXT
+            pkt[1] = (offset and 0xFF).toByte()
+            pkt[2] = ((offset shr 8) and 0xFF).toByte()
+            pkt[3] = (total and 0xFF).toByte()
+            pkt[4] = ((total shr 8) and 0xFF).toByte()
+            System.arraycopy(bytes, offset, pkt, 5, n)
+            sendCommand(pkt)
+            offset += n
         }
     }
 
@@ -803,6 +1263,8 @@ class BleManager(private val context: Context) {
     fun getAudioSampleRate(): Int = audioSampleRate
 
     fun cleanup() {
+        runCatching { context.unregisterReceiver(bondReceiver) }
+        mainHandler.removeCallbacksAndMessages(null)
         stopScan()
         gatt?.disconnect()
         gatt?.close()

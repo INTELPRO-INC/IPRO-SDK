@@ -2,7 +2,9 @@ package com.ipro.micdemo.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,8 +37,19 @@ fun MainScreen(
     val autoReconnect by bleManager.autoReconnect.collectAsState()
     val linkInfo by bleManager.linkInfo.collectAsState()
 
-    var duration by remember { mutableIntStateOf(3) }
+    var duration by remember { mutableIntStateOf(30) }
     var gainDb by remember { mutableFloatStateOf(0f) }
+    var epdText by remember { mutableStateOf("") }
+    val autoChunk by bleManager.autoChunk.collectAsState()
+    val chunkCount by bleManager.chunkCount.collectAsState()
+    val durationPresets = listOf(5, 30, 60, 300, 3600, 14400)
+
+    fun formatDuration(sec: Int): String = when {
+        sec < 60 -> "${sec}s"
+        sec % 3600 == 0 -> "${sec / 3600}h"
+        sec % 60 == 0 -> "${sec / 60}m"
+        else -> "${sec}s"
+    }
 
     val isConnected = connectionState == ConnectionState.CONNECTED
 
@@ -54,7 +67,8 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Connection status
@@ -108,6 +122,13 @@ fun MainScreen(
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
+                        if (isConnected) {
+                            Text(
+                                text = "Background BLE on (notification)",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     if (connectionState != ConnectionState.DISCONNECTED) {
                         OutlinedButton(onClick = { bleManager.disconnect() }) {
@@ -197,20 +218,22 @@ fun MainScreen(
                 ) {
                     Text("Recording", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
-                    // Duration selector
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Duration: ${duration}s", modifier = Modifier.width(100.dp))
-                        Slider(
-                            value = duration.toFloat(),
-                            onValueChange = { duration = it.toInt() },
-                            valueRange = 1f..30f,
-                            steps = 28,
-                            modifier = Modifier.weight(1f),
-                            enabled = isConnected
-                        )
+                    Text("Duration: ${formatDuration(duration)}", fontSize = 14.sp)
+                    durationPresets.chunked(3).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            row.forEach { sec ->
+                                FilterChip(
+                                    selected = duration == sec,
+                                    onClick = { duration = sec },
+                                    enabled = isConnected,
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(formatDuration(sec), fontSize = 12.sp) }
+                                )
+                            }
+                        }
                     }
 
                     // Gain slider
@@ -238,7 +261,7 @@ fun MainScreen(
                     ) {
                         Button(
                             onClick = { bleManager.startRecording(duration) },
-                            enabled = isConnected && deviceStatus.state == 0,
+                            enabled = isConnected && deviceStatus.canStartRecording,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFD32F2F)
@@ -248,7 +271,7 @@ fun MainScreen(
                         }
                         OutlinedButton(
                             onClick = { bleManager.stopRecording() },
-                            enabled = isConnected && deviceStatus.state == 1,
+                            enabled = isConnected && deviceStatus.canStopRecording,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Stop")
@@ -309,6 +332,32 @@ fun MainScreen(
                     }
 
                     Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Switch(
+                            checked = autoChunk,
+                            onCheckedChange = { bleManager.setAutoChunk(it) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Auto GET_CHUNK", fontSize = 14.sp)
+                            Text(
+                                "Pull each 30 s slice when CHUNK_READY arrives",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (chunkCount > 0) {
+                        Text(
+                            "Chunks received: $chunkCount",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
@@ -317,6 +366,13 @@ fun MainScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Get Audio")
+                        }
+                        OutlinedButton(
+                            onClick = { bleManager.requestChunk() },
+                            enabled = isConnected,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Get Chunk")
                         }
                         Button(
                             onClick = {
@@ -362,6 +418,73 @@ fun MainScreen(
                     if (saveResult != null) {
                         Text(
                             text = saveResult!!,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Device speaker + EPD
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Device I/O", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { bleManager.dacPlay() },
+                            enabled = isConnected && deviceStatus.canDacPlay,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("DAC Play")
+                        }
+                        OutlinedButton(
+                            onClick = { bleManager.dacStop() },
+                            enabled = isConnected &&
+                                deviceStatus.state == BleManager.STATUS_PLAYING,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("DAC Stop")
+                        }
+                    }
+                    OutlinedTextField(
+                        value = epdText,
+                        onValueChange = { if (it.length <= 500) epdText = it },
+                        label = { Text("EPD text") },
+                        enabled = isConnected,
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { bleManager.sendEpdText(epdText) },
+                            enabled = isConnected && epdText.isNotBlank(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Send EPD")
+                        }
+                        OutlinedButton(
+                            onClick = { bleManager.epdPage(-1) },
+                            enabled = isConnected && deviceStatus.epdCount > 0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Page −")
+                        }
+                        OutlinedButton(
+                            onClick = { bleManager.epdPage(+1) },
+                            enabled = isConnected && deviceStatus.epdCount > 0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Page +")
+                        }
+                    }
+                    if (deviceStatus.epdCount > 0) {
+                        Text(
+                            "EPD page ${deviceStatus.epdIndex + 1}/${deviceStatus.epdCount}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -424,13 +547,7 @@ fun MainScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text("Device Info", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        val stateStr = when (deviceStatus.state) {
-                            0 -> "Idle"
-                            1 -> "Recording"
-                            2 -> "Sending"
-                            3 -> "Streaming"
-                            else -> "Unknown"
-                        }
+                        val stateStr = BleManager.stateName(deviceStatus.state)
                         Text("State: $stateStr", fontSize = 14.sp)
                         Text("Recorded: ${deviceStatus.recordedBytes} bytes", fontSize = 14.sp)
                         Text(

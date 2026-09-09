@@ -386,4 +386,4 @@ their own notices (lwIP, mbedTLS, Zephyr, wpa_supplicant, FreeRTOS,
 TensorFlow Lite Micro and others are under their respective open-source
 licenses).
 
-**SDK version**: IPRO-SDK-V2.0.0 (2026-09-09)
+**SDK version**: IPRO-SDK-V2.0.1 (2026-09-09)

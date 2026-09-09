@@ -11,8 +11,8 @@ android {
         applicationId = "com.ipro.micdemo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"   // 2M 批次傳輸序號校正版
+        versionCode = 4
+        versionName = "2.0.1" // SDK 2.0 long-recording / GET_CHUNK validation app
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
@@ -60,6 +60,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")

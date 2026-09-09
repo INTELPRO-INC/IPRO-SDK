@@ -5,7 +5,7 @@ Record audio from a PDM digital DMIC on IPRO7, store it in PSRAM, transfer or st
 ## Features
 
 - PDM DMIC capture at 16 kHz, 16-bit mono via DMA ping-pong
-- Up to 10 seconds recording in PSRAM (320 KB)
+- Up to 4 hours recording (`START_REC` u16 LE seconds). Physical PSRAM ring is 240 s (~7.68 MB); older audio wraps. Every 30 s the device notifies `CHUNK_READY` so the phone can `GET_CHUNK` that slice while recording continues.
 - BLE NUS (Nordic UART Service) for phone control
 - Real-time audio streaming over BLE (~20ms frame latency)
 - LC3 codec compression (8:1 ratio, 32 kbps) for streaming
@@ -47,9 +47,9 @@ Output binary: `build/build_out/ipro_pdm_mic_demo_IPRO7.bin`
 |--------|------|-----------|-------|
 | Flash | ~473 KB | 1024 KB | 46% |
 | OCRAM (BSS) | ~68 KB | 224 KB | 30% |
-| PSRAM | ~7 KB (static) + 320 KB (heap) | 8192 KB | 4% |
+| PSRAM | heap recording ring ~7.68 MB (240 s) | 8192 KB | ~94% |
 
-The 320 KB recording buffer and 5 KB stream ring buffer are allocated from PSRAM heap at runtime.
+The 7.68 MB recording ring and 5 KB stream ring are allocated from PSRAM heap at runtime. Logical recordings longer than 240 s wrap; `GET_AUDIO` then returns the last 240 s.
 
 ## Shell Commands
 
@@ -57,7 +57,7 @@ All commands are available over the serial console (921600 baud).
 
 | Command | Description |
 |---------|-------------|
-| `pdm_rec [seconds]` | Record audio (1-10s, default 5s). Blocks until done. |
+| `pdm_rec [seconds]` | Record audio (1-14400s / 4 h, default 5s). Blocks until done. |
 | `pdm_dump [offset] [count]` | Print PCM sample values (default: first 64 samples) |
 | `pdm_stats` | Show recording statistics: duration, peak, RMS, dBFS |
 | `pdm_gain <dB>` | Set PDM digital gain (-96 to +18 dB, default 0) |
@@ -107,13 +107,14 @@ Write to the RX characteristic. Format: `[1 byte command ID] [payload...]`
 
 | ID | Name | Payload | Description |
 |----|------|---------|-------------|
-| `0x01` | START_REC | `[uint8 seconds]` | Start recording (1-10s, 0 or omit = 5s) |
+| `0x01` | START_REC | `[uint16 LE seconds]` (legacy: 1 byte) | Start recording (1-14400 s) |
 | `0x02` | STOP_REC | — | Stop recording early |
-| `0x03` | GET_AUDIO | — | Download recorded audio as raw PCM |
+| `0x03` | GET_AUDIO | — | Download recorded audio as raw PCM (last 240 s if wrapped) |
 | `0x04` | GET_STATUS | — | Query device state |
 | `0x05` | SET_GAIN | `[int8 gain_db]` | Set PDM digital gain |
 | `0x06` | START_STREAM | — | Start real-time audio streaming |
 | `0x07` | STOP_STREAM | — | Stop streaming |
+| `0x0C` | GET_CHUNK | — | Next unsent 30 s slice (live STT) |
 
 ### Responses (Device to Phone)
 
@@ -136,6 +137,8 @@ Received as notifications on the TX characteristic. Format: `[1 byte response ID
 | `0x01` | RECORDING — PDM capture in progress |
 | `0x02` | SENDING — bulk audio transfer in progress |
 | `0x03` | STREAMING — real-time audio streaming active |
+| `0x04` | RECORDED — local recording finished; phone should GET_AUDIO / GET_CHUNK remainder |
+| `0x06` | CHUNK_READY — 30 s slice ready; phone should GET_CHUNK |
 
 ### State Machine
 
@@ -164,8 +167,8 @@ On connection, the device automatically requests:
 1. Scan and connect to "IPRO-MIC"
 2. Find the NUS service, enable notifications on the TX characteristic (0x0003)
 3. Write to RX characteristic (0x0002):
-   - `01 05` = start 5-second recording
-   - Wait for `81 00 ...` notification (status = IDLE = recording done)
+   - `01 05 00` = start 5-second recording (u16 LE; `01 05` still works)
+   - Wait for `81 04 ...` notification (status = RECORDED)
    - `03` = download audio
    - Receive `82` header, then `83` data chunks, then `84` done
 4. For streaming: write `06` to start, `07` to stop
@@ -285,4 +288,3 @@ app/src/main/java/com/ipro/micdemo/
 | `.config` | Kconfig: IPRO7 + PSRAM + FreeRTOS + BLE + LC3 |
 | `CMakeLists.txt` | Build: source files, BLE stack includes, LC3 includes |
 | `Makefile` | Top-level make wrapper |
-
