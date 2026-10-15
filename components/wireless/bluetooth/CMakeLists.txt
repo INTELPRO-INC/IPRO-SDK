@@ -1,6 +1,6 @@
 # Bluetooth: the shared ipro_ble_controller component and unified Zephyr 4.4
-# host. IPRO7 uses the RW v14.0.2 backend; IPRO6S uses the isolated RW v13.0.18
-# dual-mode backend selected by CONFIG_BTDM_ENABLE.
+# host. IPRO7 uses the IPRO7 backend; IPRO6S uses the isolated dual-mode
+# backend selected by CONFIG_BTDM_ENABLE.
 #
 # The previous btblecontroller/blestack/btblestack trees were removed. Any
 # configuration that still selects them fails explicitly instead of silently
@@ -24,16 +24,19 @@ __component_add_compile_options(-Wno-expansion-to-defined)
 # ----------------------------------------------------------------------------
 if(CONFIG_BT_CTLR_IPRO OR CONFIG_BTDM_ENABLE)
     if(CONFIG_BTDM_ENABLE)
-        message(STATUS "[bluetooth] Using ipro_ble_controller IPRO6S backend (RW v13.0.18 dual mode)")
+        message(STATUS "[bluetooth] Using ipro_ble_controller IPRO6S backend (dual mode)")
     else()
-        message(STATUS "[bluetooth] Using ipro_ble_controller IPRO7 backend (RW v14.0.2 + patches, byte-stream HCI)")
+        message(STATUS "[bluetooth] Using ipro_ble_controller IPRO7 backend (byte-stream HCI)")
     endif()
     add_subdirectory(ipro_ble_controller)
+elseif(CONFIG_BT_CTLR_AIC8800_SDIO)
+    message(STATUS "[bluetooth] Using the external AIC8800 D80 controller over the SDIO mailbox HCI (aic_hci_transport.h) (no on-chip controller)")
 else()
     message(FATAL_ERROR
         "[bluetooth] No controller selected. Set CONFIG_BT_CTLR_IPRO=y for "
-        "IPRO7 or CONFIG_BTDM_ENABLE=y for IPRO6S. The legacy "
-        "btblecontroller tree is no longer part of master.")
+        "IPRO7, CONFIG_BTDM_ENABLE=y for IPRO6S or CONFIG_BT_CTLR_AIC8800_SDIO=y "
+        "for the AIC8800 combo chip. The legacy btblecontroller tree is no "
+        "longer part of master.")
 endif()
 
 # ----------------------------------------------------------------------------
@@ -66,5 +69,5 @@ endif()
 # ----------------------------------------------------------------------------
 # Application Framework (TODO: rebuild for blestack)
 # ----------------------------------------------------------------------------
-# app_framework was removed as it depended on RivieraWaves stack
+# app_framework was removed as it depended on the removed legacy host stack
 # Will be rebuilt for blestack in future

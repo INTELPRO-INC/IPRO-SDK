@@ -230,6 +230,38 @@ python3 "$CUBE_UTILS/ipro_probe_ctl.py" \
   --firmware apps/bluetooth/le_audio/ipro_le_audio_headset/build/build_out/ipro_le_audio_headset_IPRO7.bin
 ```
 
+## IPRO7AI Reef board
+
+```bash
+make -C apps/bluetooth/le_audio/ipro_le_audio_headset DEFCONFIG=defconfig_reef
+# -> build_reef/build_out/ipro_le_audio_headset_IPRO7.bin
+ipro_iot_tool_macos --chipname ipro7 --chip-variant IPRO7AI --port /dev/cu.usbmodemXXXX \
+    --firmware apps/bluetooth/le_audio/ipro_le_audio_headset/build_reef/build_out/ipro_le_audio_headset_IPRO7.bin
+```
+
+`defconfig_reef` is the DAC variant with `CONFIG_IPRO7AI_REEF` instead of
+`CONFIG_EVB`, and CCI analysis off (it claims GPIO0/1/2/11: camera D0-D2 and
+SW5 on this board). Board behaviour comes from `ipro7ai_reef_board_config.h`:
+
+- **Output**: DAC A feeds both the J2 headphone buffer and the PAM8302A
+  speaker amp (enable GPIO25). While a plug is in J2 (GPIO26 low) the amp is
+  off; it follows the jack during playback. The speaker path is trimmed by
+  -12 dB (`dac spk <dB>`), because the PAM8302A's 15-30 V/V gain is far above
+  the EVK amp the volume curve was set on. The EVK speaker EQ is off.
+- **Keys**: SW3 volume down, SW4 volume up, SW5 mute, all through the VCP
+  volume renderer, so the phone's slider follows.
+- **512 kHz output path** (`dac os 1`, the Reef default): the GPDAC runs at
+  512 kHz and `src/dac_ns.c` expands each 32 kHz sample with interpolation
+  and first-order noise shaping, which takes the 10-bit quantisation hiss
+  out of the audio band. `dac os 0` is the original 32 kHz path, `dac os 2`
+  second-order shaping. The expander costs about 8% CPU (`ps`). It runs at
+  priority 5, below the BLE host threads: at priority 30 the stream lost
+  4-13% of its ISO packets; at 5, none in 13 000 packets on either path
+  (bench, 2026-10-06). `ps` and long `dacprof`/`dac status` dumps stall it
+  for a moment and can cause a short glitch.
+
+Host test for the shaper: `sh test_host/run.sh`.
+
 ## Basic Android phone smoke
 
 With the headset app running on A:
@@ -374,7 +406,7 @@ Configurable in `src/app_audio.h`:
 - [Bluetooth LE Audio Specification](https://www.bluetooth.com/specifications/le-audio/)
 - [LC3 Codec Documentation](https://www.bluetooth.com/specifications/lc3/)
 - [IPRO SDK Documentation](../../README.md)
-- [GAF Developer Guide](../../../docs/ble/GAF_DEVELOPER_GUIDE.md)
+- [BLE development overview](../../../../docs/ble/README.md)
 
 ## License
 

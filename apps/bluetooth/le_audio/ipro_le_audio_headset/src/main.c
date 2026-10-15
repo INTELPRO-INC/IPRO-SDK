@@ -57,11 +57,19 @@ static void cci_analysis_transport_enable(void)
 #include "usb_dc.h"
 #include "app_uac.h"
 #endif
+#if defined(CONFIG_IPRO7AI_REEF) && !defined(CONFIG_IPRO_LE_AUDIO_NEW_HOST_SMOKE)
+#include "app_keys.h"
+#define APP_HAS_KEYS 1
+#endif
 
 #define TAG "MAIN"
 
-/* Debug GPIO pin for hardware debugging (toggle to detect freeze location) */
+/* Debug GPIO pin for hardware debugging (toggle to detect freeze location).
+ * Not on the IPRO7AI Reef: GPIO28 is SD_D1 there, shared with the card slot
+ * and the IPRO6S_FIN, and toggling it would fight a card. */
+#if !defined(CONFIG_IPRO7AI_REEF)
 #define DEBUG_GPIO_PIN 28
+#endif
 
 /* Define to test UAC-only without BLE/LE Audio */
 #define UAC_ONLY_TEST 0
@@ -73,10 +81,12 @@ static void subsystems_init(void)
 {
     IPRO_LOGI(TAG, "Initializing subsystems...");
 
+#ifdef DEBUG_GPIO_PIN
     /* Initialize debug GPIO (pin 28) for hardware watchdog */
     gpio_set_mode(DEBUG_GPIO_PIN, GPIO_OUTPUT_PP_MODE);
     gpio_write(DEBUG_GPIO_PIN, 0);  /* Start LOW */
     IPRO_LOGI(TAG, "[GPIO] Debug pin %d initialized", DEBUG_GPIO_PIN);
+#endif
 
 #if defined(CONFIG_BSP_USING_DAC) || defined(CONFIG_AUDIO_OUTPUT_UAC)
     // Initialize Audio subsystem (LC3 decoder + DAC/UAC output)
@@ -116,6 +126,10 @@ static void subsystems_init(void)
     }
 #endif
 
+#ifdef APP_HAS_KEYS
+    app_keys_init();
+#endif
+
     IPRO_LOGI(TAG, "Subsystems initialized successfully");
 }
 
@@ -139,10 +153,12 @@ static void main_task(void *arg)
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));  // Report every 5 seconds
 
+#ifdef DEBUG_GPIO_PIN
         /* Toggle GPIO to show main loop is still running */
         static uint8_t gpio_state = 0;
         gpio_state = !gpio_state;
         gpio_write(DEBUG_GPIO_PIN, gpio_state);
+#endif
 
 #if defined(CONFIG_BSP_USING_DAC) || defined(CONFIG_AUDIO_OUTPUT_UAC)
 #if UAC_ONLY_TEST

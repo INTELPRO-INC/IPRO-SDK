@@ -115,6 +115,9 @@ int EMAC_Phy_Write(EMAC_ID_Type emacId, uint16_t phyReg, uint16_t regValue)
 
 int EMAC_Init(EMAC_ID_Type emacId, EMAC_CFG_Type *cfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_EMAC);
+
     uint32_t tmpVal;
     uint32_t EMACx = emacAddr[emacId];
 

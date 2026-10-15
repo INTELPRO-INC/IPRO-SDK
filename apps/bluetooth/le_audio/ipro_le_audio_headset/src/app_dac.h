@@ -76,9 +76,15 @@
 
 /*
  * Hardware Configuration
+ *
+ * EVB/EVK wiring. app_dac.c takes the amplifier enable from the board header
+ * instead when the board names one (BOARD_SPK_EN_PIN - GPIO25 on the
+ * IPRO7AI Reef, where GPIO22 is the camera clock).
  */
 #define DAC_GPIO_OUTPUT             23      // DAC analog output GPIO
+#ifndef DAC_GPIO_SPEAKER_EN
 #define DAC_GPIO_SPEAKER_EN         22      // Speaker/amplifier enable GPIO
+#endif
 
 /*
  * Level that turns the amplifier ON.
@@ -133,6 +139,8 @@ typedef struct {
     // Buffer level tracking
     uint8_t  min_buffers_ready;       ///< Minimum buffers ready observed (excluding underrun)
     uint8_t  buffers_ready_at_underrun; ///< Buffers ready when underrun occurred
+    // 512 kHz path
+    uint32_t os_late;                 ///< Ring segments the expander did not refill in time
 } app_dac_stats_t;
 
 /*
@@ -260,6 +268,59 @@ void app_dac_set_volume(uint8_t volume);
  * (acoustic measurement, distortion tests) must keep its peak below it.
  */
 #define DAC_KNEE                    5120
+
+/*
+ * Output routing.
+ *
+ * Boards with a headphone jack detect (BOARD_HP_DET_PIN, the IPRO7AI Reef)
+ * keep the speaker amplifier off while a plug is in; the DAC feeds both
+ * paths, so the headphone always plays. The speaker trim is an extra
+ * attenuation applied only while the amplifier is on, for amplifiers much
+ * hotter than the EVK's 2 V/V one.
+ */
+typedef struct {
+    bool    amp_on;          ///< Speaker amplifier enabled right now
+    int8_t  jack;            ///< -1 = board has no jack detect, 0 = empty, 1 = plug in
+    int8_t  spk_trim_db;     ///< Speaker trim, 0 .. DAC_SPK_TRIM_MIN_DB
+} app_dac_route_t;
+
+#define DAC_SPK_TRIM_MIN_DB         (-30)
+
+void app_dac_get_route(app_dac_route_t *route);
+
+/** @brief Set the speaker trim in dB (clamped to DAC_SPK_TRIM_MIN_DB .. 0). */
+void app_dac_set_spk_trim_db(int db);
+
+/*
+ * Output path (see dac_ns.h).
+ *
+ * 0 = DAC at 32 kHz fed straight from the segment buffers (10-bit, flat
+ * quantisation noise). 1 / 2 = DAC at 512 kHz, each 32 kHz sample expanded
+ * by dac_ns with first / second order noise shaping. Only a 32 kHz stream
+ * can take the 512 kHz path. A change made while playing takes effect at the
+ * next app_dac_write(), which restarts playback (a short gap).
+ */
+int     app_dac_set_os(uint8_t order);
+/** @brief Order in effect: 0 when the 32 kHz path is playing. */
+uint8_t app_dac_get_os(void);
+
+/*
+ * GPDAC channel A output range (GLB_GPDAC_A_RNG), for listening tests:
+ * 0 = 0.2-1.0 V, 1 = 0.225-1.425 V, 3 = 0.2-1.8 V (reset value). A smaller
+ * range lowers both the level and the DAC's own noise; switching while
+ * playing steps the output's DC level and pops.
+ */
+void    app_dac_set_range(uint8_t range);
+uint8_t app_dac_get_range(void);
+
+/*
+ * Connect / disconnect the channel A output from its pad (GLB_GPDAC_IOA_EN),
+ * for telling the DAC's own output noise from noise that reaches the
+ * headphone buffer some other way (3V3 through the bias divider, ground).
+ * Pops; the stream keeps running unheard while the pad is off.
+ */
+void    app_dac_set_pad(bool on);
+bool    app_dac_get_pad(void);
 
 /** @brief Report measured cycles-per-sample for the DAC conversion chain. */
 void app_dac_profile_report(void);

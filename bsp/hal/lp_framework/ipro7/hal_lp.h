@@ -75,6 +75,11 @@ extern "C" {
 #define HAL_LP_RTC_CNT_TO_US(cnt)   (((uint64_t)(cnt) * 1000000) >> 15)
 #define HAL_LP_RTC_CNT_TO_MS(cnt)   (((uint64_t)(cnt) * 1000) >> 15)
 
+/* hal_lp_enter() error: the core never went through PDS (an enabled interrupt
+ * was already pending, or the bounded entry fallback fired).  Nothing was
+ * powered down; the caller continues as after a plain WFI. */
+#define HAL_LP_ERR_ENTRY_ABORTED    (-3)
+
 /* PDS wakeup timing limits */
 #define HAL_LP_PDS_WAKEUP_MIN_US    1220
 #define HAL_LP_PDS_WAKEUP_DELAY_US  300
@@ -261,9 +266,30 @@ int hal_lp_init(void);
  * @brief Enter low power mode
  * @param cfg Low power configuration
  * @param result Output: wakeup result (can be NULL)
- * @return Wakeup reason on success, negative on error
+ * @return Wakeup reason on success, negative on error;
+ *         HAL_LP_ERR_ENTRY_ABORTED when the core never powered down
  */
 int hal_lp_enter(hal_lp_cfg_t *cfg, hal_lp_result_t *result);
+
+/**
+ * @brief Entry safety for the next hal_lp_enter() only (consumed by it).
+ *
+ * Not part of hal_lp_cfg_t: objects built against the older header (the
+ * prebuilt BLE controller archives) keep their struct layout.
+ *
+ * @param abort_on_pending_irq return HAL_LP_ERR_ENTRY_ABORTED instead of
+ *        entering while an enabled interrupt other than the machine timer
+ *        is pending
+ * @param entry_fallback_us non-zero: if the core still runs this long after
+ *        the PDS WFI, return HAL_LP_ERR_ENTRY_ABORTED (0: stall until PDS
+ *        engages, as before)
+ */
+void hal_lp_set_entry_guard(bool abort_on_pending_irq, uint32_t entry_fallback_us);
+
+/** Entries that returned HAL_LP_ERR_ENTRY_ABORTED, and the first pending
+ *  ECLIC interrupt (+1, 0 = fallback/other) that caused the last one. */
+extern volatile uint32_t hal_lp_entry_aborts;
+extern volatile uint32_t hal_lp_last_abort_irq;
 
 /**
  * @brief Enter HBN_0 sleep, wake via cold boot (true no-OCRAM-retention)
@@ -362,6 +388,9 @@ int hal_lp_register_wakeup_hook(hal_lp_wakeup_hook_t hook, void *arg);
  * @return 0 on success, -1 if not found
  */
 int hal_lp_unregister_wakeup_hook(hal_lp_wakeup_hook_t hook);
+
+/** Number of registered wakeup hooks (they run after every PDS, whoever enters it). */
+uint32_t hal_lp_wakeup_hook_count(void);
 
 /*============================ Virtual Time ===============================*/
 

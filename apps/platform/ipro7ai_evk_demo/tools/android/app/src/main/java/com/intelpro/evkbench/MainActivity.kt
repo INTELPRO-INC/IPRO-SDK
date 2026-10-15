@@ -295,8 +295,8 @@ private fun Panels(ble: BleClient, on: Boolean) {
         Note(
             "Zero frames and zero errors together means no pixel data arrives " +
             "at all. With SCCB answering, look at the DVP side — MCLK shares " +
-            "GPIO41 with the boot strap, so a jumper left on J6 silences the " +
-            "sensor clock while I²C keeps working."
+            "GPIO41 with the boot strap, but on V1 boards BOOT is no longer " +
+            "on J6, so no J6 jumper can hold it."
         )
     }
 

@@ -115,7 +115,6 @@ void hal_system_init(void)
     /* IPRO7/IPRO6: board_init is called here (not in startup.S) */
     board_init();
 #endif
-    /* IPRO6LE: board_init is already called from startup.S */
 }
 
 int hal_is_cacheable_addr(const void *addr)

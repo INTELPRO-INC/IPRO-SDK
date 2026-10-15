@@ -145,7 +145,7 @@ extern const uint32_t ipro_ble_ctlr_profile_cci_diag;
 extern const uint32_t ipro_ble_ctlr_profile_trace_buffers;
 extern const uint32_t ipro_ble_ctlr_profile_cis_rxwin_diag_extra_us;
 
-/// RW BLE-IP deep-sleep timer diagnostics (nominal 32 MHz cycles).
+/// Controller BLE-IP deep-sleep timer diagnostics (nominal 32 MHz cycles).
 extern volatile uint32_t ipro_ble_ctlr_rwip_sleep_programmed;
 extern volatile uint32_t ipro_ble_ctlr_rwip_sleep_observed;
 extern volatile uint32_t ipro_ble_ctlr_rwip_wakeup_count;

@@ -18,6 +18,7 @@
 
 #include "stddef.h"
 #include "assert.h"
+#include "export/dbg/dbg_assert.h"
 #include "mac_frame.h"
 #include "net_al.h"
 #include "lwip/tcpip.h"

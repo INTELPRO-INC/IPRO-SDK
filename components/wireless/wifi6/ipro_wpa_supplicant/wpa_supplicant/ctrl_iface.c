@@ -11932,7 +11932,21 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
 {
 	char *reply;
-	const int reply_size = 2048;
+	/* These RWNX commands return only OK/FAIL or a decimal int. Avoid a
+	 * transient 2 KiB allocation for every boot-time network setting/status
+	 * poll when the BLE Host and Thread are starting concurrently. Keep the
+	 * full buffer for data replies and unknown commands. */
+	const int reply_size =
+		os_strncmp(buf, "ENABLE_NETWORK ", 15) == 0 ||
+		os_strncmp(buf, "DISABLE_NETWORK ", 16) == 0 ||
+		os_strncmp(buf, "REMOVE_NETWORK ", 15) == 0 ||
+		os_strncmp(buf, "SET_NETWORK ", 12) == 0 ||
+		os_strncmp(buf, "SET ", 4) == 0 ||
+		os_strncmp(buf, "AP_SCAN ", 8) == 0 ||
+		os_strncmp(buf, "AP_STA_DEL ", 11) == 0 ||
+		os_strncmp(buf, "GET_STATUS ", 11) == 0 ||
+		os_strncmp(buf, "STA_AUTOCONNECT ", 16) == 0 ||
+		os_strcmp(buf, "ADD_NETWORK") == 0 ? 32 : 2048;
 	int reply_len;
 
 	reply = os_malloc(reply_size);

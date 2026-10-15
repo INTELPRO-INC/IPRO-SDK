@@ -21,7 +21,7 @@
  * @brief IPRO6 Compatibility Stubs
  *
  * This header provides stub definitions for peripherals/features
- * that exist in other chips (IPRO7, IPRO6LE) but not in IPRO6.
+ * that exist in other chips (IPRO7) but not in IPRO6.
  * This allows shared driver code to compile without modification.
  */
 

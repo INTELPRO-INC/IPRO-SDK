@@ -33,6 +33,7 @@
 #include <sdiowifi_tty.h>
 
 #include "sdio_port.h"
+#include "export/export_macsw.h"
 
 #if 0
 #if defined(SDIO_REUSE_LP_RAM) && !(defined(CFG_IPRO_WIFI) && defined(LP_APP))
@@ -51,7 +52,7 @@ sdiowifi_mgmr_t g_sdiowifi_mgmr;
  * sdiowifi_update_tx_credit. The SMID host cannot read this s_reg scratch
  * window (offset 0 / hi / una_seq), so those 3 ipro_write_s_reg calls are
  * proven dead I/O (~12us/call). Default 0 = skip the writes entirely. Poke
- * g_sdio_credit_scratch_en = 1 via memory to restore the legacy ipro6le
+ * g_sdio_credit_scratch_en = 1 via memory to restore the legacy SDU
  * scratch-credit path (non-SMID host that can read the window). */
 volatile uint8_t g_sdio_credit_scratch_en = 0;
 
@@ -142,14 +143,9 @@ int sdiowifi_update_tx_credit(struct sdiowifi_tx_buf *tb)
     uint32_t cap     = (window < tb->free_size) ? window : tb->free_size;
     uint16_t credit  = (uint16_t)cap;
 
-#if defined(IPRO6)
     /* SMID has no directly-mapped scratch region; route una_seq through the
-     * custom-register scratch window (offset 7, matching the ipro6le layout
-     * SDU_BASE+0x167). */
+     * custom-register scratch window (offset 7, legacy SDU_BASE+0x167). */
     ipro_write_s_reg(&g_sdiowifi_mgmr.trcver, UNA_SEQ_SCRATCH_OFFSET, (uint8_t)tb->una_seq);
-#else
-    *(volatile unsigned char *)(0x2000d167) = (unsigned char)tb->una_seq;
-#endif
     /* Hi-first lo-second: torn read can only overshoot, never undershoot into
      * the [0..TX_CREDIT_THRESHOLD] poll-block window. With cap <= window_size
      * (24) the hi byte is always 0; ordering remains correct for future caps. */

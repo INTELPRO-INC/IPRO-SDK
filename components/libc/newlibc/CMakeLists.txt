@@ -15,6 +15,9 @@ endif()
 
 #__component_add_sources(syscalls.c assert.c debug.c)
 __component_add_sources(debug.c)
+if(CONFIG_THREAD_WIFI_BORDER_ROUTER OR CONFIG_NEWLIBC_CONSOLE_GUARD)
+    __component_add_sources(console_guard.c)
+endif()
 __component_add_sources_ifdef(CONFIG_FREERTOS_SUPPORT syscalls.c)
 
 # Boot2 (no RTOS) has no float format strings; disable float path to save ~2KB flash

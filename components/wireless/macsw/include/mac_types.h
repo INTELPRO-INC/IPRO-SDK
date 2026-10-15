@@ -520,6 +520,8 @@ enum mac_connection_flags
     SCAN_STOP_CURRENT_CHANNEL_IF_TARGET_AP_FOUND = CO_BIT(9),
     /// Flag fix using 1Mbps when connect
     LOW_RATE_CONNECT = CO_BIT(10),
+    /// Flag limiting the connection to the primary 20 MHz channel
+    DISABLE_40MHZ = CO_BIT(11),
 };
 
 /// Max number of FTM responders per request

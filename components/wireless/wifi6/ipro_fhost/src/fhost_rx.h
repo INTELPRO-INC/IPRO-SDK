@@ -107,7 +107,12 @@ struct fhost_rx_buf_tag
     /// Network stack buffer element - Must be the first field in the structure because of the implicit cast
     /// by net_al when calling @ref fhost_rx_buf_push (via free_fn) to free a net_al_rx_t!!!
     // net_al_rx_t net_buf;
+#ifndef __ZEPHYR__
+    /// lwIP pbuf storage. The Zephyr adapter copies the frame and hands the
+    /// buffer itself back to free_fn, so there it would cost 64 B of WRAM per
+    /// RX buffer for nothing.
     uint8_t fnet_buf[64];
+#endif
     /// Structure containing the information to resend on Tx
     struct tx_info info_tx;
     /// Number of reference to Rx buffer

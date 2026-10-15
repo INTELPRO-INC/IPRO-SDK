@@ -1,0 +1,20 @@
+# IPRO7 UVC Camera Application Configuration
+#
+# Resolution/format are fixed in source (uvc.c descriptor + uvc_isp.h).
+# Note: the SDK reads .config directly; Kconfig documents the options but its
+# depends/select are not evaluated (see docs/sdk/Configuration_Guide.md).
+
+menu "UVC Camera Configuration"
+
+config UVC_RPS
+	bool "Rock-paper-scissors game drawn into the stream (IPRO7AI Reef)"
+	depends on IPRO7AI_REEF && AI_SUPPORT
+	help
+	  Plays rock-paper-scissors against the NPU and draws the game (play
+	  box, live label, 3-2-1 countdown, both moves, score) into every
+	  640x360 frame the host receives. The classifier, the game logic and
+	  the model are the EVK app's (apps/ai/ipro7ai_evk_rps); set
+	  RPS_EMBED_MODEL as well to link the model into the image.
+	  Build: make -C apps/multimedia/ipro7_uvc_cam DEFCONFIG=defconfig_reef_rps
+
+endmenu

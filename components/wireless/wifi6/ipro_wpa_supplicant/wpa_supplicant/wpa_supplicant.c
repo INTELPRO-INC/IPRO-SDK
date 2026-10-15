@@ -7174,7 +7174,15 @@ static const char * wpa_supplicant_msg_ifname_cb(void *ctx)
 
 
 #ifndef WPA_SUPPLICANT_CLEANUP_INTERVAL
+#ifdef CONFIG_LWIP_LP
+/* LP profile: the 10 s cleanup (BSS / temp-disallow expiry) was the only OS
+ * deadline left between 30 s keepalives and woke the full firmware from
+ * DTIM standby every ~10 s (2026-09-07: `nb=WPA` on 54 of 58 PDS entries).
+ * Nothing it expires needs a 10 s cadence while associated and idle. */
+#define WPA_SUPPLICANT_CLEANUP_INTERVAL 120
+#else
 #define WPA_SUPPLICANT_CLEANUP_INTERVAL 10
+#endif
 #endif /* WPA_SUPPLICANT_CLEANUP_INTERVAL */
 
 /* Periodic cleanup tasks */

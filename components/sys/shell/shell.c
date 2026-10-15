@@ -36,6 +36,9 @@ static char *shell_prompt_custom = NULL;
 extern void shell_abort_exec(int sig);
 extern int shell_start_exec(cmd_function_t func, int argc, char *argv[]);
 extern void shell_dup_line(char *cmd, uint32_t length);
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && CONFIG_SHELL_EXEC_THREAD
+extern int shell_wait_exec_idle(void);
+#endif
 static volatile shell_sig_func_ptr shell_sig_func;
 
 int shell_help(int argc, char **argv)
@@ -392,7 +395,6 @@ static int shell_split(char *cmd, uint32_t length, char *argv[SHELL_ARG_NUM])
     char *ptr;
     uint32_t position;
     uint32_t argc;
-    uint32_t i;
 
     ptr = cmd;
     position = 0;
@@ -407,13 +409,9 @@ static int shell_split(char *cmd, uint32_t length, char *argv[SHELL_ARG_NUM])
         }
 
         if (argc >= SHELL_ARG_NUM) {
-            SHELL_E("Too many args ! We only Use:\r\n");
-
-            for (i = 0; i < argc; i++) {
-                SHELL_E("%s ", argv[i]);
-            }
-
-            SHELL_E("\r\n");
+            /* Parsing precedes application admission; never dump arguments
+             * here because even a rejected command can carry credentials. */
+            SHELL_E("Too many arguments\r\n");
             break;
         }
 
@@ -510,6 +508,13 @@ static int shell_exec_cmd(char *cmd, uint32_t length, int *retp)
     cmd_func = shell_get_cmd(cmd, cmd0_size);
 
     if (cmd_func == NULL) {
+        /* No parsed command exists. Let the policy reject alternate executors
+         * without modifying the original line needed by legacy fallback. */
+        if (!shell_command_allowed(0, NULL)) {
+            SHELL_PRINTF("Command denied by application policy\r\n");
+            *retp = -1;
+            return 0;
+        }
         return -1;
     }
 
@@ -521,7 +526,22 @@ static int shell_exec_cmd(char *cmd, uint32_t length, int *retp)
         return -1;
     }
 
+    /* A denial is a recognized-command failure, not permission to try a
+     * fallback executor. Do not print arguments: they can contain secrets. */
+    if (!shell_command_allowed(argc, argv)) {
+        SHELL_PRINTF("Command denied by application policy\r\n");
+        *retp = -1;
+        return 0;
+    }
+
     /* exec this command */
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && CONFIG_SHELL_EXEC_THREAD
+    if (shell_wait_exec_idle() != 0) {
+        SHELL_PRINTF("Shell busy: previous command is still running\r\n");
+        *retp = -1;
+        return 0;
+    }
+#endif
     shell_signal(SHELL_SIGINT, SHELL_SIG_DFL);
     shell_dup_line(cmd, length);
     *retp = shell_start_exec(cmd_func, argc, argv);
@@ -628,8 +648,15 @@ int shell_exec(char *cmd, uint32_t length)
     return -1;
 }
 
+__attribute__((weak)) int shell_input_intercept(uint8_t data)
+{
+    (void)data;
+    return 0;
+}
+
 void shell_handler(uint8_t data)
 {
+    if (shell_input_intercept(data)) return;
     /*
    * handle control key
    * up key  : 0x1b 0x5b 0x41
@@ -913,6 +940,12 @@ shell_sig_func_ptr shell_signal(int sig, shell_sig_func_ptr func)
 __attribute__((weak)) void shell_abort_exec(int sig)
 {
     (void)sig;
+}
+__attribute__((weak)) int shell_command_allowed(int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+    return 1;
 }
 __attribute__((weak)) int shell_start_exec(cmd_function_t func, int argc, char *argv[])
 {

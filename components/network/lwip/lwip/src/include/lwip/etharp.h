@@ -86,6 +86,12 @@ err_t etharp_request(struct netif *netif, const ip4_addr_t *ipaddr);
  *  nodes to update an entry in their ARP cache.
  *  From RFC 3220 "IP Mobility Support for IPv4" section 4.6. */
 #define etharp_gratuitous(netif) etharp_request((netif), netif_ip4_addr(netif))
+#ifdef CONFIG_LWIP_LP
+/* ipro lp change: ARP request for ipaddr sent to hw_dst_addr instead of broadcast. */
+err_t etharp_request_dst(struct netif *netif, const ip4_addr_t *ipaddr, const struct eth_addr *hw_dst_addr);
+/* ipro lp change: unicast ARP reply announcing our address to one host. */
+err_t etharp_reply_dst(struct netif *netif, const ip4_addr_t *ipdst, const struct eth_addr *hw_dst_addr);
+#endif
 void etharp_cleanup_netif(struct netif *netif);
 
 #if ETHARP_SUPPORT_STATIC_ENTRIES

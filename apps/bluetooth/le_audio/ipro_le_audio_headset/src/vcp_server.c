@@ -19,6 +19,7 @@
 /* Current volume state */
 static uint8_t current_volume = 128; /* Mid-level (0-255) */
 static uint8_t current_mute = 0;     /* 0 = unmuted, 1 = muted */
+static bool registered;              /* bt_vcp_vol_rend_register() succeeded */
 
 /**
  * @brief Volume state callback - called when volume or mute changes
@@ -93,9 +94,21 @@ int vcp_server_init(void)
 		return err;
 	}
 
+	registered = true;
 	IPRO_LOGI(LOG_TAG, "VCP Volume Renderer initialized (volume=%u, mute=%u)",
 		  current_volume, current_mute);
 	return 0;
+}
+
+/**
+ * @brief Whether the renderer is registered
+ *
+ * ble_stack_is_ready() turns true before le_audio_init() runs, so local
+ * controls must check this before calling bt_vcp_vol_rend_*().
+ */
+bool vcp_server_is_ready(void)
+{
+	return registered;
 }
 
 /**

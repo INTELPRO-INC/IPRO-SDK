@@ -34,13 +34,6 @@
 
 #ifdef RNMS_OTA_ENABLE
 #include <rnm_ota.h>
-#else
-/* Stub when OTA is disabled (IPRO6LE first bring-up). */
-static inline void rnms_handle_ota(rnms_t *rnm, rnm_msg_t *cmd)
-{
-    (void)rnm;
-    (void)cmd;
-}
 #endif
 
 #define CMD_HANDLER_FLAG_ACK (0u << 0)
@@ -798,8 +791,14 @@ static chr_t handle_get_dev_version(rnms_t *rnm, rnm_msg_t *cmd)
 
 static chr_t handle_ota(rnms_t *rnm, rnm_msg_t *cmd)
 {
+#ifdef RNMS_OTA_ENABLE
     rnms_handle_ota(rnm, cmd);
     return CMD_HANDLER_RET_NO_ACK;
+#else
+    (void)rnm;
+    (void)cmd;
+    return CMD_HANDLER_RET_ERR_ACK(STATUS_NOT_IMPLEMENTED);
+#endif
 }
 
 static chr_t handle_reboot(rnms_t *rnm, rnm_msg_t *cmd)

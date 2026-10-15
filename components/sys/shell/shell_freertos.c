@@ -26,6 +26,17 @@ static ptrdiff_t shell_exec_line_diff;
 TaskHandle_t shell_exec_handle;
 static volatile bool shell_exec_end = true;
 
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+/* A command may own console/log/driver mutexes. Never externally delete it;
+ * commands with their own SIGINT handler can still stop cooperatively. */
+int shell_wait_exec_idle(void)
+{
+    const TickType_t cap = pdMS_TO_TICKS(5000);
+    for (TickType_t i = 0; i < cap && !shell_exec_end; ++i) vTaskDelay(1);
+    return shell_exec_end ? 0 : -1;
+}
+#endif
+
 static void shell_exec_task(void *pvParameters)
 {
     shell_exec_end = false;
@@ -67,18 +78,24 @@ void shell_dup_line(char *cmd, uint32_t length)
 void shell_abort_exec(int sig)
 {
     (void)sig;
+#ifndef CONFIG_THREAD_WIFI_BORDER_ROUTER
     if (shell_exec_end == false) {
         shell_exec_end = true;
         __asm volatile("fence");
         vTaskDelete(shell_exec_handle);
         shell_exec_handle = NULL;
     }
+#endif
 }
 
 int shell_start_exec(cmd_function_t func, int argc, char *argv[])
 {
     BaseType_t xReturned;
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+    if (!shell_exec_end) return -1;
+#else
     shell_abort_exec(SHELL_SIGINT);
+#endif
     shell_exec_argc = argc;
 
     for (uint8_t i = 0; i < argc; i++) {
@@ -136,6 +153,12 @@ void shell_release_sem(void)
     }
 }
 
+/* Console input seen (UART RX interrupt).  Power management overrides it to
+ * keep the part out of deep sleep while someone is typing. */
+__attribute__((weak)) void shell_rx_activity_hook(void)
+{
+}
+
 static void shell_uart_callback(void *dev, void *args, uint32_t size, uint32_t event)
 {
     (void)dev;
@@ -150,6 +173,7 @@ static void shell_uart_callback(void *dev, void *args, uint32_t size, uint32_t e
         len = uart_read_available(shell_uart_index, temp_buf, sizeof(temp_buf));
         if (len > 0) {
             Ring_Buffer_Write(&shell_rb, temp_buf, len);
+            shell_rx_activity_hook();
             shell_release_sem();
         }
     }

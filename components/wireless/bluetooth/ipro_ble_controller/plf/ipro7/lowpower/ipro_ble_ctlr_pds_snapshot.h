@@ -21,6 +21,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <generated/autoconf.h>
 
 #define IPRO_BLE_CTLR_PDS_CONTEXT_MAGIC   UINT32_C(0x42545044) /* "BTPD" */
 #define IPRO_BLE_CTLR_PDS_CONTEXT_VERSION UINT16_C(1)
@@ -94,6 +95,25 @@ extern volatile uint32_t ipro_ble_ctlr_pds_life_tickless_grant;
 extern volatile uint32_t ipro_ble_ctlr_pds_life_pending_platform_body;
 extern volatile uint32_t ipro_ble_ctlr_pds_life_last_req_us;
 extern volatile uint32_t ipro_ble_ctlr_pds_life_last_elapsed_us;
+/* hal_lp_enter() result of the cycle in progress (< 0: no PDS), set before
+ * ipro_ble_ctlr_app_pds_resumed() */
+extern volatile int32_t ipro_ble_ctlr_pds_last_enter_rc;
+extern volatile uint32_t ipro_ble_ctlr_pds_life_total_ms;
+/* wake + restore budget and deadline guard reserved around each connected
+ * PDS (us); ipro_ble_ctlr_pds_reserve_us() is their sum */
+extern volatile uint32_t ipro_ble_ctlr_pds_wake_budget_us;
+extern volatile uint32_t ipro_ble_ctlr_pds_deadline_guard_us;
+uint32_t ipro_ble_ctlr_pds_reserve_us(void);
+/* ipro_ble_ctlr_pds_candidate_revalidate() failure class: HCI is transient
+ * (the same window may be offered again once the transport is idle) */
+#define IPRO_BLE_CTLR_PDS_REVAL_OTHER 1U
+#define IPRO_BLE_CTLR_PDS_REVAL_HCI   2U
+extern volatile uint32_t ipro_ble_ctlr_pds_reval_last_reason;
+/* bench per-cycle timeline (no-op without CONFIG_HAL_LP_WAKE_MARKER) */
+void ipro_ble_ctlr_pds_tl_mark(uint32_t stage, uint32_t val);
+void ipro_ble_ctlr_pds_tl_flag(uint32_t stage, uint32_t bits);
+/* bench RC32K-vs-BLE-clock stability probe, controller task */
+void ipro_ble_ctlr_pds_rc32k_probe_tick(void);
 extern volatile int32_t ipro_ble_ctlr_pds_life_last_rc;
 extern volatile uint32_t ipro_ble_ctlr_pds_life_last_evt;
 extern volatile uint32_t ipro_ble_ctlr_pds_life_last_state;
@@ -237,9 +257,139 @@ bool ipro_ble_ctlr_pds_clock_drift(int32_t *error_hus, int32_t *ppm,
 int ipro_ble_ctlr_pds_probe_arm(uint32_t sleep_us, bool connected);
 bool ipro_ble_ctlr_pds_probe_pending(void);
 bool ipro_ble_ctlr_pds_connected(void);
+/* Pre-commit admission, called by the controller loop inside its
+ * GLOBAL_INT_DISABLE() window before rwip_sleep(): true only for a request
+ * that platform PDS will consume in this same window.  A connected automatic
+ * (tickless) grant is single-shot: it is either admitted here or released. */
 bool ipro_ble_ctlr_pds_rw_sleep_required(void);
+/* The controller gates were closed while a request was pending. */
+void ipro_ble_ctlr_pds_gate_rejected(void);
+/* An admitted request met an rwip_sleep() that did not commit deep sleep. */
+void ipro_ble_ctlr_pds_attempt_declined(void);
+
+/* Why an armed request was given back without a platform PDS (index into
+ * ipro_ble_ctlr_pds_release_cnt[]). */
+enum ipro_ble_ctlr_pds_release_reason {
+    IPRO_BLE_CTLR_PDS_REL_ADMIT = 0,    /* pre-commit admission refused the window */
+    IPRO_BLE_CTLR_PDS_REL_GATE,         /* controller gates closed */
+    IPRO_BLE_CTLR_PDS_REL_INHIBIT,      /* ipro_ble_ctlr_pds_debug_inhibit */
+    IPRO_BLE_CTLR_PDS_REL_STALE,        /* tickless grant no longer matches its window */
+    IPRO_BLE_CTLR_PDS_REL_RW_DECLINED,  /* rwip_sleep() did not commit deep sleep */
+    IPRO_BLE_CTLR_PDS_REL_AFTER_COMMIT, /* refused after DEEP_SLEEP_ON was committed */
+    IPRO_BLE_CTLR_PDS_REL_DISCONNECT,   /* link gone or PDS disabled */
+    IPRO_BLE_CTLR_PDS_REL_COUNT
+};
+/* Idempotent.  Tickless grants are reported to the APP through the weak
+ * ipro_ble_ctlr_app_pds_grant_released(), never as a consumed cycle. */
+void ipro_ble_ctlr_pds_grant_release(uint32_t why);
+extern volatile uint32_t ipro_ble_ctlr_pds_release_cnt[IPRO_BLE_CTLR_PDS_REL_COUNT];
+extern volatile uint32_t ipro_ble_ctlr_pds_us_timer_rescued;
+extern volatile uint32_t ipro_ble_ctlr_pds_admit_ok_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_admit_reject_short_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_admit_reject_noslack_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_admit_recheck_reject_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_tickless_reject_armed_cnt;
+/* End a committed native DEEP_SLEEP_ON that platform PDS will not consume
+ * (bounded; interrupts off).  True when the native transaction completed. */
+bool ipro_ble_ctlr_pds_native_abort(void);
+/* An admitted request was not consumed after rwip_sleep() committed deep
+ * sleep: end the native transaction, clear the AON deadline and release the
+ * request (CLI requests included).  Controller loop, interrupts off. */
+void ipro_ble_ctlr_pds_attempt_abort(uint32_t why);
+extern volatile uint32_t ipro_ble_ctlr_pds_native_abort_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_native_abort_fail_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_native_finish_timeout_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_attempt_abort_cnt[IPRO_BLE_CTLR_PDS_REL_COUNT];
+extern volatile uint32_t ipro_ble_ctlr_pds_attempt_abort_last;
+
+/* FreeRTOS tick across platform PDS (controller task context).  rearm(false)
+ * honours the ipro_ble_ctlr_diag_restore_rtos_timer isolation switch;
+ * rearm(true) always starts the tick.  proven(): a tick was seen since the
+ * last re-arm, so an RTOS timeout can be relied on; re-arms again after 4 ms
+ * without one.  ensure(): start the tick if it is still parked. */
+void ipro_ble_ctlr_pds_rtos_tick_rearm(bool force);
+bool ipro_ble_ctlr_pds_rtos_tick_proven(void);
+void ipro_ble_ctlr_pds_rtos_tick_ensure(void);
+extern volatile uint32_t ipro_ble_ctlr_pds_tick_rearm_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_tick_rearm_retry_cnt;
+/* bounded restore waits that expired (mask bits: see snapshot.c) */
+extern volatile uint32_t ipro_ble_ctlr_pds_restore_wait_timeout_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_restore_wait_timeout_mask;
+
+/* Post-PDS recovery watchdog.  After a restore the controller holds the IP
+ * awake until the first clean event.  If the link layer gets no event
+ * callback for CONFIG_IPRO_BLE_PDS_RECOVERY_MAX_INTERVALS (default 6) x
+ * interval x (latency + 1) after the next scheduled event (capped at the
+ * supervision timeout), or the BLE core reports a scheduler error, or a
+ * restore wait timed out, recovery is released and every link is ended with
+ * reason 0x08 (the host gets HCI Disconnection Complete).  Events that keep
+ * running without re-anchoring are left to LLD's own supervision timeout. */
+enum ipro_ble_ctlr_pds_recovery_fail_reason {
+    IPRO_BLE_CTLR_PDS_RECOVERY_NONE = 0,
+    IPRO_BLE_CTLR_PDS_RECOVERY_NO_PROGRESS,     /* disconnect */
+    IPRO_BLE_CTLR_PDS_RECOVERY_HW_ERROR,        /* disconnect */
+    IPRO_BLE_CTLR_PDS_RECOVERY_NOT_CONVERGED,   /* diagnostic only */
+    IPRO_BLE_CTLR_PDS_RECOVERY_RESTORE_TIMEOUT, /* disconnect */
+};
+/* controller task, top of its loop */
+void ipro_ble_ctlr_pds_recovery_watchdog(void);
+/* BLE ISR: BLE_ERRORTYPESTAT of an acknowledged BLE-core error */
+void ipro_ble_ctlr_pds_recovery_note_hw_error(uint32_t type);
+/* end recovery without a clean event (why: enum ..._release_reason);
+ * idempotent, any task context */
+void ipro_ble_ctlr_pds_recovery_release(uint32_t why);
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_hold_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_budget_ms;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_kick_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_not_converged_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_fail_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_last_reason;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_hw_error_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_disc_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_disc_defer_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_links_left_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_release_cnt;
+extern volatile uint32_t ipro_ble_ctlr_pds_recovery_release_last_why;
+
+/* Link-layer side (ipro_ble_ctlr_pds_link.c).  Controller task only, and
+ * only while DEEP_SLEEP_STAT is low. */
+uint32_t ipro_ble_ctlr_pds_links_disconnect(uint8_t reason);
+/* bitmask variants: link ids stopped, and which of @p ids are still alive */
+uint32_t ipro_ble_ctlr_pds_links_disconnect_mask(uint8_t reason);
+uint32_t ipro_ble_ctlr_pds_links_alive_mask(uint32_t ids);
+uint32_t ipro_ble_ctlr_pds_links_alive(void);
+/* shortest interval x (latency + 1) and supervision timeout over the live
+ * links, in us; 0 when there is none */
+void ipro_ble_ctlr_pds_link_timing(uint32_t *period_us, uint32_t *timeout_us);
 void ipro_ble_ctlr_pds_breadcrumb_set(uint32_t stage, uint32_t data);
 void ipro_ble_ctlr_pds_breadcrumb_report_and_clear(void);
+/* Service a native wake with the RTC-measured sleep (SLPINT pending). */
+void ipro_ble_ctlr_pds_native_wake_rtc_correct(void);
+/* Bench (CONFIG_HAL_LP_WAKE_MARKER): post-PDS wake trace ring in HBN RAM,
+ * which survives an AON-WDT reset and is printed by the breadcrumb report.
+ * Marks are recorded only while armed (from the return of a platform PDS)
+ * and the trace freezes itself when a stack inversion is detected. */
+#if defined(CONFIG_HAL_LP_WAKE_MARKER)
+extern volatile uint32_t ipro_ble_ctlr_wake_trace_armed;
+void ipro_ble_ctlr_wake_trace(uint32_t stage, uint32_t data);
+void ipro_ble_ctlr_wake_sysregs_capture(void);
+void ipro_ble_ctlr_wake_trace_clock(uint32_t stage);
+void ipro_ble_ctlr_wake_trace_et(uint32_t stage);
+void ipro_ble_ctlr_wake_trace_et_idx(uint32_t stage, int idx);
+/* non-zero: also record the high-rate marks (every loop pass, poll, tick) */
+extern volatile uint32_t ipro_ble_ctlr_wake_trace_verbose;
+#define IPRO_BLE_CTLR_WAKE_TRACE_ARM(on) (ipro_ble_ctlr_wake_trace_armed = (on) ? 1U : 0U)
+#define ipro_ble_ctlr_wake_trace_v(stage, data) \
+    do { if (ipro_ble_ctlr_wake_trace_verbose != 0U) { ipro_ble_ctlr_wake_trace((stage), (data)); } } while (0)
+#else
+#define ipro_ble_ctlr_wake_trace_clock(stage) ((void)0)
+#define ipro_ble_ctlr_wake_trace_et(stage) ((void)0)
+#define ipro_ble_ctlr_wake_trace_et_idx(stage, idx) ((void)0)
+#define ipro_ble_ctlr_wake_trace_v(stage, data) ((void)0)
+#define ipro_ble_ctlr_wake_trace(stage, data) ((void)0)
+#define ipro_ble_ctlr_wake_sysregs_capture() ((void)0)
+#define IPRO_BLE_CTLR_WAKE_TRACE_ARM(on) ((void)0)
+#endif
 void ipro_ble_ctlr_pds_gpio_marker_set(uint32_t index, uint32_t level);
 void ipro_ble_ctlr_pds_gpio_marker_pulse(uint32_t index);
 uint32_t ipro_ble_ctlr_pds_probe_requested_us(void);

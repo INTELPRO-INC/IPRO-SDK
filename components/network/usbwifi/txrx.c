@@ -25,7 +25,7 @@
 #include <utils_list.h>
 #include <lwip/pbuf.h>
 
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
 #include "drv_l1c.h"
 #endif
 
@@ -100,7 +100,7 @@ int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, ui
         ud->submit_us = now ? now : 1;
     }
 
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
     /* Phase 2A.8 path delta.fix: flush header + payload to physical RAM
      * before USB DMA reads. Allows callers to write through the cached
      * alias (much faster than uncached MAWOC writes for 1408B payload).

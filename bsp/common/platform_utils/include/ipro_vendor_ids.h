@@ -71,7 +71,7 @@
  * IEEE MA-L assignment C0-74-15, in the order a scanner prints it.
  *
  * The OUI occupies the three most significant octets of a 48-bit IEEE address.
- * Note the two byte orders in play: HCI and RivieraWaves' NVDS carry the
+ * Note the two byte orders in play: HCI and the BLE controller's NVDS carry the
  * address little-endian (index 5 is the first octet a human reads), while
  * these constants are in display order.  Mixing them up produces an address
  * that looks plausible and is not ours, so the accessors below exist to keep

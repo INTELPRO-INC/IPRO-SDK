@@ -1,0 +1,170 @@
+#
+# IPRO BLE Remote Control Configuration
+#
+
+#
+# Hardware Platform Configuration
+#
+CONFIG_IPRO7=y
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+CONFIG_EVB=y
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_PARTITION=y
+# New-host/controller smoke must boot with the downloader's default partition
+# image too.  Persistent settings/OTA are Phase-4/OTA gates and require a PSM
+# partition table; keep them out of the default interoperability image.
+# CONFIG_EASYFLASH4 is not set
+# CONFIG_IPRO_BLE_REMOTE_OTA is not set
+
+CONFIG_ENABLE_NVDS=y
+CONFIG_CFG_NVDS=y
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_IPRO_EVENT=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# File System Configuration
+#
+CONFIG_EVFS=y
+CONFIG_EVFS_POSIX=y
+
+#
+# Wireless Configuration - New Bluetooth Stack
+#
+CONFIG_BLUETOOTH_LE_ENABLE=y
+
+#
+# Controller Variant Selection
+#
+CONFIG_BT_CTLR_IPRO=y
+CONFIG_IPRO_BLE_CTLR_LINK1_PERIPH=y
+CONFIG_IPRO_BLE_CTLR_LIB="link1_periph"
+CONFIG_IPRO_BLE_CTLR_FEATURE_BT52=y
+CONFIG_IPRO_BLE_CTLR_FEATURE="bt52"
+CONFIG_EM_SIZE=16
+
+# Use the packaged controller archive by default. Set
+# CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=y only when changing controller
+# sources locally.
+# CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD is not set
+
+#
+# BLE Roles and Connections
+#
+CONFIG_BT_CONN=1
+# CONFIG_BT_CENTRAL is not set
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_OBSERVER=y
+CONFIG_BT_BROADCASTER=y
+
+#
+# BLE Features
+#
+# CONFIG_ADV_EXTENSION is not set
+# CONFIG_CIS is not set
+# CONFIG_BIS is not set
+# CONFIG_LE_PWR_CTRL is not set
+CONFIG_PHY_UPDATE=y
+CONFIG_BT_AUTO_PHY_PERIPHERAL_NONE=y
+CONFIG_BT_DATA_LEN_UPDATE=y
+CONFIG_BT_AUTO_DATA_LEN_UPDATE=y
+
+#
+# Host Stack Options
+#
+# CONFIG_BLE_HOST_DISABLE is not set
+CONFIG_BT_HOST_IPRO_V44=y
+CONFIG_BT_SMP=y
+CONFIG_BT_GATT_CLIENT=y
+CONFIG_BT_STACK_CLI=y
+CONFIG_BLE_STACK_DBG_PRINT=y
+
+#
+# BLE Host TX Buffer Configuration
+#
+CONFIG_BT_L2CAP_TX_BUF_COUNT=10
+CONFIG_BT_CONN_TX_MAX=10
+
+#
+# GATT Services
+#
+CONFIG_BT_DIS_SERVER=y
+
+#
+# Debug Options
+#
+CONFIG_BT_DEBUG=y
+
+#
+# IPRO Logging System
+#
+CONFIG_IPRO_LOG_ENABLE=y
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_BUFFER_SIZE=256
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_LOG_OUTPUT_UART=y
+
+#
+# Platform UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+
+#
+# Compiler Optimization for Size
+#
+CONFIG_OPTIMIZATION_LEVEL_SIZE=y
+CONFIG_COMPILER_OPTIMIZATION_LEVEL_SIZE=y
+
+#
+# Low-power profile (ipro_pm)
+#
+# Use: cp defconfig_lowpower .config && make
+# The idle task sleeps instead of spinning: WFI for short gaps, tickless WFI
+# clamped to the next radio event for long ones, and - with
+# CONFIG_IPRO_PM_PDS_CONNECTED - platform PDS between connection events of a
+# link whose interval leaves room for it (see components/sys/ipro_pm).
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=1
+CONFIG_FREERTOS_IDLE_HOOK=y
+CONFIG_IPRO_PM=y
+CONFIG_IPRO_PM_BLE=y
+CONFIG_IPRO_PM_MAX_MODE=3
+CONFIG_IPRO_PM_SHELL=y
+# Connected PDS: platform PDS31 between connection events (forces the
+# controller source build, see ipro7_build.cmake).
+CONFIG_IPRO_PM_PDS_CONNECTED=y
+# Ask the central for a ~1 s interval once the link settles (0 = leave the
+# central's choice; short intervals stay on WFI).
+CONFIG_IPRO_PM_BLE_IDLE_INTERVAL_MS=1000
+CONFIG_IPRO_PM_BLE_IDLE_DELAY_MS=5000
+# Retention layout: 64 KB retained OCRAM + the rest as RAM.
+CONFIG_OCRAM_NORET_SPLIT=y
+CONFIG_OCRAM_NORET_AS_RAM=y
+# Controller platform-PDS timing (validated on RC32K IPRO7 EVB, 2026-09-27).
+CONFIG_IPRO_BLE_PDS_RXWINSZDEF=16
+CONFIG_IPRO_BLE_PDS_RXPATHDLY0=7
+CONFIG_IPRO_BLE_PDS_RXPWRUP0=88
+CONFIG_IPRO_BLE_PDS_WAKE_BUDGET_US=27000
+CONFIG_IPRO_BLE_PDS_DEADLINE_GUARD_US=2000
+CONFIG_IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_RX_OK=0
+CONFIG_IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_EVENTS=1
+CONFIG_IPRO_PM_CONSOLE_VETO=y

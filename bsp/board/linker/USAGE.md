@@ -125,7 +125,7 @@ bsp/board/linker/
 ├── configs/                        # Chip-generic configurations
 │   ├── ipro7_flash.cmake          # All IPRO7 boards
 │   ├── ipro7_ram.cmake            # All IPRO7 boards
-│   └── ipro6le_flash.cmake          # All IPRO6LE boards
+│   └── ipro6_flash.cmake            # All IPRO6 boards
 ├── README.md                       # Detailed documentation
 └── USAGE.md                        # This file
 ```

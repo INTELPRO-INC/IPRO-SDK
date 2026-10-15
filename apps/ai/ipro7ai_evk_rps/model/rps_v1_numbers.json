@@ -1,0 +1,57 @@
+{
+  "classes": [
+    "rock",
+    "paper",
+    "scissors",
+    "none"
+  ],
+  "input": "128x128x3 int8",
+  "input_quant": [
+    0.003921568859368563,
+    -128
+  ],
+  "output_quant": [
+    0.14875438809394836,
+    0
+  ],
+  "output_shape": [
+    1,
+    1,
+    1,
+    4
+  ],
+  "params": 295476,
+  "tflite_bytes": 314440,
+  "epochs": 30,
+  "float_val_acc": 0.8884210586547852,
+  "int8_val_acc": 0.8894736842105263,
+  "confusion": [
+    [
+      479,
+      0,
+      3,
+      18
+    ],
+    [
+      91,
+      329,
+      66,
+      14
+    ],
+    [
+      2,
+      1,
+      483,
+      14
+    ],
+    [
+      0,
+      0,
+      1,
+      399
+    ]
+  ],
+  "train_seconds": 560,
+  "tensorflow": "2.20.0",
+  "seed": 1337
+}

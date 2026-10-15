@@ -20,21 +20,11 @@
 
 #include <rnm_server.h>
 
-#include <utils_sha256.h>
-#include <hal_boot2.h>
-#include <bl_mtd.h>
-
-typedef struct
-{
-    iot_sha256_context sha_ctx;
-    uint8_t sha256_this[32];
-    uint8_t sha256_that[32];     // ota header advertised checksum
-    bl_mtd_handle_t mtd_hdl;
-    uint32_t offset_written;
-    uint32_t body_length;        // ota header advertised body size
-    uint32_t tgt_part_size;      // target partition size
-    uint8_t *write_buf;
-    HALPartition_Entry_Config ptEntry;
-} rnm_ota_t;
-
 void rnms_handle_ota(rnms_t *rnm, rnm_msg_t *cmd);
+/* Keeps the BROM flash config; call before the heap is set up. */
+void rnm_ota_capture_flash_cfg(void);
+/* "brom", "rom" or "none": where the flash config came from. */
+const char *rnm_ota_flash_cfg_source(void);
+/* Takes boot2's result of an OTA on this boot (and clears it); call once at
+ * boot. Returns the boot2 reason code, 0 if none or installed. */
+uint8_t rnm_ota_capture_boot2_result(void);

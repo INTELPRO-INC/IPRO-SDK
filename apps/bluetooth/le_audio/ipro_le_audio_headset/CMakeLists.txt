@@ -1,5 +1,5 @@
 # IPRO LE Audio Headset Application
-# Uses standard Zephyr Bluetooth Audio API (not RivieraWaves Component Framework)
+# Uses the standard Zephyr Bluetooth Audio API
 
 # Include directories
 __component_add_include_dirs(.)
@@ -59,6 +59,7 @@ elseif(CONFIG_BSP_USING_DAC)
     target_sources(app PRIVATE
         src/app_audio.c     # LC3 decoder
         src/app_dac.c
+        src/dac_ns.c        # 512 kHz noise shaper (host test: test_host/run.sh)
     )
 else()
     # Audio output disabled - saves ~100 KB RAM (s_audio, s_dac, s_resampler buffers)
@@ -68,6 +69,13 @@ endif()
 if((CONFIG_AUDIO_OUTPUT_UAC OR CONFIG_BSP_USING_DAC) AND NOT CONFIG_IPRO_LE_AUDIO_NEW_HOST_SMOKE)
     target_sources(app PRIVATE
         src/app_shell_commands.c # Shell commands for audio/debug output
+    )
+endif()
+
+# IPRO7AI Reef: SW3/SW4/SW5 drive the VCP volume renderer
+if(CONFIG_IPRO7AI_REEF AND NOT CONFIG_IPRO_LE_AUDIO_NEW_HOST_SMOKE)
+    target_sources(app PRIVATE
+        src/app_keys.c
     )
 endif()
 

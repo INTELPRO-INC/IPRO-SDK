@@ -70,6 +70,9 @@
 #ifdef LWIP_HOOK_FILENAME
 #include LWIP_HOOK_FILENAME
 #endif
+#if LWIP_DHCP6_EXTERNAL_CLIENT && defined(LWIP_HOOK_DHCP6_APPEND_OPTIONS)
+#error "Shared DHCPv6 mode requires the default anonymous stateless Information-request"
+#endif
 #ifndef LWIP_HOOK_DHCP6_APPEND_OPTIONS
 #define LWIP_HOOK_DHCP6_APPEND_OPTIONS(netif, dhcp6, state, msg, msg_type, options_len_ptr, max_len)
 #endif
@@ -129,6 +132,10 @@ const ip_addr_t dhcp6_All_DHCP6_Servers = IPADDR6_INIT_HOST(0xFF020000, 0, 0, 0x
 
 static struct udp_pcb *dhcp6_pcb;
 static u8_t dhcp6_pcb_refcount;
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+static dhcp6_external_recv_fn dhcp6_external_receive;
+static void *dhcp6_external_context;
+#endif
 
 
 /* receive, unfold, parse and free incoming messages */
@@ -138,6 +145,9 @@ static void dhcp6_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
 static err_t
 dhcp6_inc_pcb_refcount(void)
 {
+  if (dhcp6_pcb_refcount == 255) {
+    return ERR_MEM;
+  }
   if (dhcp6_pcb_refcount == 0) {
     LWIP_ASSERT("dhcp6_inc_pcb_refcount(): memory leak", dhcp6_pcb == NULL);
 
@@ -151,7 +161,12 @@ dhcp6_inc_pcb_refcount(void)
     ip_set_option(dhcp6_pcb, SOF_BROADCAST);
 
     /* set up local and remote port for the pcb -> listen on all interfaces on all src/dest IPs */
-    udp_bind(dhcp6_pcb, IP6_ADDR_ANY, DHCP6_CLIENT_PORT);
+    err_t error = udp_bind(dhcp6_pcb, IP6_ADDR_ANY, DHCP6_CLIENT_PORT);
+    if (error != ERR_OK) {
+      udp_remove(dhcp6_pcb);
+      dhcp6_pcb = NULL;
+      return error;
+    }
     udp_recv(dhcp6_pcb, dhcp6_recv, NULL);
   }
 
@@ -172,6 +187,51 @@ dhcp6_dec_pcb_refcount(void)
     dhcp6_pcb = NULL;
   }
 }
+
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+err_t
+dhcp6_external_attach(dhcp6_external_recv_fn receive, void *context)
+{
+  err_t error;
+  LWIP_ASSERT_CORE_LOCKED();
+  if (receive == NULL) return ERR_ARG;
+  if (dhcp6_external_receive != NULL)
+    return dhcp6_external_receive == receive && dhcp6_external_context == context ? ERR_OK : ERR_USE;
+  error = dhcp6_inc_pcb_refcount();
+  if (error == ERR_OK) {
+    dhcp6_external_context = context;
+    dhcp6_external_receive = receive;
+  }
+  return error;
+}
+
+void
+dhcp6_external_detach(dhcp6_external_recv_fn receive, void *context)
+{
+  LWIP_ASSERT_CORE_LOCKED();
+  if (receive != NULL && receive == dhcp6_external_receive && context == dhcp6_external_context) {
+    dhcp6_external_receive = NULL;
+    dhcp6_external_context = NULL;
+    dhcp6_dec_pcb_refcount();
+  }
+}
+
+err_t
+dhcp6_external_send(struct netif *netif, struct pbuf *p, const ip6_addr_t *destination)
+{
+  ip_addr_t dest, source;
+  LWIP_ASSERT_CORE_LOCKED();
+  if (netif == NULL || p == NULL || destination == NULL) return ERR_ARG;
+  if (dhcp6_external_receive == NULL || dhcp6_pcb == NULL) return ERR_CONN;
+  if (!netif_is_up(netif) || !netif_is_link_up(netif) ||
+      !ip6_addr_isvalid(netif_ip6_addr_state(netif, 0)) ||
+      !ip6_addr_islinklocal(netif_ip6_addr(netif, 0))) return ERR_RTE;
+  ip_addr_copy_from_ip6(dest, *destination);
+  ip6_addr_assign_zone(ip_2_ip6(&dest), IP6_UNKNOWN, netif);
+  ip_addr_copy_from_ip6(source, *netif_ip6_addr(netif, 0));
+  return udp_sendto_if_src(dhcp6_pcb, p, &dest, DHCP6_SERVER_PORT, netif, &source);
+}
+#endif
 
 /**
  * @ingroup dhcp6
@@ -649,6 +709,11 @@ dhcp6_parse_reply(struct pbuf *p, struct dhcp6 *dhcp6)
       /* overflow */
       return ERR_BUF;
     }
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+    if (offset > offset_max) {
+      return ERR_BUF;
+    }
+#endif
 
     switch (op) {
       case (DHCP6_OPTION_CLIENTID):
@@ -682,6 +747,13 @@ dhcp6_parse_reply(struct pbuf *p, struct dhcp6 *dhcp6)
         break;
     }
   }
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+  /* This client sends no ClientID. A Reply containing one belongs elsewhere,
+   * even when a foreign/oversized PD packet happens to share its 24-bit XID. */
+  if (offset != offset_max || dhcp6_option_given(dhcp6, DHCP6_OPTION_IDX_CLI_ID)) {
+    return ERR_VAL;
+  }
+#endif
   return ERR_OK;
 }
 
@@ -695,6 +767,15 @@ dhcp6_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr
   u32_t xid;
 
   LWIP_UNUSED_ARG(arg);
+
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+  /* Demultiplex before the stateless netif/XID checks; retain its independent
+   * reference and transaction state when the external client claims a reply. */
+  if (dhcp6_external_receive != NULL &&
+      dhcp6_external_receive(dhcp6_external_context, netif, p, addr, port)) {
+    goto free_pbuf_and_return;
+  }
+#endif
 
   /* Caught DHCPv6 message from netif that does not have DHCPv6 enabled? -> not interested */
   if ((dhcp6 == NULL) || (dhcp6->pcb_allocated == 0)) {

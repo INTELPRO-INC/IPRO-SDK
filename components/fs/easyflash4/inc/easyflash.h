@@ -46,6 +46,36 @@ EfErrCode easyflash_init(void);
 #ifdef EF_USING_ENV
 /* only supported on ef_env.c */
 size_t ef_get_env_blob(const char *key, void *value_buf, size_t buf_len, size_t *saved_value_len);
+/* Checked, read-only lookup under one ENV lock, independent of legacy caches.
+ * copied/total are optional and reset to zero on errors. NULL buffer requires
+ * cap=0. A short buffer copies cap bytes and returns EF_NO_ERR; compare copied
+ * with total-offset to detect truncation. offset==total succeeds with zero
+ * bytes; offset>total is invalid. Empty values differ from NOT_FOUND.
+ * On any error the buffer contents must be discarded. This API does not repair
+ * corrupt/incomplete Flash records or make legacy writes/init failure-safe. */
+EfErrCode ef_env_get_checked(const char *key, size_t offset, void *buf, size_t cap,
+                             size_t *copied, size_t *total);
+/* Checked deletion, with read-back verification and no erase/GC. Interrupted
+ * predecessors are removed before the live value. Missing keys return
+ * EF_ENV_NOT_FOUND. On an I/O error deletion may have taken effect; retry/read
+ * the key after resolving the fault. The operation holds one ENV lock. */
+EfErrCode ef_env_del_checked(const char *key);
+/* Delete every live key with this nonempty literal prefix under one ENV lock.
+ * Each deletion follows a full integrity scan and read-back verification;
+ * no erase/GC is performed. Missing prefixes succeed (idempotent retry).
+ * Pending recovery/GC is rejected with EF_ENV_CORRUPT. Errors may leave a
+ * partially deleted namespace, never imply rollback, and stop further writes.
+ * Logical deletion is NOT secure physical erasure of old Flash payloads.
+ * Factory reset callers must quiesce writers and journal/recover the operation. */
+EfErrCode ef_env_del_prefix_checked(const char *prefix);
+/* Checked staged write/readback. NULL+0 stores an empty value. May reclaim
+ * once under the ENV lock after a complete settled-store scan, preserving a
+ * relocation reserve. Reclamation is refused with FULL when recovery is
+ * pending or no reserve exists; insufficient space also returns FULL.
+ * Interrupted programming can leave an incomplete record requiring recovery;
+ * errors do not imply
+ * rollback. This is not yet the complete Matter persistence backend. */
+EfErrCode ef_env_set_checked(const char *key, const void *value, size_t len);
 bool ef_get_env_obj(const char *key, env_node_obj_t env);
 size_t ef_read_env_value(env_node_obj_t env, uint8_t *value_buf, size_t buf_len);
 EfErrCode ef_set_env_blob(const char *key, const void *value_buf, size_t buf_len);

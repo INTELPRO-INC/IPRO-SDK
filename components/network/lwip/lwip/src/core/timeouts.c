@@ -40,9 +40,17 @@
  */
 
 #include "lwip/opt.h"
+#if defined(CONFIG_IPRO6) && defined(CONFIG_USE_MACSW) && defined(CONFIG_LWIP_LP) && !IPRO_WIFI_LP_FW
+#include "lp_rx_witness.h"
+#define LP_RXW_DIAG 1
+#endif
+
 
 #include "lwip/timeouts.h"
 #include "lwip/priv/tcp_priv.h"
+#if TCP_TIMER_PRECISE_NEEDED
+#include "lwip/priv/api_msg.h"   /* lwip_netconn_is_tcp_polling() */
+#endif
 
 #include "lwip/def.h"
 #include "lwip/memp.h"
@@ -167,6 +175,22 @@ sys_timeouts_get_next_timeout(void)
 /** global variable that shows if the tcp timer is currently scheduled or not */
 static int tcpip_tcp_timer_active = 0;
 
+#if defined(LP_RXW_DIAG) && TCP_TIMER_PRECISE_NEEDED
+static void lp_rxw_timeout(uint32_t event, sys_timeout_handler handler,
+                           struct sys_timeo *node, u32_t due)
+{
+  if (LP_RXW_ON &&
+      (handler == (sys_timeout_handler)tcpip_tcp_slow_timer ||
+       handler == (sys_timeout_handler)tcpip_tcp_fast_timer)) {
+    uint32_t data[] = {
+      handler == (sys_timeout_handler)tcpip_tcp_slow_timer ? 0 : 1,
+      (uint32_t)(uintptr_t)node, due, sys_now(), tcpip_tcp_timer_active
+    };
+    lp_rxw_emit(LP_RXW_TCP, event, data, sizeof(data) / sizeof(data[0]));
+  }
+}
+#endif
+
 void tcpip_tmr_compensate_tick(void)
 {
   static u32_t tmr_first_run_time = 0;
@@ -204,6 +228,24 @@ tcpip_tcp_timer(void *arg)
   }
 }
 #else
+#ifndef LWIP_TCP_FAST_INTERVAL_MS
+#define LWIP_TCP_FAST_INTERVAL_MS 0
+#endif
+/* Fast-timer period in ms; 0 runs the precise on-demand timers. */
+static u32_t tcp_fast_ms = LWIP_TCP_FAST_INTERVAL_MS;
+
+/* Throughput mode keeps one fast and one slow timer while PCBs exist. */
+static bool
+tcpip_tcp_timers_idle(void)
+{
+  if (tcp_active_pcbs || tcp_tw_pcbs) {
+    return false;
+  }
+  sys_untimeout((sys_timeout_handler)tcpip_tcp_slow_timer, NULL);
+  sys_untimeout((sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
+  tcpip_tcp_timer_active = 0;
+  return true;
+}
 static void
 tcpip_tcp_slow_timer(void)
 {
@@ -214,6 +256,13 @@ tcpip_tcp_slow_timer(void)
 
   /* call TCP timer handler */
   tcp_slowtmr();
+  if (tcp_fast_ms) {
+    if (!tcpip_tcp_timers_idle()) {
+      sys_untimeout((sys_timeout_handler)tcpip_tcp_slow_timer, NULL);
+      sys_timeout(TCP_SLOW_INTERVAL, (sys_timeout_handler)tcpip_tcp_slow_timer, NULL);
+    }
+    return;
+  }
   tcpip_tcp_timer_active = 0;
 
   /* timer still needed? */
@@ -244,6 +293,13 @@ tcpip_tcp_fast_timer(void)
 
   /* call TCP timer handler */
   tcp_fasttmr();
+  if (tcp_fast_ms) {
+    if (!tcpip_tcp_timers_idle()) {
+      sys_untimeout((sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
+      sys_timeout(tcp_fast_ms, (sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
+    }
+    return;
+  }
   tcpip_tcp_timer_active = 0;
 
   /* timer still needed? */
@@ -279,6 +335,15 @@ tcp_timer_needed(void)
   if (!tcpip_tcp_timer_active && (tcp_active_pcbs || tcp_tw_pcbs)) {
     /* enable and start timer */
     tcpip_tcp_timer_active = 1;
+#if defined(LP_RXW_DIAG) && TCP_TIMER_PRECISE_NEEDED
+    if (LP_RXW_ON) {
+      uint32_t data[] = {
+        (uint32_t)(uintptr_t)__builtin_return_address(0), sys_now(),
+        (uint32_t)(uintptr_t)tcp_active_pcbs, (uint32_t)(uintptr_t)tcp_tw_pcbs
+      };
+      lp_rxw_emit(LP_RXW_TCP, LP_RXW_TIMER_START, data, sizeof(data) / sizeof(data[0]));
+    }
+#endif
 #if !TCP_TIMER_PRECISE_NEEDED
     sys_timeout(TCP_TMR_INTERVAL, tcpip_tcp_timer, NULL);
 #else
@@ -288,10 +353,79 @@ tcp_timer_needed(void)
     sys_timeout(TCP_SLOW_INTERVAL, (sys_timeout_handler)tcpip_tcp_slow_timer, NULL);
 
     sys_untimeout((sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
-    sys_timeout(TCP_FAST_INTERVAL, (sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
+    sys_timeout(tcp_fast_ms ? tcp_fast_ms : TCP_FAST_INTERVAL,
+                (sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
 #endif
   }
 }
+
+#if TCP_TIMER_PRECISE_NEEDED
+/* Set the fast-timer period: ms > 0 runs it on that fixed period, 0 uses
+ * the precise on-demand timers. Running TCP timers restart in the new mode. */
+void
+tcp_timer_fast_interval_set(u32_t ms)
+{
+  LWIP_ASSERT_CORE_LOCKED();
+  if (ms == tcp_fast_ms) {
+    return;
+  }
+  tcp_fast_ms = ms;
+  tcpip_tcp_timer_active = 0;
+  tcp_timer_needed();
+}
+
+u32_t
+tcp_timer_fast_interval_get(void)
+{
+  return tcp_fast_ms;
+}
+#endif
+#ifdef TCP_LP_IDLE_CANDIDATE
+#include "tcp_lp_idle.inc"
+#endif
+
+#if TCP_TIMER_PRECISE_NEEDED && defined(CONFIG_LWIP_LP)
+static void sys_timer_callback_for_add_timer(void *ctx);
+/* ipro lp change: re-run the on-demand timer's own keep-alive predicate NOW.
+ *
+ * The slow/fast timers stop themselves at their next fire when
+ * tcp_timer_calculate_next_wake() finds nothing to do. Between a keepalive's
+ * send and that fire the segment is ACKed within ~100 ms, but the fire it
+ * scheduled while unacked != NULL still lands, and on a DTIM standby that is
+ * one full-firmware wake per keepalive delivering nothing (2026-09-11:
+ * bcnlog BUDG at +512/+1024 ms after every KA, next timeout == the OS
+ * deadline == this timer on 12/12). Ask the same predicate at ACK time and
+ * unlink the timers if it says stop; a timer the next fire would have kept
+ * is kept here too, so nothing else changes. */
+void
+tcpip_tcp_timer_recheck(void)
+{
+  u32_t sleep_duration = 0;
+  LWIP_ASSERT_CORE_LOCKED();
+  if (tcp_fast_ms) {
+    if (!tcpip_tcp_timers_idle()) {
+      return;
+    }
+  } else {
+    if ((tcp_active_pcbs || tcp_tw_pcbs) && !tcp_timer_calculate_next_wake(&sleep_duration)) {
+      return;                                 /* still needed: leave it */
+    }
+    sys_untimeout((sys_timeout_handler)tcpip_tcp_slow_timer, NULL);
+    sys_untimeout((sys_timeout_handler)tcpip_tcp_fast_timer, NULL);
+    tcpip_tcp_timer_active = 0;
+  }
+  /* The tcpip thread may be blocked in its mbox fetch with the sleeptime it
+   * computed while this timer was still queued (the ACK is handled on the
+   * RX task under the core lock, not by the thread). Adding a shorter timer
+   * already pokes it (sys_timeout_abs above); removing one must too, or it
+   * still wakes at the stale deadline -- measured as tcpip_thread at the head
+   * of the delayed list ~350 ms after every keepalive with no lwIP timeout
+   * left. Same no-op callback: its only effect is a fresh sleeptime. */
+  if (cur_mbox_fetch_sleeptime != 0 && cur_mbox_fetch_sleeptime != SYS_TIMEOUTS_SLEEPTIME_INFINITE) {
+    tcpip_callback_with_block(sys_timer_callback_for_add_timer, NULL, 0);
+  }
+}
+#endif
 #endif /* LWIP_TCP */
 
 static void
@@ -313,6 +447,9 @@ sys_timeout_abs(u32_t abs_time, sys_timeout_handler handler, void *arg)
   timeout->h = handler;
   timeout->arg = arg;
   timeout->time = abs_time;
+#if defined(LP_RXW_DIAG) && LWIP_TCP && TCP_TIMER_PRECISE_NEEDED
+  lp_rxw_timeout(LP_RXW_TIMER_ADD, handler, timeout, abs_time);
+#endif
 
 #if LWIP_DEBUG_TIMERNAMES
   timeout->handler_name = handler_name;
@@ -525,6 +662,9 @@ sys_untimeout(sys_timeout_handler handler, void *arg)
       } else {
         prev_t->next = t->next;
       }
+#if defined(LP_RXW_DIAG) && LWIP_TCP && TCP_TIMER_PRECISE_NEEDED
+      lp_rxw_timeout(LP_RXW_TIMER_CANCEL, handler, t, t->time);
+#endif
       memp_free(MEMP_SYS_TIMEOUT, t);
       return;
     }
@@ -577,6 +717,9 @@ sys_check_timeouts(void)
                                  tmptimeout->handler_name, sys_now() - tmptimeout->time, arg));
     }
 #endif /* LWIP_DEBUG_TIMERNAMES */
+#if defined(LP_RXW_DIAG) && LWIP_TCP && TCP_TIMER_PRECISE_NEEDED
+    lp_rxw_timeout(LP_RXW_TIMER_FIRE, handler, tmptimeout, tmptimeout->time);
+#endif
     memp_free(MEMP_SYS_TIMEOUT, tmptimeout);
     if (handler != NULL) {
       handler(arg);
@@ -653,6 +796,19 @@ sys_timeouts_sleeptime(void)
  * TCP_TMR Optimization, only enable tcp_tmr MAX_TCP_ONCE_RUNNING_TIME
  */
 /* return true indicate stop tcp timer */
+#if LWIP_TCP_TIMER_WAKE_FIX
+/* Keep the no-deadline sentinel out of signed/unsigned MIN comparisons. */
+static inline s32_t tcp_timer_min_wake(s32_t current, s32_t candidate)
+{
+  if (candidate < (s32_t)TCP_SLOW_INTERVAL) {
+    candidate = TCP_SLOW_INTERVAL;
+  }
+  return (current < 0 || candidate < current) ? candidate : current;
+}
+#else
+#define tcp_timer_min_wake(current, candidate) LWIP_MIN(candidate, current)
+#endif
+
 static bool tcp_timer_calculate_next_wake(u32_t * next_wake_ms)
 {
   s32_t min_wake_time = -1;
@@ -670,34 +826,34 @@ static bool tcp_timer_calculate_next_wake(u32_t * next_wake_ms)
   while (pcb != NULL) {
     if (((pcb->flags & TF_ACK_DELAY) || (pcb->flags & TF_CLOSEPEND)) || pcb->refused_data != NULL) {
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: TCP_FAST_INTERVAL\n"));
-      min_wake_time = LWIP_MIN(TCP_FAST_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_FAST_INTERVAL);
     }
 
     if (pcb->unacked != NULL || ((pcb->unacked == NULL) && (pcb->unsent != NULL))) {
       /* calculate retransmission timeouts */
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: retransmission timeout %ldms\n", (pcb->rto - (tcp_ticks - pcb->rtime)) * TCP_SLOW_INTERVAL));
-      min_wake_time = LWIP_MIN((pcb->rto - (tcp_ticks - pcb->rtime)) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, (pcb->rto - (tcp_ticks - pcb->rtime)) * TCP_SLOW_INTERVAL);
     }
 
     if (pcb->persist_backoff > 0) {
       u8_t backoff_cnt = tcp_persist_backoff[pcb->persist_backoff - 1];
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: persist time timeout %ldms\n", (backoff_cnt - (tcp_ticks - pcb->persist_cnt)) * TCP_SLOW_INTERVAL));
 
-      min_wake_time = LWIP_MIN((backoff_cnt - (tcp_ticks - pcb->persist_cnt)) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, (backoff_cnt - (tcp_ticks - pcb->persist_cnt)) * TCP_SLOW_INTERVAL);
     }
 
     if (pcb->state == FIN_WAIT_1) {
       /* calculate FIN WAIT 1 timeouts */
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: fin wait 1 timeout %ldms\n", TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->fin_wait1_tmr) * TCP_SLOW_INTERVAL));
 
-      min_wake_time = LWIP_MIN(TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->fin_wait1_tmr) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->fin_wait1_tmr) * TCP_SLOW_INTERVAL);
     }
 
     if (pcb->state == FIN_WAIT_2 && (pcb->flags & TF_RXCLOSED)) {
       /* calculate FIN WAIT 2 timeouts */
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: fin wait 2 timeout %ldms\n", TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL));
 
-      min_wake_time = LWIP_MIN(TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_FIN_WAIT_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL);
     }
 
 #if TCP_QUEUE_OOSEQ
@@ -705,23 +861,23 @@ static bool tcp_timer_calculate_next_wake(u32_t * next_wake_ms)
       /* calculate ooseq timeouts */
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: free ooseq timeout %ldms\n", (pcb->rto * TCP_OOSEQ_TIMEOUT - (tcp_ticks - pcb->tmr)) * TCP_SLOW_INTERVAL));
 
-      min_wake_time = LWIP_MIN((pcb->rto * TCP_OOSEQ_TIMEOUT - (tcp_ticks - pcb->tmr)) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, (pcb->rto * TCP_OOSEQ_TIMEOUT - (tcp_ticks - pcb->tmr)) * TCP_SLOW_INTERVAL);
     }
 #endif
 
     if (pcb->state == SYN_RCVD) {
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: tcp SYN reset timeout %ldms\n", TCP_SYN_RCVD_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL));
-      min_wake_time = LWIP_MIN(TCP_SYN_RCVD_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_SYN_RCVD_TIMEOUT - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL);
     }
 
     if (pcb->state == LAST_ACK) {
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: LAST_ACK timeout %ldms\n", 2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL));
-      min_wake_time = LWIP_MIN(2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, 2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL);
     }
 
     if (lwip_netconn_is_tcp_polling((struct netconn *)pcb->callback_arg)) {
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: tcp poll timeout %ldms\n", TCP_SLOW_INTERVAL));
-      min_wake_time = LWIP_MIN(TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_SLOW_INTERVAL);
     }
 
     pcb = pcb->next;
@@ -731,11 +887,11 @@ static bool tcp_timer_calculate_next_wake(u32_t * next_wake_ms)
   while (pcb != NULL) {
     LWIP_ASSERT("calculate_next_wake: TIME-WAIT pcb->state == TIME-WAIT", pcb->state == TIME_WAIT);
     LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: TIME-WAIT timeout %ldms\n", 2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL));
-    min_wake_time = LWIP_MIN(2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL, min_wake_time);
+    min_wake_time = tcp_timer_min_wake(min_wake_time, 2 * TCP_MSL - (tcp_ticks - pcb->tmr) * TCP_SLOW_INTERVAL);
 
     if (lwip_netconn_is_tcp_polling((struct netconn *)pcb->callback_arg)) {
       LWIP_DEBUGF(TCP_DEBUG, ("calculate_next_wake: tcp poll timeout %ldms\n", TCP_SLOW_INTERVAL));
-      min_wake_time = LWIP_MIN(TCP_SLOW_INTERVAL, min_wake_time);
+      min_wake_time = tcp_timer_min_wake(min_wake_time, TCP_SLOW_INTERVAL);
     }
 
     pcb = pcb->next;

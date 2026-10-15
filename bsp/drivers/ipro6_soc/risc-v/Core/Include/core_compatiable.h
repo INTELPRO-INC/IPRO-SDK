@@ -287,7 +287,7 @@ __STATIC_FORCEINLINE unsigned long __CTZ(unsigned long data)
 
 /** @} */ /* End of Doxygen Group NMSIS_Core_ARMCompatiable_Functions */
 
-/* ===== CSI (C-Sky) Compatibility Functions for IPRO6LE drivers ===== */
+/* ===== CSI (C-Sky) Compatibility Functions for the SoC drivers ===== */
 /**
  * \brief   Get SysTimer value (low 32-bit)
  * \details Uses MCYCLE CSR for cycle count (avoids SysTimer include dependency)

@@ -24,6 +24,15 @@
 #include <limits.h>
 
 #include "compiler/common.h"
+/* Console lines serialized between tasks (console_guard.c): the Thread
+ * Wi-Fi border router, or any app that asks for it. Without it a printf
+ * from one task while another prints is dropped. */
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) || defined(CONFIG_NEWLIBC_CONSOLE_GUARD)
+#define NEWLIBC_CONSOLE_GUARD_ON 1
+#endif
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+#include "console_guard.h"
+#endif
 
 #ifdef CONFIG_SEMIHOSTING_PRINTF
 #include "semihost_printf.h"
@@ -909,6 +918,10 @@ int vsprintf(char *buffer, const char *format, va_list ap)
 
 void vprint(const char *fmt, va_list argp)
 {
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    enum console_guard_token token = newlibc_console_enter();
+    if (token == CONSOLE_GUARD_DROP) return;
+#else
     /*
      * vprint formats into the shared static buffer above and is NOT reentrant.
      * Once the WiFi MAC is active, its ISR can fire while a task is mid-format
@@ -923,6 +936,7 @@ void vprint(const char *fmt, va_list argp)
     if (busy)
         return;
     busy = 1;
+#endif
 
     if (sys_log_all_enable) {
         if (0 < vsprintf(string, fmt, argp)) {
@@ -948,11 +962,19 @@ void vprint(const char *fmt, va_list argp)
         }
     }
 
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    newlibc_console_leave(token);
+#else
     busy = 0;
+#endif
 }
 
 int puts(const char *s)
 {
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    enum console_guard_token token = newlibc_console_enter();
+    if (token == CONSOLE_GUARD_DROP) return 0;
+#endif
     int counter = 0;
 
     if (sys_log_all_enable) {
@@ -977,6 +999,9 @@ int puts(const char *s)
 #endif
 #endif
     }
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    newlibc_console_leave(token);
+#endif
     return counter;
 }
 
@@ -998,6 +1023,10 @@ int printf(const char *fmt, ...)
 
 int putchar(int c)
 {
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    enum console_guard_token token = newlibc_console_enter();
+    if (token == CONSOLE_GUARD_DROP) return 0;
+#endif
     if (sys_log_all_enable) {
 #ifdef CONFIG_SEMIHOSTING_PRINTF
         semihost_putc((char)c);
@@ -1009,6 +1038,9 @@ int putchar(int c)
 #endif
     }
 
+#ifdef NEWLIBC_CONSOLE_GUARD_ON
+    newlibc_console_leave(token);
+#endif
     return 0;
 }
 

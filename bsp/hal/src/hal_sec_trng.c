@@ -82,7 +82,8 @@ static int feed_trng_buffer()
 int hal_rand_stream(uint8_t *buf, int len)
 {
     int ret = 0;
-    hal_sec_enter_critical();
+    /* Keep the saved state: the non-FreeRTOS critical section restores it. */
+    unsigned long cs = hal_sec_enter_critical();
     while (len > 0) {
         int left = TRNG_BUF_LEFT;
         int this_len = len;
@@ -100,7 +101,7 @@ int hal_rand_stream(uint8_t *buf, int len)
         }
     }
 exit:
-    hal_sec_exit_critical(0);
+    hal_sec_exit_critical(cs);
 
     return ret;
 }

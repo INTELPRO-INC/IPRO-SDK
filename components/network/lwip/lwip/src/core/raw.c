@@ -131,6 +131,9 @@ raw_input_local_match(struct raw_pcb *pcb, u8_t broadcast)
  *           caller).
  *
  */
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 raw_input_state_t
 raw_input(struct pbuf *p, struct netif *inp)
 {

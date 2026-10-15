@@ -1,8 +1,6 @@
 /**
  * @file ble_demo_app.c
- * @brief BLE Peripheral and Central demo using Zephyr blestack API
- *
- * Migrated from RivieraWaves API to Zephyr Bluetooth API
+ * @brief BLE Peripheral and Central demo using the Zephyr Bluetooth host API
  *
  * Features:
  * - Peripheral: Advertise and accept connections (auto-restart after disconnect)
@@ -10,7 +8,7 @@
  * - Both roles can run simultaneously
  *
  * Architecture:
- * 1. Use bt_* Zephyr API instead of gapm_/gapc_
+ * 1. Use the bt_* Zephyr host API
  * 2. Register callbacks for events
  * 3. Simple state machine for both peripheral and central
  *
@@ -30,10 +28,10 @@
 #include "ipro_log.h"
 
 // Zephyr Bluetooth Stack API
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/conn.h>
-#include <bluetooth/gatt.h>
-#include <bluetooth/gap.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/gap.h>
 
 #define TAG "BLE_APP"
 
@@ -93,6 +91,11 @@ static struct {
 
     // Task handle for FSM notifications
     TaskHandle_t fsm_task_handle;
+
+    // Advertising restart after a peripheral link ends: wanted once the link
+    // is gone, pending once its connection object is free again (recycled)
+    volatile bool adv_restart_wanted;
+    volatile bool adv_restart_pending;
 } app_env;
 
 /*
@@ -125,9 +128,9 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
     if (err) {
         IPRO_LOGE(TAG, "Connection failed (err 0x%02x)", err);
 
-        // Restart advertising or scan based on role
+        // Restart advertising once the failed link's object is recycled
         if (app_env.peripheral_enabled) {
-            start_advertising();
+            app_env.adv_restart_wanted = true;
         }
         return;
     }
@@ -157,18 +160,36 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 
     app_env.state = APP_STATE_READY;
 
-    // Auto-restart advertising or scanning based on original role
+    // Auto-restart advertising based on original role. Not from here: the
+    // link still holds its connection object (CONFIG_BT_CONN=1 has only one)
+    // until every disconnected callback returns - see recycled_cb().
     if (app_env.is_peripheral && app_env.peripheral_enabled) {
         IPRO_LOGI(TAG, "Auto-restarting advertising...", "");
-        start_advertising();
+        app_env.adv_restart_wanted = true;
     } else if (!app_env.is_peripheral && app_env.central_enabled) {
         IPRO_LOGI(TAG, "Central mode - ready for next scan", "");
+    }
+}
+
+/* A connection object is free again. Host callbacks run in the host thread,
+ * which must not block on HCI commands such as bt_le_adv_start(), so the
+ * restart is handed to the FSM task. */
+static void recycled_cb(void)
+{
+    if (!app_env.adv_restart_wanted) {
+        return;
+    }
+    app_env.adv_restart_wanted = false;
+    app_env.adv_restart_pending = true;
+    if (app_env.fsm_task_handle) {
+        xTaskNotifyGive(app_env.fsm_task_handle);
     }
 }
 
 static struct bt_conn_cb conn_callbacks = {
     .connected = connected_cb,
     .disconnected = disconnected_cb,
+    .recycled = recycled_cb,
 };
 
 /*
@@ -180,7 +201,7 @@ static void start_advertising(void)
 {
     int err;
     struct bt_le_adv_param adv_param = {
-        .options = BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME,
+        .options = BT_LE_ADV_OPT_CONN,  // the name is already in ad[]
         .interval_min = APP_ADV_INTV_MIN,
         .interval_max = APP_ADV_INTV_MAX,
     };
@@ -263,7 +284,7 @@ static void start_scan(void)
     int err;
     struct bt_le_scan_param scan_param = {
         .type = BT_LE_SCAN_TYPE_ACTIVE,
-        .filter_dup = 0,
+        .options = BT_LE_SCAN_OPT_NONE,
         .interval = BT_GAP_SCAN_FAST_INTERVAL,
         .window = BT_GAP_SCAN_FAST_WINDOW,
     };
@@ -342,7 +363,7 @@ void ble_central_list_devices(void)
 
 int ble_central_connect(uint8_t device_index)
 {
-    struct bt_conn *conn;
+    struct bt_conn *conn = NULL;
 
     if (device_index == 0 || device_index > app_env.scan_count) {
         IPRO_LOGE(TAG, "Invalid device index %d (valid: 1-%d)", device_index, app_env.scan_count);
@@ -365,9 +386,10 @@ int ble_central_connect(uint8_t device_index)
 
     IPRO_LOGI(TAG, "Connecting to %s...", app_env.scan_results[idx].name);
 
-    conn = bt_conn_create_le(&app_env.scan_results[idx].addr, &conn_param);
-    if (!conn) {
-        IPRO_LOGE(TAG, "Connection failed", "");
+    int err = bt_conn_le_create(&app_env.scan_results[idx].addr, BT_CONN_LE_CREATE_CONN,
+                                &conn_param, &conn);
+    if (err) {
+        IPRO_LOGE(TAG, "Connection failed (err %d)", err);
         return -1;
     }
 
@@ -403,6 +425,13 @@ void app_process_fsm(void)
     // Wait for notification with 100ms timeout
     ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100));
 
+    if (app_env.adv_restart_pending) {
+        app_env.adv_restart_pending = false;
+        if (app_env.state != APP_STATE_CONNECTED) {
+            start_advertising();
+        }
+    }
+
     // Process state machine
     switch (app_env.state) {
         case APP_STATE_INIT:
@@ -426,7 +455,7 @@ void app_set_fsm_task_handle(TaskHandle_t task_handle)
  ****************************************************************************************
  */
 
-void app_init(void)
+int app_init(void)
 {
     int err;
 
@@ -439,7 +468,7 @@ void app_init(void)
     err = bt_enable(NULL);
     if (err) {
         IPRO_LOGE(TAG, "Bluetooth init failed (err %d)", err);
-        return;
+        return err;
     }
 
     IPRO_LOGI(TAG, "Bluetooth initialized", "");
@@ -451,4 +480,6 @@ void app_init(void)
 
     IPRO_LOGI(TAG, "BLE application ready", "");
     IPRO_LOGI(TAG, "Use 'ble_peripheral' or 'ble_central' to start", "");
+
+    return 0;
 }

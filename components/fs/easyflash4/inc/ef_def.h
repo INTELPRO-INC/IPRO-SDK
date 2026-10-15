@@ -90,6 +90,8 @@ typedef enum {
     EF_ENV_FULL,
     EF_ENV_INIT_FAILED,
     EF_ENV_ARG_ERR,
+    EF_ENV_NOT_FOUND,       /* Checked API: no committed/recoverable value. */
+    EF_ENV_CORRUPT,         /* Checked API: invalid structure or checksum. */
 } EfErrCode;
 
 /* the flash sector current status */

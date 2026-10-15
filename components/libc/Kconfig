@@ -7,5 +7,17 @@ config COMPONENTS_NEW_LIBC_ENABLE
       newlib is a C library implementation intended for use on embedded systems.
       It provides standard libc features such as `printf()`, `malloc()`, `string.h`, etc.
 
+config NEWLIBC_CONSOLE_GUARD
+    bool "Serialize console lines between tasks"
+    default n
+    depends on COMPONENTS_NEW_LIBC_ENABLE && FREERTOS_SUPPORT
+    help
+      printf/puts from tasks wait for each other instead of the later one
+      being dropped (interrupt context still drops while busy), and the
+      OpenThread CLI output is emitted as whole lines. Needed when a second
+      task prints continuously, e.g. the radio_trace stream. The app calls
+      newlibc_console_init() before the scheduler starts. Always on for
+      the Thread Wi-Fi border router.
+
 # Include semihosting config if folder exists (osource ignores missing files)
 osource "components/libc/semihosting/Kconfig"

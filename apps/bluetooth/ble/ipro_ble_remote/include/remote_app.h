@@ -83,6 +83,10 @@ int remote_app_stop_advertising(void);
  */
 const remote_app_context_t *remote_app_get_context(void);
 
+struct bt_conn;
+/** @brief Current link, or NULL when not connected. */
+struct bt_conn *remote_app_get_conn(void);
+
 /**
  * @brief Simulate button press event
  * 

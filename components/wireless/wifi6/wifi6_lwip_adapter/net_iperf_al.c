@@ -68,11 +68,7 @@ int net_if_get_ip(net_al_if_t net_if, uint32_t *ip, uint32_t *mask, uint32_t *gw
 /// ARP reply message timeout  (in milliseconds)
 #define ARP_REPLY_TO                  500 // 500ms
 /// IPERF maximum number of polling attempts before closing TCP connection
-#ifdef BL_TCP_OPTIMIZE
-#define IPERF_TCP_MAX_IDLE_SEC        50
-#else
 #define IPERF_TCP_MAX_IDLE_SEC        10
-#endif
 
 /* IPERF version (2.0.9)*/
 /// Iperf Major version (version 2)
@@ -208,6 +204,8 @@ struct net_iperf_tcp_info
  */
 /// Payload to send (no copy memory) which is pointed by pbuf->payload
 static char *net_iperf_nocopy_buf;
+/* TCP send source in cached RAM; tcp_write() copies from it. */
+static char net_iperf_tcp_src_buf[IPERF_BUFFER_LEN] __attribute__((aligned(4)));
 static int8_t net_iperf_nocopy_buf_ref_cnt;
 /// Pool of IPERF send buffers
 static struct net_iperf_send_buf_tag *net_iperf_send_buf_mem[FHOST_IPERF_MAX_STREAMS];
@@ -231,6 +229,9 @@ static err_t net_iperf_tcp_server_accept(void * arg, struct tcp_pcb *newpcb, err
  * @param[in] p pbuf_custom buffer to free (p in struct net_iperf_send_buf_tag)
  ****************************************************************************************
  **/
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 static void net_iperf_pbuf_custom_payload_free_cb(struct pbuf *p)
 {
     struct net_iperf_send_buf_tag *buf;
@@ -369,6 +370,7 @@ no_copy_buf:
     for (k = 0; k < IPERF_BUFFER_LEN; k++)
     {
         net_iperf_nocopy_buf[k] = 0x30 + k % 10;
+        net_iperf_tcp_src_buf[k] = 0x30 + k % 10;
     }
 
     ++net_iperf_nocopy_buf_ref_cnt;
@@ -407,6 +409,9 @@ static void net_iperf_buf_deinit(struct fhost_iperf_stream *stream)
  * @return  free iperf buffer, NULL if there is none
  ****************************************************************************************
  **/
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 static struct net_iperf_send_buf_tag *net_iperf_find_free_send_buf(const struct fhost_iperf_stream *stream,
                                                                    int to_time_ms)
 {
@@ -786,6 +791,9 @@ end:
  * @param[in] settings  Pointer to iperf settings
  ****************************************************************************************
  **/
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 static void net_iperf_tcp_send(struct tcp_pcb* pcb,
                                 struct fhost_iperf_stream *stream,
                                 struct fhost_iperf_settings* iperf_settings)
@@ -846,7 +854,7 @@ static void net_iperf_tcp_send(struct tcp_pcb* pcb,
         do
         {
             // Queue data for sending
-            err = tcp_write(pcb, net_iperf_nocopy_buf, len, 0);
+            err = tcp_write(pcb, net_iperf_tcp_src_buf, len, 0);
             if (err == ERR_MEM)
             {
                 len /= 2;
@@ -891,6 +899,9 @@ static void net_iperf_tcp_send(struct tcp_pcb* pcb,
  * @return  ERR_OK if successful
  ****************************************************************************************
  **/
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 static err_t net_iperf_tcp_poll(void *arg, struct tcp_pcb *pcb)
 {
     struct fhost_iperf_stream *stream = arg;
@@ -1038,6 +1049,9 @@ static err_t net_iperf_tcp_client_connected(void *arg, struct tcp_pcb *pcb, err_
  * @return  ERR_OK if successful
  ****************************************************************************************
  **/
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 static err_t net_iperf_tcp_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 {
     struct fhost_iperf_stream *stream = (struct fhost_iperf_stream *) arg;
@@ -1600,6 +1614,9 @@ exit:
     return ret;
 }
 
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 int net_iperf_udp_client_run(struct fhost_iperf_stream* stream)
 {
     int ret = -1;
@@ -2350,6 +2367,9 @@ void fhost_iperf_init_stats(struct fhost_iperf_stream *stream)
     }
 }
 
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 void fhost_iperf_print_interv_stats(struct fhost_iperf_stream *stream)
 {
     struct fhost_iperf_settings *settings = &stream->iperf_settings;

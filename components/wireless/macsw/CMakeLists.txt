@@ -5,7 +5,7 @@ __component_add_include_dirs(include)
 # PUBLIC-scope knobs
 #
 # These have to be emitted on BOTH the prebuilt and the source path. They are
-# PUBLIC precisely because consumers outside macsw (wifi6, ipro6le_demo)
+# PUBLIC precisely because consumers outside macsw (wifi6)
 # declare the same objects, and the note below spells out what happens when
 # only one side sees them: the link succeeds and the two sides disagree about
 # an object's size. A prebuilt build that skipped them would reintroduce
@@ -33,7 +33,7 @@ endfunction()
 
 # AB_TRACE ring depth, entries, power of 2. Default 16 fits the tightest config
 # (defconfig_ipro6_sdio has ~1.1 KB above its ram_tcm heap floor). RC_P9_0809.md
-__macsw_debug_knob(AB_TRACE_SIZE PUBLIC)          # also read by wifi6, ipro6le_demo
+__macsw_debug_knob(AB_TRACE_SIZE PUBLIC)          # also read by wifi6
 
 # Spare A-MPDU descriptors per data AC, parked on a reserve list and moved by the
 # `aggpool` command so both A/B arms come from one image. (N x 4) x 376 B ram_wifi.
@@ -59,8 +59,12 @@ endif()
 #
 # Same contract as ipro_ble_controller: an explicit path wins, otherwise the
 # component's own lib/ is used when present, and CONFIG_MACSW_FORCE_SOURCE_BUILD
-# always forces sources. This is what keeps the RivieraWaves Wi-Fi MAC sources
-# out of a customer SDK.
+# always forces sources. lib/ is NEVER committed: the release packager drops the
+# archive there in place of the RivieraWaves Wi-Fi MAC sources, so an internal
+# tree always builds from sources. (A checked-in archive silently replaced every
+# developer's MAC changes, and one built without CFG_IPRO_WIFI_PS_ENABLE cannot
+# link the lpwifi carrier.) The packager must build the archive with the same
+# CFG_IPRO_WIFI_PS_ENABLE / IPRO_WIFI_LP_FW set as the app that links it.
 # ---------------------------------------------------------------------------
 if(DEFINED CONFIG_MACSW_PREBUILT_PATH AND NOT "${CONFIG_MACSW_PREBUILT_PATH}" STREQUAL "")
     set(MACSW_PREBUILT "${CONFIG_MACSW_PREBUILT_PATH}")
@@ -354,7 +358,12 @@ endif()
 
 # Platform drivers
 __component_add_sources(plf/refip/src/driver/rwnx_platform.c)
+if(NOT IPRO_SDK_UNDER_ZEPHYR)
+# The RF component (rf/ipro6_rf/crm/crm.c) carries the same crm_* symbols and
+# is what the SDK link actually resolves them from; Zephyr links whole-archive
+# and would see both.
 __component_add_sources(plf/refip/src/driver/crm/v30/crm.c)
+endif()
 __component_add_sources(plf/refip/src/driver/phy/phy_ipro6rf.c)
 __component_add_sources(plf/refip/src/driver/intc/risc-v/intc.c)
 __component_add_sources(plf/refip/src/driver/extint/extint.c)
@@ -366,9 +375,13 @@ __component_add_sources(plf/refip/src/driver/la/la_mem_mac.c)
 __component_add_sources(plf/refip/src/driver/time/nx_time.c)
 __component_add_sources(plf/refip/src/driver/button/button.c)
 __component_add_sources(plf/refip/src/driver/led/led.c)
-__component_add_sources(plf/refip/src/driver/csidma/csidma_cli.c)
+if(NOT IPRO_SDK_UNDER_ZEPHYR)
+# CSI capture is driven from the SDK shell only; its 12 KB OCRAM buffer is
+# better spent on the Zephyr port's RAM-resident hot path.
+__component_add_sources(plf/refip/src/driver/csidma/csidma_cli.c)   # SDK shell + FreeRTOS queues
 __component_add_sources(plf/refip/src/driver/csidma/csidma.c)
 __component_add_sources(plf/refip/src/driver/csidma/csidata.c)
+endif()
 
 # Architecture
 __component_add_sources(plf/refip/src/arch/risc-v/arch_main.c)

@@ -22,6 +22,10 @@
 #include "export/export_struct.h"
 #include "rtos_al.h"
 #include "export/dbg/dbg_assert.h"
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+#include "FreeRTOS.h"
+#include "task.h"
+#endif
 
 /* TODO: LP stub -- bl_lp.h removed; re-enable for post-ASIC low-power */
 #if defined(CFG_IPRO_WIFI_PS_ENABLE) || defined(CFG_WIFI_PDS_RESUME)
@@ -421,8 +425,19 @@ int wifi_mgmr_sta_connect_params_get()
 
 int wifi_mgmr_sta_connect_params_setdefault()
 {
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+    taskENTER_CRITICAL();
+#endif
     wifiMgmr.sta_connect_param.scan_mode = 0;
+#ifndef CONFIG_THREAD_WIFI_BORDER_ROUTER
     wifiMgmr.sta_connect_param.pmf_cfg = 1;
+#endif
+    /* BR reconnect/persistence must retain the caller's PMF policy. Connection
+     * status notifications are not a request to downgrade PMF-required to
+     * PMF-capable (or to replace PMF-disabled). */
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+    taskEXIT_CRITICAL();
+#endif
     return 0;
 }
 

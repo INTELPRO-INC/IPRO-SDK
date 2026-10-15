@@ -60,7 +60,7 @@ typedef struct {
     uint32_t  txpbuf_payload[(TX_PBUF_PAYLOAD_LEN + 3) / 4];
 } sdio_txbuf_payload_t;
 
-/* IPRO6LE: ram_wifi 160KB, lwIP heap+memp ~37KB, RX 16KB, TX = N * 1904B.
+/* TX = N * 1904B.
  * 11 was sized for legacy bl_iot_sdk LP_FW layout (38KB - 16KB RX); 16 was
  * the largest that fit ram_wifi keeping the original lwIP heap. To get TCP
  * TX above the 16-slot ceiling (~10 Mbps observed) we trade lwIP heap for
@@ -87,17 +87,12 @@ typedef struct {
 
 static tx_pbuf_t            g_txpbuf_context[SDIO_TX_NORMAL_BUFFER_COUNT];
 
-#if defined(IPRO6LE) || defined(IPRO6)
-/* IPRO6LE/IPRO6: place TX payload storage in .lwip_mem.sdiowifi (linker rule
+#if defined(IPRO6)
+/* IPRO6: place TX payload storage in .lwip_mem.sdiowifi (linker rule
  * `*(.lwip_mem*)` catches it into ram_wifi after lwIP heap + memp pools).
  * Original hardcoded TXBUF_PAYLOAD_START_ADDR=0x2302A800 was for bl_iot_sdk's
- * LP_FW layout (LP_FW_START_ADDR + 16KB RX). In ipro6le_demo that address
- * sits inside lwIP memp pools (memp_memory_TCP_SEG_base 0x230282CC ..
- * memp_memory_RAW_PCB_base 0x2302B210), so SDIO TX writes corrupt the
- * UDP/TCP PCB free lists. After DHCP PCB struct (in MEMP_UDP_PCB pool)
- * gets its `next` field overwritten by frame data, udp_input faults on
- * the dangling pcb->next dereference.
- * On IPRO6 the hardcoded 0x2302A800 is even worse: it is OUTSIDE the SHRAM
+ * LP_FW layout (LP_FW_START_ADDR + 16KB RX).
+ * On IPRO6 the hardcoded 0x2302A800 is OUTSIDE the SHRAM
  * window [_sshram, _eshram] = ram_wifi (0x21050000..0x21078000), so
  * net_buf_tx_all_shram() fails and net_al_tx_req() drops every host->WiFi TX
  * frame with -1 (FHOST_BUFFER_COPY is not built) -- the iproeth0 ping never
@@ -246,7 +241,7 @@ int sdiowifi_tx_buf_mem_register(struct sdiowifi_tx_buf *tb, void *mem, size_t s
 static inline void notify_tx_buf_status(struct sdiowifi_tx_buf *tb)
 {
 #ifdef SDIO_REUSE_LP_RAM
-    /* IPRO6LE: ipro_sdk's enum PSM_EVENT (platform_al.h) lacks LP_BUF_REUSED.
+    /* ipro_sdk's enum PSM_EVENT (platform_al.h) lacks LP_BUF_REUSED.
      * Don't gate WiFi LP sleep on SDIO TX buf state; SDIO bridge isn't LP-aware. */
     (void)tb;
 #endif

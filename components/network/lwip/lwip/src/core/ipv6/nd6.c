@@ -118,6 +118,20 @@ static s8_t nd6_new_onlink_prefix(const ip6_addr_t *prefix, struct netif *netif)
 static s8_t nd6_get_next_hop_entry(const ip6_addr_t *ip6addr, struct netif *netif);
 static err_t nd6_queue_packet(s8_t neighbor_index, struct pbuf *q);
 
+/* A /64 PIO changes next-hop selection independently of neighbour reachability.
+ * Keep unrelated destinations (and their learned PMTU) intact. The destination
+ * cache has no netif association, so matching addresses on all netifs are reset. */
+static void
+nd6_invalidate_prefix_destinations(const ip6_addr_t *prefix)
+{
+  s16_t i;
+  for (i = 0; i < LWIP_ND6_NUM_DESTINATIONS; ++i) {
+    if (ip6_addr_netcmp(&destination_cache[i].destination_addr, prefix)) {
+      ip6_addr_set_any(&destination_cache[i].destination_addr);
+    }
+  }
+}
+
 #define ND6_SEND_FLAG_MULTICAST_DEST 0x01
 #define ND6_SEND_FLAG_ALLNODES_DEST 0x02
 #define ND6_SEND_FLAG_ANY_SRC 0x04
@@ -732,17 +746,22 @@ nd6_input(struct pbuf *p, struct netif *inp)
             /* Add to on-link prefix list. */
             u32_t valid_life;
             s8_t prefix;
+            u8_t was_onlink;
 
             valid_life = lwip_htonl(prefix_opt->valid_lifetime);
 
             /* find cache entry for this prefix. */
             prefix = nd6_get_onlink_prefix(&prefix_addr, inp);
+            was_onlink = (prefix >= 0 && prefix_list[prefix].invalidation_timer > 0);
             if (prefix < 0 && valid_life > 0) {
               /* Create a new cache entry. */
               prefix = nd6_new_onlink_prefix(&prefix_addr, inp);
             }
             if (prefix >= 0) {
               prefix_list[prefix].invalidation_timer = valid_life;
+              if (was_onlink != (valid_life > 0)) {
+                nd6_invalidate_prefix_destinations(&prefix_addr);
+              }
             }
           }
 #if LWIP_IPV6_AUTOCONFIG
@@ -1059,6 +1078,9 @@ nd6_tmr(void)
     if (prefix_list[i].netif != NULL) {
       if (prefix_list[i].invalidation_timer <= ND6_TMR_INTERVAL / 1000) {
         /* Entry timed out, remove it */
+        if (prefix_list[i].invalidation_timer > 0) {
+          nd6_invalidate_prefix_destinations(&prefix_list[i].prefix);
+        }
         prefix_list[i].invalidation_timer = 0;
         prefix_list[i].netif = NULL;
       } else {

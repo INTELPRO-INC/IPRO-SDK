@@ -197,6 +197,10 @@ static void fhost_rx_uf_buf_push(void *net_buf)
  * @param[in] skip_after_eth_hdr Offset to that should be skipped for the forward
  ****************************************************************************************
  */
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+extern void br_wifi_rx_echo(const uint8_t *header, size_t length, uint32_t lease,
+                            uint32_t dispatch, uint32_t dequeue, uint32_t handoff) __attribute__((weak));
+#endif
 static void fhost_rx_buf_send(struct fhost_rx_buf_tag *buf,
                               uint8_t rx_buf_action,
                               net_al_if_t net_if,
@@ -205,9 +209,9 @@ static void fhost_rx_buf_send(struct fhost_rx_buf_tag *buf,
                               uint8_t skip_after_eth_hdr)
 {
     /* Phase 2A.11 Counter K1: fhost->lwIP handoff timestamp. Gated by
-     * lease_us!=0 (init-time pushes skipped). Only set on the FORWARD
-     * branch so AMSDU subframes (forwarded via fhost_rx_amsdu_forward)
-     * are NOT double-stamped. */
+     * lease_us!=0 (init-time pushes skipped). Set on each FORWARD
+     * handoff, including AMSDU subframes forwarded via this common helper.
+     * A shared buffer can therefore receive successive handoff timestamps. */
     if (buf && buf->lease_us != 0 && (rx_buf_action & RX_BUF_FORWARD)) {
         uint32_t now = inline_hal_machw_time();
         buf->fhost_to_lwip_us = now ? now : 1;
@@ -244,7 +248,22 @@ static void fhost_rx_buf_send(struct fhost_rx_buf_tag *buf,
                 }
             }
         }
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+        /* Synchronous metadata copy before net_al_input can consume the buffer.
+         * Ethernet header precedes the optional gap removed by net_al_input. */
+        if (br_wifi_rx_echo && length >= sizeof(struct mac_eth_hdr) + skip_after_eth_hdr + 28) {
+            const uint8_t *eth = (const uint8_t *)buf->payload + offset;
+            if (eth[12] == 0x08 && eth[13] == 0x00)
+                br_wifi_rx_echo(eth + sizeof(struct mac_eth_hdr) + skip_after_eth_hdr, 28,
+                                buf->lease_us, buf->mac_dispatch_us,
+                                buf->mac_to_fhost_us, buf->fhost_to_lwip_us);
+        }
+#endif
+#ifdef __ZEPHYR__
+        net_al_input((net_al_rx_t)buf, buf->payload, net_if, length, offset, skip_after_eth_hdr, fhost_rx_buf_push);
+#else
         net_al_input((net_al_rx_t)buf->fnet_buf, buf->payload, net_if, length, offset, skip_after_eth_hdr, fhost_rx_buf_push);
+#endif
     }
 }
 
@@ -947,3 +966,26 @@ void fhost_rx_set_monitor_cb(void *arg, cb_fhost_rx cb)
 }
 
 /// @}
+
+/* For ptr inside an RX buffer: its rx_info, payload start and payload
+ * end. False when ptr is not in the pool. */
+bool fhost_rx_buf_bounds(const void *ptr, uint8_t **info, uint8_t **payload, uint8_t **end)
+{
+    uintptr_t base = (uintptr_t)&fhost_rx_buf_mem[0];
+    uintptr_t a = (uintptr_t)ptr;
+    struct fhost_rx_buf_tag *buf;
+
+    if (a < base || a >= base + sizeof(fhost_rx_buf_mem))
+        return false;
+    buf = &fhost_rx_buf_mem[(a - base) / sizeof(fhost_rx_buf_mem[0])];
+    *info = (uint8_t *)&buf->info;
+    *payload = (uint8_t *)buf->payload;
+    *end = (uint8_t *)buf->payload + sizeof(buf->payload);
+    return true;
+}
+
+/* Returns the number of RX buffers currently free for the MAC. */
+uint32_t fhost_rx_free_bufs(void)
+{
+    return (uint32_t)rtos_queue_cnt(fhost_rx_env.queue_buf);
+}

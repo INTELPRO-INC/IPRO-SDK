@@ -66,6 +66,16 @@ __component_add_link_options(
 )
 
 __component_add_link_libraries(c m)
+
+# Record source and build paths relative to the SDK root. Without this every
+# __FILE__ string (asserts, logs) and the debug info carry the absolute path of
+# the machine that built them, and prebuilt archives ship those paths to
+# customers. The build-directory map comes last so it wins inside the tree.
+__component_add_compile_options(
+-ffile-prefix-map=${CMAKE_SOURCE_DIR}/=
+-ffile-prefix-map=${CMAKE_BINARY_DIR}/=build/
+)
+
 __component_add_compile_options_ifdef(CONFIG_DEBUG -g3)
 __component_add_compile_options(-Os)
 

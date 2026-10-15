@@ -66,6 +66,14 @@ __component_add_sources(src/core/init.c)
 __component_add_sources(src/core/ip.c)
 __component_add_sources(src/core/mem.c)
 __component_add_sources(src/core/memp.c)
+if(CONFIG_THREAD_BR_BLE_MANAGEMENT AND CONFIG_IPRO6)
+    # BLE consumes WRAM. Give metadata pools individual sections so the
+    # linker can move MLD membership records to TCM and keep packet memory
+    # in uncached WRAM. The BR uses the full 346-group membership capacity.
+    # The forced header rejects configurations with packet/custom memp pools.
+    set_property(SOURCE src/core/memp.c APPEND PROPERTY COMPILE_OPTIONS
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/lwip-port/config/br_memp_tcm.h)
+endif()
 __component_add_sources(src/core/netif.c)
 __component_add_sources(src/core/pbuf.c)
 __component_add_sources(src/core/raw.c)

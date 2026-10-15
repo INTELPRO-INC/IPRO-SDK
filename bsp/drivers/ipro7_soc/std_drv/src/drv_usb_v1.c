@@ -1179,18 +1179,35 @@ ep0_setup_recover:
 
         rx_count = drv_usb_get_rxcount(0);
 
-        if (g_udc.out_ep[0].xfer_buf) {
-            drv_usb_fifo2mem(0, g_udc.out_ep[0].xfer_buf, rx_count);
-            g_udc.out_ep[0].xfer_buf += rx_count;
-            g_udc.out_ep[0].xfer_len -= rx_count;
-            g_udc.out_ep[0].actual_xfer_len += rx_count;
-        }
+        /* Bytes with no OUT data stage armed are the next SETUP packet: the
+         * controller can flag OUT_DONE for it before SETUP_DONE. Consuming them
+         * as control data (xfer_buf still points past the last data stage)
+         * underflows the core's EP0 residue, the SETUP_DONE that follows finds
+         * an empty FIFO and drops the request, and the core then pushes 64 stale
+         * bytes on the next IN -- macOS reports kIOReturnOverrun on UVC
+         * GET_CUR(PROBE) after SET_CUR and never opens the stream. Leave them
+         * in the FIFO for the SETUP_DONE path. */
+        bool early_setup = rx_count && g_udc.out_ep[0].xfer_len == 0;
 
-        usbd_event_ep_out_complete_handler(0, g_udc.out_ep[0].actual_xfer_len);
+        if (!early_setup) {
+            if (g_udc.out_ep[0].xfer_buf) {
+                drv_usb_fifo2mem(0, g_udc.out_ep[0].xfer_buf, rx_count);
+                g_udc.out_ep[0].xfer_buf += rx_count;
+                g_udc.out_ep[0].xfer_len -= rx_count;
+                g_udc.out_ep[0].actual_xfer_len += rx_count;
+            }
 
-        if (rx_count == 0) {
-            /* Out status, start reading setup */
-            drv_usb_ep_set_ready(0);
+            /* Report this packet's bytes, not the running total: the core adds
+             * nbytes to its EP0 buffer and re-arms per packet, and the controller
+             * can raise a second, empty OUT_DONE after a data stage -- passing
+             * actual_xfer_len there counts the data stage twice and underflows
+             * the core's residue the same way. */
+            usbd_event_ep_out_complete_handler(0, rx_count);
+
+            if (rx_count == 0) {
+                /* Out status, start reading setup */
+                drv_usb_ep_set_ready(0);
+            }
         }
     }
 

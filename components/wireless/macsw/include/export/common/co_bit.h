@@ -368,12 +368,12 @@ __INLINE uint8_t co_bits_get(uint8_t const array[], int lsb, int width, int arra
         return 0;
 
     if (width == 1)
-        return (array[byte_idx] & CO_BIT(byte_oft)) >> byte_oft;
+        return (uint8_t)((array[byte_idx] & CO_BIT(byte_oft)) >> byte_oft);
 
     byte_len = byte_oft + width;
     if (byte_len <= 8)
     {
-        uint8_t mask = CO_BIT(width) - 1;
+        uint8_t mask = (uint8_t)(CO_BIT(width) - 1);
         res = (array[byte_idx] >> byte_oft) & mask;
     }
     else
@@ -381,9 +381,9 @@ __INLINE uint8_t co_bits_get(uint8_t const array[], int lsb, int width, int arra
         uint8_t mask;
         int width2 = byte_len - 8;
         width -= width2;
-        mask = CO_BIT(width) - 1;
+        mask = (uint8_t)(CO_BIT(width) - 1);
         res = (array[byte_idx++] >> byte_oft) & mask;
-        mask = CO_BIT(width2) - 1;
+        mask = (uint8_t)(CO_BIT(width2) - 1);
         res |= (array[byte_idx] & mask) << width;
     }
 
@@ -414,21 +414,21 @@ __INLINE void co_bits_set(uint8_t array[], int lsb, int width, uint8_t val)
     int byte_oft = lsb % 8;
     int byte_len;
 
-    val &= (CO_BIT(width) - 1);
+    val &= (uint8_t)(CO_BIT(width) - 1);
 
     if (width == 1)
     {
         if (val)
             array[byte_idx] |= CO_BIT(byte_oft);
         else
-            array[byte_idx] &= ~CO_BIT(byte_oft);
+            array[byte_idx] &= (uint8_t)~CO_BIT(byte_oft);
         return;
     }
 
     byte_len = byte_oft + width;
     if (byte_len <= 8)
     {
-        uint8_t mask = (CO_BIT(width) - 1) << byte_oft;
+        uint8_t mask = (uint8_t)((CO_BIT(width) - 1) << byte_oft);
         array[byte_idx] &= ~mask;
         array[byte_idx] |= val << byte_oft;
     }
@@ -437,11 +437,11 @@ __INLINE void co_bits_set(uint8_t array[], int lsb, int width, uint8_t val)
         uint8_t mask;
         int width2 = byte_len - 8;
         width -= width2;
-        mask = (CO_BIT(width) - 1) << byte_oft;
+        mask = (uint8_t)((CO_BIT(width) - 1) << byte_oft);
         array[byte_idx] &= ~mask;
         array[byte_idx] |= val << byte_oft;
         byte_idx++;
-        mask = CO_BIT(width2) - 1;
+        mask = (uint8_t)(CO_BIT(width2) - 1);
         array[byte_idx] &= ~mask;
         array[byte_idx] |= val >> width;
     }

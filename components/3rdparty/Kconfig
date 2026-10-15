@@ -22,6 +22,14 @@ config COMPONENTS_OPUS_ENABLE
       Enable support for the OPUS audio codec.
       OPUS is a versatile audio codec used for interactive speech and music transmission.
 
+config OPUS_OPTIMIZE_SPEED
+    bool "Build Opus with -O2 instead of -Os"
+    default n
+    depends on COMPONENTS_OPUS_ENABLE
+    help
+      Trades flash for encode / decode time (measure with
+      apps/test/ipro7ai_evk_codec_bench before turning it on).
+
 config COMPONENTS_XZ_ENABLE
     bool "Enable XZ Compression Support"
     default n
@@ -52,6 +60,14 @@ config COMPONENTS_LC3_ENABLE
       LC3 is the mandatory codec for Bluetooth LE Audio, providing
       high-quality audio at low bitrates with low latency.
       Based on Google's liblc3 implementation (Apache 2.0 License).
+
+config LC3_OPTIMIZE_SPEED
+    bool "Build LC3 with -O2 instead of the SDK's -Os"
+    default n
+    depends on COMPONENTS_LC3_ENABLE
+    help
+      Trades flash for encode / decode time (measure with
+      apps/test/ipro7ai_evk_codec_bench before turning it on).
 
 # LVGL Graphics Library
 osource "components/3rdparty/lvgl/Kconfig"

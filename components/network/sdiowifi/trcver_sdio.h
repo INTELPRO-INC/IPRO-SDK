@@ -38,11 +38,11 @@
 
 /* TX aggregation (host->device download): the host packs up to ~4 frames
  * [2B body_len][body]... terminated by a 0x0000 len sentinel into ONE CMD53
- * write per download port. The IPRO6LE download-ring port buffer must hold
+ * write per download port. The download-ring port buffer must hold
  * the largest aggregated write. Kept SEPARATE from SDIO_RX_BUF_SIZE (which
  * still feeds the LP_FW SW_TX_BUF math below + the CFG_IPRO_WIFI in-LP_FW ring)
- * so enlarging the IPRO6LE download ring does NOT shrink the upload
- * SW_TX_BUF region into negative size. MUST match the host IPRO6LE_AGG_TX_SIZE.
+ * so enlarging the download ring does NOT shrink the upload
+ * SW_TX_BUF region into negative size. MUST match the host AGG TX size.
  * 6144 = up to ~4 full-MTU frames/port — the avgN sweet spot: aggregation is
  * CMD53-overhead-bound only up to avgN ~3.5 (then air/device-drain bound, proven
  * by the flush-timeout sweep: avgN 3.5->8 left UDP TX flat at ~11). So a 4-frame

@@ -37,6 +37,11 @@ int json_find_int(const char *json, const char *key, int *out);
 /* Find a 64-bit integer value for a key. */
 int json_find_int64(const char *json, const char *key, int64_t *out);
 
+/* Strict variant: succeeds only when the value is a JSON number (optional '-'
+ * then digits), so a quoted string or other type is reported as absent
+ * instead of silently reading as 0. */
+int json_find_number(const char *json, const char *key, int64_t *out);
+
 /* Find a boolean value for a key. */
 int json_find_bool(const char *json, const char *key, bool *out);
 

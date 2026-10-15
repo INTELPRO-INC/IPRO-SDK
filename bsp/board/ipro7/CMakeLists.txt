@@ -13,6 +13,10 @@ endif()
 if (DEFINED CONFIG_IPRO7AI_EVK AND CONFIG_IPRO7AI_EVK)
     set(BOARD_TYPE "evb")
 endif()
+# Same for the v3.0 carrier: IPRO7AI QFN56 with in-package flash + PSRAM.
+if (DEFINED CONFIG_IPRO7AI_REEF AND CONFIG_IPRO7AI_REEF)
+    set(BOARD_TYPE "evb")
+endif()
 
 target_sources(app PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board.c")
 

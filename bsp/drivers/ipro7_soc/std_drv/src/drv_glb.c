@@ -1052,6 +1052,17 @@ int GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_Type module)
     return SUCCESS;
 }
 
+/*
+ * No-op on IPRO7: the module-gating policy (gate everything the platform does
+ * not run on, ungate per module init) was measured and enabled on IPRO6 only.
+ * The stub keeps common callers -- board init, the low-power wake path -- one
+ * source across both chips.
+ */
+int GLB_PER_Clock_Gate_All(void)
+{
+    return SUCCESS;
+}
+
 int GLB_Set_EM_Sel(GLB_EM_Type emType)
 {
     uint32_t tmpVal = 0;

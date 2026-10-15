@@ -34,7 +34,110 @@
 #define portRegNum          14
 #endif
 
-#define portCONTEXT_SIZE    ( portRegNum * REGBYTES )
+/* FPU context (hard-float builds): room for f0-f31 + fcsr in every
+ * task frame and caller-saved f + fcsr in every ISR frame; the f
+ * registers are stored only when mstatus.FS is Clean or Dirty. */
+#if defined(__riscv_flen) && (__riscv_flen == 32)
+#define portFPURegNum       34
+#define portISRFPURegNum    24  /* 20 f, fcsr, mstatus, 2 pad */
+#else
+#define portFPURegNum       0
+#define portISRFPURegNum    0
+#endif
+#define portFPUBase         ( portRegNum * REGBYTES )
+#define portCONTEXT_SIZE    ( ( portRegNum + portFPURegNum ) * REGBYTES )
+
+#ifndef __riscv_32e
+#define portISRIntRegNum    20
+#else
+#define portISRIntRegNum    14
+#endif
+#define portISRFrameSize    ( ( portISRIntRegNum + portISRFPURegNum ) * REGBYTES )
+
+/* Task frame: f0-f31 then fcsr above mstatus. fcsr always; f0-f31
+ * only when FS >= Clean (bit 14), as FS ignores fcsr writes.
+ * SAVE_FPU_TASK expects mstatus in t0. */
+.macro SAVE_FPU_TASK
+#if portFPURegNum
+    frcsr t1
+    STORE t1, ( portFPUBase + 32 * REGBYTES )(sp)
+    srli t1, t0, 14
+    andi t1, t1, 1
+    beqz t1, 91f
+    .irp r,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+    fsw f\r, ( portFPUBase + \r * REGBYTES )(sp)
+    .endr
+91:
+#endif
+.endm
+
+/* Restores f0-f31 when the frame's saved mstatus has FS >= Clean. */
+.macro RESTORE_FPU_TASK
+#if portFPURegNum
+    LOAD t0, ( portFPUBase + 32 * REGBYTES )(sp)
+    fscsr t0
+    LOAD t0, ( portRegNum - 1 ) * REGBYTES(sp)
+    srli t0, t0, 14
+    andi t0, t0, 1
+    beqz t0, 92f
+    .irp r,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+    flw f\r, ( portFPUBase + \r * REGBYTES )(sp)
+    .endr
+92:
+#endif
+.endm
+
+/* ISR frame after the 20 integer words: f0-f7, f10-f17, f28-f31,
+ * fcsr, entry mstatus. Caller-saved f only when FS >= Clean at entry.
+ * Uses x5/x6: SAVE_CONTEXT saves them, RESTORE_CONTEXT reloads. */
+.macro SAVE_FPU_ISR
+#if portISRFPURegNum
+    csrr x6, CSR_MSTATUS
+    STORE x6, ( ( portISRIntRegNum + 21 ) * REGBYTES )(sp)
+    frcsr x5
+    STORE x5, ( ( portISRIntRegNum + 20 ) * REGBYTES )(sp)
+    srli x6, x6, 14
+    andi x6, x6, 1
+    beqz x6, 93f
+    .irp r,0,1,2,3,4,5,6,7
+    fsw f\r, ( ( portISRIntRegNum + \r ) * REGBYTES )(sp)
+    .endr
+    .irp r,10,11,12,13,14,15,16,17
+    fsw f\r, ( ( portISRIntRegNum + \r - 2 ) * REGBYTES )(sp)
+    .endr
+    .irp r,28,29,30,31
+    fsw f\r, ( ( portISRIntRegNum + \r - 12 ) * REGBYTES )(sp)
+    .endr
+93:
+#endif
+.endm
+
+/* Puts FS back to its value at ISR entry: a handler's float use does
+ * not turn an integer-only task into an FPU task. */
+.macro RESTORE_FPU_ISR
+#if portISRFPURegNum
+    LOAD x5, ( ( portISRIntRegNum + 20 ) * REGBYTES )(sp)
+    fscsr x5
+    LOAD x6, ( ( portISRIntRegNum + 21 ) * REGBYTES )(sp)
+    srli x5, x6, 14
+    andi x5, x5, 1
+    beqz x5, 94f
+    .irp r,0,1,2,3,4,5,6,7
+    flw f\r, ( ( portISRIntRegNum + \r ) * REGBYTES )(sp)
+    .endr
+    .irp r,10,11,12,13,14,15,16,17
+    flw f\r, ( ( portISRIntRegNum + \r - 2 ) * REGBYTES )(sp)
+    .endr
+    .irp r,28,29,30,31
+    flw f\r, ( ( portISRIntRegNum + \r - 12 ) * REGBYTES )(sp)
+    .endr
+94:
+    li x5, MSTATUS_FS
+    csrc CSR_MSTATUS, x5
+    and x6, x6, x5
+    csrs CSR_MSTATUS, x6
+#endif
+.endm
 
 .section    .text.entry
 .align 8
@@ -97,11 +200,7 @@
 #endif
     csrrw sp, CSR_MSCRATCHCSWL, sp
     /* Allocate stack space for context saving */
-#ifndef __riscv_32e
-    addi sp, sp, -20*REGBYTES
-#else
-    addi sp, sp, -14*REGBYTES
-#endif /* __riscv_32e */
+    addi sp, sp, -portISRFrameSize
 
     STORE x1, 0*REGBYTES(sp)
     STORE x4, 1*REGBYTES(sp)
@@ -122,6 +221,7 @@
     STORE x30, 18*REGBYTES(sp)
     STORE x31, 19*REGBYTES(sp)
 #endif /* __riscv_32e */
+    SAVE_FPU_ISR
 .endm
 
 /**
@@ -134,6 +234,7 @@
  */
 /* Restore caller registers */
 .macro RESTORE_CONTEXT
+    RESTORE_FPU_ISR
     LOAD x1, 0*REGBYTES(sp)
     LOAD x4, 1*REGBYTES(sp)
     LOAD x5, 2*REGBYTES(sp)
@@ -152,13 +253,10 @@
     LOAD x29, 17*REGBYTES(sp)
     LOAD x30, 18*REGBYTES(sp)
     LOAD x31, 19*REGBYTES(sp)
+#endif /* __riscv_32e */
 
     /* De-allocate the stack space */
-    addi sp, sp, 20*REGBYTES
-#else
-    /* De-allocate the stack space */
-    addi sp, sp, 14*REGBYTES
-#endif /* __riscv_32e */
+    addi sp, sp, portISRFrameSize
     csrrw sp, CSR_MSCRATCHCSWL, sp
 .endm
 
@@ -385,6 +483,7 @@ prvPortStartFirstTask:
     /* Pop PC from stack and set MEPC */
     LOAD t0,  0  * REGBYTES(sp)
     csrw CSR_MEPC, t0
+    RESTORE_FPU_TASK
     /* Pop mstatus from stack and set it */
     LOAD t0,  (portRegNum - 1)  * REGBYTES(sp)
     csrw CSR_MSTATUS, t0
@@ -467,6 +566,7 @@ eclic_msip_handler:
     STORE t0,  (portRegNum - 1)  * REGBYTES(sp)
 
     /* Push additional registers */
+    SAVE_FPU_TASK
 
     /* Store sp to task stack */
 #if ( configNUMBER_OF_CORES == 1 )
@@ -513,6 +613,7 @@ eclic_msip_handler:
     LOAD t0,  0  * REGBYTES(sp)
     csrw CSR_MEPC, t0
     /* Pop additional registers */
+    RESTORE_FPU_TASK
 
     /* Pop mstatus from stack and set it */
     LOAD t0,  (portRegNum - 1)  * REGBYTES(sp)

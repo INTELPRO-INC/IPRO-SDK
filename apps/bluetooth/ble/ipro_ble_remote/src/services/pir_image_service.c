@@ -22,6 +22,12 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#if defined(CONFIG_IPRO_PM)
+#include "ipro_pm.h"
+#if defined(CONFIG_IPRO_PM_BLE)
+#include "ipro_pm_ble.h"
+#endif
+#endif
 
 #undef STRINGIFY
 #undef likely
@@ -62,6 +68,12 @@
 
 // Image sequence counter (0 = demo1, 1 = demo2)
 static uint8_t g_image_sequence = 0;
+
+/* Real capture source (the Reef camera), see image_set_capture_hook() */
+static int (*g_capture_hook)(void);
+static TickType_t g_capture_tick;          /* when the pending hooked capture started */
+#define CAPTURE_STUCK_MS    10000u          /* a capture that never completed */
+static int image_capture_demo(void);
 
 /*
  * CONTEXT STRUCTURE
@@ -104,6 +116,7 @@ typedef struct {
     // TX task management
     TaskHandle_t tx_task_handle;
     bool tx_task_running;
+    uint32_t tx_gen;          /* bumped by every transfer start */
 } pir_ctx_t;
 
 /// Global context
@@ -115,6 +128,7 @@ static pir_ctx_t g_pir_ctx = {0};
  */
 
 static void image_tx_task(void *param);
+static void image_pm_busy(bool busy);
 
 /*
  * GATT CALLBACKS
@@ -274,8 +288,49 @@ pir_image_type_t image_get_type(void)
     return PIR_IMAGE_TYPE_CAT;
 }
 
+void image_set_capture_hook(int (*hook)(void))
+{
+    g_capture_hook = hook;
+}
+
 int image_capture(void)
 {
+    // A real camera takes a new picture every time. The BT host thread (phone
+    // command), the keys task and the board worker (motion) can all get here:
+    // claim CAPTURING atomically so only one capture is ever pending.
+    if (g_capture_hook != NULL) {
+        bool claimed = false;
+        img_state_t was;
+
+        taskENTER_CRITICAL();
+        was = g_pir_ctx.img_state;
+        if (was == IMG_STATE_CAPTURING &&
+            (xTaskGetTickCount() - g_capture_tick) > pdMS_TO_TICKS(CAPTURE_STUCK_MS)) {
+            was = IMG_STATE_IDLE;           /* the result never came: start over */
+        }
+        if (was != IMG_STATE_CAPTURING && was != IMG_STATE_TRANSFERRING) {
+            g_pir_ctx.img_state = IMG_STATE_CAPTURING;
+            g_capture_tick = xTaskGetTickCount();
+            claimed = true;
+        }
+        taskEXIT_CRITICAL();
+        if (!claimed) {
+            IPRO_LOGW(LOG_TAG, "[IMG] Busy (state %d), capture ignored", was);
+            return -1;
+        }
+        if (g_capture_hook() == 0) {
+            return 0;               /* image_capture_complete() follows */
+        }
+        IPRO_LOGW(LOG_TAG, "[IMG] Camera unavailable, using the demo image");
+        g_pir_ctx.img_state = IMG_STATE_IDLE;
+        return image_capture_demo();
+    }
+
+    if (g_pir_ctx.img_state == IMG_STATE_TRANSFERRING) {
+        IPRO_LOGW(LOG_TAG, "[IMG] Busy (transferring), capture ignored");
+        return -1;
+    }
+
     // If uploaded image is ready, use it
     if (g_pir_ctx.img_state == IMG_STATE_READY && !g_pir_ctx.img_buffer_is_static) {
         IPRO_LOGI(LOG_TAG, "[IMG] Using uploaded image: %lu bytes", g_pir_ctx.img_size);
@@ -286,6 +341,38 @@ int image_capture(void)
         return 0;
     }
 
+    return image_capture_demo();
+}
+
+int image_capture_complete(const uint8_t *data, uint32_t size)
+{
+    if (g_pir_ctx.img_state != IMG_STATE_CAPTURING) {
+        /* timed out and superseded: never replace an image that may be on
+         * its way to the phone */
+        IPRO_LOGW(LOG_TAG, "[IMG] Late capture result dropped (state %d)", g_pir_ctx.img_state);
+        return -1;
+    }
+    if (data == NULL || size == 0u) {
+        g_pir_ctx.img_state = IMG_STATE_IDLE;
+        return image_capture_demo();
+    }
+    if (image_set_data(data, size) != 0) {
+        IPRO_LOGE(LOG_TAG, "[IMG] Capture of %lu bytes does not fit", (unsigned long)size);
+        g_pir_ctx.img_state = IMG_STATE_ERROR;
+        return -1;
+    }
+    IPRO_LOGI(LOG_TAG, "[IMG] Camera capture: %lu bytes, %d chunks",
+              (unsigned long)size, g_pir_ctx.img_chunk_count);
+    if (g_pir_ctx.conn && g_pir_ctx.handles.img_data_notify_enabled) {
+        image_start_transfer(g_pir_ctx.transfer_conn_id);
+    } else {
+        (void)image_notify_info(g_pir_ctx.transfer_conn_id);
+    }
+    return 0;
+}
+
+static int image_capture_demo(void)
+{
     // Alternate between demo1 and demo2
     const uint8_t *image_data;
     uint32_t image_size;
@@ -467,6 +554,20 @@ int image_start_transfer(uint8_t conn_id)
         return -1;
     }
 
+    /* Size the chunks to the link: a notification carries MTU - 3 bytes, the
+     * chunk header 4. MTU 247 gives the 240 the service always used; MTU 517
+     * gives 506, the size noted as phone-compatible above. */
+    if (g_pir_ctx.conn != NULL) {
+        uint16_t mtu = bt_gatt_get_mtu(g_pir_ctx.conn);
+        uint16_t chunk = (mtu > 8u) ? (uint16_t)(mtu - 7u) : 1u;
+
+        if (chunk > 506u) {
+            chunk = 506u;
+        }
+        g_pir_ctx.chunk_size = chunk;
+        g_pir_ctx.img_chunk_count = (g_pir_ctx.img_size + chunk - 1u) / chunk;
+    }
+
     g_pir_ctx.transfer_conn_id = conn_id;
     g_pir_ctx.current_chunk = 0;
     g_pir_ctx.auto_transfer = true;
@@ -480,8 +581,14 @@ int image_start_transfer(uint8_t conn_id)
     // Notify info first
     image_notify_info(conn_id);
 
-    // Start TX task
+    // Start TX task (the TX task owns the low-power hold for the transfer)
+    taskENTER_CRITICAL();
+    g_pir_ctx.tx_gen++;
     g_pir_ctx.tx_task_running = true;
+    taskEXIT_CRITICAL();
+    if (g_pir_ctx.tx_task_handle != NULL) {
+        xTaskNotifyGive(g_pir_ctx.tx_task_handle);
+    }
 
     // Callback
     if (g_pir_ctx.callback) {
@@ -516,6 +623,30 @@ int image_abort_transfer(void)
     return 0;
 }
 
+/* A transfer keeps the system out of PDS (the link runs flat out) and, when
+ * it ends, asks the central for the idle interval again. */
+static void image_pm_busy(bool busy)
+{
+#if defined(CONFIG_IPRO_PM)
+    static ipro_pm_reason_t s_reason = -1;
+
+    if (s_reason < 0) {
+        s_reason = ipro_pm_reason_register("img_tx", IPRO_PM_MODE_WFI);
+    }
+    if (busy) {
+        ipro_pm_hold(s_reason);
+    } else {
+        ipro_pm_release(s_reason);
+#if defined(CONFIG_IPRO_PM_BLE) && defined(CONFIG_IPRO_PM_BLE_IDLE_INTERVAL_MS) && \
+    (CONFIG_IPRO_PM_BLE_IDLE_INTERVAL_MS > 0)
+        (void)ipro_pm_ble_params_request(CONFIG_IPRO_PM_BLE_IDLE_INTERVAL_MS);
+#endif
+    }
+#else
+    (void)busy;
+#endif
+}
+
 /*
  * TX TASK - Dedicated task for sending image chunks
  ****************************************************************************************
@@ -526,13 +657,16 @@ static void image_tx_task(void *param)
     (void)param;
 
     while (1) {
-        // Wait for transfer to start
+        // Wait for transfer to start (blocked, so idle can reach PDS)
         while (!g_pir_ctx.tx_task_running) {
-            vTaskDelay(pdMS_TO_TICKS(10));
+            (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         }
 
         // Transfer loop — flood-mode burst sending for max throughput
         uint32_t burst_count = 0;
+        uint32_t my_gen = g_pir_ctx.tx_gen;
+
+        image_pm_busy(true);
         while (g_pir_ctx.tx_task_running && g_pir_ctx.auto_transfer) {
             if (g_pir_ctx.current_chunk < g_pir_ctx.img_chunk_count) {
                 int ret = image_send_chunk(g_pir_ctx.transfer_conn_id, g_pir_ctx.current_chunk);
@@ -556,6 +690,7 @@ static void image_tx_task(void *param)
                 } else {
                     IPRO_LOGE(LOG_TAG, "[IMG] Failed at chunk %d", g_pir_ctx.current_chunk);
                     image_abort_transfer();
+                    g_pir_ctx.auto_transfer = false;
                     break;
                 }
             } else {
@@ -568,10 +703,11 @@ static void image_tx_task(void *param)
                 uint32_t duration_ms = (end_tick - g_pir_ctx.transfer_start_tick) * portTICK_PERIOD_MS;
                 uint32_t bytes_per_sec = (duration_ms > 0) ? (g_pir_ctx.img_size * 1000 / duration_ms) : 0;
                 uint32_t bits_per_sec = bytes_per_sec * 8;
+                uint32_t kb_x10 = (bytes_per_sec * 10u) / 1024u;    /* no float in this task */
 
-                IPRO_LOGI(LOG_TAG, "[IMG] Complete: %d chunks, %lu bytes in %lu ms (%.1f KB/s, %lu Kbps)",
+                IPRO_LOGI(LOG_TAG, "[IMG] Complete: %d chunks, %lu bytes in %lu ms (%lu.%lu KB/s, %lu Kbps)",
                          g_pir_ctx.img_chunk_count, g_pir_ctx.img_size, duration_ms,
-                         bytes_per_sec / 1024.0f, bits_per_sec / 1000);
+                         (unsigned long)(kb_x10 / 10u), (unsigned long)(kb_x10 % 10u), bits_per_sec / 1000);
 
                 if (g_pir_ctx.callback) {
                     pir_img_event_data_t evt = {
@@ -583,7 +719,13 @@ static void image_tx_task(void *param)
             }
         }
 
-        g_pir_ctx.tx_task_running = false;
+        image_pm_busy(false);
+        /* a transfer started while this one was ending keeps its flag */
+        taskENTER_CRITICAL();
+        if (g_pir_ctx.tx_gen == my_gen) {
+            g_pir_ctx.tx_task_running = false;
+        }
+        taskEXIT_CRITICAL();
     }
 }
 
@@ -738,6 +880,30 @@ int pir_simulate_trigger(void)
         image_capture();
     }
 
+    return 0;
+}
+
+int pir_report_motion(bool motion)
+{
+    if (!g_pir_ctx.initialized) {
+        return -1;
+    }
+    if (motion) {
+        return pir_simulate_trigger();
+    }
+    g_pir_ctx.pir_status.motion_detected = 0;
+    g_pir_ctx.pir_status.timestamp = xTaskGetTickCount();
+    if (g_pir_ctx.conn) {
+        (void)pir_notify_motion(g_pir_ctx.transfer_conn_id, &g_pir_ctx.pir_status);
+    }
+    if (g_pir_ctx.callback) {
+        pir_img_event_data_t evt = {
+            .event = PIR_IMG_EVENT_MOTION_CLEARED,
+            .conn_id = g_pir_ctx.transfer_conn_id,
+            .data.pir = g_pir_ctx.pir_status
+        };
+        g_pir_ctx.callback(&evt, g_pir_ctx.user_data);
+    }
     return 0;
 }
 

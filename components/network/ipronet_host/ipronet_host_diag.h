@@ -36,6 +36,7 @@
 #define IPRONET_FUNC_BLOCK_SIZE   512U
 #define IPRONET_DOORBELL_LO       0x00U
 #define IPRONET_DOORBELL_HI       0x01U
+#define IPRONET_DOORBELL_RESET_REQ 0xFFFFU      /* device asks for a card reset */
 #define IPRONET_FIFO_ADDR         0x00000000U
 #define IPRONET_RX_BUF_SIZE       (4U * 2048U)   /* ZC3: up to four 2048 B strides */
 
@@ -124,7 +125,7 @@ int  ipronet_diag_sdio_setup(uint32_t bus_hz);    /* 25000000 or 50000000 */
 int  ipronet_diag_rx_start(void);
 int  ipronet_diag_send_hello(void);
 int  ipronet_diag_get_mac(void);                  /* blocks <= 1 s */
-int  ipronet_diag_zcen(int gen);                  /* 1, 2 or 3 */
+int  ipronet_diag_zcen(void);                    /* sends ZCEN3 */
 int  ipronet_diag_netif_up(void);
 const char *ipronet_diag_netif_ip_str(void);      /* what iproeth0 holds; static buffer */
 int  ipronet_diag_link_status(void);              /* sends STA_GET_LINK_STATUS */

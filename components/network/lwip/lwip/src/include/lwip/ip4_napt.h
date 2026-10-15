@@ -87,6 +87,30 @@ ip_napt_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp, struct 
 void
 ip_napt_recv(struct pbuf *p, struct ip_hdr *iphdr);
 
+/* Check dynamic/static NAPT reservations before allocating a local host port.
+ * port is in host byte order. Caller must hold the lwIP core lock. */
+u8_t
+ip_napt_port_in_use(u8_t proto, u16_t port);
+
+/* Internal pbuf metadata, never a wire flag. ip4_input clears it and only a
+ * successful inbound translation sets it. Private translation transports can
+ * reject packets routed directly to their internal address without NAPT. */
+#define IP_NAPT_RECV_FLAG 0x40U
+
+/* Whether any NAPT table is active; caller holds the lwIP core lock. */
+u8_t ip_napt_is_active(void);
+
+/* Invalidate mappings before interface loss, address change, or index reuse.
+ * Caller holds the lwIP core lock and the old IPv4 address is still installed. */
+void ip_napt_netif_changed(const struct netif *netif);
+
+#if LWIP_ICMP
+/* Local IPv4 output only, before fragmentation/netif output. Reserve Echo IDs
+ * without rewriting the packet. Errors retain caller ownership. Runs even
+ * while NAPT is inactive to protect already-in-flight local queries. */
+err_t ip_napt_icmp_output(struct pbuf *p, const struct ip_hdr *iphdr);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -95,4 +119,3 @@ ip_napt_recv(struct pbuf *p, struct ip_hdr *iphdr);
 #endif /* IP_FORWARD */
 
 #endif /* LWIP_HDR_IP4_NAPT_H */
-

@@ -564,6 +564,14 @@ typedef enum {
     GLB_AHB_CLOCK_IP_AUSOLO_TOP,
     GLB_AHB_CLOCK_IP_DMA_GPIO,
     GLB_AHB_CLOCK_IP_MM_MISC,
+    /* Present in CGEN_CFG0 on this part but missing from the generic list.
+     * Appended, never inserted: the value is a bit index into the uint64_t
+     * the GLB_PER_Clock_* API takes, so renumbering would silently retarget
+     * every existing caller. */
+    GLB_AHB_CLOCK_IP_OCRAM,
+    GLB_AHB_CLOCK_IP_WRAM,
+    GLB_AHB_CLOCK_IP_SDBG,
+    GLB_AHB_CLOCK_IP_SPI2,
 } GLB_AHB_CLOCK_IP_Type;
 
 typedef enum {
@@ -1103,6 +1111,10 @@ typedef enum {
 #define GLB_AHB_CLOCK_AUSOLO_TOP        (1ULL<<GLB_AHB_CLOCK_IP_AUSOLO_TOP     )
 #define GLB_AHB_CLOCK_DMA_GPIO          (1ULL<<GLB_AHB_CLOCK_IP_DMA_GPIO       )
 #define GLB_AHB_CLOCK_MM_MISC           (1ULL<<GLB_AHB_CLOCK_IP_MM_MISC        )
+#define GLB_AHB_CLOCK_OCRAM             (1ULL<<GLB_AHB_CLOCK_IP_OCRAM          )
+#define GLB_AHB_CLOCK_WRAM              (1ULL<<GLB_AHB_CLOCK_IP_WRAM           )
+#define GLB_AHB_CLOCK_SDBG              (1ULL<<GLB_AHB_CLOCK_IP_SDBG           )
+#define GLB_AHB_CLOCK_SPI2              (1ULL<<GLB_AHB_CLOCK_IP_SPI2           )
 
 #define GLB_AUTO_CALC_XTAL_FLAG_MASK  0x0000ff00
 #define GLB_AUTO_CALC_XTAL_FLAG_VALUE 0x5800
@@ -1199,6 +1211,7 @@ int GLB_Get_Reset_Reason(GLB_RESET_RECORD_Type *reason);
 int GLB_AHB_MCU_Software_Reset(uint8_t swrst);
 int GLB_PER_Clock_Gate(uint64_t ips);
 int GLB_PER_Clock_UnGate(uint64_t ips);
+int GLB_PER_Clock_Gate_All(void);
 int GLB_PLL_CGEN_Clock_Gate(uint8_t clk);
 int GLB_PLL_CGEN_Clock_UnGate(uint8_t clk);
 int GLB_Set_PKA_CLK_Sel(uint8_t clkSel);
@@ -1246,7 +1259,7 @@ int GLB_SWAP_EMAC_CAM_Pin(GLB_EMAC_CAM_PIN_Type pinType); /* Unused, only used t
 
 /*=============================================================================
  * IPRO7 API Compatibility Aliases
- * Map IPRO7 naming conventions to IPRO6LE equivalents for driver compatibility
+ * Map IPRO7 naming conventions to IPRO6 equivalents for driver compatibility
  *===========================================================================*/
 
 /* Clock type aliases */
@@ -1257,7 +1270,7 @@ int GLB_SWAP_EMAC_CAM_Pin(GLB_EMAC_CAM_PIN_Type pinType); /* Unused, only used t
 #define GLB_AHB_CLOCK_USB           GLB_AHB_CLOCK_USB11     /* USB → USB11 */
 #endif
 #ifndef GLB_AHB_CLOCK_PKA
-#define GLB_AHB_CLOCK_PKA           0ULL                    /* PKA not present in IPRO6LE */
+#define GLB_AHB_CLOCK_PKA           0ULL                    /* PKA not present in IPRO6 */
 #endif
 
 /* Reset type aliases */

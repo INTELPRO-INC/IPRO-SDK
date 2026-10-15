@@ -60,6 +60,13 @@
 #define SCCB_SDA_PIN    GLB_GPIO_PIN_37
 #define SCCB_SCL_PIN    GLB_GPIO_PIN_36
 
+#elif defined(CONFIG_IPRO7AI_REEF)
+
+/* IPRO7AI Reef carrier: FLEX-24 camera SCCB on GPIO36 (SIOC) / GPIO37
+ * (SIOD), 5.1k pull-ups to VDD_2V8. Same parity rule as above. */
+#define SCCB_SDA_PIN    GLB_GPIO_PIN_37
+#define SCCB_SCL_PIN    GLB_GPIO_PIN_36
+
 #else
 #define SCCB_SDA_PIN    GLB_GPIO_PIN_36
 #define SCCB_SCL_PIN    GLB_GPIO_PIN_37

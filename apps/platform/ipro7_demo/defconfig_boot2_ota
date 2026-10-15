@@ -3,7 +3,6 @@
 # Hardware Platform Configuration
 #
 CONFIG_IPRO7=y
-# CONFIG_IPRO6LE is not set
 CONFIG_CHIP="IPRO7"
 CONFIG_CPU_ID="intelpro_ipro7"
 CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"

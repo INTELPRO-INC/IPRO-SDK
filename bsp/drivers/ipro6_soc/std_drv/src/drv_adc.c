@@ -817,6 +817,9 @@ void ADC_Vbat_Disable(void)
 
 void ADC_Tsen_Init(ADC_TSEN_MOD_Type tsenMod)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_GPIP);
+
     uint32_t tmpVal;
 
     /* config gpadc_reg_cmd */

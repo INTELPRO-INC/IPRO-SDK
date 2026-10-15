@@ -43,13 +43,13 @@ SECTIONS
   {
     *(.text.unlikely .text.unlikely.*)
     *(.text.startup .text.startup.*)
-    *(.text .text.*)
+    @IPRO7_TEXT_INPUT@
     *(.gnu.linkonce.t.*)
 
     *(EXCLUDE_FILE
      ( *hal_mtimer*.o*
        *_udivdi3.o*
-       *lib_a-memset*.o*) .text*)
+       *lib_a-memset*.o*@IPRO7_TEXT_HOT_EXCLUDE@) .text*)
 
     /* readonly data placed in ROM */
     . = ALIGN(8);
@@ -283,9 +283,20 @@ SECTIONS
     _bt_l2cap_fixed_chan_list_start = .;
     KEEP(*(SORT_BY_NAME("._bt_l2cap_fixed_chan.static.*")))
     _bt_l2cap_fixed_chan_list_end = .;
+    /* BR/EDR host tables (external AIC8800 controller, CONFIG_BT_BREDR):
+     * empty on LE-only builds, same layout as ipro6_common.ld.in. */
+    _bt_l2cap_br_fixed_chan_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_l2cap_br_fixed_chan.static.*")))
+    _bt_l2cap_br_fixed_chan_list_end = .;
     _settings_handler_static_list_start = .;
     KEEP(*(SORT_BY_NAME("._settings_handler_static.static.*")))
     _settings_handler_static_list_end = .;
+    _bt_sco_conn_cb_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_sco_conn_cb.static.*")))
+    _bt_sco_conn_cb_list_end = .;
+    _bt_sco_hci_cb_list_start = .;
+    KEEP(*(SORT_BY_NAME("._bt_sco_hci_cb.static.*")))
+    _bt_sco_hci_cb_list_end = .;
     . = ALIGN(8);
     *(.decode_jpeg_data)
   } >RAM AT>ROM

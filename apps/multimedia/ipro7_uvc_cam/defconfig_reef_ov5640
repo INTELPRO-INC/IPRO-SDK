@@ -1,0 +1,159 @@
+
+#
+# Hardware Platform Configuration
+#
+CONFIG_IPRO7=y
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+# CONFIG_NONE is not set
+# CONFIG_FPGA is not set
+CONFIG_IPRO7AI_REEF=y
+CONFIG_BOARD="IPRO7AI_REEF"
+# CONFIG_DISABLE_SDC_PINMUX is not set
+
+#
+# Build Configuration
+#
+CONFIG_LINK_FLASH=y
+CONFIG_ENABLE_FRAME_POINTER=y
+# CONFIG_USE_ROM_DRIVERS is not set
+CONFIG_SINGLE_PRECISION_FLOAT=y
+# CONFIG_EXCEPTION_AUTO_REBOOT is not set
+# end of Build Configuration
+
+#
+# Memory Configuration
+#
+CONFIG_USE_PSRAM=y
+# CONFIG_ENABLE_NVDS is not set
+# end of Memory Configuration
+
+#
+# Hardware Features
+#
+CONFIG_MM_SUPPORT=y
+# end of Hardware Features
+
+#
+# Debug UART Configuration
+#
+CONFIG_PLATFORM_UART_BAUDRATE=115200
+# end of Debug UART Configuration
+# end of Hardware Platform Configuration
+
+#
+# Component Modules
+#
+
+#
+# RTOS Configuration
+#
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+# CONFIG_ZEPHYR is not set
+# CONFIG_NO_RTOS is not set
+
+#
+# FreeRTOS Configuration
+#
+CONFIG_COMPONENTS_FREERTOS_POSIX_ENABLE=y
+# end of FreeRTOS Configuration
+
+CONFIG_IPRO_OSAL=y
+# end of RTOS Configuration
+
+#
+# System Services
+#
+CONFIG_SHELL=y
+CONFIG_SHELL_EXEC_THREAD=y
+CONFIG_CMD_SCHEDULER=y
+# CONFIG_COMPONENTS_CLI_CMD_ENABLE is not set
+CONFIG_IPRO_EVENT=y
+CONFIG_IPRO_EVENT_DEFAULT_QUEUE_SIZE=32
+CONFIG_IPRO_EVENT_DEFAULT_TASK_STACK=2048
+CONFIG_IPRO_EVENT_DEFAULT_TASK_PRIORITY=5
+CONFIG_IPRO_EVENT_POST_FROM_ISR=y
+# end of System Services
+
+#
+# Wireless Configuration
+#
+# CONFIG_BLUETOOTH_LE_ENABLE is not set
+# CONFIG_WIFI6 is not set
+# CONFIG_LPAPP is not set
+# CONFIG_ZIGBEE_STACK is not set
+# CONFIG_LOWER_MAC_15P4_LIB is not set
+# CONFIG_IEEE802154_ENABLE is not set
+# CONFIG_OPENTHREAD_ENABLE is not set
+# end of Wireless Configuration
+
+#
+# AI/NPU Configuration
+#
+# CONFIG_AI_SUPPORT is not set
+# CONFIG_AI_PREBUILT is not set
+# CONFIG_AI_DEBUG is not set
+# end of AI/NPU Configuration
+
+#
+# Third-Party Components
+#
+# CONFIG_COMPONENTS_OPUS_ENABLE is not set
+# CONFIG_COMPONENTS_XZ_ENABLE is not set
+# CONFIG_COMPONENTS_ZMODEM_ENABLE is not set
+# end of Third-Party Components
+
+CONFIG_COMPONENTS_CHERRYUSB_ENABLE=y
+CONFIG_CHERRYUSB_DEVICE=y
+CONFIG_CHERRYUSB_DEVICE_VIDEO=y
+# CONFIG_COMPONENTS_MBEDTLS_ENABLE is not set
+# CONFIG_COMPONENTS_CIPHER_SUITE_ENABLE is not set
+# CONFIG_COMPONENTS_NIST_SP800_22_ENABLE is not set
+
+#
+# File System Configuration
+#
+# CONFIG_EVFS is not set
+# CONFIG_COMPONENTS_FATFS_ENABLE is not set
+# CONFIG_COMPONENTS_ROMFS_ENABLE is not set
+# CONFIG_EASYFLASH4 is not set
+# CONFIG_LITTLEFS is not set
+# end of File System Configuration
+
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+#
+# Network Configuration
+#
+# CONFIG_COMPONENTS_LWIP_ENABLE is not set
+# end of Network Configuration
+
+CONFIG_COMPONENTS_SENSOR_ENABLE=y
+CONFIG_SENSOR_OV5640=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+
+#
+# IPRO Logging System
+#
+CONFIG_IPRO_LOG_ENABLE=y
+# CONFIG_LOG_DEFAULT_LEVEL_NONE is not set
+# CONFIG_LOG_DEFAULT_LEVEL_ERROR is not set
+# CONFIG_LOG_DEFAULT_LEVEL_WARN is not set
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# CONFIG_LOG_DEFAULT_LEVEL_DEBUG is not set
+# CONFIG_LOG_DEFAULT_LEVEL_VERBOSE is not set
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_THREAD_ID=y
+CONFIG_LOG_BUFFER_SIZE=512
+CONFIG_LOG_USE_MUTEX=y
+CONFIG_LOG_OUTPUT_UART=y
+# CONFIG_LOG_OUTPUT_RTT is not set
+# CONFIG_LOG_OUTPUT_FILE is not set
+# end of IPRO Logging System
+# end of Component Modules

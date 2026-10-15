@@ -23,18 +23,13 @@ config IPRO6
     bool "IPRO6"
     help
       Select this option if your target hardware uses the IPRO6 SoC.
-      IPRO6 uses IPRO7's CPU with IPRO6LE's memory layout.
-
-config IPRO6LE
-    bool "IPRO6LE"
-    help
-      Select this option if your target hardware uses the IPRO6LE SoC.
+      IPRO6 uses IPRO7's CPU.
 
 config IPRO7AI_EVK
     bool "IPRO7AI EVK sub-board (QFN49, PSRAM + AI)"
     select USE_PSRAM
     help
-      IPRO7AI EVK sub-board, schematic IPRO7AI_MODULE_SUB_0805.
+      IPRO7AI EVK sub-board, schematic IPRO7AI_MODULE_SUB_0812A.
 
       Carries a 2.4" 240x320 ST7789P3 SPI display, an SC101IOT DVP camera,
       a TPA2037D1 speaker amplifier off the on-chip DAC, an IM69D129 PDM
@@ -46,18 +41,43 @@ config IPRO7AI_EVK
       GPIO23 with an ACTIVE-HIGH enable on GPIO22. PDM mic on GPIO18/19.
       SD card on GPIO27-34.
 
-      Note: the camera bank (VDDIO1) must be jumpered to 1.8 V on J6
-      (PIN1/PIN3), and GPIO41 doubles as the BOOT strap. Firmware cannot
-      read battery voltage or charge status on this board - see the header
-      for why. Selects USE_PSRAM.
+      Note: the camera bank (VDDIO1) must be wired from J6 pin 3 to pin 7
+      (2.8 V) - the only usable supply on V1 boards. VDDIO1 also powers the
+      in-package Flash (minimum about 2.7 V), so with VDDIO1 unpowered at
+      reset the boot ROM cannot read the Flash and enters download mode.
+      GPIO41 doubles as the BOOT strap. Firmware cannot read battery voltage or charge status on this
+      board - see the header for why. Selects USE_PSRAM.
 
 endchoice
+
+config IPRO7_XTAL_CAPCODE
+    int "IPRO7 RF crystal capcode override (0 = keep the boot value)"
+    depends on IPRO7
+    range 0 255
+    default 0
+    help
+      Load-capacitance trim of the RF crystal (AON XTAL capcode in/out),
+      which sets the 2.4 GHz carrier frequency of 802.15.4 and BLE. Boards
+      without a calibrated eFuse capcode come up at the ROM default (85),
+      which on the IPRO7 EVBs puts the carrier about +68 ppm off - outside
+      the 802.15.4 +-40 ppm tolerance, so other vendors' radios receive
+      them poorly. Set a board-calibrated value here (measure with the
+      `radio_xtal` and `radio_cfo` shell commands against a reference);
+      0 leaves the crystal as boot configured it.
 
 config CHIP
     string
     default "IPRO7" if IPRO7
     default "IPRO6" if IPRO6
-    default "IPRO6LE" if IPRO6LE
+
+config BTDM_CLOCK_320_80_TEST
+    bool "Use the diagnostic 320/80 MHz clock tuple"
+    default n
+    depends on IPRO6
+    help
+      Diagnostic only, not qualified for mass production. Selects the
+      320 MHz MCU root and a divide-by-four 80 MHz peripheral bus instead
+      of IPRO6S's 240/80 MHz platform default.
 
 config WIFI_LP_APP_SUPPORT
     bool "Reserve OCRAM slot for the standalone lp_fw (WiFi low-power)"
@@ -69,6 +89,89 @@ config WIFI_LP_APP_SUPPORT
       ram_tcm shrinks from the full 320K to 288K so the lp_fw image has a fixed,
       PDS-retained run slot. Leave disabled for apps that do not stage lp_fw —
       they keep the full 320K of TCM.
+
+config LP_FORCE_RC32K
+    bool "Force RC32K as the LP sleep clock (skip the XTAL32K probe)"
+    depends on WIFI_LP_APP_SUPPORT
+    default n
+    help
+      Sleep-clock policy at the first standby arm. Default (n) = auto:
+      power the XTAL32K oscillator and verify the HBN RTC advances at
+      crystal rate against MTIMER; a present, healthy crystal becomes the
+      32 kHz sleep clock (RC32K powered down, and the AON hardware pull
+      HBN_IRQ_MODE.reg_en_hw_pu_pd cleared so the PDS timed wake works on
+      it), a board without the crystal fails the probe (~1.1 s once per
+      boot) and falls back to RC32K with a MTIMER coarse cal. Set y on a
+      crystal-less product to skip the probe and take RC32K directly.
+      `lp clk32k xtal|rc|auto` overrides either at runtime (soft-reset
+      persistent).
+
+config LP_LDO11_EXT_DCDC
+    bool "Core 1.1 V comes from an external DCDC on the LDO11 output"
+    depends on WIFI_LP_APP_SUPPORT
+    default n
+    help
+      For a board that feeds the 1.1 V core rail from an external DCDC.
+      At init the internal LDO11 SOC and RT outputs step down to 1.05 V,
+      then 1.00 V, so the higher external rail carries the load and the
+      internal LDO drops out of regulation; replaces LP_LDO11_RT_SEL.
+      Never enable on a board without the external DCDC: the core would
+      run at 1.00 V.
+
+config LP_LDO11_RT_SEL
+    int "LDO11 retention voltage select for LP standby (HBN_GLB[27:24])"
+    depends on WIFI_LP_APP_SUPPORT
+    range 0 15
+    default 6
+    help
+      PDS retention voltage for the LDO11 RT rail: 0.60 + 0.05*sel volts.
+      Silicon default is 10 (1.10 V); the qualified LP value is 6 (0.90 V),
+      worth ~12-16 uA of PDS floor (2026-08-08 ladder, ~4.2 uA per step).
+      Applied once per cold boot in lp_demo init (the register is
+      PDS-retained). Values below 6 are unqualified on this silicon.
+
+config LP_WAKERAIL
+    bool "Drop the DCDC18 rail for the LP blob's awake window only (WAKERAIL)"
+    depends on WIFI_LP_APP_SUPPORT
+    default n
+    help
+      Step AON dcdc_top_0[4:0] down at the stage-1 wake hook (before the
+      staged blob runs) and restore it before every re-sleep and before a
+      full-FW wake. The register therefore holds the standby value (stock
+      1.8 V) across every PDS interval, so the PDS-exit surge -- the
+      transient that set the whole-standby RAILGATE floor at sel 20 --
+      always happens at the standby rail; only the software-controlled
+      awake window (t1 crystal ramp, t2 RF restore, t3 listen) runs low.
+      Composes with the DCDCLG listen deepening (lp_fw.h). UNQUALIFIED as
+      of 2026-09-01: no soak; do not enable with LP_RAILGATE.
+
+config LP_WAKERAIL_DCDC18_SEL
+    int "DCDC18 awake-window voltage select (25 mV/step; 27 = 1.8 V stock)"
+    depends on LP_WAKERAIL
+    range 15 26
+    default 21
+
+config LP_RAILGATE
+    bool "Drop the DCDC18 1.8 V system rail during DTIM standby (RAILGATE)"
+    depends on WIFI_LP_APP_SUPPORT
+    default n
+    help
+      Lower AON dcdc_top_0[4:0] for the whole DTIM standby session: applied
+      at tickless arm (real and seed mode), restored when the session
+      returns to full FW (service-task exit / seed-cap disarm / stop).
+      Qualified at sel 21 (1.65 V): -9.6 uA same-image A/B/A plus a passing
+      1800-cycle full-coverage soak (2026-08-30).
+
+config LP_RAILGATE_DCDC18_SEL
+    int "DCDC18 standby voltage select (25 mV/step; 27 = 1.8 V stock)"
+    depends on LP_RAILGATE
+    range 16 26
+    default 21
+    help
+      21 = 1.65 V, the soak-qualified point. 15 (1.5 V) is REJECTED on
+      record: stochastic wake brown-out into a 1.2 mA zombie (LDO11SOC is
+      fed from DCDC18 and its dropout margin collapses on wake transients),
+      which is why the range stops at 16.
 
 config IPRO_WIFI_PS
     bool "WiFi datapath resume across PDS (macsw key RAM / MAC HW re-program)"
@@ -90,18 +193,15 @@ config CPU_ID
     string "CPU ID"
     default "intelpro_ipro7" if IPRO7
     default "intelpro_ipro7" if IPRO6
-    default "m0" if IPRO6LE
     help
       CPU identifier used for toolchain selection.
       - IPRO7: intelpro_ipro7
       - IPRO6: intelpro_ipro7 (uses IPRO7's CPU)
-      - IPRO6LE: m0 (RISC-V E906 with Thead extensions)
 
 config CROSS_COMPILE
     string "Cross-compiler prefix"
     default "/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-" if IPRO7
     default "/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-" if IPRO6
-    default "/opt/toolchain/toolchain_riscv_thead_linux64/bin/riscv64-unknown-elf-" if IPRO6LE
     help
       Path to the cross-compiler toolchain prefix.
 
@@ -113,11 +213,6 @@ config CROSS_COMPILE
       IPRO6 toolchain (same as IPRO7):
         - Default: /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-
         - Architecture: RISC-V 64-bit (uses IPRO7's CPU)
-
-      IPRO6LE toolchain:
-        - Default: /opt/toolchain/toolchain_riscv_thead_linux64/bin/riscv64-unknown-elf-
-        - Architecture: RISC-V E906 (RV32IMAFC)
-        - Features: Thead custom extensions (P, zpsfoperand, xtheade)
 
 #
 # Select Board Type
@@ -187,6 +282,30 @@ config IPRO7_ARDUINO
       Selects USE_PSRAM (raw per-app builds must still set
       CONFIG_USE_PSRAM=y explicitly). Enable AI with CONFIG_AI_SUPPORT.
 
+config IPRO7AI_REEF
+    bool "IPRO7AI Reef carrier (QFN56, PSRAM + AI)"
+    select USE_PSRAM
+    help
+      IPRO7AI Reef carrier board (formerly "IPRO7AI EVK v3.0"), EasyEDA
+      project "IPRO7AI_EVK" (V3.0, 2026-09). The IPRO7AI QFN56 is soldered onto the carrier; there is no
+      SoM, no LCD and no battery. Not the same board as IPRO7AI_EVK.
+
+      Console UART0 on GPIO20/21 (U6 SH1.0 wafer with DTR->BOOT, RTS->RESET).
+      OmniVision FLEX-24 camera FPC: DVP on GPIO0-7/38/39/40, XCLK GPIO22,
+      RESETB GPIO34, PWDN GPIO35, SCCB GPIO36/37 (2.8 V rails, always on).
+      DAC channel A (GPIO23) drives a TLV9061 headphone buffer (J2) and a
+      PAM8302A speaker amplifier (J_SPK) with an ACTIVE-HIGH enable on GPIO25.
+      Headset mic on AIN7/AIN6 (GPIO13/12), AUX-IN on AIN4/AIN5 (GPIO10/11,
+      shared with keys SW3/SW5), PDM mic on GPIO16/17. WS2812 RGB LED on
+      GPIO24. Keys: SW4 GPIO27, SW1 BOOT GPIO41 (active high). SD/SDIO slot
+      on GPIO28-33 with supply gate GPIO14 (JP3) and card-detect GPIO15; the
+      slot also takes the IPRO6S_FIN Wi-Fi fin. USB device on GPIO8/9.
+
+      Jumpers: JP1 VDDIO1 (3.3 V / 2.8 V - remove R71 to use it), JP2 3V3
+      source, JP3 SD_VDD direct or switched. Selects USE_PSRAM (raw per-app
+      builds must still set CONFIG_USE_PSRAM=y). Enable AI with
+      CONFIG_AI_SUPPORT.
+
 endchoice
 
 config BOARD
@@ -199,6 +318,7 @@ config BOARD
     default "DEMO_QFN56" if DEMO_QFN56
     default "IPRO7_ARDUINO" if IPRO7_ARDUINO
     default "IPRO7AI_EVK" if IPRO7AI_EVK
+    default "IPRO7AI_REEF" if IPRO7AI_REEF
     default ""
 
 
@@ -551,7 +671,7 @@ config DISABLE_EM_TCM_RET
     depends on AI_SUPPORT && MM_SUPPORT
     help
       When AI and MM support are both enabled, the linker normally
-      creates a separate em_tcm_ret section (16KB at 0x1102C000)
+      creates a separate em_tcm_ret section (32KB ending at 0x11030000)
       for TCM code to maximize OCRAM space for data.
 
       Enable this option to merge all TCM code back into OCRAM,
@@ -560,8 +680,8 @@ config DISABLE_EM_TCM_RET
         - You want simpler memory layout
 
       Memory impact (with AI+MM, EM_SIZE=0):
-        - Disabled (default): OCRAM=48KB data, em_tcm_ret=16KB code
-        - Enabled: OCRAM=48KB (data + TCM code merged)
+        - Disabled (default): OCRAM=64KB data, em_tcm_ret=32KB code
+        - Enabled: OCRAM=64KB (data + TCM code merged)
 
       Say N unless you know your OCRAM can fit all TCM code.
 

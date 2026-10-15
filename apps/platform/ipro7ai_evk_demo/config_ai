@@ -6,6 +6,9 @@ CONFIG_CHIP="IPRO7"
 CONFIG_CPU_ID="intelpro_ipro7"
 CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
 CONFIG_IPRO7AI_EVK=y
+# ST7789P3 panel driver from components/board/ipro7ai_evk (panel only: this
+# app keeps its own camera/audio bring-up tools and `lcd`/`cam` commands).
+CONFIG_COMPONENTS_IPRO7AI_EVK_ENABLE=y
 CONFIG_BOARD="IPRO7AI_EVK"
 CONFIG_LINK_FLASH=y
 CONFIG_ENABLE_FRAME_POINTER=y

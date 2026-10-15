@@ -16,10 +16,6 @@
  * SPDX-License-Identifier: Proprietary
  */
 
-#ifdef IPRO6LE
-#include "ipro6le.h"
-#endif
-
 #ifdef IPRO6
 #include "ipro6.h"
 #endif

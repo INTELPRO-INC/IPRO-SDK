@@ -60,14 +60,8 @@ uint32_t dbg_vsnprintf_offset(char *buffer, uint32_t size, uint32_t offset, cons
 
 #define INVALID_VIF_IDX 0xFF
 
-/// Number of RX buffers
-#if NX_AMPDU_RX
-#ifndef FHOST_RX_BUF_CNT
-#define FHOST_RX_BUF_CNT            (NX_MAX_BA_RX * NX_AMPDU_RX_BUF_SIZE + 2)
-#endif
-#else
-#define FHOST_RX_BUF_CNT             4
-#endif
+/* RX sizing is also consumed by lwIP without the MAC operation headers. */
+#include "fhost_rx_config.h"
 
 /*
  * DEFINITIONS
@@ -383,7 +377,13 @@ int fhost_print(rtos_task_handle handle, const char *fmt, ...);
  * @return IP packet checksum
  ****************************************************************************************
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 uint16_t fhost_ip_chksum(const void *dataptr, int len);
+#ifdef __cplusplus
+}
+#endif
 
 /**
  ****************************************************************************************
@@ -430,7 +430,25 @@ int fhost_get_sta_idx(struct fhost_vif_tag *fhost_vif, uint8_t table_max_size,
 
 int fhost_vif_is_up(int fhost_vif_idx);
 
+/**
+ ****************************************************************************************
+ * @brief Report an EAPOL frame not acknowledged or not completed.
+ *
+ * On a link joined at >= 40 MHz with the control port closed, marks
+ * the AP for 20 MHz and arms one reconnect.
+ ****************************************************************************************
+ */
+void fhost_bw20_eapol_tx_fail(void);
+
+/**
+ ****************************************************************************************
+ * @brief Consume the reconnect armed by fhost_bw20_eapol_tx_fail().
+ *
+ * @return true once per armed reconnect
+ ****************************************************************************************
+ */
+bool fhost_bw20_retry_take(void);
+
 /// @}
 
 #endif // _FHOST_H_
-

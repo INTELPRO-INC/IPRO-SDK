@@ -34,6 +34,7 @@ typedef int (*_camera_set_ae_expo_gain)(uint8_t enable, int gain_db);
 typedef int (*_camera_get_ae_register)(uint8_t case_id, int *value);
 typedef int (*_camera_set_register)(int addr, int value);
 typedef int (*_camera_get_register)(int addr, int *value);
+typedef int (*_camera_streaming)(void);
 
 typedef struct _rt_camera_desc
 {
@@ -59,6 +60,10 @@ typedef struct _rt_camera_desc
     uint32_t pclk;
     uint16_t total_width;
     uint16_t total_height;
+    // Optional (NULL if unused): the app calls it once, from a task, after the
+    // first frames of a stream have arrived - settings that only work once the
+    // sensor is already streaming.
+    _camera_streaming streaming;
 } rt_camera_desc;
 
 const rt_camera_desc* camera_module_init(void);

@@ -46,7 +46,7 @@
  * RAM 模式下 `nvds_init()` 發現魔術字不對會自己 `nvds_init_memory()`
  * 建一份空的，所以開機時 RAM 是垃圾也沒關係。
  *
- * `PARAM_ID_SLEEP_ENABLE=1` 啟用的是 RivieraWaves BLE IP 自身深睡，
+ * `PARAM_ID_SLEEP_ENABLE=1` 啟用的是 controller BLE IP 自身深睡，
  * 不是 IPRO7 platform PDS。平台 PDS 由 APP/FreeRTOS tickless policy 先確認
  * BLE full idle window，再交給 `ipro_ble_ctlr_plf_deep_sleep()` 做最後 admission；
  * 未 grant、profile 不支援或 timing 不安全時一律回到 core-retentive WFI。

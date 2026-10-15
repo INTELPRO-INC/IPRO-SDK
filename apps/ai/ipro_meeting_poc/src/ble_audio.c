@@ -50,7 +50,6 @@
 #include <hci_driver_ipro_ble_ctlr.h>
 #include <ipro_ble_controller.h>
 #include <hci_core.h>
-#include <ble_lib_api.h>
 #include "conn_internal.h"
 
 #define TAG "BLE_AUDIO"

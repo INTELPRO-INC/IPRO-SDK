@@ -87,7 +87,7 @@ hal_rst_reason_t hal_rst_reason_detect(void)
 #if defined(CONFIG_AON_WDT_SUPPORT)
     /* Step 1: AON WDT reset status — used by pure_dcdc wakeup stub as
      * hang safety net (HBN_WDT[11] ST_AON_WDT, HW-sticky).
-     * Only SoCs that ship the HBN AON-WDT driver (ipro7, ipro6le) have this
+     * Only SoCs that ship the HBN AON-WDT driver (ipro7) have this
      * sticky bit; ipro6 has no such driver, so skip the check entirely. */
     if (HBN_AON_WDT_Get_Reset_Status()) {
         reason = HAL_RST_REASON_AON_WDT;
@@ -164,6 +164,16 @@ void hal_reboot_download(void)
 {
     __disable_irq();
     HBN_Set_User_Boot_Config(1);
+    GLB_SW_POR_Reset();
+    while (1) {
+        /*empty dead loop*/
+    }
+}
+
+void hal_reboot_media(void)
+{
+    __disable_irq();
+    HBN_Set_User_Boot_Config(2);
     GLB_SW_POR_Reset();
     while (1) {
         /*empty dead loop*/
@@ -873,7 +883,7 @@ static int get_clock_type(hal_module_t module)
         case HAL_MODULE_SEC_ENG: return GLB_AHB_CLOCK_IP_SEC;
         case HAL_MODULE_USB:     return GLB_AHB_CLOCK_IP_USB11;
         case HAL_MODULE_EMAC:    return GLB_AHB_CLOCK_IP_EMAC;
-        case HAL_MODULE_PKA:     return -1;  /* Not available on IPRO6LE */
+        case HAL_MODULE_PKA:     return -1;  /* Not available on IPRO6 */
 #endif
         default: return -1;
     }
@@ -895,11 +905,6 @@ static int get_reset_type(hal_module_t module)
         case HAL_MODULE_USB:     return GLB_AHB_MCU_SW_USB;
         case HAL_MODULE_EMAC:    return GLB_AHB_MCU_SW_EMAC;
         case HAL_MODULE_PKA:     return -1;  /* Not available on IPRO6 */
-#elif defined(CONFIG_IPRO6LE)
-        case HAL_MODULE_SEC_ENG: return GLB_AHB_MCU_SW_SEC_ENG;
-        case HAL_MODULE_USB:     return GLB_AHB_MCU_SW_EXT_USB;
-        case HAL_MODULE_EMAC:    return GLB_AHB_MCU_SW_EXT_EMAC;
-        case HAL_MODULE_PKA:     return -1;  /* Not available on IPRO6LE */
 #endif
         default: return -1;
     }

@@ -527,7 +527,7 @@ static void rx_event(const struct device *dev)
 			rx_exact(net_buf_add(buf, hdr.len), hdr.len);
 		}
 	}
-	/* bt_buf_get_evt() keeps the H4 type byte at buf->data[0]. The RW
+	/* bt_buf_get_evt() keeps the H4 type byte at buf->data[0]. The
 	 * controller advertises several command credits; Zephyr's Host tracks
 	 * one synchronous sent_cmd buffer, so exposing more than one lets
 	 * initialization commands overwrite that slot before their completions

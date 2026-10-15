@@ -29,7 +29,7 @@
 #endif
 
 #ifndef SIGMA_DUT_MODEL
-#define SIGMA_DUT_MODEL "IPRO6LE"
+#define SIGMA_DUT_MODEL "IPRO6"
 #endif
 
 #ifndef SIGMA_DUT_FW_VERSION

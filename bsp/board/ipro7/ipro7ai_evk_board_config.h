@@ -20,9 +20,14 @@
  * @file ipro7ai_evk_board_config.h
  * @brief Board configuration for the IPRO7AI EVK sub-board.
  *
- * Source: schematic "IPRO7AI_MODULE_SUB_0805" (IPRO7 module, POC, 2026-08-05),
- * six sheets: 01_POWER, 02_MCU_MODULE, 03_SPK_SD_CARD, 04_LCM_CAMERA,
- * 05_BATTERY_CHARGER, 06_HEADERS.
+ * Source: schematic "IPRO7AI_MODULE_SUB_0812A" (2026-08-12), the revision the
+ * boards were produced from, with J6 checked on a V1 board on 2026-10-01.
+ * This file was first written from the "IPRO7AI_MODULE_SUB_0805" draft (IPRO7
+ * module, POC, 2026-08-05; six sheets: 01_POWER, 02_MCU_MODULE,
+ * 03_SPK_SD_CARD, 04_LCM_CAMERA, 05_BATTERY_CHARGER, 06_HEADERS). The draft
+ * differs on J6, on Q1 (draft DMG3401LSN, built MSYL3401A-PA), on Q3 (draft
+ * PJA7002H, built MSL2310-N) and on the camera FPC designator (draft CN3,
+ * built CN5).
  *
  * Unlike the other board headers here this one is hand-written from the
  * schematic rather than emitted by ipro_drv_gen, so it may be edited.
@@ -33,7 +38,8 @@
  *   Display  HEM LCM-T2D4BP-084, 2.4" IPS 240x320, Sitronix ST7789P3, 4-wire
  *            SPI at 3.3 V. Backlight enable on GPIO12.
  *   Camera   SmartSens SC101IOT, 1280x720 DVP, 8 of its 10 data lines tapped
- *            MSB-aligned, SCCB at 0x68. Runs at 1.8 V.
+ *            MSB-aligned, SCCB at 0x68. V1 powers the sensor at 1.8 V
+ *            (its spec is 2.8 V); the SoC side is at 2.8 V (see J6 below).
  *   Audio    On-chip DAC -> TPA2037D1 mono class-D -> J1 speaker connector;
  *            Infineon IM69D129FV01 PDM microphone into the AUADC.
  *   Storage  micro-SD on the SDH controller, with a switched supply.
@@ -46,9 +52,10 @@
  *   USB-C CN1 -> KTS1671 OVP (U1, OVLO 5.49 V) -> VBUS
  *   VBUS      -> RT9527GQW  (U7) Li-ion charger, Ichg 400 mA -> VBAT -> CN4
  *   VBAT      -> RT6158AWSC (U2) buck-boost, 2 A            -> 3V3_SOC
- *   3V3_SOC   -> RT9080N-08GJ5 (U3) LDO -> 2V8_CAM   (camera AVDD)
- *   3V3_SOC   -> RT9080N-08GJ5 (U4) LDO -> 1V8_SOC   (camera DOVDD/DVDD,
- *                                                     DMIC, VDDIO1 option)
+ *   3V3_SOC   -> RT9080N-08GJ5 (U3) LDO -> 2V8_CAM   (camera AVDD; VDDIO1
+ *                                                     on V1, by J6 wire)
+ *   3V3_SOC   -> RT9080N-08GJ5 (U4) LDO -> 1V8_SOC   (camera DOVDD/DVDD
+ *                                                     via FB6, DMIC)
  *   VBAT      -> R32 0R -> PA_VDD  (the class-D amplifier runs off the cell)
  *
  * >>> FIRMWARE CANNOT SEE THE BATTERY. <<<
@@ -66,21 +73,53 @@
  * 0-11. See BOARD_HAS_BATTERY_SENSE below.
  *
  * ============================================================================
- * J6 CONFIGURATION JUMPERS - GET THESE RIGHT BEFORE POWERING UP
+ * J6 - VDDIO1 SUPPLY. WIRE IT BEFORE POWERING UP
  * ============================================================================
- *   VDDIO1 supply:  1.8 V = short J6 PIN1/PIN3      <- required for the camera
- *                   3.3 V = short J6 PIN3/PIN5
- *   BOOT (GPIO41):  pull LOW  = short J6 PIN6/PIN8  <- normal boot
- *                   pull HIGH = short J6 PIN8/PIN10 (ISP download)
+ * J6 is a 2x5 header. As measured on a V1 board (2026-10-01):
  *
- * VDDIO1 supplies the VDDIO_1 pad bank (GPIO0-9 and GPIO36-41), which is
- * exactly the camera's DVP and SCCB pins - so it has to be 1.8 V to match the
- * sensor's DOVDD. The LCD sits in a different bank at 3.3 V.
+ *   PIN1, PIN2   1V8_SOC   0 V - not connected on V1
+ *   PIN3         VDDIO1    supply INPUT of the SoC's VDDIO_1 pad bank
+ *   PIN4, PIN5   3V3_SOC   0 V - not connected on V1
+ *   PIN7         2V8_CAM   2.8 V
+ *   PIN9         VBUS      5 V
+ *   PIN6/8/10    GND       (per schematic)
+ *
+ *   VDDIO1 supply:  2.8 V = wire J6 PIN3 to PIN7    <- the only option on V1
+ *
+ * PIN3 and PIN7 are not adjacent, so a jumper cap does not fit - use a jumper
+ * wire. The old "1.8 V = short PIN1/PIN3, 3.3 V = short PIN3/PIN5" settings
+ * came from the 0805 draft and do nothing on a V1 board.
+ *
+ * VDDIO1 feeds the VDDIO_1 pad bank (GPIO0-9 and GPIO36-41), which is exactly
+ * the camera's DVP and SCCB pins, and also the in-package Flash. The Flash sets
+ * the minimum, about 2.7 V (IPRO7 datasheet V1.5 note 101): 1.8 V on VDDIO1 is
+ * not an option on IPRO7AI, and with VDDIO1 unpowered at reset the boot ROM
+ * cannot read the Flash and enters download mode (below). The LCD sits in a
+ * different bank at 3.3 V.
+ *
+ * >>> V1 LIMITATION: THE CAMERA IS POWERED BELOW ITS SPEC. <<<
+ * The SC101IOT datasheet (V0.6) wants DOVDD 2.7-2.9 V, but V1 feeds the
+ * sensor's DOVDD/DVDD from the fixed 1V8_SOC rail (via FB6) while the SoC side
+ * of the DVP/SCCB pins runs at VDDIO1 = 2.8 V. It works on the bench; it is
+ * outside the sensor's datasheet (the board fix is DOVDD from 2V8_CAM).
  *
  * >>> GPIO41 IS BOTH THE BOOT STRAP AND THE CAMERA MCLK. <<<
- * The J6 jumper sets it at reset; once running, the CAM_MISC function drives
- * it as DVP_REF_CLK. Do not leave the ISP jumper fitted and then wonder why
- * the sensor will not clock.
+ * BOOT is no longer on J6 (in 0812A PIN6/PIN8/PIN10 are all GND). Download
+ * mode comes from VDDIO1 instead: unpowered at reset, the boot ROM cannot read
+ * the in-package Flash and falls back to download mode; powered, the chip
+ * boots normally. Once running, the CAM_MISC function drives GPIO41 as
+ * DVP_REF_CLK.
+ *
+ * Download mode on a V1 board (verified on hardware):
+ *   1. move the PIN3 wire from PIN7 to PIN1 (adjacent; a jumper cap fits).
+ *      PIN1 is dead on V1, so VDDIO1 is unpowered - pulling the wire off
+ *      PIN3 does the same;
+ *   2. press RST (SW1, the only button);
+ *   3. move the wire back to PIN3-PIN7 (the Flash needs VDDIO1 to be written);
+ *   4. run the flash tool.
+ * With firmware running, `reboot_dl` in the shell does this without J6.
+ * Test pads TP5/TP6/TP7 (TP6 = GPIO41, TP5 -> R66 -> GND, TP7 -> R67 ->
+ * VDDIO1) are also on the board but are not needed for this.
  */
 
 #ifndef __IPRO7AI_EVK_BOARD_CONFIG_H__
@@ -122,7 +161,7 @@
 #define BOARD_LCD_MOSI_PIN           16
 #define BOARD_LCD_DC_PIN             17   /* 0 = command, 1 = data */
 
-/* ---- SC101IOT DVP camera (1.8 V bank) ----
+/* ---- SC101IOT DVP camera (VDDIO_1 bank, 2.8 V on V1 boards - see J6) ----
  * Sensor D0/D1 are left unconnected and D2..D9 land on DVP_D0..D7 - the
  * standard MSB-aligned 8-bit tap on a 10-bit output, so no shifting is needed.
  * SCCB roles are fixed by pin parity on IPRO7: even = SCL, odd = SDA. */
@@ -162,12 +201,14 @@
 
 /* ---- micro-SD on the SDH controller ----
  * GPIO28-33 are the SDH_0 group (function 27). GPIO27 gates the card's supply
- * through a DMG3401LSN P-channel FET and GPIO34 is card-detect.
+ * through Q1, an MSYL3401A-PA P-channel high-side FET, and GPIO34 is
+ * card-detect.
  *
- * BOARD_SD_PWR_ON_LEVEL is the level that turns the card supply ON. A
- * P-channel high-side switch conducts with its gate pulled low, which makes 0
- * the expected value, but the schematic does not make the drive polarity
- * unambiguous - confirm on the bench before trusting it. */
+ * BOARD_SD_PWR_ON_LEVEL is the level that turns the card supply ON. In 0812A
+ * R46 (2k) pulls Q1's gate up to 3V3_SOC and GPIO27 drives it through R50
+ * (100R), so the card is unpowered until GPIO27 drives low - 0 is confirmed
+ * by the schematic topology. The reverse test on hardware (GPIO27 = 1 cuts
+ * the card) has still not been done. */
 #define BOARD_SD_PWR_EN_PIN          27
 #define BOARD_SD_PWR_ON_LEVEL        0
 #define BOARD_SD_D1_PIN              28
@@ -234,7 +275,7 @@
  * Initialize all board pinmux settings.
  *
  * SD_PWR_EN is driven to its ON level here so a card is powered before the SDH
- * controller is brought up; see the polarity caveat above.
+ * controller is brought up; see the polarity note above.
  */
 #define BOARD_PINMUX_INIT() \
     do { \

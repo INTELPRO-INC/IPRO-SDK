@@ -1,0 +1,5 @@
+# Vendor release package: store and check out every file exactly as AICSemi
+# shipped it. The repository root sets `* text=auto eol=lf`, which would rewrite
+# the CRLF files here (35 of the 49) and make SHA256SUMS.txt fail on a fresh
+# checkout. `-text` disables all end-of-line conversion for this directory.
+* -text

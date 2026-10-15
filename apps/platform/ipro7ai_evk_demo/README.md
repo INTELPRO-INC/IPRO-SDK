@@ -1,15 +1,15 @@
 # ipro7ai_evk_demo — IPRO7AI EVK board demo
 
 Board demo and bring-up tool for the **IPRO7AI EVK sub-board**
-(`CONFIG_IPRO7AI_EVK`, schematic IPRO7AI_MODULE_SUB_0805). Board-level details —
-power tree, J6 jumpers, what firmware can and cannot see — live in
+(`CONFIG_IPRO7AI_EVK`, schematic IPRO7AI_MODULE_SUB_0812A). Board-level details —
+power tree, J6 wiring, what firmware can and cannot see — live in
 `bsp/board/ipro7/IPRO7AI_EVK.md`; this README covers the drivers.
 
 Seven blocks, each with its own shell command:
 
 - **Display** — HEM LCM-T2D4BP-084, 2.4" IPS, Sitronix **ST7789P3**, 240×320,
   4-line SPI at 3.3 V. Driver + `lcd` shell command + test patterns.
-- **Camera** — SmartSens **SC101IOT**, 1280×720 DVP at 1.8 V, live-previewed on
+- **Camera** — SmartSens **SC101IOT**, 1280×720 DVP, live-previewed on
   the panel. `cam` shell command.
 - **Speaker** — on-chip DAC (GPIO23) into a **TPA2037D1** mono class-D driving
   J1. `spk` shell command.
@@ -18,9 +18,9 @@ Seven blocks, each with its own shell command:
 - **Supply rail** — the SoC's own VBAT read through the internal VBAT/2 tap,
   plus a generic GPADC reader. `vbat` and `adc` shell commands.
 - **micro-SD** — SDH controller with FatFS at `sd:`. `sd` shell command.
-- **Bluetooth LE + LE Audio** — new controller (`ipro_ble_controller`,
-  RivieraWaves v14.0.2 from source) and new host (`ipro_bt_host`, upstream
-  Zephyr v4.4.0), configured as an LE Audio unicast **sink**. `bt` command.
+- **Bluetooth LE + LE Audio** — new controller (`ipro_ble_controller`, the
+  IPRO BLE controller) and new host (`ipro_bt_host`, upstream Zephyr v4.4.0),
+  configured as an LE Audio unicast **sink**. `bt` command.
 
 The panel path uses no LVGL, no framebuffer and no DMA — row-at-a-time blocking
 transfers out of one static buffer. The camera path needs PSRAM for the ISP
@@ -164,7 +164,7 @@ normally-black IPS glass inverted).
 
 ## Camera wiring
 
-CN3 = FH34SRJ-24S-0.5SH, 24-pin 0.5 mm FPC. Full pinout in `src/cam_port.h`.
+CN5 = FH34SRJ-24S-0.5SH, 24-pin 0.5 mm FPC. Full pinout in `src/cam_port.h`.
 
 | Signal | GPIO | Notes |
 |--------|------|-------|
@@ -179,15 +179,19 @@ CN3 = FH34SRJ-24S-0.5SH, 24-pin 0.5 mm FPC. Full pinout in `src/cam_port.h`.
 
 ### Three things this board does differently
 
-**1. The camera bus is 1.8 V while the LCD bus is 3.3 V.** DOVDD is 1.8 V, so
-the DVP and SCCB lines run at 1.8 V. On IPRO7 the VDDIO_1 bank covers GPIO0–9
-and GPIO36–41 — exactly the camera pins — and the SoC brings that bank out on
-its own supply pin (U5 pin 36, `VDDIO1`). The LCD pins (GPIO10–17) are in
-VDDIO_2 at 3.3 V. **VDDIO1 must be fed 1.8 V** or the camera cannot work; that
-split is the whole reason the pin has a separate net.
+**1. The camera bank has its own supply, and V1 powers the sensor below its
+spec.** On IPRO7 the VDDIO_1 bank covers GPIO0–9 and GPIO36–41 — exactly the
+camera pins — and the SoC brings that bank out on its own supply pin (U5 pin
+36, `VDDIO1`). The LCD pins (GPIO10–17) are in VDDIO_2 at 3.3 V. VDDIO_1 also
+powers the in-package Flash (minimum about 2.7 V), so it cannot run at 1.8 V;
+**on V1 boards it is fed 2.8 V** (J6 pin 3 wired to pin 7, 2V8_CAM). The
+SC101IOT wants DOVDD 2.7–2.9 V, but V1 feeds its DOVDD and DVDD from 1V8_SOC,
+so the 2.8 V DVP/SCCB lines drive a sensor powered at 1.8 V — it works on the
+bench but is outside the sensor's datasheet. See
+`bsp/board/ipro7/IPRO7AI_EVK.md`.
 
 **2. RESET is level-shifted, not direct.** GPIO35 is in the VDDIO_3 bank
-(GPIO20–35) at 3.3 V and cannot drive a 1.8 V input. Q3 (PJA7002H, gate on
+(GPIO20–35) at 3.3 V and cannot drive a 1.8 V input. Q3 (MSL2310-N, gate on
 DOVDD1V8, drain 3.3 V side, source 1.8 V side) plus R56 4.7 k to DOVDD1V8
 translates it. R55 — the 3.3 V-side pull-up — is DNI, so the link is one-way:
 the SoC drives GPIO35 push-pull and the sensor sees the same polarity at 1.8 V.
@@ -253,7 +257,8 @@ are both 0R, so nothing limits it. Two things worth checking on the board
 before blaming firmware for a silent mic:
 
 1. What VDDIO_2 is actually fed. The package brings out `VDDIO1` (U5 pin 36)
-   separately — that is what lets the camera bank run at 1.8 V — but only
+   separately — that is what lets the camera bank run at its own voltage
+   (2.8 V on V1 boards) — but only
    `3V3_SOC` (pin 37) otherwise.
 2. Whether the IM69D129 could simply be supplied from 3V3 instead. Its
    operating supply range is wider than 1.8 V, so moving FB2's input from
@@ -465,7 +470,7 @@ New stack on both sides:
 
 | | Component | Config |
 |---|---|---|
-| Controller | `ipro_ble_controller` — RivieraWaves v14.0.2, upstream kept read-only, H4 byte-stream HCI | `CONFIG_BT_CTLR_IPRO=y`, `CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=1`, `LIB="link1"`, `FEATURE="bt54_iso2"` |
+| Controller | `ipro_ble_controller` — IPRO BLE controller, H4 byte-stream HCI | `CONFIG_BT_CTLR_IPRO=y`, `CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=1`, `LIB="link1"`, `FEATURE="bt54_iso2"` |
 | Host | `ipro_bt_host` — upstream Zephyr v4.4.0 | `CONFIG_BT_HOST_IPRO_V44=y` |
 
 Headers are `<zephyr/bluetooth/...>`, **not** the old `<bluetooth/...>` of
@@ -546,8 +551,8 @@ response: flat to 13 kHz, −6 dB at 14.5 kHz, **−71 dB at 16068 Hz**.
 It runs through NMSIS-DSP's `riscv_fir_q15`, which the IPRO7 BSP already links
 (`bsp/drivers/ipro7_soc/CMakeLists.txt` adds `libnmsis_dsp_*_xxldsp.a`
 unconditionally). q15 rather than f32 is deliberate: the q15 path uses the DSP
-extension's integer SIMD and never touches `f0`–`f31`, so it stays clear of the
-missing FPU context save.
+extension's integer SIMD and never touches `f0`–`f31`, which also kept it clear
+of the FPU context save the FreeRTOS port lacked until 2026-10-09.
 
 A stream at or below 32 kHz skips the filter entirely — liblc3 upsamples to the
 DAC rate itself, properly, and the rate matcher is then running at ~1:1 where
@@ -706,9 +711,9 @@ releases the SPI mux, so re-run `lcd init` afterwards.
 
 | Symptom | Try |
 |---------|-----|
-| `cam probe` finds nothing | The SCCB scan output shows every address that ACKed. SC101IOT answers at **0x68**. No ACK at all usually means the 1.8 V VDDIO1 rail or the sensor's own rails are missing, or MCLK is not running — the sensor needs its clock before it will talk. |
+| `cam probe` finds nothing | The SCCB scan output shows every address that ACKed. SC101IOT answers at **0x68**. No ACK at all usually means VDDIO1 (J6 pin 3 – pin 7) or the sensor's own rails are missing, or MCLK is not running — the sensor needs its clock before it will talk. |
 | Probe works, `cam status` shows **0 frames and 0 errors** | The multimedia AHB clock is gated — see the note below. Bench-confirmed 2026-08-28. |
-| Probe works, frames stay 0 but error counters climb | PCLK/VSYNC/HSYNC. Check GPIO38/39/40 reach the connector and that VDDIO1 is 1.8 V, then `cam rst 0` / `cam rst 1` to re-pulse the sensor. |
+| Probe works, frames stay 0 but error counters climb | PCLK/VSYNC/HSYNC. Check GPIO38/39/40 reach the connector and that VDDIO1 is 2.8 V (J6 pin 3 – pin 7), then `cam rst 0` / `cam rst 1` to re-pulse the sensor. |
 | Frames arrive but nothing is drawn | `lcd init` has to have run first — the preview blits through the same panel driver. |
 | Red and blue swapped | `cam order bgr` (or back to `rgb`). Bench-confirmed default is `rgb`; `cam pixels` against a red scene proves which is right. |
 | Image is a photographic negative | That is the panel, not the camera — `lcd inv off`. |
@@ -753,13 +758,19 @@ using the `lcd` test patterns.
 
 ```
 main.c                       UART shell + auto-init + colour bars on boot
-src/st7789p3_port.h          panel pin map, SPI settings, geometry, FPC pinout
-src/st7789p3_init_seq.h      the two init sequences + datasheet default gamma
-src/st7789p3.{c,h}           panel driver: bus, reset, init, MADCTL, blit,
-                             bit-bang read, bus mutex
+components/board/ipro7ai_evk/
+  include/st7789p3_port.h    panel pin map, SPI settings, geometry, FPC pinout
+  src/st7789p3_init_seq.h    the two init sequences + datasheet default gamma
+  src/st7789p3.c, include/st7789p3.h
+                             panel driver: bus, reset, init, MADCTL, blit,
+                             bit-bang read, bus mutex (moved out of this app
+                             into the board library; the camera/audio tools
+                             below stay app-local because they carry bench
+                             diagnostics the library's evk_cam / evk_mic /
+                             evk_spk do not)
 src/st7789p3_patterns.{c,h}  bars, rgbtest, checker, gradient, gray, frame, ruler
 src/st7789p3_cli.c           the `lcd` shell command
-src/cam_port.h               camera pin map, CN3 FPC pinout, the board's quirks
+src/cam_port.h               camera pin map, CN5 FPC pinout, the board's quirks
 src/cam.{c,h}                SCCB probe, ISP pipeline, ARGB->RGB565 preview task
 src/cam_cli.c                the `cam` shell command
 src/audio_port.h             speaker/mic pin map, amp polarity, rates, gains

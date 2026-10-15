@@ -35,13 +35,20 @@
 #include "export/rwnx_config.h"
 #include "rtos_def.h"
 #include "arch/sys_arch.h"
-#include "fhost.h"
+#include "fhost_rx_config.h"
 
+/* These hooks are implemented by the C Wi-Fi/lwIP adapter. */
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern uint16_t fhost_ip_chksum(const void *dataptr, int len);
 extern sys_mutex_t lock_tcpip_core;
 extern int sys_is_inside_interrupt(void);
 extern int sys_mutex_is_locked(sys_mutex_t *mutex);
 extern int sys_current_is_tcpip(void);
+#ifdef __cplusplus
+}
+#endif
 
 /* Per-app tuning hook (opt-in). An app may put lwipopts_wifi_app.h on its
  * include path to override the tunable defaults below (TCP window/buffer
@@ -119,9 +126,15 @@ extern int sys_current_is_tcpip(void);
 
 #define LWIP_CHKSUM_ALGORITHM         3
 #define LWIP_CHKSUM                   fhost_ip_chksum
+/* tcp_write() sums the payload over the source buffer while copying. */
+#define LWIP_CHECKSUM_ON_COPY         1
+extern uint16_t net_al_chksum_copy(void *dst, const void *src, uint16_t len);
+#define LWIP_CHKSUM_COPY(dst, src, len) net_al_chksum_copy(dst, src, len)
 #define LWIP_TCPIP_CORE_LOCKING_INPUT 1
 
-#define PBUF_LINK_ENCAPSULATION_HLEN  452  // Phase 10G/H
+#ifndef PBUF_LINK_ENCAPSULATION_HLEN
+#define PBUF_LINK_ENCAPSULATION_HLEN  500
+#endif
 
 #ifndef IP_REASS_MAX_PBUFS
 #define IP_REASS_MAX_PBUFS            (FHOST_RX_BUF_CNT - 2)
@@ -163,10 +176,6 @@ extern int sys_current_is_tcpip(void);
 #define MAC_RXQ_DEPTH                 4
 #endif
 
-#ifdef BL_TCP_OPTIMIZE
-#define TCP_MAXRTX                    48
-#endif
-
 #ifndef TCP_MSS
 #define TCP_MSS                       1460
 #endif
@@ -188,6 +197,14 @@ extern int sys_current_is_tcpip(void);
 
 #ifndef TCP_QUEUE_OOSEQ
 #define TCP_QUEUE_OOSEQ               1
+#endif
+
+/* Out-of-order segments hold zero-copy RX buffers: the queue grows
+ * only while TCP_OOSEQ_RX_RESERVE buffers stay free for the MAC. */
+#ifndef TCP_OOSEQ_PBUFS_LIMIT
+#define TCP_OOSEQ_RX_RESERVE          4
+extern unsigned short net_al_ooseq_pbufs_limit(void *pcb);
+#define TCP_OOSEQ_PBUFS_LIMIT(pcb)    net_al_ooseq_pbufs_limit(pcb)
 #endif
 
 #ifndef MEMP_NUM_TCP_SEG
@@ -281,7 +298,12 @@ extern int sys_current_is_tcpip(void);
 
 #define LWIP_DHCP                     1
 #define LWIP_DNS                      1
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+#define LWIP_DHCP6_EXTERNAL_CLIENT     1
+#define LWIP_IGMP                     1
+#else
 #define LWIP_IGMP                     0
+#endif
 #define LWIP_SO_RCVTIMEO              1
 #define LWIP_SO_SNDTIMEO              1
 #define SO_REUSE                      1
@@ -289,7 +311,13 @@ extern int sys_current_is_tcpip(void);
 #define LWIP_SO_RCVBUF                1
 
 #define MEMP_NUM_SYS_TIMEOUT          (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 8 + 3)
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern int * __errno(void);
+#ifdef __cplusplus
+}
+#endif
 #define errno (*__errno())
 #define LWIP_NETIF_STATUS_CALLBACK 1
 #define LWIP_NETIF_API 1
@@ -297,6 +325,14 @@ extern int * __errno(void);
 #ifdef CFG_IPV6
 #define LWIP_IPV6                     1
 #define LWIP_IPV6_DHCP6               1
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+#define LWIP_IPV6_FORWARD             1
+#define LWIP_IPV6_NUM_ADDRESSES        8
+/* 250 DUA solicited-node groups, 75 MLR listeners, 21 control/address groups.
+ * Full DUA capacity must not be silently reduced by the platform MLD pool.
+ * The 250-entry increase over the MLR-only pool costs 8000 bytes here. */
+#define MEMP_NUM_MLD6_GROUP            346
+#endif
 #endif
 
 
@@ -342,11 +378,13 @@ extern int * __errno(void);
 #endif
 #define LWIP_RAND() ((u32_t)rand())
 
-#ifdef CONFIG_WIFI_GATEWAY
+#if defined(CONFIG_WIFI_GATEWAY) || (defined(CONFIG_THREAD_BR_NAT64) && CONFIG_THREAD_BR_NAT64)
 #ifdef WIFI_GATEWAY_DNS_SERVER
 #define LWIP_DNS_SERVER                 1
 #endif
+#ifdef CONFIG_WIFI_GATEWAY
 #define DNS_TABLE_SIZE                  20
+#endif
 #define IP_FORWARD                      1
 #define IP_NAPT                         1
 #ifdef IP_NAPT
@@ -373,5 +411,9 @@ extern int * __errno(void);
 #define IP4_FRAG_TIMER_PRECISE_NEEDED   1
 #define DNS_TIMER_PRECISE_NEEDED        1
 #endif
+
+/* A TCP retransmission asks the WiFi side for a BAR (net_al.c) */
+void net_al_tcp_rexmit_notify(unsigned char tos);
+#define TCP_REXMIT_NOTIFY(pcb)          net_al_tcp_rexmit_notify((pcb)->tos)
 
 #endif /* LWIP_HDR_LWIPOPTS_H__ */

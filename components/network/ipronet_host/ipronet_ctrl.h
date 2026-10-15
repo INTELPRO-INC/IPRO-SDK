@@ -84,6 +84,27 @@ enum {
 /* auth modes reported in scan records (was rnm_wifi_auth_mode_t): the
  * IPRONET_AUTH_* values live in the public ipronet_host.h, same numbering. */
 
+/* IPRONET_CMD_OTA body after the header (== device rnm_ota_msg_t). */
+enum {
+    IPRONET_OTA_MSG_START,
+    IPRONET_OTA_MSG_ABORT,
+    IPRONET_OTA_MSG_PROGRAM,
+    IPRONET_OTA_MSG_COMMIT,
+    IPRONET_OTA_MSG_STATUS,
+};
+
+enum {
+    IPRONET_OTA_ST_NONE,
+    IPRONET_OTA_ST_START_ACK,
+    IPRONET_OTA_ST_ABORT_ACK,
+    IPRONET_OTA_ST_PROGRAM_ACK,
+    IPRONET_OTA_ST_FIN_ACK,
+    IPRONET_OTA_ST_COMMIT_ACK,
+    IPRONET_OTA_ST_ERROR,
+};
+
+#define IPRONET_OTA_CHUNK  1024U
+
 #pragma pack(push, 1)
 
 /* common control header (was rnm_base_msg_t), 12 bytes */
@@ -137,6 +158,20 @@ typedef struct {
     uint8_t sta_mac[6];
     uint8_t ap_mac[6];
 } ipronet_mac_addr_ind_msg_t;
+
+/* OTA START (data_len = package size) and PROGRAM (data follows). */
+typedef struct {
+    uint16_t msg_type;
+    uint32_t offset;
+    uint32_t data_len;
+} ipronet_ota_part_t;
+
+/* OTA reply; val = next offset, or the error code in its low half. */
+typedef struct {
+    uint16_t msg_type;
+    uint16_t status_type;
+    uint32_t val;
+} ipronet_ota_status_t;
 
 #pragma pack(pop)
 

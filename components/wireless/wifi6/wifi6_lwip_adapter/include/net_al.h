@@ -77,12 +77,24 @@
 #include "net_def.h"
 
 // abstract layer
+#ifdef __ZEPHYR__
+/* Zephyr's network API has net_if_get_name() and net_l2_send() of its own;
+ * the fhost's are ordinary functions of the Zephyr adapter under other names. */
+#define net_if_get_name fhost_net_if_get_name
+#define net_l2_send     fhost_net_l2_send
+#endif
+
 typedef void *  net_al_if_t;
 typedef void *  net_al_rx_t;
 typedef void *  net_al_tx_t;
 
 /// Minimum headroom to include in all TX buffer
-#define NET_AL_TX_HEADROOM 448  // Phase 10G/H AMSDU
+#ifndef NET_AL_TX_HEADROOM
+#define NET_AL_TX_HEADROOM 500
+#endif
+
+/// Largest TX descriptor displacement inside the pbuf headroom
+#define NET_AL_TX_DESC_SHIFT 80
 
 /// Prototype for a function to free a network buffer */
 typedef void (*net_buf_free_fn)(void *net_buf);

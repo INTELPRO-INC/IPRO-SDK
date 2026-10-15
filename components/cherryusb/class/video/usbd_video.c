@@ -564,6 +564,26 @@ static int usbd_video_control_unit_terminal_request_handler(struct usb_setup_pac
     return 0;
 }
 
+static uint8_t g_video_num_frames = 1;
+
+static void usbd_video_take_index(struct video_probe_and_commit_controls *ctl, const uint8_t *data, uint16_t len)
+{
+    if (len >= 4 && data[2] == 1 && data[3] >= 1 && data[3] <= g_video_num_frames) {
+        ctl->bFormatIndex = data[2];
+        ctl->bFrameIndex = data[3];
+    }
+}
+
+void usbd_video_set_num_frames(uint8_t num_frames)
+{
+    g_video_num_frames = num_frames ? num_frames : 1;
+}
+
+uint8_t usbd_video_get_frame_index(void)
+{
+    return g_usbd_video.commit.bFrameIndex;
+}
+
 static int usbd_video_stream_request_handler(struct usb_setup_packet *setup, uint8_t **data, uint32_t *len)
 {
     uint8_t control_selector = (uint8_t)(setup->wValue >> 8);
@@ -573,6 +593,10 @@ static int usbd_video_stream_request_handler(struct usb_setup_packet *setup, uin
             switch (setup->bRequest) {
                 case VIDEO_REQUEST_SET_CUR:
                     //memcpy((uint8_t *)&g_usbd_video.probe, *data, setup->wLength);
+                    /* Take only the format / frame the host picked (bytes 2 and
+                     * 3), so a device with several frame descriptors learns
+                     * which one it is; everything else stays as negotiated. */
+                    usbd_video_take_index(&g_usbd_video.probe, *data, setup->wLength);
                     break;
                 case VIDEO_REQUEST_GET_CUR:
                     memcpy(*data, (uint8_t *)&g_usbd_video.probe, setup->wLength);
@@ -605,6 +629,7 @@ static int usbd_video_stream_request_handler(struct usb_setup_packet *setup, uin
             switch (setup->bRequest) {
                 case VIDEO_REQUEST_SET_CUR:
                     //memcpy((uint8_t *)&g_usbd_video.commit, *data, setup->wLength);
+                    usbd_video_take_index(&g_usbd_video.commit, *data, setup->wLength);
                     break;
                 case VIDEO_REQUEST_GET_CUR:
                     memcpy(*data, (uint8_t *)&g_usbd_video.commit, setup->wLength);

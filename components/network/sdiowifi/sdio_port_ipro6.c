@@ -56,14 +56,14 @@ ipro6_smid_dev_t *sdio_smid_dev(void)
     return &g_smid_dev;
 }
 
-/* SMID controller reset — same AHB MCU SW-reset bit as the ipro6le SDU. */
+/* SMID controller reset — same AHB MCU SW-reset bit as the legacy SDU. */
 void sdio_glb_reset(void)
 {
     GLB_AHB_MCU_Software_Reset(GLB_AHB_MCU_SW_SDU);
 }
 
 /* SDIO-device pinmux: CLK/CMD/DAT0-3 on GPIO10-15 @ AF=GPIO_FUN_SDIO, plus
- * un-gate the SDU/SMID AHB clock. Same pad wiring as the ipro6le SDIO path. */
+ * un-gate the SDU/SMID AHB clock. */
 void sdio_gpio_init(void)
 {
     GLB_GPIO_Cfg_Type gpio_cfg;

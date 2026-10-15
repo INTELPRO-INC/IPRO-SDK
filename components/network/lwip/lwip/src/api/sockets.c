@@ -47,6 +47,7 @@
 #include "lwip/igmp.h"
 #include "lwip/inet.h"
 #include "lwip/tcp.h"
+#include "lwip/priv/tcp_priv.h"
 #include "lwip/raw.h"
 #include "lwip/udp.h"
 #include "lwip/memp.h"
@@ -488,6 +489,59 @@ get_socket(int fd)
   }
   return sock;
 }
+
+#ifdef CONFIG_LWIP_LP
+/**
+ * ipro lp change
+ * Tell a low-power application whether a TCP socket still has segments in
+ * flight (unsent or sent-but-unacked). The on-demand tcp timer derives its
+ * retransmit deadline from exactly this state; exposing it lets the app hold
+ * the STA awake (PM=0) only until the peer's ACK has landed instead of a
+ * fixed settle. Only a TCP socket has this state; -1 for anything else.
+ *
+ * @return 1 = segments pending, 0 = all data acked, -1 = error (errno set)
+ */
+int
+lwip_sock_tx_pending(int s)
+{
+  struct lwip_sock *sock;
+  struct tcp_pcb *pcb;
+  int pending = -1;
+
+  sock = get_socket(s);
+  if (!sock) {
+    return -1;
+  }
+  LOCK_TCPIP_CORE();
+  if ((sock->conn != NULL) &&
+      (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) &&
+      ((pcb = sock->conn->pcb.tcp) != NULL)) {
+    pending = ((pcb->unsent != NULL) || (pcb->unacked != NULL)) ? 1 : 0;
+#ifdef TCP_LP_IDLE_CANDIDATE
+    if (!pending) {
+      tcp_timer_lp_recheck();
+    }
+#endif
+  }
+  UNLOCK_TCPIP_CORE();
+  if (pending < 0) {
+    sock_set_errno(sock, ENOTCONN);
+  }
+  done_socket(sock);
+  return pending;
+}
+#ifdef TCP_LP_IDLE_CANDIDATE
+int
+lwip_tcpidle_control(int mode)
+{
+  int result;
+  LOCK_TCPIP_CORE();
+  result = tcp_timer_lp_control(mode);
+  UNLOCK_TCPIP_CORE();
+  return result;
+}
+#endif
+#endif /* CONFIG_LWIP_LP */
 
 /**
  * Allocate a new socket for a given netconn.
@@ -3346,6 +3400,14 @@ lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_
           } else {
             ip_reset_option(sock->conn->pcb.ip, optname);
           }
+#ifdef TCP_LP_IDLE_CANDIDATE
+          if (optname == SOF_KEEPALIVE &&
+              NETCONNTYPE_GROUP(sock->conn->type) == NETCONN_TCP) {
+            /* Restore shared scheduling only; the existing precise-mode
+             * dedicated keepalive timer policy is unchanged. */
+            tcp_timer_lp_work_changed();
+          }
+#endif
           LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, SOL_SOCKET, optname=0x%x, ..) -> %s\n",
                                       s, optname, (*(const int *)optval ? "on" : "off")));
           break;

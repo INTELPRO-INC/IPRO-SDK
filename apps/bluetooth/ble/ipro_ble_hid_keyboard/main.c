@@ -53,7 +53,6 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <hci_driver_ipro_ble_ctlr.h>
 #include <ipro_ble_controller.h>
-#include <ble_lib_api.h>
 
 #include "hid_keyboard_service.h"
 

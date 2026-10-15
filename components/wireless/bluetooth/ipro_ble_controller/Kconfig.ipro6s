@@ -2,11 +2,11 @@
 # ======================================
 
 menuconfig BTDM_ENABLE
-    bool "Enable IPRO6S RW v13.0.18 controller"
+    bool "Enable the IPRO6S IPRO BLE controller"
     depends on IPRO6
     default n
     help
-      Enable the IPRO6S RivieraWaves v13.0.18 controller backend from
+      Enable the IPRO6S backend of the IPRO BLE controller in
       components/wireless/bluetooth/ipro_ble_controller.
 
       BLE is always available. BR/EDR can be enabled independently with
@@ -32,8 +32,9 @@ config BTDM_BT_ENABLE
     bool "Enable BT Classic Support"
     default n
     help
-      Build the official RW v13.0.18 BR/EDR link layer alongside BLE. The
-      controller is compiled for IPRO6S instead of importing an E907 archive.
+      Build the controller's BR/EDR link layer alongside BLE. The
+      controller is compiled from source for IPRO6S rather than imported as
+      a prebuilt archive.
 
 config BTDM_MAX_BR_ACL_CONNECTIONS
     int "Maximum BR/EDR ACL connections"

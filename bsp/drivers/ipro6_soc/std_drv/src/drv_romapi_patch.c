@@ -29,6 +29,15 @@
    after which each strong override wins over the corresponding weak ROM wrapper. */
 int __attribute__((used)) __drv_romapi_patch_anchor = 1;
 
+/* ROM UART_Init does not ungate the UART's module clock, which
+ * board_init() gates (drv_glb_cgen.c). */
+int UART_Init(uint8_t uartId, UART_CFG_Type *uartCfg)
+{
+    GLB_PER_Clock_UnGate(uartId == UART1_ID ? GLB_AHB_CLOCK_UART1
+                                            : GLB_AHB_CLOCK_UART0);
+    return RomDriver_UART_Init(uartId, uartCfg);
+}
+
 /* Keep every other peripheral on the ROM implementation, but make the I2S
  * result deterministic and consistent with the SDK-driver path by deriving
  * I2S_REF_CLK from the 960 MHz Wi-Fi PLL VCO, its post-divider and the GLB I2S

@@ -363,6 +363,7 @@ int GLB_AHB_MCU_Software_Reset(DRV_AHB_MCU_SW_Type swrst);
 uint64_t GLB_PER_Clock_Gate_Status_Get(void);
 int GLB_PER_Clock_Gate(GLB_AHB_CLOCK_Type module);
 int GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_Type module);
+int GLB_PER_Clock_Gate_All(void);
 
 int GLB_BMX_Init(BMX_Cfg_Type *BmxCfg);
 int GLB_BMX_Addr_Monitor_Enable(void);

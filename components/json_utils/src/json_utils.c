@@ -259,6 +259,22 @@ int json_find_int64(const char *json, const char *key, int64_t *out)
     return 0;
 }
 
+int json_find_number(const char *json, const char *key, int64_t *out)
+{
+    const char *val = find_key(json, key);
+    if (!val)
+        return -1;
+    if (!(*val == '-' || (*val >= '0' && *val <= '9')))
+        return -1;
+
+    char *end = NULL;
+    long long v = strtoll(val, &end, 10);
+    if (end == val || (*val == '-' && end == val + 1))
+        return -1;
+    *out = v;
+    return 0;
+}
+
 int json_find_bool(const char *json, const char *key, bool *out)
 {
     const char *val = find_key(json, key);

@@ -29,6 +29,8 @@
 #include "ipro7_clmax_7ai_evb_board_config.h"
 #elif defined(CONFIG_IPRO7AI_EVK)
 #include "ipro7ai_evk_board_config.h"
+#elif defined(CONFIG_IPRO7AI_REEF)
+#include "ipro7ai_reef_board_config.h"
 #elif defined(CONFIG_FPGA)
 #include "ipro7_fpga_board_config.h"
 #elif defined(CONFIG_SLT)
@@ -40,7 +42,7 @@
 #elif defined(CONFIG_IPRO7_ARDUINO)
 #include "ipro7_arduino_board_config.h"
 #else
-#error "Please define a board (CONFIG_EVB, CONFIG_DVK, CONFIG_FPGA, CONFIG_SLT, CONFIG_DUAL_IMU_BOARD, CONFIG_DEMO_QFN32, CONFIG_DEMO_QFN56, CONFIG_IPRO7_ARDUINO, or CONFIG_IPRO7AI_EVK) in Kconfig"
+#error "Please define a board (CONFIG_EVB, CONFIG_DVK, CONFIG_FPGA, CONFIG_SLT, CONFIG_DUAL_IMU_BOARD, CONFIG_DEMO_QFN32, CONFIG_DEMO_QFN56, CONFIG_IPRO7_ARDUINO, CONFIG_IPRO7AI_EVK, or CONFIG_IPRO7AI_REEF) in Kconfig"
 #endif
 
 #endif /* __BOARD_CONFIG_H__ */

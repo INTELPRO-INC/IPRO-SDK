@@ -6,6 +6,9 @@ CONFIG_CHIP="IPRO7"
 CONFIG_CPU_ID="intelpro_ipro7"
 CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
 CONFIG_IPRO7AI_EVK=y
+# ST7789P3 panel driver from components/board/ipro7ai_evk (panel only: this
+# app keeps its own camera/audio bring-up tools and `lcd`/`cam` commands).
+CONFIG_COMPONENTS_IPRO7AI_EVK_ENABLE=y
 CONFIG_BOARD="IPRO7AI_EVK"
 CONFIG_LINK_FLASH=y
 CONFIG_ENABLE_FRAME_POINTER=y
@@ -59,8 +62,8 @@ CONFIG_COMPONENTS_FATFS_ENABLE=y
 CONFIG_FATFS_CODE_PAGE_437=y
 CONFIG_FATFS_CODE_PAGE_VALUE=437
 
-# --- Bluetooth LE: new controller (ipro_ble_controller, RivieraWaves v14.0.2
-# built from source) + new host (upstream Zephyr v4.4.0, ipro_bt_host).
+# --- Bluetooth LE: new controller (ipro_ble_controller, the IPRO BLE
+# controller) + new host (upstream Zephyr v4.4.0, ipro_bt_host).
 # EM_SIZE=32 reserves the controller's Exchange Memory at the top of OCRAM.
 # NVDS: flash-layout builds default it OFF, and the controller hard-references
 # __nvds_start/__nvds_end and bt_nvds_cli_link_anchor, so both keys are needed.
@@ -141,7 +144,7 @@ CONFIG_EASYFLASH4=y
 # (ipro7_flash.cmake Case 2), so two large consumers are trimmed.
 # Timer service task: 4096 words (16 KB) is 4x the IDLE task's size and far
 # more than it needs; 1024 words matches configMINIMAL_STACK_SIZE.
-CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=1024
+CONFIG_FREERTOS_TIMER_TASK_STACK_WORDS=1024
 # BLE controller PDS register dumps are CCI debugging aids, ~8.7 KB of OCRAM.
 CONFIG_IPRO_BLE_PDS_SMALL_CR_DUMP=y
 

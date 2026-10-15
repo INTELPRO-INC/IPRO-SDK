@@ -20,6 +20,7 @@
 #include <fhost_wpa.h>
 #include "fhost_config.h"
 #include "fhost_cntrl.h"
+#include "fhost_tx.h"
 #include "wifi_mgmr_ext.h"
 #include "wifi_mgmr.h"
 #include "ipro_fw_api.h"
@@ -29,6 +30,10 @@
 #include "rtos_al.h"
 #include "net_al_ext.h"
 #include "eloop_rtos.h"
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+#include "FreeRTOS.h"
+#include "task.h"
+#endif
 
 /* TODO: LP stub -- bl_lp.h removed; re-enable for post-ASIC low-power */
 
@@ -292,13 +297,29 @@ int wifi_mgmr_sta_quickconnect(const char *ssid, const char *key, uint16_t freq1
     return wifi_mgmr_sta_connect(&config);
 }
 
-int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
+static bool wifi_connect_submitting;
+static bool wifi_connect_closed;
+static uint32_t wifi_connect_pause_owner;
+
+static int wifi_mgmr_connect_submit(const wifi_mgmr_sta_connect_params_t *config,
+                                         fhost_connect_completion_fn completion,
+                                         void *context, bool enable_autoreconnect)
 {
     //fhost_printf("wifi_mgmr_sta_connect: ssid:<%s>/<%d> key:<%s>/<%d> akm:<%s>/<%d> %d-%d-%d-%d\r\n",
     //        config->ssid,config->ssid_len,config->key,config->key_len,config->akm_str,config->akm_len,config->pmf_cfg,config->freq1,config->freq2,config->use_dhcp);
     struct fhost_ipc_connect_cfg cfg;
+    if (config == NULL)
+        return -1;
+
     size_t ssid_len = config->ssid_len;
     size_t key_len = config->key_len;
+
+    /* Validate before resetting STA status, publishing credentials or taking
+     * a sleep-prevention lease. Rejected input must not alter a live network. */
+    if (ssid_len == 0 || ssid_len > sizeof(cfg.cfg.ssid.array) ||
+        ssid_len > sizeof(config->ssid) || key_len >= sizeof(cfg.cfg.key) ||
+        key_len > sizeof(config->key))
+        return -1;
 
     if (check_wifi_ready())
         return -1;
@@ -306,6 +327,9 @@ int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
     memset(&cfg, 0, sizeof(cfg));
 
     cfg.fhost_vif_idx = MGMR_VIF_STA;
+    cfg.completion = completion;
+    cfg.completion_context = context;
+    cfg.enable_autoreconnect = enable_autoreconnect;
 
     // timeout for connnect, default 200s (this var will impact auto connect when scan an unexist ssid)
     if (config->timeout_ms != 0) {
@@ -314,11 +338,6 @@ int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
         cfg.cfg.timeout_ms = 200000;
     }
 
-    if (ssid_len > sizeof(cfg.cfg.ssid.array))
-    {
-        fhost_printf("Invalid SSID\r\n");
-        return -1;
-    }
     wifi_mgmr_sta_info_reset();
     memcpy(cfg.cfg.ssid.array, config->ssid, ssid_len);
     wifi_mgmr_sta_ssid_set(config->ssid);
@@ -326,11 +345,6 @@ int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
 
     fhost_ipc_parse_mac_addr(config->bssid_str, &cfg.cfg.bssid);
 
-    if ((key_len + 1) > sizeof(cfg.cfg.key))
-    {
-        fhost_printf("Invalid Key\r\n");
-        return -1;
-    }
     if (config->key_len != 0) {
         memcpy(cfg.cfg.key, config->key, config->key_len);
         wifi_mgmr_sta_passphr_set(config->key);
@@ -349,11 +363,6 @@ int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
         fhost_read_akm(config->akm_str, &cfg.cfg.akm, true);
     }
 
-    if (cfg.cfg.ssid.length == 0) {
-        fhost_printf("cfg.cfg.ssid.length == 0 \r\n");
-        return -1;
-    }
-
     cfg.cfg.wpa_flags = config->wpa_flags;
 
     cfg.link = cntrl_link;
@@ -362,11 +371,156 @@ int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
 
     PLATFORM_HOOK(prevent_sleep, PSM_EVENT_CONNECT, 1);
 
-    memcpy(&wifiMgmr.sta_connect_param, config, sizeof(*config));
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+    /* Pair with the BR profile snapshot: a reader must not observe a writer
+     * preempted halfway through copying SSID/security/key fields. */
+    taskENTER_CRITICAL();
+#endif
+    if (config != &wifiMgmr.sta_connect_param)
+        memcpy(&wifiMgmr.sta_connect_param, config, sizeof(*config));
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+    taskEXIT_CRITICAL();
+#endif
 
-    fhost_ipc_connect_task_start(&cfg);
+    /* This reports admission only, not association. Allocation or entry-task
+     * creation can fail; callers must not wait for a connection never started.
+     * Earlier state updates are not rolled back by this legacy API. */
+    return fhost_ipc_connect_task_start(&cfg) == RTOS_TASK_NULL ? -1 : 0;
+}
 
-    return 0;
+static int wifi_mgmr_connect_guarded(const wifi_mgmr_sta_connect_params_t *config,
+                                    fhost_connect_completion_fn completion,
+                                    void *context, bool retry, uint32_t generation,
+                                    bool enable_autoreconnect, bool bw20)
+{
+    uint32_t protection = rtos_protect();
+    if (wifi_connect_closed || wifi_connect_pause_owner != 0 || wifi_connect_submitting) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    /* A retry can be preempted after its wake-up check. Revalidate in the
+     * SAME critical section that reserves manager mutations, so a pause sees
+     * either no accepted retry or a submission it must drain before rollback. */
+    if (retry && ((wifiMgmr.disable_autoreconnect && !bw20) ||
+                  !net_al_ext_sta_reconnect_valid(generation))) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    wifi_connect_submitting = true;
+    rtos_unprotect(protection);
+    const int result = wifi_mgmr_connect_submit(config, completion, context, enable_autoreconnect);
+    protection = rtos_protect();
+    wifi_connect_submitting = false;
+    rtos_unprotect(protection);
+    return result;
+}
+
+int wifi_mgmr_sta_connect_with_completion(const wifi_mgmr_sta_connect_params_t *config,
+                                         fhost_connect_completion_fn completion,
+                                         void *context)
+{
+    return wifi_mgmr_connect_guarded(config, completion, context, false, 0, false, false);
+}
+
+int wifi_mgmr_sta_connect_managed(const wifi_mgmr_sta_connect_params_t *config,
+                                 fhost_connect_completion_fn completion, void *context)
+{
+    return wifi_mgmr_connect_guarded(config, completion, context, false, 0, true, false);
+}
+
+int wifi_mgmr_sta_reconnect(uint32_t generation)
+{
+    return wifi_mgmr_connect_guarded(&wifiMgmr.sta_connect_param, NULL, NULL, true, generation, false, false);
+}
+
+int wifi_mgmr_sta_reconnect_bw20(uint32_t generation)
+{
+    uint32_t protection = rtos_protect();
+    const bool allowed = !wifi_connect_closed && wifi_connect_pause_owner == 0 &&
+                         net_al_ext_sta_reconnect_valid(generation);
+    rtos_unprotect(protection);
+    /* The CONNECT task of the failed 40 MHz attempt still waits for a
+     * link the supplicant will not retry: end it before reconnecting. */
+    if (!allowed || fhost_ipc_connect_task_end(MGMR_VIF_STA, 3000))
+        return -1;
+    return wifi_mgmr_connect_guarded(&wifiMgmr.sta_connect_param, NULL, NULL, true, generation, false, true);
+}
+
+int wifi_mgmr_sta_dhcp_recover(uint32_t generation)
+{
+    uint32_t protection = rtos_protect();
+    if (wifi_connect_closed || wifi_connect_pause_owner != 0 || wifi_connect_submitting ||
+        !net_al_ext_sta_reconnect_valid(generation)) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    /* Preserve DHCP failure policy (retry, or disconnect if retry is disabled),
+     * but both actions must participate in the manager pause/drain boundary.
+     * In particular, an old DHCP worker must not tear down a restored network. */
+    const bool disconnect = wifiMgmr.disable_autoreconnect != 0;
+    wifi_connect_submitting = true;
+    rtos_unprotect(protection);
+    const int result = disconnect ? wifi_sta_disconnect() :
+        wifi_mgmr_connect_submit(&wifiMgmr.sta_connect_param, NULL, NULL, false);
+    protection = rtos_protect();
+    wifi_connect_submitting = false;
+    rtos_unprotect(protection);
+    return result;
+}
+
+int wifi_mgmr_sta_connect_pause(uint32_t *lease)
+{
+    if (!lease)
+        return -1;
+    uint32_t protection = rtos_protect();
+    if (wifi_connect_closed ||
+        (*lease != 0 && *lease != wifi_connect_pause_owner) ||
+        (*lease == 0 && wifi_connect_pause_owner != 0)) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    /* Both gates publish under the same interrupt exclusion. Native pause
+     * only takes a nested short critical section; it never waits or allocates.
+     * A previously admitted manager submission may finish (or be rejected by
+     * the native gate), but must finish its mutations before we report idle. */
+    const int busy = fhost_ipc_connect_pause(lease);
+    if (busy < 0) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    wifi_connect_pause_owner = *lease;
+    const bool submitting = wifi_connect_submitting;
+    rtos_unprotect(protection);
+    return busy || submitting ? 1 : 0;
+}
+
+int wifi_mgmr_sta_connect_resume(uint32_t lease)
+{
+    uint32_t protection = rtos_protect();
+    if (lease == 0 || lease != wifi_connect_pause_owner) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    const int result = fhost_ipc_connect_resume(lease);
+    if (result == 0)
+        wifi_connect_pause_owner = 0;
+    rtos_unprotect(protection);
+    return result;
+}
+
+int wifi_mgmr_sta_connect_close(void)
+{
+    uint32_t protection = rtos_protect();
+    wifi_connect_closed = true;
+    const bool submitting = wifi_connect_submitting;
+    rtos_unprotect(protection);
+    const int worker_busy = fhost_ipc_connect_close();
+    return submitting || worker_busy ? 1 : 0;
+}
+
+int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config)
+{
+    return wifi_mgmr_sta_connect_with_completion(config, NULL, NULL);
 }
 
 int wifi_sta_disconnect(void)
@@ -865,46 +1019,60 @@ int wifi_mgmr_rate_config(uint16_t fixed_rate_cfg)
 
 }
 
-int wifi_mgmr_sta_scan(const wifi_mgmr_scan_params_t *config)
+int wifi_mgmr_sta_scan_with_id(const wifi_mgmr_scan_params_t *config, uint32_t request_id,
+                             struct cfgrwnx_scan *cmd)
 {
-    struct cfgrwnx_scan cmd;
     struct cfgrwnx_resp resp;
     struct cfgrwnx_scan_ssid ssid;
 
-    if (check_wifi_ready())
+    if (!cmd || !config || check_wifi_ready())
         return -1;
 
+    memset(cmd, 0, sizeof(*cmd));
     ssid.len = config->ssid_length;
     ssid.ssid = ssid.len ? config->ssid_array : NULL;
-    cmd.hdr.len = sizeof(cmd);
-    cmd.hdr.id = CFGRWNX_SCAN_CMD;
-    cmd.fhost_vif_idx = MGMR_VIF_STA;
-    cmd.freqs = NULL;
-    cmd.chans_cnt = config->channels_cnt;
-    cmd.chans = cmd.chans_cnt ? config->channels : NULL;
-    cmd.extra_ies = NULL;
-    cmd.ssids = &ssid;
-    cmd.ssid_cnt = 1;
-    cmd.bssid = config->bssid_set_flag ? config->bssid : NULL;
-    cmd.extra_ies_len = 0;
-    cmd.no_cck = 0;
-    cmd.duration = config->duration;
-    //if is_cntrl_link is true, donot need scan sock
-    //cmd.sock = cntrl_link->sock_send;
-    cmd.is_cntrl_link = true;
-    cmd.hdr.resp_queue = cntrl_link->queue;
-    cmd.passive = config->passive;
-    cmd.flags = 0;
-    cmd.probe_cnt = config->probe_cnt;
+    cmd->hdr.len = sizeof(*cmd);
+    cmd->hdr.id = CFGRWNX_SCAN_CMD;
+    cmd->fhost_vif_idx = MGMR_VIF_STA;
+    cmd->freqs = NULL;
+    cmd->chans_cnt = config->channels_cnt;
+    cmd->chans = cmd->chans_cnt ? config->channels : NULL;
+    cmd->extra_ies = NULL;
+    cmd->ssids = &ssid;
+    cmd->ssid_cnt = 1;
+    cmd->bssid = config->bssid_set_flag ? config->bssid : NULL;
+    cmd->extra_ies_len = 0;
+    cmd->no_cck = 0;
+    cmd->duration = config->duration;
+    /* Control-link scan completion uses the platform event, not a socket. */
+    cmd->sock = -1;
+    cmd->is_cntrl_link = true;
+    cmd->hdr.resp_queue = cntrl_link->queue;
+    cmd->passive = config->passive;
+    cmd->flags = 0;
+    cmd->probe_cnt = config->probe_cnt;
+    cmd->request_id = request_id;
+    if (request_id) {
+        cmd->inline_ssid = ssid;
+        cmd->use_inline_ssid = true;
+        cmd->ssids = NULL;
+    }
 
     resp.hdr.len = sizeof(resp);
     resp.hdr.id = CFGRWNX_SCAN_RESP;
 
-    if (fhost_cntrl_cfgrwnx_cmd_send(&cmd.hdr, &resp.hdr) ||
-        (resp.status != CFGRWNX_SUCCESS))
+    if (fhost_cntrl_cfgrwnx_cmd_send(&cmd->hdr, &resp.hdr))
+        return -2; /* Transport outcome may not prove rejection. */
+    if (resp.status != CFGRWNX_SUCCESS)
         return -1;
 
     return 0;
+}
+
+int wifi_mgmr_sta_scan(const wifi_mgmr_scan_params_t *config)
+{
+    struct cfgrwnx_scan command;
+    return wifi_mgmr_sta_scan_with_id(config, 0, &command) == 0 ? 0 : -1;
 }
 
 static inline int wifi_mgmr_scan_item_is_timeout(wifi_mgmr_t *mgmr, wifi_mgmr_scan_item_t *item)
@@ -1385,7 +1553,7 @@ int wifi_mgmr_set_country_code(char *country_code)
     return 0;
 }
 
-int wifi_mgmr_sta_autoconnect_enable(void)
+static int wifi_mgmr_autoconnect_enable(void)
 {
     wifiMgmr.disable_autoreconnect = 0;
 
@@ -1402,6 +1570,37 @@ int wifi_mgmr_sta_autoconnect_enable(void)
 end:
     fhost_printf("Enable Auto Reconnect\r\n");
     return 0;
+}
+
+int wifi_mgmr_sta_tx_ac_min_set(int ac)
+{
+    if (ac < AC_BK || ac > AC_VO)
+        return -1;
+    fhost_tx_ac_min_set((uint8_t)ac);
+    return 0;
+}
+
+int wifi_mgmr_sta_tx_ac_min_get(void)
+{
+    return fhost_tx_ac_min_get();
+}
+
+int wifi_mgmr_sta_autoconnect_enable(void)
+{
+    /* Serialize with manager submissions; terminal close must observe an
+     * enable command already in flight and reject later enable attempts. */
+    uint32_t protection = rtos_protect();
+    if (wifi_connect_closed || wifi_connect_pause_owner != 0 || wifi_connect_submitting) {
+        rtos_unprotect(protection);
+        return -1;
+    }
+    wifi_connect_submitting = true;
+    rtos_unprotect(protection);
+    const int result = wifi_mgmr_autoconnect_enable();
+    protection = rtos_protect();
+    wifi_connect_submitting = false;
+    rtos_unprotect(protection);
+    return result;
 }
 
 int wifi_mgmr_sta_autoconnect_disable(void)

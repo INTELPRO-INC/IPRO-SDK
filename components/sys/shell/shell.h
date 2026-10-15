@@ -63,6 +63,18 @@ typedef void (*shell_sig_func_ptr)(int);
 typedef int (*syscall_func)(void);
 typedef int (*cmd_function_t)(int argc, char **argv);
 
+/* Optional application admission policy, called after parsing but before
+ * waiting, signal replacement, argument copying or command execution.
+ * Return nonzero to admit, zero to reject. Must not modify argv or block.
+ * For an unknown command, argc=0/argv=NULL asks whether alternate executors
+ * may be tried. This controls shell dispatch only, not direct function calls. */
+int shell_command_allowed(int argc, char *argv[]);
+
+/* Optional task-context RX interceptor, BEFORE editing, echo, history and
+ * dispatch. Return nonzero to consume the byte. Default passes it through.
+ * Must be bounded/nonblocking; never perform flash/network work here. */
+int shell_input_intercept(uint8_t data);
+
 enum input_stat {
     WAIT_NORMAL,
     WAIT_SPEC_KEY,

@@ -921,7 +921,7 @@ int bt_app_init(void)
      * enough and fails in a way that looks like dead hardware: HCI_Reset goes
      * out on the wire, nothing answers, and bt_enable() blocks forever.
      *
-     *   1. ipro_ble_ctlr_controller_init() starts the RivieraWaves controller.
+     *   1. ipro_ble_ctlr_controller_init() starts the IPRO BLE controller.
      *   2. hci_driver_ipro_ble_ctlr_init() binds the H4 byte-stream transport
      *      between host and controller.
      *   3. Only then bt_enable().

@@ -109,10 +109,10 @@ enum {
 #define DMA_REQUEST_IR_TX    0x00000008 /*!< DMA request peripheral:IR TX */
 #define DMA_REQUEST_AUD_ADC  0x00000009 /*!< DMA request peripheral:AUD ADC */
 
-/* IPRO6/IPRO6LE use the BL616-class DMA mux, where I2S is request 16/17.
+/* IPRO6 uses the BL616-class DMA mux, where I2S is request 16/17.
  * IPRO7 uses request 10/11.  The 20/21 values in the IPRO7 drv_dma.h enum
  * are stale legacy values and do not match the implemented peripheral mux. */
-#if defined(CONFIG_IPRO6) || defined(IPRO6) || defined(CONFIG_IPRO6LE) || defined(IPRO6LE)
+#if defined(CONFIG_IPRO6) || defined(IPRO6)
 #define DMA_REQUEST_I2S_RX   0x00000010 /*!< IPRO6 DMA request peripheral:I2S RX */
 #define DMA_REQUEST_I2S_TX   0x00000011 /*!< IPRO6 DMA request peripheral:I2S TX */
 #else

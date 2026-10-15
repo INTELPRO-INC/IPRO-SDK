@@ -6,9 +6,8 @@ This directory contains the infrastructure for generating linker scripts based o
 
 ```
 bsp/board/linker/
-├── ipro6le/                           # IPRO6LE chip templates
-│   ├── ipro6le_common.ld.in          # Default IPRO6LE template
-│   └── README.md                    # IPRO6LE template documentation
+├── ipro6/                           # IPRO6 chip templates
+│   └── ipro6_common.ld.in          # Default IPRO6 template
 ├── ipro7/                           # IPRO7 chip templates
 │   ├── ipro7_common.ld.in          # Default IPRO7 template
 │   └── README.md                    # IPRO7 template documentation
@@ -16,7 +15,7 @@ bsp/board/linker/
 ├── configs/                         # Chip-generic configurations
 │   ├── ipro7_flash.cmake           # IPRO7 Flash (all boards)
 │   ├── ipro7_ram.cmake             # IPRO7 RAM (all boards)
-│   └── ipro6le_flash.cmake           # IPRO6LE Flash (all boards)
+│   └── ipro6_flash.cmake           # IPRO6 Flash (all boards)
 └── README.md                        # This file
 ```
 
@@ -24,7 +23,7 @@ bsp/board/linker/
 
 ### 1. Chip-Specific Template Architecture
 
-Each chip has its own template directory (e.g., `ipro6le/`, `ipro7/`) containing:
+Each chip has its own template directory (e.g., `ipro6/`, `ipro7/`) containing:
 - Default template: `{chip}_common.ld.in`
 - Optional alternate templates for special configurations
 - README documenting chip-specific template usage
@@ -411,20 +410,18 @@ This architecture follows the "good taste" principle:
 
 ### Why Chip-Generic?
 
-**Before** (5 config files):
+**Before** (4 config files):
 ```
 ipro7_evb_flash.cmake    }
 ipro7_fpga_flash.cmake   } Identical content!
 ipro7_evb_ram.cmake      }
 ipro7_fpga_ram.cmake     } Identical content!
-ipro6le_evb_flash.cmake
 ```
 
-**After** (3 config files):
+**After** (2 config files):
 ```
 ipro7_flash.cmake  → Applies to EVB, FPGA, and future boards
 ipro7_ram.cmake    → Applies to EVB, FPGA, and future boards
-ipro6le_flash.cmake  → Applies to all IPRO6LE boards
 ```
 
 **Benefit**: Less code, easier maintenance, same flexibility.

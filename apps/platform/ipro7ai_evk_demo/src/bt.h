@@ -20,9 +20,9 @@
  * @file bt.h
  * @brief Bluetooth LE bring-up: new controller + new host, with LE Audio.
  *
- * Controller: components/wireless/bluetooth/ipro_ble_controller - RivieraWaves
- * v14.0.2 with the upstream tree kept read-only, built from source here
- * (CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD), talking H4 byte-stream HCI.
+ * Controller: components/wireless/bluetooth/ipro_ble_controller - the IPRO
+ * BLE controller, built from source here when
+ * CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD is set, talking H4 byte-stream HCI.
  * Host: components/wireless/bluetooth/ipro_bt_host - upstream Zephyr v4.4.0
  * (CONFIG_BT_HOST_IPRO_V44).
  *

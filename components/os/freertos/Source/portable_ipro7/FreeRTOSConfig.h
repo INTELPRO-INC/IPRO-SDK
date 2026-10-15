@@ -152,7 +152,21 @@ extern unsigned long ulGetRunTimeCounterValue(void);
  * wakes never trigger those deep callbacks, which is why idle PDS ran 115+
  * cycles clean. The PSRAM build has ample heap, so restore the original *4
  * headroom. (Same class of bug as the s_pds_stack 5K->8K fix.) */
+/* Opt-in budgets are for applications whose actual callbacks were audited.
+ * Keep the historical default for existing images, particularly lighting.
+ * The packaged BR dispatches CHIP timers on its separate CHIP event task;
+ * its FreeRTOS timer callbacks only notify workers. */
+#ifdef CONFIG_FREERTOS_TIMER_TASK_STACK_WORDS
+#if CONFIG_FREERTOS_TIMER_TASK_STACK_WORDS < 1
+#error "FreeRTOS timer stack must contain at least one word"
+#endif
+#define configTIMER_TASK_STACK_DEPTH CONFIG_FREERTOS_TIMER_TASK_STACK_WORDS
+/* IPRO6 runs no ISRs on task stacks: 512 words cover the timer task. */
+#elif defined(IPRO6)
+#define configTIMER_TASK_STACK_DEPTH ((unsigned short)512)
+#else
 #define configTIMER_TASK_STACK_DEPTH (configMINIMAL_STACK_SIZE * 4)
+#endif
 
 /* Task priorities.  Allow these to be overridden. */
 #ifndef uartPRIMARY_PRIORITY

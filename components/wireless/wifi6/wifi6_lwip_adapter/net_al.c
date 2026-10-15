@@ -18,6 +18,8 @@
 #include "net_al.h"
 #include "platform_al.h"
 #include "lwip/tcpip.h"
+#include "lwip/priv/tcp_priv.h"
+#include "lwip/stats.h"
 #include "lwip/etharp.h"
 #include "lwip/netifapi.h"
 #include "lwip/sockets.h"
@@ -155,11 +157,96 @@ static volatile uint32_t nt_dur_lt80ms    = 0;
 static volatile uint32_t nt_dur_ge80ms    = 0;
 static volatile uint32_t nt_dur_max_us    = 0;
 
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+bool __attribute__((weak)) net_al_ip4_echo_reply_key(const uint8_t *header, size_t length, uint32_t *key)
+{
+    (void)header; (void)length; (void)key;
+    return false;
+}
+void __attribute__((weak)) net_al_ip4_echo_tx_trace(uint32_t key, uint32_t time, unsigned stage, int status)
+{
+    (void)key; (void)time; (void)stage; (void)status;
+}
+static void net_echo_complete(uint32_t frame_id, bool acknowledged, void *arg)
+{
+    (void)frame_id;
+    net_al_ip4_echo_tx_trace((uint32_t)(uintptr_t)arg, inline_hal_machw_time(),
+                           acknowledged ? 1 : 2, 0);
+}
+void __attribute__((weak)) net_al_ip6_tx_trace(const uint8_t *header, size_t length, int status)
+{
+    (void)header;
+    (void)length;
+    (void)status;
+}
+#endif
+
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+/* Diagnostic only: the normal netif result is admission, not a radio ACK.
+ * Direct IPv6 RA frames only; no packet contents or addresses are retained. */
+static uint32_t nd6_ra_tx[3]; /* submitted, completed with ACK, completed without ACK */
+static uint32_t nd6_rs_rx[5]; /* ingress, self-drop, hook-drop, post-fail, posted */
+
+static bool net_nd6_is_rs(const void *frame, uint16_t length)
+{
+    const uint8_t *bytes = frame;
+    return length >= 62 && bytes[12] == 0x86 && bytes[13] == 0xdd &&
+           (bytes[14] >> 4) == 6 && bytes[20] == 58 && bytes[54] == 133;
+}
+
+static void net_nd6_rs_count(unsigned index)
+{
+    uint32_t key = rtos_protect();
+    ++nd6_rs_rx[index];
+    rtos_unprotect(key);
+}
+
+void net_nd6_rs_rx_stats(uint32_t values[5])
+{
+    uint32_t key = rtos_protect();
+    memcpy(values, nd6_rs_rx, sizeof(nd6_rs_rx));
+    rtos_unprotect(key);
+}
+
+static void net_nd6_ra_complete(uint32_t frame_id, bool acknowledged, void *arg)
+{
+    (void)frame_id;
+    (void)arg;
+    uint32_t key = rtos_protect();
+    ++nd6_ra_tx[acknowledged ? 1 : 2];
+    rtos_unprotect(key);
+}
+
+void net_nd6_ra_tx_stats(uint32_t values[3])
+{
+    uint32_t key = rtos_protect();
+    memcpy(values, nd6_ra_tx, sizeof(nd6_ra_tx));
+    rtos_unprotect(key);
+}
+
+static cb_fhost_tx net_nd6_ra_callback(const struct pbuf *p)
+{
+    if (p->tot_len < 70 || pbuf_get_at(p, 12) != 0x86 ||
+        pbuf_get_at(p, 13) != 0xdd || (pbuf_get_at(p, 14) >> 4) != 6 ||
+        pbuf_get_at(p, 20) != 58 || pbuf_get_at(p, 54) != 134) return NULL;
+    uint32_t key = rtos_protect();
+    ++nd6_ra_tx[0];
+    rtos_unprotect(key);
+    return net_nd6_ra_complete;
+}
+#endif
+
 static err_t net_if_output(struct netif *net_if, struct pbuf *p_buf)
 {
     uint32_t t_enter = inline_hal_machw_time();
     err_t status = ERR_BUF;
     uint8_t outcome = 0; /* 0=ok, 1=hook, 2=netdown, 3=fhost */
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+    uint8_t trace_header[48];
+    bool trace_ip6 = false;
+    bool trace_echo = false;
+    uint32_t echo_key = 0;
+#endif
 
     nt_calls++;
 
@@ -172,6 +259,16 @@ static err_t net_if_output(struct netif *net_if, struct pbuf *p_buf)
             goto done;
         }
     }
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+    if (p_buf->tot_len >= SIZEOF_ETH_HDR + sizeof(trace_header) &&
+        pbuf_get_at(p_buf, 12) == 0x86 && pbuf_get_at(p_buf, 13) == 0xdd &&
+        pbuf_copy_partial(p_buf, trace_header, sizeof(trace_header), SIZEOF_ETH_HDR) ==
+            sizeof(trace_header)) trace_ip6 = true;
+    if (p_buf->tot_len >= SIZEOF_ETH_HDR + 28 &&
+        pbuf_get_at(p_buf, 12) == 0x08 && pbuf_get_at(p_buf, 13) == 0x00 &&
+        pbuf_copy_partial(p_buf, trace_header, 28, SIZEOF_ETH_HDR) == 28)
+        trace_echo = net_al_ip4_echo_reply_key(trace_header, 28, &echo_key);
+#endif
     // Increase the ref count so that the buffer is not freed by the networking stack
     // until it is actually sent over the WiFi interface
     pbuf_ref(p_buf);
@@ -182,7 +279,18 @@ static err_t net_if_output(struct netif *net_if, struct pbuf *p_buf)
         goto done;
     }
 
-    if (fhost_tx_start(net_if, p_buf, NULL, NULL) == 0)
+    cb_fhost_tx completion = NULL;
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+    completion = net_nd6_ra_callback(p_buf);
+#endif
+    void *completion_arg = NULL;
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+    if (trace_echo && !completion) {
+        completion = net_echo_complete;
+        completion_arg = (void *)(uintptr_t)echo_key;
+    }
+#endif
+    if (fhost_tx_start(net_if, p_buf, completion, completion_arg) == 0)
     {
         status = ERR_OK;
         outcome = 0;
@@ -229,6 +337,10 @@ done:
         else                  nt_dur_ge80ms++;
         if (dur > nt_dur_max_us) nt_dur_max_us = dur;
     }
+#ifdef CONFIG_THREAD_BR_PACKET_TRACE
+    if (trace_ip6) net_al_ip6_tx_trace(trace_header, sizeof(trace_header), status);
+    if (trace_echo) net_al_ip4_echo_tx_trace(echo_key, inline_hal_machw_time(), 0, status);
+#endif
 
     return (status);
 }
@@ -526,6 +638,9 @@ static int net_if_input(net_al_rx_t net_buf, net_al_if_t net_if, void *addr, uin
     struct pbuf *p;
     inet_if_t *nif = (inet_if_t *)net_if;
     inet_buf_rx_t *buf = net_buf;
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+    bool direct_rs = net_nd6_is_rs(addr, len);
+#endif
 
     buf->custom_free_function = (pbuf_free_custom_fn)free_fn;
     p = pbuf_alloced_custom(PBUF_RAW, len, PBUF_REF | PBUF_TYPE_FLAG_STRUCT_DATA_CONTIGUOUS, buf, addr, len);
@@ -539,6 +654,9 @@ static int net_if_input(net_al_rx_t net_buf, net_al_if_t net_if, void *addr, uin
         p = wifi_pkt_eth_input_hook(is_sta, p, wifi_pkt_eth_input_hook_arg);
         if (p == NULL) {
             // hook dropped the packet
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+            if (direct_rs) net_nd6_rs_count(2);
+#endif
             goto end;
         }
     }
@@ -550,9 +668,15 @@ static int net_if_input(net_al_rx_t net_buf, net_al_if_t net_if, void *addr, uin
 
     if (nif->input(p, nif))
     {
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+        if (direct_rs) net_nd6_rs_count(3);
+#endif
         free_fn(buf);
         return -1;
     }
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+    if (direct_rs) net_nd6_rs_count(4);
+#endif
 
     goto end; // In case of error that label end is defined but not used when wifi_pkt_eth_input_hook is NULL
 end:
@@ -590,6 +714,13 @@ void __attribute__((section(".tcm_code"))) net_al_input(net_al_rx_t net_buf, voi
         if (skip_after_eth_hdr != 0) {
             memcpy((char*)payload + skip_after_eth_hdr, payload, sizeof(struct mac_eth_hdr));
         }
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+        /* Inspect the same normalized Ethernet frame passed to net_if_input. */
+        bool direct_rs = length >= skip_after_eth_hdr &&
+            net_nd6_is_rs((char *)payload + offset + skip_after_eth_hdr,
+                         length - skip_after_eth_hdr);
+        if (direct_rs) net_nd6_rs_count(0);
+#endif
         /* Drop my broadcast message forwarded by AP. */
         uint8_t from_us = 1;
         uint8_t *mac_eth_hdr = (uint8_t *)payload + offset;
@@ -601,6 +732,9 @@ void __attribute__((section(".tcm_code"))) net_al_input(net_al_rx_t net_buf, voi
             }
         }
         if (from_us) {
+#if defined(CONFIG_THREAD_WIFI_BORDER_ROUTER) && defined(CONFIG_SHELL)
+            if (direct_rs) net_nd6_rs_count(1);
+#endif
             rx_data_from_us++;
             fhost_rx_buf_push(net_buf);
             return;
@@ -715,6 +849,31 @@ bool net_buf_tx_all_shram(net_al_tx_t net_buf)
     return all_shram;
 }
 
+extern uint32_t fhost_rx_free_bufs(void);
+
+/* Returns the ooseq pbuf budget of a PCB: the pbufs it already
+ * queues plus the free RX buffers above TCP_OOSEQ_RX_RESERVE. */
+unsigned short net_al_ooseq_pbufs_limit(void *arg)
+{
+    struct tcp_pcb *pcb = arg;
+    struct tcp_seg *seg;
+    uint32_t budget = fhost_rx_free_bufs();
+
+    for (seg = pcb->ooseq; seg != NULL; seg = seg->next)
+        budget += pbuf_clen(seg->p);
+    if (budget <= TCP_OOSEQ_RX_RESERVE)
+        return 0;
+    return (unsigned short)(budget - TCP_OOSEQ_RX_RESERVE);
+}
+
+/* Copies len bytes and returns the Internet checksum of the source bytes,
+ * which equals the checksum of the copy. */
+uint16_t net_al_chksum_copy(void *dst, const void *src, uint16_t len)
+{
+    MEMCPY(dst, src, len);
+    return LWIP_CHKSUM(src, len);
+}
+
 void *net_buf_tx_info(net_al_tx_t *net_buf, uint16_t *tot_len, int *seg_cnt,
                       uint32_t seg_addr[], uint16_t seg_len[], uint32_t *headroom_len)
 {
@@ -788,11 +947,70 @@ void *net_buf_tx_info(net_al_tx_t *net_buf, uint16_t *tot_len, int *seg_cnt,
     return headroom;
 }
 
+/// Non-zero: a TX free after a heap ERR_MEM re-runs blocked TCP writers
+volatile uint32_t net_al_tcp_memkick = 1;
+volatile uint32_t net_al_tcp_memkick_posted, net_al_tcp_memkick_sent;
+/// Free heap bytes required before a kick is posted
+volatile uint32_t net_al_tcp_memkick_min = 4096;
+static struct tcpip_callback_msg *net_al_memkick_msg;
+static volatile uint32_t net_al_memkick_pending;
+static uint32_t net_al_memkick_err_seen;
+
+static void net_al_tcp_memkick_cb(void *ctx)
+{
+    struct tcp_pcb *pcb, *next;
+    err_t err;
+
+    (void)ctx;
+    net_al_memkick_pending = 0;
+    for (pcb = tcp_active_pcbs; pcb != NULL; pcb = next)
+    {
+        next = pcb->next;
+        if (pcb->sent == NULL || pcb->unsent != NULL ||
+            (pcb->state != ESTABLISHED && pcb->state != CLOSE_WAIT))
+            continue;
+        net_al_tcp_memkick_sent++;
+        TCP_EVENT_SENT(pcb, 0, err);
+        if (err == ERR_ABRT)
+            continue;
+        tcp_output(pcb);
+    }
+}
+
+/* Returns true when a kick must be posted for heap error count `err` with
+ * `free_bytes` of heap available. */
+static bool net_al_tcp_memkick_due(uint32_t err, uint32_t free_bytes)
+{
+    if (!net_al_tcp_memkick || net_al_memkick_pending || err == net_al_memkick_err_seen)
+        return false;
+    if (free_bytes < net_al_tcp_memkick_min)
+        return false;
+    net_al_memkick_err_seen = err;
+    return true;
+}
+
 void net_buf_tx_free(net_al_tx_t net_buf)
 {
     inet_buf_tx_t *buf = (inet_buf_tx_t *)net_buf;
     // Free the buffer
     pbuf_free(buf);
+
+#if LWIP_STATS && MEM_STATS
+    if (net_al_tcp_memkick_due(lwip_stats.mem.err,
+                               lwip_stats.mem.avail - lwip_stats.mem.used))
+    {
+        if (net_al_memkick_msg == NULL)
+            net_al_memkick_msg = tcpip_callbackmsg_new(net_al_tcp_memkick_cb, NULL);
+        if (net_al_memkick_msg != NULL)
+        {
+            net_al_memkick_pending = 1;
+            if (tcpip_callbackmsg_trycallback(net_al_memkick_msg) == ERR_OK)
+                net_al_tcp_memkick_posted++;
+            else
+                net_al_memkick_pending = 0;
+        }
+    }
+#endif
 }
 
 void net_buf_tx_cat(net_al_tx_t net_buf1, net_al_tx_t net_buf2)
@@ -904,6 +1122,23 @@ void net_al_tx_cfm()
 #ifdef FHOST_BUFFER_COPY
     bc_try_tx_queued_pkts();
 #endif
+}
+
+volatile uint32_t net_al_rexmit_bar_cnt;
+
+/* Arm a BAR on the STA's BA agreement for the segment's TID, so the AP
+ * reorder window moves past MPDUs it acked but still holds. */
+void net_al_tcp_rexmit_notify(unsigned char tos)
+{
+    extern bool bam_bar_pending_force(uint16_t sta_idx, uint8_t tid);
+    struct fhost_vif_tag *vif = &fhost_env.vif[0];
+
+    if (!vif->mac_vif || (mac_vif_get_type(vif->mac_vif) != VIF_STA) ||
+        !mac_vif_get_active(vif->mac_vif) || (vif->ap_id == 0xFF))
+        return;
+
+    if (bam_bar_pending_force(vif->ap_id, tos >> 5))
+        net_al_rexmit_bar_cnt++;
 }
 
 void net_al_tx_do_sta_del(uint8_t sta_id, release_buf_cb release_buf)
@@ -1065,7 +1300,11 @@ int net_l2_send_do(net_al_if_t net_if, const uint8_t *data, int data_len, uint16
     // Wait for the transmission completion (5s timeout to prevent hang)
     if (rtos_semaphore_wait(l2_semaphore, 5000)) {
         if (ethertype == 0x888e)
+        {
             printf("L2_TX EAPOL TIMEOUT\r\n");
+            if (res == 0)
+                fhost_bw20_eapol_tx_fail();
+        }
         if (ack)
             *ack = false;
         rtos_mutex_unlock(l2_mutex);
@@ -1073,7 +1312,11 @@ int net_l2_send_do(net_al_if_t net_if, const uint8_t *data, int data_len, uint16
     }
 
     if (ethertype == 0x888e)
+    {
         printf("L2_TX EAPOL done res=%d ack=%d\r\n", res, ack ? *ack : -1);
+        if ((res == 0) && ack && !*ack)
+            fhost_bw20_eapol_tx_fail();
+    }
 
     // Now new L2 transmissions are possible
     rtos_mutex_unlock(l2_mutex);

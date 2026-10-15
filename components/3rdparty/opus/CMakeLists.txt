@@ -6,8 +6,12 @@ __component_add_private_include_dirs(silk silk/fixed)
 
 __component_add_private_compile_definitions(-DHAVE_CONFIG_H)
 
-# Aggressive size optimization
-__component_add_private_compile_options(-Os)  # Optimize for size
+# Size optimization by default; CONFIG_OPUS_OPTIMIZE_SPEED trades flash for speed
+if(CONFIG_OPUS_OPTIMIZE_SPEED)
+    __component_add_private_compile_options(-O2)
+else()
+    __component_add_private_compile_options(-Os)  # Optimize for size
+endif()
 __component_add_private_compile_options(-Wno-incompatible-pointer-types)
 __component_add_private_compile_options(-ffunction-sections)  # Enable function sections
 __component_add_private_compile_options(-fdata-sections)      # Enable data sections

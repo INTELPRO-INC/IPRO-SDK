@@ -489,13 +489,26 @@ void *_sbrk_r(struct _reent *ptr, ptrdiff_t incr)
     return ret;
 }
 
+/* A component that owns a task can take over a fatal exit()/abort()/assert()
+ * in it (e.g. OpenThread's DieNow, which assumes the whole process ends).
+ * cause: "exit", "abort" or "assert"; file/line when known. Returns when the
+ * component does not take it over. Not called from interrupts. */
+void __attribute__((weak)) newlibc_fatal_hook(const char *cause, int status, const char *file, int line)
+{
+    (void)cause;
+    (void)status;
+    (void)file;
+    (void)line;
+}
+
 /* for exit() and abort() */
 void __attribute__ ((noreturn))
 _exit (int status)
 {
-    printf("\r\n!!! _exit(%d) called from task: %s !!!\r\n", 
+    newlibc_fatal_hook("exit", status, NULL, 0);
+    printf("\r\n!!! _exit(%d) called from task: %s !!!\r\n",
            status, pcTaskGetName(NULL));
-    
+
     /* Delete current task instead of crashing whole system */
     vTaskDelete(NULL);
     
@@ -510,6 +523,26 @@ void _system(const char *s)
 void __libc_init_array(void)
 {
     /* we not use __libc init_aray to initialize C++ objects */
+}
+
+/*
+ * time() / gettimeofday() reach this through newlib's _gettimeofday_r.
+ * Without it newlib links the libgloss semihosting stub, which issues an
+ * `ecall` and faults in M-mode (exception 11) - FatFS hits that on its first
+ * file write (get_fattime -> time()). There is no RTC: report the time since
+ * boot. Weak, so an app with a real clock (or one of the older per-app stubs,
+ * e.g. components/board/ipro7ai_evk/src/evk_sd.c) takes over.
+ */
+int __attribute__((weak)) _gettimeofday(struct timeval *tv, void *tz)
+{
+    TickType_t t = xTaskGetTickCount();
+
+    (void)tz;
+    if (tv) {
+        tv->tv_sec  = (time_t)(t / configTICK_RATE_HZ);
+        tv->tv_usec = (suseconds_t)((t % configTICK_RATE_HZ) * (1000000u / configTICK_RATE_HZ));
+    }
+    return 0;
 }
 
 mode_t umask(mode_t mask)

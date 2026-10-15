@@ -13,6 +13,7 @@
 #include "export/adapter/rtos.h"
 #include "fhost.h"
 #include "fhost_wpa.h"
+#include "fhost_wifi_link.h"
 #include "fhost_cntrl.h"
 #include "fhost_rx.h"
 #include "mac_frame.h"
@@ -26,6 +27,17 @@
 #include "os.h"
 #include "eloop.h"
 #include "eloop_rtos.h"
+
+__attribute__((weak)) void fhost_wpa_link_observed(int vif, uint8_t connected,
+                                                   const uint8_t *ssid, uint32_t length,
+                                                   const uint8_t *bssid)
+{
+    (void)vif;
+    (void)connected;
+    (void)ssid;
+    (void)length;
+    (void)bssid;
+}
 
 #define FHOST_TIMEOUTMS_ADD_NETWORK       7001//100
 #define FHOST_TIMEOUTMS_DISABLE_NETWORK   7002//100
@@ -301,9 +313,10 @@ static int fhost_wpa_wait_event_register(int fhost_vif_idx, enum fhost_wpa_event
     if (rtos_task_init_notification(target->task))
         return -1;
 
+    /* A preparatory disconnect is not completion of ENABLE_NETWORK. Keep
+     * the waiter alive for the requested transition (or terminal teardown). */
     return fhost_wpa_cb_register(fhost_vif_idx,
-                                 CO_BIT(FHOST_WPA_CONNECTED) |
-                                 CO_BIT(FHOST_WPA_DISCONNECTED) |
+                                 CO_BIT(event) |
                                  CO_BIT(FHOST_WPA_EXIT) |
                                  CO_BIT(FHOST_WPA_INTERFACE_REMOVED),
                                  fhost_wpa_wait_event, target);
@@ -538,6 +551,11 @@ int fhost_wpa_add_vif(int fhost_vif_idx)
     if (fhost_vif_idx == MGMR_VIF_STA &&
         fhost_wpa_execute_cmd(fhost_vif_idx, NULL, 0, 300, "STA_AUTOCONNECT %u", !wifiMgmr.disable_autoreconnect)) {
         fhost_printf("%s: set autoconnect failed\r\n", __func__);
+        /* No network block exists yet. Remove the new interface so the next
+         * attempt does not try DISABLE_NETWORK with an invalid network ID.
+         * remove_vif retains the real state if cleanup itself fails. */
+        fhost_wpa_remove_vif(fhost_vif_idx);
+        return -1;
     }
 
     TRACE_FHOST(WPA_INFO, "{FVIF-%d} WPA interface added", fhost_vif_idx);
@@ -753,12 +771,11 @@ int fhost_wpa_create_network(int fhost_vif_idx, char *net_cfg, char *ssid_cfg, c
     }
 
     if (*key_cfg) {
-        //fhost_printf("Exec %s\r\n", key_cfg);
         res_len = sizeof(res);
         if (fhost_wpa_execute_cmd(fhost_vif_idx, res, &res_len, FHOST_TIMEOUTMS_SET_NETWORK, "SET_NETWORK %d %s",
                                   wpa_vif->network_id, key_cfg))
         {
-            fhost_printf("SET_NETWORK (%s) failed\r\n", key_cfg);
+            TRACE_FHOST(ERR, "SET_NETWORK credential update failed");
             fhost_wpa_remove_vif(fhost_vif_idx);
             return -1;
         }
@@ -834,8 +851,24 @@ int fhost_wpa_disable_network(int fhost_vif_idx)
     if (!wpa_vif || (wpa_vif->network_id < 0))
         return -1;
 
-    if (wpa_vif->state != FHOST_WPA_STATE_CONNECTED)
+    if (wpa_vif->state == FHOST_WPA_STATE_STOPPED)
         return 0;
+
+    if (wpa_vif->state == FHOST_WPA_STATE_NOT_CONNECTED)
+    {
+        /* NOT_CONNECTED also covers scanning/authentication. Still disable
+         * the configured network; otherwise it can associate after return.
+         * An idle supplicant need not emit DISCONNECTED, so do not register
+         * an event waiter here. This confirms command completion only, not
+         * CONNECT-worker/scan drainage or exclusion of other Wi-Fi writers. */
+        if (fhost_wpa_execute_cmd(fhost_vif_idx, NULL, NULL, FHOST_TIMEOUTMS_DISABLE_NETWORK,
+                                 "DISABLE_NETWORK %d ", wpa_vif->network_id))
+            return -1;
+        return wpa_vif->state == FHOST_WPA_STATE_NOT_CONNECTED ? 0 : -1;
+    }
+
+    if (wpa_vif->state != FHOST_WPA_STATE_CONNECTED)
+        return -1;
 
     if (fhost_wpa_wait_event_register(fhost_vif_idx, FHOST_WPA_DISCONNECTED, &target))
         return -1;
@@ -856,6 +889,16 @@ int fhost_wpa_disable_network(int fhost_vif_idx)
     else if (wpa_vif->state == FHOST_WPA_STATE_STOPPED)
     {
         TRACE_FHOST(WPA_INFO, "WPA Task exit during disconnection");
+        return -1;
+    }
+
+    /* The shared waiter also wakes for CONNECTED and interface events. A
+     * notification alone does not prove DISABLE_NETWORK disconnected the STA.
+     * In particular, do not let a rollback caller treat a racing connection
+     * event as successful disconnection. */
+    if (wpa_vif->state != FHOST_WPA_STATE_NOT_CONNECTED)
+    {
+        TRACE_FHOST(WPA_INFO, "WPA network %d: disconnection not confirmed", wpa_vif->network_id);
         return -1;
     }
 

@@ -18,6 +18,7 @@
 
 #include "ipro6_sdio3.h"
 #include "ipro_irq.h"
+#include "drv_glb.h"
 
 #ifdef IPRO6_SDIO3_DEBUG
 #define IPRO6_SDIO3_DRV_DBG(a, ...) printf("[sdio3 drv]" a, ##__VA_ARGS__)
@@ -49,6 +50,13 @@ static void ipro6_sdio3_isr(void);
 struct ipro6_sdio3_queue_ctrl_s {
     uint8_t tran_sta;
     ipro6_sdio3_trans_desc_t *trans_desc;
+    /* byte count of the dnld in flight (the elem keeps its capacity) */
+    uint16_t xfer_len;
+    /* function of the dnld in flight, held or last completed */
+    uint8_t dnld_func;
+    /* WRITE_START with no posted buffer; dnld_push starts it */
+    uint8_t dnld_pend;
+    uint16_t pend_len;
 
     uint8_t dnld_queue_out[IPRO6_SDIO3_FUNC_NUM_MAX];
     uint8_t dnld_queue_in[IPRO6_SDIO3_FUNC_NUM_MAX];
@@ -88,6 +96,19 @@ static ipro6_sdio3_irq_cb_t sdio3_irq_event_cb = NULL;
 static ipro6_smid_dev_t *sdio3_dev = NULL;
 /* sdio3 ctrl */
 static struct ipro6_sdio3_queue_ctrl_s sdio3_ctrl = { 0 };
+
+/* TEST HOOK: set to 1 to make the next transfer leave tran_sta BUSY with the
+ * DMA never kicked -- the transport wedge, on demand. One-shot, default off. */
+volatile uint32_t ipro6_sdio3_dbg_stall;
+/* TEST HOOK: the next transfer's first ADMA line goes out invalid */
+volatile uint32_t ipro6_sdio3_dbg_adma_bad;
+
+/* Read-only view of the transfer state machine, for the transport-wedge
+ * watchdog: a data phase that never completes leaves this BUSY forever. */
+uint8_t ipro6_sdio3_tran_sta(void)
+{
+    return sdio3_ctrl.tran_sta;
+}
 /* diag: dnld length from Argument was out of range -> clamped to buffer size */
 volatile uint32_t ipro6_sdio3_dnld_len_fallback = 0;
 /* dnld flow control via DAT0 busy: set when a dnld completed with no free
@@ -113,17 +134,28 @@ volatile uint32_t ipro6_sdio3_dnld_backpressure = 0;
 static ATTR_NOCACHE_RAM_SECTION ipro6_sdio3_adma_hw_desc_s adma_hw_desc_buff[IPRO6_SDIO3_ADMA_MAX_DESC];
 _Static_assert(sizeof(ipro6_sdio3_adma_hw_desc_s) == 8, "ADMA descriptor must be 8 bytes");
 
-int ipro6_sdio3_init(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
+/* Controller config, kept to re-program it after a host I/O reset */
+static ipro6_sdio3_config_s sdio3_cfg;
+/* Interrupt STATUS/SIGNAL enable set by ipro6_sdio3_hw_config() */
+static uint32_t sdio3_int_mask;
+/* ADMA error seen: doorbell asks for a reset until a soft reset */
+static volatile uint8_t sdio3_reset_req;
+
+static void ipro6_sdio3_upld_doorbell(ipro6_smid_dev_t *dev, uint8_t func);
+/* keep_ready polls in a row seeing the ADMA error state while idle */
+static uint32_t sdio3_adma_stuck_polls;
+#define IPRO6_SDIO3_ADMA_STUCK_POLLS  (100)
+/* Last ADMA error: count, 0xB8 state, desc address reg, tran_sta |
+ * flags << 8 | func << 16, xfer_len | data_len << 16, desc[0] attr |
+ * len << 16, desc[0] address, interrupt status */
+volatile uint32_t ipro6_sdio3_adma_err_snap[8];
+
+/* Program every controller register the host I/O reset (CCCR RES,
+ * CMD0) returns to its default. Queue state is left alone. */
+static void ipro6_sdio3_hw_config(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
 {
-    uint32_t reg_base;
+    uint32_t reg_base = dev->reg_base;
     uint32_t regval;
-
-    if (cfg->func_num == 0 || cfg->func_num > IPRO6_SDIO3_FUNC_NUM_MAX) {
-        return -1;
-    }
-
-    reg_base = dev->reg_base;
-    sdio3_dev = dev;
 
     /* CCCR cfg */
     regval = getreg32(reg_base + IPRO6_SDIO3_SDIO_CCCR_CONTROL_REGISTER_OFFSET);
@@ -247,9 +279,6 @@ int ipro6_sdio3_init(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
     putreg32(regval, reg_base + IPRO6_SDIO3_CONTROL2_REGISTER_OFFSET);
 #endif
 
-    /* clean all interrupt_status */
-    putreg32(0xffffffff, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
-    putreg32(0x000000ff, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS2_REGISTER_OFFSET);
 
     /* Interrupt mask = exactly the interrupts the ISR dispatcher handles. The
      * DMA page-boundary interrupt (bit1) is handled in BOTH modes now (ADMA also
@@ -269,6 +298,7 @@ int ipro6_sdio3_init(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
      * which the host then sees as a card flap (the D-2b post-GOT_IP hang/flap).
      * Latching only the handled interrupts stops the spurious DMA1 (or any other
      * unhandled) interrupt at the source. */
+    sdio3_int_mask = regval;
     putreg32(regval, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_ENABLE_REGISTER_OFFSET);
     putreg32(regval, reg_base + IPRO6_SDIO3_INTERRUPT_SIGNAL_ENABLE_REGISTER_OFFSET);
     /* sta2: only the ADMA error is handled */
@@ -293,7 +323,31 @@ int ipro6_sdio3_init(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
         /* app build: advertise APP_RUN (bootrom SDIO-boot is a separate project) */
         regval |= IPRO6_SDIO3_STA_FLAG_APP_RUN;
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_STA_FLAG, &regval, 1);
+    }
+}
 
+int ipro6_sdio3_init(ipro6_smid_dev_t *dev, ipro6_sdio3_config_s *cfg)
+{
+    uint32_t reg_base;
+    uint32_t regval;
+
+    if (cfg->func_num == 0 || cfg->func_num > IPRO6_SDIO3_FUNC_NUM_MAX) {
+        return -1;
+    }
+
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_USB20_SDU);
+
+    reg_base = dev->reg_base;
+    sdio3_dev = dev;
+    sdio3_ctrl.dnld_func = 1;
+    sdio3_cfg = *cfg;
+    ipro6_sdio3_hw_config(dev, cfg);
+
+    /* clean all interrupt_status */
+    putreg32(0xffffffff, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
+    putreg32(0x000000ff, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS2_REGISTER_OFFSET);
+
+    for (uint8_t i = 1; i <= IPRO6_SDIO3_FUNC_NUM_MAX; i++) {
         /* clean upld/dnld in/out ptr */
         regval = 0;
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_DNLD_QUEUE_IN, &regval, 1);
@@ -324,9 +378,59 @@ int ipro6_sdio3_deinit(ipro6_smid_dev_t *dev)
     return 0;
 }
 
+/* diag: controller re-programs after a host I/O reset */
+volatile uint32_t ipro6_sdio3_reconfig_cnt = 0;
+
+/* Re-program the controller after a host I/O reset returned it to
+ * its defaults; the card stays initialized, the queues keep state. */
+static void ipro6_sdio3_reconfig(ipro6_smid_dev_t *dev)
+{
+    uintptr_t flag = ipro_irq_save();
+    uint32_t regval;
+
+    ipro6_sdio3_hw_config(dev, &sdio3_cfg);
+    regval = getreg32(dev->reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
+    regval = (regval & ~IPRO6_SDIO3_PROGRAM_DONE) | IPRO6_SDIO3_CARD_INIT_DONE;
+    putreg32(regval, dev->reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
+    ipro6_sdio3_reconfig_cnt++;
+    ipro_irq_restore(flag);
+}
+
 void ipro6_sdio3_keep_ready(ipro6_smid_dev_t *dev)
 {
     uint32_t reg_base = dev->reg_base;
+
+    /* an I/O reset returns the interrupt enables to their default; handle
+     * it like the soft-reset interrupt in case that one never comes */
+    if (sdio3_int_mask &&
+        getreg32(reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_ENABLE_REGISTER_OFFSET) != sdio3_int_mask) {
+        uintptr_t flag = ipro_irq_save();
+        sdio3_reset_req = 0;
+        uint8_t dropped = ipro6_sdio3_reset_resync(dev);
+
+        ipro6_sdio3_reconfig(dev);
+        if (sdio3_irq_event_cb != NULL) {
+            sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET, &dropped);
+        }
+        ipro_irq_restore(flag);
+    }
+
+    /* An ADMA error can latch without its interrupt. The state field is
+     * also non-zero briefly in normal use, so only a state that stays set
+     * while no transfer runs asks for the reset. */
+    if (!sdio3_reset_req &&
+        sdio3_ctrl.tran_sta != IPRO6_SDIO3_TRAN_STA_BUSY_DNLD &&
+        sdio3_ctrl.tran_sta != IPRO6_SDIO3_TRAN_STA_BUSY_UPLD &&
+        (getreg32(reg_base + IPRO6_SDIO3_ADMA_ERROR_STATUS_REGISTER_OFFSET) & 0x3)) {
+        if (++sdio3_adma_stuck_polls >= IPRO6_SDIO3_ADMA_STUCK_POLLS) {
+            uintptr_t flag = ipro_irq_save();
+            sdio3_reset_req = 1;
+            ipro6_sdio3_upld_doorbell(dev, 1);
+            ipro_irq_restore(flag);
+        }
+    } else {
+        sdio3_adma_stuck_polls = 0;
+    }
 
     /* The host IO-reset (CCCR 0x06[3]) silently clears Card-Init-Done + IOREADY and
      * raises no interrupt on ipro6s, so re-assert them whenever they go down. */
@@ -391,6 +495,10 @@ static void ipro6_sdio3_adma_kick(ipro6_smid_dev_t *dev, ipro6_sdio3_adma_hw_des
     uint32_t regval;
 
     hw_desc[lines - 1].attribute |= IPRO6_SDIO3_ADMA_ATTR_END;
+    if (ipro6_sdio3_dbg_adma_bad) {
+        ipro6_sdio3_dbg_adma_bad = 0;
+        hw_desc[0].attribute &= ~IPRO6_SDIO3_ADMA_ATTR_VALID;
+    }
 
     /* adma desc addr reg = head of the chain */
     putreg32((uint32_t)(uintptr_t)hw_desc, reg_base + IPRO6_SDIO3_DMA1_ADDRESS_REGISTER_OFFSET);
@@ -438,13 +546,16 @@ static int ipro6_sdio3_adma_start_sg(ipro6_smid_dev_t *dev, ipro6_sdio3_adma_hw_
 
     for (uint8_t k = 0; k < sg->cnt && remaining; k++) {
         uint32_t stride_bytes = (remaining < sg->stride) ? remaining : sg->stride;
-        uint32_t data_len = (stride_bytes < sg->slot_cap) ? stride_bytes : sg->slot_cap;
+        uint32_t cap = sg->pad_src ? sg->len[k] : sg->slot_cap;
+        uint32_t data_len = (stride_bytes < cap) ? stride_bytes : cap;
         uint32_t pad_len = stride_bytes - data_len;
         uint32_t slot_addr = (uint32_t)(uintptr_t)sg->slot[k];
+        uint32_t pad_addr = sg->pad_src ? (uint32_t)(uintptr_t)sg->pad_src
+                                        : slot_addr - sg->pad_off;
 
         i = ipro6_sdio3_adma_emit(hw_desc, i, slot_addr, data_len);
         if (i >= 0 && pad_len) {
-            i = ipro6_sdio3_adma_emit(hw_desc, i, slot_addr - sg->pad_off, pad_len);
+            i = ipro6_sdio3_adma_emit(hw_desc, i, pad_addr, pad_len);
         }
         if (i < 0) {
             return -1;
@@ -519,6 +630,39 @@ int ipro6_sdio3_custom_reg_read(ipro6_smid_dev_t *dev, uint16_t reg_offset, void
     return 0;
 }
 
+#if IPRO6_SDIO3_DMA1_MODE_ENABLE
+static int ipro6_sdio3_dma1_start(ipro6_smid_dev_t *dev, uint32_t addr, uint16_t len);
+#else
+static int ipro6_sdio3_adma_start(ipro6_smid_dev_t *dev, ipro6_sdio3_adma_hw_desc_s *hw_desc, uint32_t addr, uint16_t len);
+static int ipro6_sdio3_adma_start_sg(ipro6_smid_dev_t *dev, ipro6_sdio3_adma_hw_desc_s *hw_desc,
+                                     const ipro6_sdio3_sg_desc_t *sg, uint16_t xfer_len);
+#endif
+
+/* Start the dnld whose WRITE_START found the queue empty, now that
+ * a buffer is posted. Caller holds the irq lock. */
+static void ipro6_sdio3_dnld_start_pending(ipro6_smid_dev_t *dev, uint8_t func)
+{
+    ipro6_sdio3_trans_desc_t *d = IPRO6_SDIO3_GET_DNLD_OUT_DESC(sdio3_ctrl, func);
+    uint32_t len = sdio3_ctrl.pend_len;
+
+    if (len == 0 || len > d->data_len) {
+        ipro6_sdio3_dnld_len_fallback++;
+        len = d->data_len;
+    }
+    sdio3_ctrl.dnld_pend = 0;
+    sdio3_ctrl.trans_desc = d;
+    sdio3_ctrl.xfer_len = (uint16_t)len;
+#if IPRO6_SDIO3_DMA1_MODE_ENABLE
+    ipro6_sdio3_dma1_start(dev, (uint32_t)(uintptr_t)d->buff, len);
+#else
+    if (d->flags & IPRO6_SDIO3_TDF_SG) {
+        ipro6_sdio3_adma_start_sg(dev, adma_hw_desc_buff, (const ipro6_sdio3_sg_desc_t *)d->buff, len);
+    } else {
+        ipro6_sdio3_adma_start(dev, adma_hw_desc_buff, (uint32_t)(uintptr_t)d->buff, len);
+    }
+#endif
+}
+
 int ipro6_sdio3_dnld_push(ipro6_smid_dev_t *dev, ipro6_sdio3_trans_desc_t *trans_desc)
 {
     if (trans_desc == NULL || trans_desc->func == 0 || trans_desc->func > IPRO6_SDIO3_FUNC_NUM_MAX) {
@@ -539,6 +683,10 @@ int ipro6_sdio3_dnld_push(ipro6_smid_dev_t *dev, ipro6_sdio3_trans_desc_t *trans
     ipro6_sdio3_trans_desc_t *dnld_desc = IPRO6_SDIO3_GET_DNLD_IN_DESC(sdio3_ctrl, trans_desc->func);
     *dnld_desc = *trans_desc;
     sdio3_ctrl.dnld_queue_in[trans_desc->func - 1] += 1;
+    if (sdio3_ctrl.dnld_pend && sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD &&
+        trans_desc->func == sdio3_ctrl.dnld_func) {
+        ipro6_sdio3_dnld_start_pending(dev, trans_desc->func);
+    }
 
     /* unlock */
     ipro_irq_restore(flag);
@@ -556,12 +704,12 @@ int ipro6_sdio3_dnld_push(ipro6_smid_dev_t *dev, ipro6_sdio3_trans_desc_t *trans
     /* unlock */
     ipro_irq_restore(flag);
 
-    /* Back-pressure handoff: a prior dnld completed with the pool drained and
-     * withheld PROGRAM_DONE (DAT0 held busy). Now that a buffer is posted again,
-     * release DAT0 so the host's blocked CMD53 write proceeds into it. */
+    /* Release a withheld PROGRAM_DONE only while a buffer is still
+     * posted: writes since the push above may have used it up. */
     if (sdio3_dnld_pgmdone_deferred) {
         flag = ipro_irq_save();
-        if (sdio3_dnld_pgmdone_deferred) {
+        if (sdio3_dnld_pgmdone_deferred &&
+            IPRO6_SDIO3_GET_DNLD_NUM(sdio3_ctrl, trans_desc->func) > 0) {
             sdio3_dnld_pgmdone_deferred = 0;
             uint32_t regval = getreg32(dev->reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
             regval |= IPRO6_SDIO3_PROGRAM_DONE;
@@ -581,7 +729,9 @@ int ipro6_sdio3_dnld_push(ipro6_smid_dev_t *dev, ipro6_sdio3_trans_desc_t *trans
 static void ipro6_sdio3_upld_doorbell(ipro6_smid_dev_t *dev, uint8_t func)
 {
     uint16_t cnt = 0;
-    if (IPRO6_SDIO3_GET_UPLD_NUM(sdio3_ctrl, func) > 0) {
+    if (sdio3_reset_req) {
+        cnt = IPRO6_SDIO3_DOORBELL_RESET_REQ;
+    } else if (IPRO6_SDIO3_GET_UPLD_NUM(sdio3_ctrl, func) > 0) {
         cnt = IPRO6_SDIO3_GET_UPLD_OUT_DESC(sdio3_ctrl, func)->data_len;
     }
     if (func == 1) {
@@ -822,32 +972,14 @@ int ipro6_sdio3_irq_attach(ipro6_smid_dev_t *dev, ipro6_sdio3_irq_cb_t irq_event
 }
 
 /* isr callback: cmd0/cmd52 soft reset and func_x reset  */
-/* Re-sync the UPLD (device->host) side after a host reset (CMD0/CMD52 soft reset or
- * a function reset). A host reset resets the host's read position to zero but left
- * the device's upld queue in/out pointers + the read-count "doorbell" advertising a
- * frame the host will never ack -- a phantom read-count that the host then CMD53-read
- * into a stale/recycled buffer = descriptor-pointer garbage (is_amsdu/has_twin != 0)
- * -> read error -> another host reset -> the ~12 s D-2b flap cycle that never healed.
- * Reset the upld queue (driver counters + host-visible custom-reg copies) + doorbell
- * to empty so the next real upld re-establishes sync.
- *
- * The DNLD (host->device) side is re-synced too, for a clean symmetric reset: the
- * queue in/out pointers (driver counters + host-visible custom-reg copies) are zeroed
- * here, and the trcver's SMID_EVT_RESET handler (smid_rx_pool_reseed) reclaims every
- * armed RX buffer to the pool and re-arms from scratch -- restoring the exact
- * post-handshake pool/queue state, so a reset can never leak or strand a partially
- * consumed buffer. Safe on every enumeration reset because: the DMA is already stopped
- * above, so no in-flight transfer races the queue reset; with the dnld queue emptied,
- * the host's next CMD53 write hits GET_DNLD_NUM==0 -> DAT0 back-pressure holds it until
- * the worker re-arms (no lost write); and the current host transport never touches the
- * 0x48/0x4C custom-reg window (dnld = CMD53 + DAT0, upld = Fn1 read-count), so these
- * device-side custom-reg writes cannot race a host access. This does NOT touch
- * present / re-init the MAC (cf. smid_software_reset), so the handshake path is
- * undisturbed. */
-void ipro6_sdio3_reset_resync(ipro6_smid_dev_t *dev)
+/* Host soft/function reset: stop the DMA, clear the doorbells, empty
+ * the upld queues. Posted dnld buffers stay armed for the next write.
+ * Returns the number of upld transfers dropped. */
+uint8_t ipro6_sdio3_reset_resync(ipro6_smid_dev_t *dev)
 {
     uint32_t reg_base = dev->reg_base;
     uint32_t regval;
+    uint8_t dropped = 0;
 
     /* stop any in-flight / page-halted DMA so it can never resume into a stale
      * buffer after the upld queue is reset */
@@ -859,22 +991,35 @@ void ipro6_sdio3_reset_resync(ipro6_smid_dev_t *dev)
      * the host reads against an empty queue (uQemp) that sustains the flap cycle */
     putreg16(0, reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
     putreg16(0, reg_base + IPRO6_SDIO3_FUNCTION2_CONTROL_REGISTER_OFFSET);
+    /* a function reset does not restart the DMA engine */
+    if (sdio3_reset_req) {
+        putreg16(IPRO6_SDIO3_DOORBELL_RESET_REQ, reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
+    }
 
     sdio3_ctrl.tran_sta   = IPRO6_SDIO3_TRAN_STA_IDLE;
     sdio3_ctrl.trans_desc = NULL;
+    sdio3_ctrl.dnld_pend  = 0;
 
-    /* reset BOTH the upld and dnld queues (driver counters + host-visible custom-reg
-     * copies) to empty -- the driver half of the clean symmetric re-sync. The trcver
-     * SMID_EVT_RESET handler then reseeds + re-arms the dnld pool from this zeroed
-     * state (dnld_push increments dnld_queue_in from 0). */
     for (uint8_t i = 1; i <= IPRO6_SDIO3_FUNC_NUM_MAX; i++) {
+        dropped += IPRO6_SDIO3_GET_UPLD_NUM(sdio3_ctrl, i);
         sdio3_ctrl.upld_queue_in[i - 1]  = 0;
         sdio3_ctrl.upld_queue_out[i - 1] = 0;
-        sdio3_ctrl.dnld_queue_in[i - 1]  = 0;
-        sdio3_ctrl.dnld_queue_out[i - 1] = 0;
         regval = 0;
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_UPLD_QUEUE_IN,  &regval, 1);
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_UPLD_QUEUE_OUT, &regval, 1);
+    }
+    return dropped;
+}
+
+/* Empty the dnld queues. The caller reclaims the posted buffers in
+ * the same irq-save section, with no transfer running. */
+void ipro6_sdio3_dnld_queue_reset(ipro6_smid_dev_t *dev)
+{
+    uint32_t regval = 0;
+
+    for (uint8_t i = 1; i <= IPRO6_SDIO3_FUNC_NUM_MAX; i++) {
+        sdio3_ctrl.dnld_queue_in[i - 1]  = 0;
+        sdio3_ctrl.dnld_queue_out[i - 1] = 0;
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_DNLD_QUEUE_IN,   &regval, 1);
         ipro6_sdio3_custom_reg_write(dev, IPRO6_SDIO3_CUSTOM_REG_FUNC_OFFSET(i) + IPRO6_SDIO3_CUSTOM_REG_FUNC_DNLD_QUEUE_OUT,  &regval, 1);
     }
@@ -901,12 +1046,14 @@ static void ipro6_sdio3_isr_cb_soft_reset(ipro6_smid_dev_t *dev, uint32_t int_st
         putreg32(IPRO6_SDIO3_CMD0_CMD52_SOFT_RESET, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
         IPRO6_SDIO3_DRV_DBG("sdio3 soft reset\r\n");
 
-        /* re-sync the whole transport (queues + doorbell + DMA), not just tran_sta */
-        ipro6_sdio3_reset_resync(dev);
+        /* re-sync the upld side + doorbell + DMA, not just tran_sta */
+        sdio3_reset_req = 0;
+        uint8_t dropped = ipro6_sdio3_reset_resync(dev);
+        ipro6_sdio3_reconfig(dev);
 
         /* callback */
         if (sdio3_irq_event_cb != NULL) {
-            sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET, NULL);
+            sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET, &dropped);
         }
         return;
     }
@@ -921,11 +1068,11 @@ static void ipro6_sdio3_isr_cb_soft_reset(ipro6_smid_dev_t *dev, uint32_t int_st
         /* same clean re-sync as the soft reset -- the func1 reset previously left
          * tran_sta/queues/doorbell stale (no restore at all), which desynced the
          * upld queue and drove the flap cycle */
-        ipro6_sdio3_reset_resync(dev);
+        uint8_t dropped = ipro6_sdio3_reset_resync(dev);
 
         /* callback */
         if (sdio3_irq_event_cb != NULL) {
-            sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_FUNC1_RESET, NULL);
+            sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_FUNC1_RESET, &dropped);
         }
     }
 
@@ -982,8 +1129,15 @@ static void ipro6_sdio3_isr_cb_tran_start(ipro6_smid_dev_t *dev, uint32_t int_st
     if (int_sta1 & IPRO6_SDIO3_WRITE_START_INTERRUPT) {
         /* dnld opt */
         putreg32(IPRO6_SDIO3_WRITE_START_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
+        sdio3_ctrl.dnld_func = func_n;
         /* ckeck queue */
         if (IPRO6_SDIO3_GET_DNLD_NUM(sdio3_ctrl, func_n) == 0) {
+            /* the host skipped the DAT0 back-pressure (e.g. after an error
+             * reset): hold the write until dnld_push posts a buffer */
+            sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_BUSY_DNLD;
+            sdio3_ctrl.trans_desc = NULL;
+            sdio3_ctrl.dnld_pend = 1;
+            sdio3_ctrl.pend_len = (uint16_t)((uint32_t)blk_size * blk_cnt);
             if (sdio3_irq_event_cb != NULL) {
                 sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_ERR_DNLD_QUEUE, NULL);
             }
@@ -1007,7 +1161,7 @@ static void ipro6_sdio3_isr_cb_tran_start(ipro6_smid_dev_t *dev, uint32_t int_st
             ipro6_sdio3_dnld_len_fallback++;
             dnld_len = sdio3_ctrl.trans_desc->data_len;
         }
-        sdio3_ctrl.trans_desc->data_len = (uint16_t)dnld_len;
+        sdio3_ctrl.xfer_len = (uint16_t)dnld_len;
 
     } else if (int_sta1 & IPRO6_SDIO3_READ_START_INTERRUPT) {
         /* upld opt */
@@ -1022,9 +1176,10 @@ static void ipro6_sdio3_isr_cb_tran_start(ipro6_smid_dev_t *dev, uint32_t int_st
         /* update transfer status */
         sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_BUSY_UPLD;
         sdio3_ctrl.trans_desc = IPRO6_SDIO3_GET_UPLD_OUT_DESC(sdio3_ctrl, func_n);
-        /* clear upld length */
+        /* clear upld length; a pending reset request stays posted */
         if (func_n == 1) {
-            putreg32(0, reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
+            putreg32(sdio3_reset_req ? IPRO6_SDIO3_DOORBELL_RESET_REQ : 0,
+                     reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
         } else if (func_n == 2) {
             putreg32(0, reg_base + IPRO6_SDIO3_FUNCTION2_CONTROL_REGISTER_OFFSET);
         }
@@ -1035,8 +1190,14 @@ static void ipro6_sdio3_isr_cb_tran_start(ipro6_smid_dev_t *dev, uint32_t int_st
      * exactly the host's read count (blk_size * blk_cnt) = the doorbell'd byte
      * count. (Both are the same blk_size*blk_cnt unless the dnld was clamped.) */
     uint32_t adma_len = (int_sta1 & IPRO6_SDIO3_WRITE_START_INTERRUPT)
-                            ? sdio3_ctrl.trans_desc->data_len
+                            ? sdio3_ctrl.xfer_len
                             : (uint32_t)blk_size * blk_cnt;
+
+    /* TEST HOOK: leave tran_sta BUSY and never kick the DMA */
+    if (ipro6_sdio3_dbg_stall) {
+        ipro6_sdio3_dbg_stall = 0;
+        return;
+    }
 
 #if IPRO6_SDIO3_DMA1_MODE_ENABLE
     /* dma1 init */
@@ -1091,11 +1252,25 @@ static void ipro6_sdio3_isr_cb_dma1_page(ipro6_smid_dev_t *dev, uint32_t int_sta
 }
 #endif
 
+/* End of a dnld transaction: release DAT0 while a posted buffer
+ * remains for the host's next write, else hold it busy until
+ * dnld_push re-arms one. */
+static inline __attribute__((always_inline)) void ipro6_sdio3_dnld_release(ipro6_smid_dev_t *dev, uint8_t func)
+{
+    if (IPRO6_SDIO3_GET_DNLD_NUM(sdio3_ctrl, func) > 0) {
+        uint32_t regval = getreg32(dev->reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
+        regval |= IPRO6_SDIO3_PROGRAM_DONE;
+        putreg32(regval, dev->reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
+    } else {
+        sdio3_dnld_pgmdone_deferred = 1;
+        ipro6_sdio3_dnld_backpressure++;
+    }
+}
+
 /* isr callback: func1/func2  dnld/upld transfer complete int */
 static void ipro6_sdio3_isr_cb_tran_complete(ipro6_smid_dev_t *dev, uint32_t int_sta1)
 {
     uint32_t reg_base = dev->reg_base;
-    uint32_t regval;
 
     /* clr int */
     putreg32(IPRO6_SDIO3_TRANSFER_COMPLETE_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
@@ -1105,12 +1280,25 @@ static void ipro6_sdio3_isr_cb_tran_complete(ipro6_smid_dev_t *dev, uint32_t int
     putreg32(IPRO6_SDIO3_DMA1_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
 #endif
 
-    if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
-        /* data_len was set at WRITE_START from the Argument/Command registers
-         * (the host's CMD53 byte count); deliver it as-is. */
-        /* dnld complete, update dnld queue */
+    /* TC raised with a host abort: the abort handler owns it and
+     * neither delivers nor retires the transfer */
+    if ((int_sta1 & IPRO6_SDIO3_FUNCTIONX_ABORT_INTERRUPT) &&
+        (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD ||
+         sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_UPLD)) {
+        return;
+    }
+
+    if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD && sdio3_ctrl.trans_desc == NULL) {
+        /* a held write ended before any buffer was posted */
+        sdio3_ctrl.dnld_pend = 0;
+        sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
+    } else if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
+        /* dnld complete, update dnld queue; deliver the host's CMD53 byte
+         * count decoded at WRITE_START */
         sdio3_ctrl.dnld_queue_out[sdio3_ctrl.trans_desc->func - 1] += 1;
         ipro6_sdio3_trans_desc_t comp_desc = *sdio3_ctrl.trans_desc;
+        comp_desc.data_len = sdio3_ctrl.xfer_len;
         /* update custom reg */
         uint8_t func = comp_desc.func;
         uint8_t dnld_out = sdio3_ctrl.dnld_queue_out[func - 1];
@@ -1133,14 +1321,7 @@ static void ipro6_sdio3_isr_cb_tran_complete(ipro6_smid_dev_t *dev, uint32_t int
          * until the worker frees a buffer and dnld_push releases DAT0. This
          * back-pressures the host with zero host-side flow control and prevents
          * the dnld-queue-empty -110 that used to wedge the host. */
-        if (IPRO6_SDIO3_GET_DNLD_NUM(sdio3_ctrl, func) > 0) {
-            regval = getreg32(reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
-            regval |= IPRO6_SDIO3_PROGRAM_DONE;
-            putreg32(regval, reg_base + IPRO6_SDIO3_CONTROL_REGISTER_OFFSET);
-        } else {
-            sdio3_dnld_pgmdone_deferred = 1;
-            ipro6_sdio3_dnld_backpressure++;
-        }
+        ipro6_sdio3_dnld_release(dev, func);
 
     } else if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_UPLD) {
         /* upld complete, update upld queue */
@@ -1162,6 +1343,8 @@ static void ipro6_sdio3_isr_cb_tran_complete(ipro6_smid_dev_t *dev, uint32_t int
         }
     } else {
         IPRO6_SDIO3_DRV_DBG("complete err\r\n");
+        /* TC of a transfer already ended by a CRC error or an abort */
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
         if (sdio3_irq_event_cb != NULL) {
             sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_ERR_UNKNOW, NULL);
         }
@@ -1177,14 +1360,21 @@ static void ipro6_sdio3_isr_cb_tran_abort(ipro6_smid_dev_t *dev, uint32_t int_st
     putreg32(IPRO6_SDIO3_FUNCTIONX_ABORT_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
     IPRO6_SDIO3_DRV_DBG("trans abort\r\n");
 
-    if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
+    if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD && sdio3_ctrl.trans_desc == NULL) {
+        /* abort of a write held for a buffer: nothing was started */
+        sdio3_ctrl.dnld_pend = 0;
+        sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
+    } else if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
         /* dnld abort */
         ipro6_sdio3_adma_stop(dev);
         ipro6_sdio3_trans_desc_t abort_desc = *sdio3_ctrl.trans_desc;
-        /* update transfer status, and clean data_len */
+        abort_desc.data_len = sdio3_ctrl.xfer_len;
+        /* the elem stays queued with its capacity for the host's retry */
         sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
-        sdio3_ctrl.trans_desc->data_len = 0;
         sdio3_ctrl.trans_desc = NULL;
+        /* the card drives busy after an abort (SMID UG Fig. 21) */
+        ipro6_sdio3_dnld_release(dev, abort_desc.func);
 
         /* callback */
         if (sdio3_irq_event_cb != NULL) {
@@ -1201,10 +1391,14 @@ static void ipro6_sdio3_isr_cb_tran_abort(ipro6_smid_dev_t *dev, uint32_t int_st
 
         /* doorbell the next head frame's byte count (0 if the queue is now empty) */
         ipro6_sdio3_upld_doorbell(dev, abort_desc.func);
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
         /* callback */
         if (sdio3_irq_event_cb != NULL) {
             sdio3_irq_event_cb(sdio3_irq_arg, IPRO6_SDIO3_IRQ_EVENT_ERR_UPLD_ABORT, &abort_desc);
         }
+    } else {
+        /* abort after the transfer already ended (CRC error or TC first) */
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
     }
 #if 0
         /* TODO: this interrupt occurs during initialization */
@@ -1226,13 +1420,22 @@ static void ipro6_sdio3_isr_cb_crc_err(ipro6_smid_dev_t *dev, uint32_t int_sta1)
     putreg32(IPRO6_SDIO3_FUNCTIONX_CRC_END_ERROR_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
     IPRO6_SDIO3_DRV_DBG("crc error\r\n");
 
+    if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD && sdio3_ctrl.trans_desc == NULL) {
+        /* CRC on a write held for a buffer: nothing was started */
+        sdio3_ctrl.dnld_pend = 0;
+        sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
+        ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
+        return;
+    }
     if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
         /* dnld crc error */
         ipro6_sdio3_adma_stop(dev);
         ipro6_sdio3_trans_desc_t crc_desc = *sdio3_ctrl.trans_desc;
-        /* update transfer status, and clean data_len */
+        crc_desc.data_len = sdio3_ctrl.xfer_len;
+        /* the elem stays queued with its capacity for the host's retry */
         sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
-        sdio3_ctrl.trans_desc->data_len = 0;
+        sdio3_ctrl.trans_desc = NULL;
+        ipro6_sdio3_dnld_release(dev, crc_desc.func);
 
         /* callback */
         if (sdio3_irq_event_cb != NULL) {
@@ -1343,9 +1546,14 @@ static void ipro6_sdio3_isr(void)
 #else
         uint32_t regval;
         putreg32(IPRO6_SDIO3_DMA1_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
-        regval = getreg32(reg_base + IPRO6_SDIO3_DMA1_CONTROL_REGISTER_OFFSET);
-        regval |= IPRO6_SDIO3_DMA1_ADDRESS_VALID;
-        putreg32(regval, reg_base + IPRO6_SDIO3_DMA1_CONTROL_REGISTER_OFFSET);
+        /* a late page halt after the transfer ended must not restart it */
+        if (sdio3_ctrl.trans_desc != NULL &&
+            (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD ||
+             sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_UPLD)) {
+            regval = getreg32(reg_base + IPRO6_SDIO3_DMA1_CONTROL_REGISTER_OFFSET);
+            regval |= IPRO6_SDIO3_DMA1_ADDRESS_VALID;
+            putreg32(regval, reg_base + IPRO6_SDIO3_DMA1_CONTROL_REGISTER_OFFSET);
+        }
 #endif
         return;
     }
@@ -1375,8 +1583,33 @@ static void ipro6_sdio3_isr(void)
         putreg32(IPRO6_SDIO3_ADMA_ERROR_INTERRUPT, reg_base + IPRO6_SDIO3_INTERRUPT_STATUS2_REGISTER_OFFSET);
         IPRO6_SDIO3_DRV_DBG("adma err\r\n");
 
-        /* TODO: error restore */
+        ipro6_sdio3_adma_stop(dev);
+        {
+            const ipro6_sdio3_trans_desc_t *d = sdio3_ctrl.trans_desc;
+            volatile uint32_t *snap = ipro6_sdio3_adma_err_snap;
+
+            snap[0]++;
+            snap[1] = getreg32(reg_base + IPRO6_SDIO3_ADMA_ERROR_STATUS_REGISTER_OFFSET);
+            snap[2] = getreg32(reg_base + IPRO6_SDIO3_DMA1_ADDRESS_REGISTER_OFFSET);
+            snap[3] = sdio3_ctrl.tran_sta | (d ? (d->flags << 8) | (d->func << 16) : 0xff000000u);
+            snap[4] = sdio3_ctrl.xfer_len | (d ? (uint32_t)d->data_len << 16 : 0);
+            snap[5] = adma_hw_desc_buff[0].attribute | ((uint32_t)adma_hw_desc_buff[0].length << 16);
+            snap[6] = adma_hw_desc_buff[0].address;
+            snap[7] = getreg32(reg_base + IPRO6_SDIO3_INTERRUPT_STATUS_REGISTER_OFFSET);
+        }
+        /* end the transfer like an abort: the elem stays queued */
+        uint8_t upld_func = 0;
+        if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD) {
+            sdio3_ctrl.dnld_pend = 0;
+            ipro6_sdio3_dnld_release(dev, sdio3_ctrl.dnld_func);
+        } else if (sdio3_ctrl.tran_sta == IPRO6_SDIO3_TRAN_STA_BUSY_UPLD && sdio3_ctrl.trans_desc) {
+            upld_func = sdio3_ctrl.trans_desc->func;
+        }
         sdio3_ctrl.tran_sta = IPRO6_SDIO3_TRAN_STA_READY;
+        sdio3_ctrl.trans_desc = NULL;
+        /* only a host card reset restarts the ADMA engine: ask for one */
+        sdio3_reset_req = 1;
+        ipro6_sdio3_upld_doorbell(dev, upld_func ? upld_func : 1);
 
         /* callback */
         if (sdio3_irq_event_cb != NULL) {

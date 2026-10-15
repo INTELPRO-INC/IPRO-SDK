@@ -64,7 +64,7 @@ else()
     message(FATAL_ERROR "No .config file found in ${CUSTOM_CONFIG_DIR}.")
 endif()
 
-# Add chip-specific definition (IPRO6LE/IPRO6/IPRO7)
+# Add chip-specific definition (IPRO6/IPRO7)
 # For IPRO6: both IPRO7 (from toolchain.cmake) and IPRO6 are defined
 # Code should check IPRO6 first since it's more specific
 add_definitions(-D${CONFIG_CHIP})

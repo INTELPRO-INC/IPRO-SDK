@@ -103,6 +103,8 @@ enum {
 
 void hal_reboot(void);
 void hal_reboot_download(void);
+/* Power-on reset into MEDIA boot, whatever the boot strap reads. */
+void hal_reboot_media(void);
 void hal_sys_reset(void);
 void hal_poweroff(void);
 int hal_rc32k_cal(void);

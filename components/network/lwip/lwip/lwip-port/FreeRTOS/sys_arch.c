@@ -32,7 +32,7 @@
 
 /*
  * lwIP 2.1 system-architecture layer on FreeRTOS (V11), shared by every
- * IPRO SoC port in this SDK (ipro7, ipro6, ipro6le).
+ * IPRO SoC port in this SDK (ipro7, ipro6).
  *
  * Units and contracts, because every one of them has bitten a port before:
  *

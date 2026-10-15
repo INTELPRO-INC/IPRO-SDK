@@ -72,6 +72,9 @@ set(IPRO_BLE_CTLR_IPRO6S_LIBRARY_NAME
 if(CONFIG_BTDM_BT_ENABLE)
     string(APPEND IPRO_BLE_CTLR_IPRO6S_LIBRARY_NAME "_br")
 endif()
+if(CONFIG_BTDM_WLAN_COEX)
+    string(APPEND IPRO_BLE_CTLR_IPRO6S_LIBRARY_NAME "_coex")
+endif()
 if(CONFIG_BTDM_PAWR)
     string(APPEND IPRO_BLE_CTLR_IPRO6S_LIBRARY_NAME "_pawr")
 elseif(CONFIG_BTDM_PER_ADV OR CONFIG_BTDM_PAST)
@@ -132,6 +135,9 @@ endforeach()
 # prebuilt would behave differently from the source build.
 # ---------------------------------------------------------------------------
 if(EXISTS "${IPRO_BLE_CTLR_IPRO6S_PREBUILT}" AND NOT CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD)
+    if(CONFIG_WIFI6 OR CONFIG_USE_MACSW OR CONFIG_BTDM_EM_SIZE_16K)
+        message(FATAL_ERROR "IPRO6S Wi-Fi/Bluetooth coexistence requires CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=y to isolate controller kernel/crypto symbols from the Wi-Fi archives")
+    endif()
     target_sources(${IPRO_BLE_CTLR_IPRO6S_LIBRARY_NAME} PRIVATE
         ${IPRO_BLE_CTLR_IPRO6S_ROOT}/prebuilt_anchor.c)
     # Exactly the include set the source build exports publicly -- no more.
@@ -149,6 +155,16 @@ if(EXISTS "${IPRO_BLE_CTLR_IPRO6S_PREBUILT}" AND NOT CONFIG_IPRO_BLE_CTLR_FORCE_
     __component_add_link_options(-Wl,--whole-archive ${IPRO_BLE_CTLR_IPRO6S_PREBUILT} -Wl,--no-whole-archive)
     message(STATUS "[ipro_ble_controller] Using prebuilt ${IPRO_BLE_CTLR_IPRO6S_PREBUILT}")
     return()
+endif()
+
+if(CONFIG_WIFI6 OR CONFIG_USE_MACSW)
+    include(${CMAKE_CURRENT_LIST_DIR}/ipro6s_wifi_namespace.cmake)
+endif()
+if(CONFIG_BTDM_EM_SIZE_16K)
+    if(CONFIG_BTDM_BT_ENABLE)
+        message(FATAL_ERROR "16 KiB EM is qualified only for BLE-only builds")
+    endif()
+    __component_add_sources(${IPRO_BLE_CTLR_IPRO6S_COMPAT}/em_size_check.c)
 endif()
 
 # Preserve the controller's pre-migration __FILE__ strings.  RivieraWaves
@@ -227,6 +243,9 @@ __component_add_private_include_dirs(${IPRO_BLE_CTLR_IPRO6S_UPSTREAM}/ip/ll/sch/
 
 # Core feature flags
 include(${CMAKE_CURRENT_LIST_DIR}/ipro6s_features.cmake)
+if(CONFIG_BTDM_WLAN_COEX)
+    __component_add_private_compile_definitions(CFG_WLAN_COEX)
+endif()
 foreach(_ipro6s_feature IN LISTS IPRO6S_OPTIONAL_BLE_DEFS)
     __component_add_private_compile_definitions(-D${_ipro6s_feature})
 endforeach()

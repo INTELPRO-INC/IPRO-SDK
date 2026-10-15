@@ -329,6 +329,10 @@ struct txdesc
  * -------------------------------- WARNNING end of duplicate definition --------------------------------
  */
 
+#ifndef FHOST_TX_BUF_HDR_RESERVE
+#define FHOST_TX_BUF_HDR_RESERVE 240
+#endif
+
 /// Structure mapped into the TX buffer for internal handling
 struct fhost_tx_desc_tag
 {
@@ -341,7 +345,8 @@ struct fhost_tx_desc_tag
 
     // WARNING magic number
     // Guarded by MFCC, it should be OK.
-    uint8_t pad[68 + 240];
+    // FHOST_TX_BUF_HDR_RESERVE: room for txl_buffer_tag (export_tx.c)
+    uint8_t pad[68 + FHOST_TX_BUF_HDR_RESERVE];
     /// TX HW descriptor attached to the MPDU
     // 68 bytes
     //struct tx_hw_desc hw_desc;
@@ -699,6 +704,26 @@ int fhost_tx_sta_ps_traffic_req(uint8_t sta_id, int pkt_cnt, bool uapsd);
  ****************************************************************************************
  */
 int fhost_tx_vif_ps_enable(uint8_t vif_idx, uint8_t enable);
+
+/**
+ ****************************************************************************************
+ * @brief Set the lowest access category used for Ethernet (data) frames.
+ *
+ * A frame whose TID maps to a lower AC is sent on the TID of @p ac; frames
+ * already on that AC or above keep their TID. The ACM downgrade still applies
+ * afterwards. AC_BK (the default) leaves every frame unchanged.
+ *
+ * @param[in] ac  Access category (AC_BK..AC_VO); out of range selects AC_BK
+ ****************************************************************************************
+ */
+void fhost_tx_ac_min_set(uint8_t ac);
+
+/**
+ ****************************************************************************************
+ * @brief Return the lowest access category set by fhost_tx_ac_min_set().
+ ****************************************************************************************
+ */
+uint8_t fhost_tx_ac_min_get(void);
 
 /* DEBUG 2026-07-25 P1: credit-conservation counters behind the sustained
  * over-offer zero-copy wedge. The dump that reads them lives in cli_al.c on

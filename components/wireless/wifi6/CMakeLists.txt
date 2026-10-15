@@ -22,13 +22,17 @@ endif()
 # LP beacon-RX firmware (CONFIG_PHY_LPFW): the lwIP adapter's lwipopts.h ->
 # fhost.h include chain needs the full UMAC task enum, and the lp_fw link pulls
 # no member from its archive (verified via the blob map) — skip it.
-if(NOT CONFIG_PHY_LPFW)
+# Under Zephyr (IPRO_SDK_UNDER_ZEPHYR) the IP stack is Zephyr's own: the lwIP
+# adapter and sigma_dut stay out, the RTOS abstraction comes from the Zephyr
+# module (zephyr/hal_glue/ipro_wifi_rtos_al.c).
+if(NOT CONFIG_PHY_LPFW AND NOT IPRO_SDK_UNDER_ZEPHYR)
 add_subdirectory(wifi6_lwip_adapter)
 endif()
+if(NOT IPRO_SDK_UNDER_ZEPHYR)
 add_subdirectory(ipro_os_adapter)
 
-# sigma_dut is shared between wifi6 and wifi6_legacy
 add_subdirectory(sigma_dut)
+endif()
 
 # Enable common section for wifi6
 # __component_add_compile_options(-fcommon)
@@ -134,6 +138,22 @@ __component_add_compile_definitions(-DCFG_TWT=8)
 __component_add_compile_definitions(-DCONFIG_TWT)
 endif()
 # __component_add_compile_definitions(-DCFG_TWT=8)
+# Standalone station memory profile (CONFIG_WIFI_MEM_PROFILE_*): reorder
+# window, MAC RX buffer 1, RX buffers, TCP window, send buffer, lwIP heap.
+if(CONFIG_WIFI_MEM_PROFILE_APP)
+    set(STA_MEM_PROFILE 8 12288 10 8760 11680 24576)
+elseif(CONFIG_WIFI_MEM_PROFILE_BALANCED)
+    set(STA_MEM_PROFILE 8 12288 12 11680 23360 32768)
+else()
+    set(STA_MEM_PROFILE 16 20480 20 35040 49640 71680)
+endif()
+list(GET STA_MEM_PROFILE 0 STA_REORD_BUF)
+list(GET STA_MEM_PROFILE 1 STA_RXL_BUFFER1_BYTES)
+list(GET STA_MEM_PROFILE 2 STA_RX_BUF_CNT)
+list(GET STA_MEM_PROFILE 3 STA_TCP_WND)
+list(GET STA_MEM_PROFILE 4 STA_TCP_SND_BUF)
+list(GET STA_MEM_PROFILE 5 STA_LWIP_HEAP_SIZE)
+
 if(CONFIG_WIFI_ETH_BRIDGE)
 __component_add_compile_definitions(-DCFG_BARX=12)
 __component_add_compile_definitions(-DCFG_BATX=12)
@@ -149,7 +169,45 @@ if(NOT CONFIG_PHY_LPFW)
 __component_add_compile_definitions(-DCFG_HE_TB)
 endif()
 else()
+# Zephyr's IP stack is its own (the lwIP knobs below do not apply); the
+# reorder window, RX buffer 1 and the RX buffer count come from its Kconfig
+# (CONFIG_IPRO_WIFI_REORD_BUF here, RXL_BUF1_BYTES and FHOST_RX_BUF_CNT in
+# zephyr/CMakeLists.txt).
+if(IPRO_SDK_UNDER_ZEPHYR)
+__component_add_compile_definitions(-DCFG_REORD_BUF=${CONFIG_IPRO_WIFI_REORD_BUF})
+elseif(CONFIG_COMPONENTS_SDIOWIFI_ENABLE OR CONFIG_COMPONENTS_USBWIFI_ENABLE)
 __component_add_compile_definitions(-DCFG_REORD_BUF=12)
+if(CONFIG_COMPONENTS_USBWIFI_ENABLE)
+# USB bridge: 28 BE frames in flight, below the 32-MPDU TX BA window
+__component_add_compile_definitions(-DFHOST_TX_HWQ_BE_MAX=28)
+endif()
+else()
+# FreeRTOS standalone station: buffers from STA_MEM_PROFILE,
+# 40 ms lwIP fast TCP timer.
+__component_add_compile_definitions(-DCFG_REORD_BUF=${STA_REORD_BUF})
+__component_add_compile_definitions(-DRXL_BUFFER1_BYTES=${STA_RXL_BUFFER1_BYTES})
+__component_add_compile_definitions(-DFHOST_RX_BUF_CNT=${STA_RX_BUF_CNT})
+__component_add_compile_definitions(-DTCP_WND=${STA_TCP_WND})
+# Task stacks in words.
+__component_add_compile_definitions(-DFHOST_TCPIP_STACK_WORDS=512)
+__component_add_compile_definitions(-DFHOST_RX_STACK_WORDS=576)
+__component_add_compile_definitions(-DFHOST_WIFI_STACK_WORDS=384)
+# Send queue of 80 pbufs, low-water mark 68.
+__component_add_compile_definitions(-DTCP_SND_QUEUELEN=80)
+__component_add_compile_definitions(-DMEMP_NUM_TCP_SEG=80)
+__component_add_compile_definitions(-DTCP_SNDQUEUELOWAT=68)
+__component_add_compile_definitions(-DDNS_TABLE_SIZE=2)
+__component_add_compile_definitions(-DTCP_SND_BUF=${STA_TCP_SND_BUF})
+# TX headroom 460: fhost_tx_desc_tag 376 (txl_buffer_tag 200) + 3 align
+# + NET_AL_TX_DESC_SHIFT 80. The bridges keep 500 (host arm offset).
+__component_add_compile_definitions(-DFHOST_TX_BUF_HDR_RESERVE=200)
+__component_add_compile_definitions(-DNET_AL_TX_HEADROOM=460)
+__component_add_compile_definitions(-DPBUF_LINK_ENCAPSULATION_HLEN=460)
+# TX confirm and push events above RX upload; the bridges keep the stock order
+__component_add_compile_definitions(-DMACIF_TX_PUSH_FIRST=1)
+__component_add_compile_definitions(-DLWIP_TCP_TIMER_WAKE_FIX=1)
+__component_add_compile_definitions(-DLWIP_TCP_FAST_INTERVAL_MS=40)
+endif()
 endif()
 endif()
 #__component_add_compile_definitions(-DCFG_DBGDUMPKEY)
@@ -254,10 +312,57 @@ else()
 # Standalone case (e.g. ipro6_demo): lwIP terminates the sockets on
 # the DUT, so every in-flight TX pbuf is held in this heap until
 # max(TX cfm, TCP ACK) — the heap IS the TX in-flight window. Each
-# full-MSS pbuf costs ~2 KB, so 48 KB gives ~24 in-flight segments
-# (24 KB capped throughput at 17520 B/RTT). Must fit .wifibss within
-# ram_wifi alongside the fhost RX pool and memp arrays.
-__component_add_compile_definitions(-DLWIP_HEAP_SIZE=49152)
+# full-MSS pbuf costs 2,000 B with the 460 B TX headroom; the heap
+# (STA_MEM_PROFILE) holds the profile's send buffer plus ACK and
+# control pbufs. Must fit .wifibss within ram_wifi alongside the
+# fhost RX pool and memp arrays.
+__component_add_compile_definitions(-DLWIP_HEAP_SIZE=${STA_LWIP_HEAP_SIZE})
+# The same standalone property, seen from the other side: because the heap IS
+# the in-flight window, a sender that stops draining holds all of it. Stock lwIP
+# backs the RTO off without bound (TCP_MAXRTX is 12 here: opt.h's stock
+# default), so on IPRO-LAB10 at -23 dBm one loss burst walked rto 6 s -> 24 s -> 48 s with cwnd
+# pinned at one MSS; the heap stayed full, the writer stayed blocked, and the
+# run never recovered while ICMP to the same device answered 5/5. 4 ticks = 2 s,
+# which removed every backed-off leg in a 10-leg alternating A/B. The bridge
+# branches above stay stock: they do not terminate TCP on the DUT. Runtime
+# override for A/B without a rebuild: lp rtomax.
+# 2026-09-10: 1 tick (500 ms), not 4. The ceiling now also clamps the RTT
+# estimator (tcp_in.c), and that is what sets how long a stalled uplink stays
+# silent: measured from the air, seven stalls in one 60 s leg, each 1.1-1.9 s of
+# silence in both directions ended by the retransmission, with the live rto at
+# 3-6 ticks while the link's RTT was ~10 ms. At 4 ticks stage-0 was 0/10; at 1 it
+# is 6/10 and 9/10 with the per-run hole count down from a median of 3 to 0 and
+# throughput unchanged. 500 ms is 2.3x the worst RTT seen over a day (217 ms) and
+# it is a CEILING, not the 1-tick FLOOR that wrecked the IPRO7 host on 08-28.
+__component_add_compile_definitions(-DLP_TCP_RTO_MAX_TICKS=1)
+# 2026-09-12: a TCP write that tcp_write() refuses with ERR_MEM is deferred with
+# NOTHING queued, so no ack can arrive, sent_tcp() never fires, and api_msg.c's
+# poll is the only retry path. tcp_poll()'s interval is in COARSE ticks and this
+# build's slow tick measures 511 ms, so the stock NETCONN_TCP_POLL_INTERVAL of 2
+# retries only about every 1.02 s. Measured on the 250 ms ring over 7 windows in
+# 6 legs, dip and clean alike: ~15 ERR_MEM land in one sample, the writer stops,
+# and the heap is ALREADY COMPLETELY FREE in that same sample -- yet nothing
+# attempts a write for a further 0.75-1.00 s while the CPU sits 10-20x more idle
+# than usual. The memory burst is only the trigger; the hole is retry latency,
+# and a scored second breaks the 1 Mbps bar once ~860 ms of it is dead. 1 = one
+# slow tick ~511 ms, the floor for this approach; going below it needs a retry
+# driven by memory release. Runtime override for A/B without a rebuild:
+# lp_netconn_poll_interval (.sbss), 0 = use the compile-time constant.
+__component_add_compile_definitions(-DLP_NETCONN_POLL_INTERVAL=1)
+# KNOWN CONSEQUENCE, deliberately not compensated here. lwIP gives up after a
+# fixed COUNT of retransmissions, so a shorter RTO also shortens how long a
+# connection survives a dead link. With the estimator's 3-tick base, stock walks
+# 3+6+12+24+48+96+192+384x5 = 2301 ticks before TCP_MAXRTX (12) is reached, about
+# 19 minutes; at a 1-tick ceiling the same 12 retries are 6 s. So a radio outage
+# longer than 6 s now drops a TCP connection that stock rode out. Raising the
+# count to restore the budget (120 = 60 s) needs the shared lwIP assertion in
+# init.c relaxed, and how long a connection SHOULD outlive its link is a product decision, so it is left at the stock 12 that the
+# 6/10 and 9/10 stage-0 runs were measured with. tcp_slowtmr() clamps the table
+# index with LWIP_MIN(nrtx, sizeof(tcp_backoff)-1), so a larger count would be
+# memory-safe; only the assertion stands in the way.
+# SYN is unaffected either way: the ceiling is applied inside the
+# state != SYN_SENT branch and in tcp_receive (established only), so
+# TCP_SYNMAXRTX keeps its stock timing.
 endif()
 __component_add_compile_definitions_ifdef(CONFIG_WIFI_IPERF -DCFG_IPERF)
 __component_add_compile_definitions_ifdef(CONFIG_WIFI_TG -DCFG_TG)

@@ -137,6 +137,8 @@ u32_t sys_timeouts_sleeptime(void);
 
 #if LWIP_TCP && TCP_TIMER_PRECISE_NEEDED
 void tcpip_tmr_compensate_tick(void);
+void tcp_timer_fast_interval_set(u32_t ms);
+u32_t tcp_timer_fast_interval_get(void);
 #endif
 
 #if LWIP_TESTMODE

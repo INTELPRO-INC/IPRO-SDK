@@ -46,6 +46,7 @@
 #include "lwip/ip_addr.h"
 #include "lwip/udp.h"
 #include "lwip/tcp.h"
+#include "lwip/priv/tcp_priv.h"
 #include "lwip/raw.h"
 
 #include "lwip/memp.h"
@@ -58,6 +59,29 @@
 
 /* netconns are polled once per second (e.g. continue write on memory error) */
 #define NETCONN_TCP_POLL_INTERVAL 2
+
+/* Retry latency for a write that tcp_write() refused with ERR_MEM.
+ *
+ * tcp_poll()'s interval is in COARSE (slow) timer ticks, and this build's slow
+ * tick measures 511 ms, so the stock 2 means a deferred write can only be
+ * retried about every 1.02 s. With nothing queued there is no ack, so sent_tcp()
+ * never fires and this poll is the ONLY retry path.
+ *
+ * Measured 2026-09-12, 7 windows over 6 legs (dip and clean alike): a transient
+ * heap exhaustion fires ~15 ERR_MEM in one 250 ms sample, the writer stops, the
+ * heap is COMPLETELY FREE one sample later (heap used = 0), and yet no write is
+ * attempted for a further 0.75-1.00 s while the CPU sits 10-20x more idle than
+ * normal. The trigger is the memory burst; the hole is this retry latency. A
+ * scored second fails once ~860 ms of it is dead, which is why it lands on the
+ * edge.
+ *
+ * 0 keeps the compile-time value, so the default is line-for-line stock and the
+ * A/B runs on one image. 1 = one slow tick ~511 ms, which is the floor for this
+ * approach; going below it needs a retry driven by memory release instead. */
+#ifndef LP_NETCONN_POLL_INTERVAL
+#define LP_NETCONN_POLL_INTERVAL 0      /* 0 = use the compile-time constant */
+#endif
+u8_t lp_netconn_poll_interval = LP_NETCONN_POLL_INTERVAL;
 
 #define SET_NONBLOCKING_CONNECT(conn, val)  do { if (val) { \
   netconn_set_flags(conn, NETCONN_FLAG_IN_NONBLOCKING_CONNECT); \
@@ -548,6 +572,29 @@ setup_tcp(struct netconn *conn)
    */
   tcp_err(pcb, err_tcp);
 }
+
+#ifdef TCP_LP_IDLE_CANDIDATE
+int
+tcp_lp_netconn_idle(struct tcp_pcb *pcb)
+{
+#if LWIP_CALLBACK_API
+  struct netconn *conn;
+  /* Do not infer ownership from callback_arg: raw API users own that pointer. */
+  if (pcb->recv != recv_tcp || pcb->sent != sent_tcp || pcb->errf != err_tcp ||
+      pcb->poll != NULL || pcb->callback_arg == NULL) {
+    return 0;
+  }
+  conn = (struct netconn *)pcb->callback_arg;
+  return conn->pcb.tcp == pcb && conn->state == NETCONN_NONE &&
+         conn->current_msg == NULL &&
+         !(conn->flags & (NETCONN_FLAG_CHECK_WRITESPACE |
+                          NETCONN_FLAG_IN_NONBLOCKING_CONNECT));
+#else
+  LWIP_UNUSED_ARG(pcb);
+  return 0;
+#endif
+}
+#endif
 
 int lwip_netconn_is_tcp_polling(struct netconn *conn)
 {
@@ -1868,7 +1915,9 @@ lwip_netconn_do_write(void *m)
         /* After conn->state transfer NETCONN_WRITE because of write more, register.
            The following lwip_netconn_do_writemore will unregister it.
          */
-        tcp_poll(msg->conn->pcb.tcp, poll_tcp, NETCONN_TCP_POLL_INTERVAL);
+        tcp_poll(msg->conn->pcb.tcp, poll_tcp,
+                 lp_netconn_poll_interval ? lp_netconn_poll_interval
+                                          : NETCONN_TCP_POLL_INTERVAL);
         void tcp_timer_needed(void);
         tcp_timer_needed();
         /* set all the variables used by lwip_netconn_do_writemore */

@@ -171,6 +171,15 @@ int audio_output_stop(audio_output_t *out);
 uint32_t audio_output_dac_consumed(audio_output_t *out);
 
 /**
+ * @brief DMA segments that started before the writer had refilled them, since start.
+ *
+ * Streaming mode only. The ring is cyclic, so a late writer is not silence: the DMA plays the
+ * segment's old samples again (a stutter). Silence the writer did not send counts too, so read it
+ * as a difference across a stretch that should have been fed (a clip), not as an absolute.
+ */
+uint32_t audio_output_dac_stale_segments(audio_output_t *out);
+
+/**
  * @brief Samples the sink has actually played, since start, for any backend.
  *
  * Same contract as audio_output_dac_consumed() but dispatched on the handle's

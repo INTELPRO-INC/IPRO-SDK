@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <drv_mm_misc.h>
 #include <mm_misc_reg.h>
+#include "drv_glb.h"
 
 #define DVP_AS_FIFO_MAX (1024)
 
@@ -54,6 +55,9 @@ void MM_MISC_Set_SNSR_PowerDown(uint8_t value)
 
 void MM_MISC_SPI2DVP_Init(MM_MISC_SPI2DVP_Cfg cfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_MM_MISC);
+
     uint32_t tmpVal;
 
     tmpVal = readl(MM_MISC_BASE + MM_MISC_SPI2DVP_CTRL_OFFSET);

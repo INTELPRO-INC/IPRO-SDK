@@ -430,6 +430,11 @@ struct cfgrwnx_scan {
     bool passive;
     /// the count of probe req sent on every channel
     uint32_t probe_cnt;
+    /// Host-only correlation; zero for legacy callers. Initialize whole command.
+    uint32_t request_id;
+    /// Descriptor is embedded in the caller-owned command; queue carries its pointer.
+    struct cfgrwnx_scan_ssid inline_ssid;
+    bool use_inline_ssid;
 };
 
 /// structure for CFGRWNX_SCAN_DONE_EVENT

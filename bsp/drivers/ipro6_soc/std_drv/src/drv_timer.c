@@ -674,6 +674,10 @@ void WDT_Disable(WDT_ID_Type wdtId)
 
     /* Check the parameters */
 
+    /* The WDT sits behind the TIMER module clock; this is the first
+     * WDT access of every hal_wdt path. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_TIMER);
+
     WDT_ENABLE_ACCESS(TIMERx);
 
     tmpVal = readl(TIMERx + TIMER_WMER_OFFSET);

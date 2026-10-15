@@ -73,11 +73,11 @@ typedef struct {
 }PtTable_Stuff_Config;
 
 #if defined(CONFIG_IPRO6)
-/* ipro6 64K-boot2 layout (mirrors ipro7): bootheader 4K @0x0, boot2 code
- * 60K @0x1000, PT0 @0x10000, PT1 @0x11000, FW @0x12000. Must match the
- * flash tool's partition_cfg_*.toml. */
-#define PT_TABLE0_ADDRESS                               0x10000
-#define PT_TABLE1_ADDRESS                               0x11000
+/* ipro6 72K-boot2 layout: bootheader 8K @0x0, boot2 code 64K @0x2000,
+ * PT0 @0x12000, PT1 @0x13000, FW @0x14000. Must match boot2's
+ * ipro6_flash.ld and the flash tool's partition_cfg_*.toml. */
+#define PT_TABLE0_ADDRESS                               0x12000
+#define PT_TABLE1_ADDRESS                               0x13000
 #else
 /* Legacy fixed addresses. ipro7 overrides at runtime from the boot2
  * bootheader (offsets 164/168), so these are only a fallback there. */
@@ -103,4 +103,20 @@ PtTable_Error_Type PtTable_Create(const SPI_Flash_Cfg_Type *pFlashCfg,PtTable_ID
 PtTable_Error_Type PtTable_Get_Active_Entries_By_Name(PtTable_Stuff_Config *ptStuff,                                                             
                                                     uint8_t *name,                                                     
                                                     PtTable_Entry_Config *ptEntry);
+
+/* Flash access for the _Ops variants; each returns SUCCESS (0). */
+typedef struct {
+    int (*read)(uint32_t addr, uint8_t *data, uint32_t len);
+    int (*erase)(uint32_t addr, uint32_t len);
+    int (*write)(uint32_t addr, uint8_t *data, uint32_t len);
+} PtTable_Flash_Ops;
+
+/* Reads PT0/PT1, checks magic and both CRCs, picks the higher age
+ * (tie: PT0). PT_TABLE_ID_INVALID when neither copy is valid. */
+PtTable_ID_Type PtTable_Get_Active_Partition_Ops(const PtTable_Flash_Ops *ops,
+                                                 PtTable_Stuff_Config ptStuff[2]);
+PtTable_Error_Type PtTable_Update_Entry_Ops(const PtTable_Flash_Ops *ops,
+                                            PtTable_ID_Type targetTableID,
+                                            PtTable_Stuff_Config *ptStuff,
+                                            PtTable_Entry_Config *ptEntry);
 #endif /* __HAL_PTMGR_H__ */

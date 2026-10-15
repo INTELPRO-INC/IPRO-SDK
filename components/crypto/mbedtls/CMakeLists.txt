@@ -1,3 +1,14 @@
+if(IPRO_MATTER_PACKAGE_ACTIVE)
+    # Both implementation and header/configuration come from the same package.
+    # Do not export the SDK's older headers, even when its sources are skipped.
+    add_library(mbedtls INTERFACE)
+    if(IPRO_MATTER_BR_PACKAGE_ACTIVE OR IPRO_MATTER_WIFI_LIGHT_ACTIVE)
+        target_link_libraries(mbedtls INTERFACE ipro_matter_crypto)
+    endif()
+    target_link_libraries(mbedtls INTERFACE ipro_matter_package)
+    return()
+endif()
+
 __generate_library()
 
 ## These include paths would be exported to project level
@@ -142,7 +153,7 @@ __component_add_sources(port/entropy_poll_alt.c)
 set(MBEDTLS_USE_PKA 0)
 
 # Determine hardware acceleration port directory
-# IPRO7 uses Sec_Eng_* API, IPRO6LE uses device driver framework
+# IPRO7 uses Sec_Eng_* API, other chips use the device driver framework
 if (CONFIG_IPRO7)
   set(HW_ACC_DIR "port/hw_acc_ipro7")
   __component_add_include_dirs(port/hw_acc_ipro7)

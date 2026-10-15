@@ -16,6 +16,7 @@
 #include "fhost_api.h"
 #include "net_al.h"
 #include "fhost_wpa.h"
+#include "fhost_wifi_link.h"
 #include "mac_frame.h"
 #include "common/ieee802_11_common.h"
 #include "export/rwnx_config.h"
@@ -721,6 +722,23 @@ static void wpa_rwnx_driver_process_scan_done_event(struct wpa_rwnx_driver_data 
 static int wpa_rwnx_driver_send_disconnect(struct wpa_rwnx_driver_itf_data *drv,
 					   u16 reason_code);
 
+static void wpa_rwnx_driver_set_ssid(struct wpa_rwnx_driver_itf_data *drv, const u8 *ssid_ie)
+{
+	/* The new association must never inherit an old SSID when its IE is
+	 * missing, invalid, or allocation fails. get_ie already bounds the IE. */
+	if (drv->ssid)
+		os_free(drv->ssid);
+	drv->ssid = NULL;
+	drv->ssid_len = 0;
+	if (!ssid_ie || ssid_ie[1] == 0 || ssid_ie[1] > 32)
+		return;
+	drv->ssid = os_malloc(ssid_ie[1]);
+	if (drv->ssid) {
+		drv->ssid_len = ssid_ie[1];
+		memcpy(drv->ssid, &ssid_ie[2], ssid_ie[1]);
+	}
+}
+
 static void wpa_rwnx_driver_process_connect_event(struct wpa_rwnx_driver_data *gdrv)
 {
 	struct wpa_rwnx_driver_itf_data *drv;
@@ -799,13 +817,7 @@ static void wpa_rwnx_driver_process_connect_event(struct wpa_rwnx_driver_data *g
 		drv->status |= RWNX_ASSOCIATED;
 		memcpy(drv->bssid, &event.bssid, ETH_ALEN);
 		ssid_ie = get_ie(event.req_resp_ies, event.assoc_req_ie_len, WLAN_EID_SSID);
-		if (ssid_ie) {
-			drv->ssid = os_malloc(ssid_ie[1]);
-			if (drv->ssid) {
-				drv->ssid_len = ssid_ie[1];
-				memcpy(drv->ssid, &ssid_ie[2], ssid_ie[1]);
-			}
-		}
+		wpa_rwnx_driver_set_ssid(drv, ssid_ie);
 		wpa_supplicant_event(drv->ctx, EVENT_ASSOC, &data);
 	}
 
@@ -834,6 +846,7 @@ static void wpa_rwnx_driver_process_disconnect_event(struct wpa_rwnx_driver_data
 
 	drv->status &= ~(RWNX_ASSOCIATED | RWNX_DISASSOC_PENDING | RWNX_CONNECTING |
 			 RWNX_CONNECT_ABORTED);
+	fhost_wpa_link_observed(drv->fhost_vif_idx, 0, NULL, 0, NULL);
 	if (drv->ssid) {
 		os_free(drv->ssid);
 		drv->ssid = NULL;
@@ -1208,6 +1221,7 @@ static void *wpa_rwnx_driver_init2(void *ctx, const char *ifname, void *global_p
 	// Configure default RX filters (whatever initial interface type is)
 	fhost_wpa_set_mgmt_rx_filter(fhost_vif_idx, STA_MGMT_RX_FILTER);
 
+	fhost_wpa_link_observed(drv->fhost_vif_idx, 0, NULL, 0, NULL);
 	fhost_wpa_send_event(FHOST_WPA_INTERFACE_ADDED, NULL, 0, drv->fhost_vif_idx);
 	return drv;
 
@@ -1229,6 +1243,7 @@ static void wpa_rwnx_driver_deinit(void *priv)
 	TRACE_FHOST(WPA_INFO, "{FVIF-%d} Driver RWNX deinit", drv->fhost_vif_idx);
 
 	drv->status &= ~RWNX_INITIALIZED;
+	fhost_wpa_link_observed(drv->fhost_vif_idx, 0, NULL, 0, NULL);
 
 	if (drv->status & RWNX_SCANNING) {
 		// TODO: abort scan
@@ -1942,6 +1957,10 @@ static int wpa_rwnx_driver_deauthenticate(void *priv, const u8 *addr, u16 reason
 static int wpa_rwnx_driver_set_operstate(void *priv, int state, int  old_state, int new_state)
 {
 	struct wpa_rwnx_driver_itf_data *drv = priv;
+	/* Publish a coherent, owned identity before waking connection observers.
+	 * Down includes intermediate association states, not just DISCONNECTED. */
+	fhost_wpa_link_observed(drv->fhost_vif_idx, state == 1, drv->ssid,
+				drv->ssid_len, drv->bssid);
 
 	if ((old_state == -1) && (new_state == -1)) {
 		if (state == 1) {

@@ -218,6 +218,8 @@ void rwnxl_mm_active(void);
 
 void rwnx_platform_init(void);
 void rwnx_lpfw_init(struct mac_addr const *mac, struct mac_addr const *bssid);
+void rwnx_lpfw_init_ex(struct mac_addr const *mac, struct mac_addr const *bssid,
+                       int beacon_only);
 
 /// @}
 

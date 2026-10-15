@@ -750,7 +750,33 @@ void wifi_sta_info_cmd(int argc, char **argv)
     fhost_print(RTOS_TASK_NULL, "GW  :    %s \r\n", ip4addr_ntoa(&gw));
     fhost_print(RTOS_TASK_NULL, "DNS :    %s \r\n", ip4addr_ntoa(&dns));
     fhost_print(RTOS_TASK_NULL, "Country: %s \r\n", country_code);
-    fhost_print(RTOS_TASK_NULL, "Channel: %d \r\n", channel_nums);
+    /* The OPERATING channel -- what anyone reading "Channel:" right under
+     * "Country:" expects. This line used to print wifi_mgmr_get_channel_nums(),
+     * which is the COUNT of channels the regulatory domain allows (13 in most
+     * 2.4 GHz domains, hence a very channel-looking number). It therefore read
+     * 13 while the part was demonstrably transmitting on ch1, and 13 again when
+     * it was not associated at all -- that sent a sniffer to the wrong channel
+     * on 2026-08-10 before the capture itself gave the lie away. The count is
+     * still printed below, under a label that says what it is.
+     *
+     * Same source as `lp populate` (the VIF's own chan_ctxt), declared extern
+     * rather than by including the macsw export header, which drags in the
+     * heavy UMAC/enum chain. */
+    {
+        extern int mac_get_connected_sta_ctx(uint8_t bssid[6], uint8_t local_mac[6],
+                                             uint8_t *ap_channel, uint16_t *aid,
+                                             uint16_t *bcn_int_tu);
+        uint8_t sta_bssid[6], sta_lmac[6], op_ch = 0;
+        uint16_t sta_aid = 0, sta_bcn = 0;
+
+        if (mac_get_connected_sta_ctx(sta_bssid, sta_lmac, &op_ch,
+                                      &sta_aid, &sta_bcn) == 0) {
+            fhost_print(RTOS_TASK_NULL, "Channel: %d \r\n", op_ch);
+        } else {
+            fhost_print(RTOS_TASK_NULL, "Channel: -- (not associated) \r\n");
+        }
+    }
+    fhost_print(RTOS_TASK_NULL, "Chan count: %d (regulatory) \r\n", channel_nums);
     #ifdef CFG_IPV6
     struct netif *nif;
 
@@ -1246,8 +1272,7 @@ void cmd_rc_tune(int argc, char **argv)
     rc_tune_cmd(argc, argv);
 }
 
-/* DEBUG: A-MSDU TX batching tuner + stats (ported from ipro6le_demo main.c,
- * Phase 10P Path A). `amsdu en 1` opt-in; stats include the per-condition
+/* DEBUG: A-MSDU TX batching tuner + stats (Phase 10P Path A). `amsdu en 1` opt-in; stats include the per-condition
  * eligibility rejection counters to diagnose non-engagement on bridge traffic. */
 void cmd_amsdu(int argc, char **argv)
 {
@@ -1460,23 +1485,6 @@ void cmd_smid_wprio(int argc, char **argv)
     printf("smid_worker prio -> %lu\r\n", (unsigned long)p);
 }
 
-/* DEBUG 2026-07-24 Phase-Z v2b: bench-side zero-copy opt-in (same effect as the
- * host's in-band USER_EXT "ZCEN1"). ONLY safe when the host is already in
- * single-frame TX mode (ipronet tx_agg=0 or zc mode) — arming the 1604-capped
- * slots under an aggregating host reproduces the -110 card-removed cascade. */
-void cmd_sdio_zc(int argc, char **argv)
-{
-    extern int smid_zc_host_enable(void);
-    extern volatile uint32_t g_sdio_zerocopy;
-
-    if (argc >= 2 && argv[1][0] == '1') {
-        int armed = smid_zc_host_enable();
-        printf("sdio_zc: armed %d slots, gate=1\r\n", armed);
-    } else {
-        printf("sdio_zc: gate=%lu (usage: sdio_zc 1 — host MUST be single-frame)\r\n",
-               (unsigned long)g_sdio_zerocopy);
-    }
-}
 #endif /* CONFIG_COMPONENTS_SDIOWIFI_ENABLE */
 
 /* DEBUG 2026-07-23 F2b: view/override per-AC hwq credits (outstanding-MPDU
@@ -2294,6 +2302,7 @@ void cmd_fhost_census(int argc, char **argv)
     extern volatile uint32_t fhost_cred_repairs;
     extern volatile uint32_t fhost_cred_repaired;
     extern int16_t fhost_tx_hwq_credits_get(int ac);
+    extern int16_t fhost_tx_hwq_credits_max(int ac);
 
     int in_flight_ok = 1;
     int nq = fhost_tx_txq_probe(-1, NULL, NULL, NULL, NULL, NULL);
@@ -2328,8 +2337,8 @@ void cmd_fhost_census(int argc, char **argv)
     fhost_printf("hwq_credits:");
     for (int ac = 0; ac < NX_TXQ_CNT; ac++)
     {
-        fhost_printf(" %d/%d", fhost_tx_hwq_credits_get(ac), get_nx_txdesc_cnt(ac));
-        if (fhost_tx_hwq_credits_get(ac) != get_nx_txdesc_cnt(ac))
+        fhost_printf(" %d/%d", fhost_tx_hwq_credits_get(ac), fhost_tx_hwq_credits_max(ac));
+        if (fhost_tx_hwq_credits_get(ac) != fhost_tx_hwq_credits_max(ac))
             in_flight_ok = 0;
     }
     fhost_printf("\r\n");
@@ -2597,7 +2606,6 @@ SHELL_CMD_EXPORT_ALIAS(cmd_dmacpy, dmacpy, gated SDIO inject copy mode DMA/cache
 SHELL_CMD_EXPORT_ALIAS(cmd_credits, credits, view or set per-AC hwq credits);
 #ifdef CONFIG_COMPONENTS_SDIOWIFI_ENABLE
 SHELL_CMD_EXPORT_ALIAS(cmd_smid_wprio, wprio, set smid worker task priority);
-SHELL_CMD_EXPORT_ALIAS(cmd_sdio_zc, sdio_zc, arm zero-copy dnld slots + open gate);
 #endif
 SHELL_CMD_EXPORT_ALIAS(cmd_bam_barpend, bam_barpend, force BAR-on-drop pending flag);
 SHELL_CMD_EXPORT_ALIAS(cmd_mac_reset, mac_reset, manual MAC reset via KE_EVT_RESET recovery);

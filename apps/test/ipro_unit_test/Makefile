@@ -49,16 +49,22 @@ rebuild: clean all
 # Board flash and test targets
 #
 SERIAL_PORT ?= /dev/cu.usbserial-2120
-FLASH_TOOL ?= $(IPRO_SDK_BASE)/tools/ipro_iot_tool_lite/ipro_iot_tool_lite
+# IntelProCube v0.6.3 command-line flasher (ipro_iot_tool_macos / _linux / .exe).
+# It has no --flash-pin: flash_pin lives in
+# <IntelProCube dir>/chips/ipro7/eflash_loader/eflash_loader_cfg.ini.
+FLASH_TOOL ?= $(IPRO_FLASH_TOOL)
+# Internal tool; not part of customer SDK packages.
 BOARD_TEST ?= $(IPRO_SDK_BASE)/tools/board_test.sh
 
+# The tool exits 0 even when flashing fails; "[All Success]" is the verdict.
 flash: all
+	@test -n "$(FLASH_TOOL)" || { echo "Set IPRO_FLASH_TOOL (or FLASH_TOOL=) to the IntelProCube ipro_iot_tool binary"; exit 1; }
 	$(FLASH_TOOL) \
 		--chipname ipro7 \
 		--port $(SERIAL_PORT) \
 		--firmware $$(ls build/build_out/*.bin | head -1) \
-		--baudrate 921600 \
-		--flash-pin 0x02
+		--baudrate 921600 2>&1 | tee build/flash.log
+	@grep -q "\[All Success\]" build/flash.log || { echo "flash FAILED (no [All Success]); see build/flash.log"; exit 1; }
 
 monitor:
 	@stty -f $(SERIAL_PORT) 115200 raw -echo 2>/dev/null || stty -F $(SERIAL_PORT) 115200 raw -echo 2>/dev/null
@@ -66,6 +72,7 @@ monitor:
 	@cat $(SERIAL_PORT)
 
 test:
+	@test -x "$(BOARD_TEST)" || { echo "$(BOARD_TEST) is an internal tool and is not in SDK packages"; exit 1; }
 	$(BOARD_TEST) --project apps/$(PROJECT_NAME) --port $(SERIAL_PORT)
 
 #

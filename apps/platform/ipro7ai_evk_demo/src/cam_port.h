@@ -20,18 +20,18 @@
  * @file cam_port.h
  * @brief Board wiring for the SC101IOT DVP camera on the IPRO7AI_FMB board.
  *
- * Taken from the board schematic (U5 IPRO7AI_FMB sheet + the CN3 "Camera"
+ * Taken from the board schematic (U5 IPRO7AI_FMB sheet + the CN5 "Camera"
  * sheet), not from the SDK's generic EVB defaults - two of them differ.
  *
  * Sensor: SmartSens SC101IOT, 1280x720, SCCB address 0x68, PCLK 72 MHz,
  * total 1600x750. Driver: components/sensor/sc101iot.c (720p is hardcoded
  * there via `#define resolution_720P 1`).
  *
- * CN3 = FH34SRJ-24S-0.5SH, 24-pin 0.5 mm FPC:
+ * CN5 = FH34SRJ-24S-0.5SH, 24-pin 0.5 mm FPC:
  *
  *   1  AVDD2V8    2.8 V analog          (C34 4.7uF + C35 100nF)
- *   2  DOVDD1V8   1.8 V digital I/O     (C32 4.7uF + C33 100nF)
- *   3  DVDD1V8    1.8 V digital core
+ *   2  DOVDD1V8   digital I/O, 1.8 V on V1 (sensor spec 2.7-2.9 V)  (C32 4.7uF + C33 100nF)
+ *   3  DVDD1V8    digital core, 1.8 V on V1
  *   4  MCLK   <- GPIO41  DVP_REF_CLK    (GPIO_FUN_CAM_MISC + GLB_Set_CAM_CLK)
  *   5  PCLK   -> GPIO38
  *   6  VSYNC  -> GPIO39
@@ -59,16 +59,19 @@
  * THREE THINGS THIS BOARD DOES DIFFERENTLY
  * ---------------------------------------------------------------------------
  *
- * 1. THE SENSOR BUS IS 1.8 V, THE LCD BUS IS 3.3 V. DOVDD is 1.8 V, so the
- *    DVP data/sync lines and SCCB run at 1.8 V. On IPRO7 the VDDIO_1 bank
- *    covers GPIO0-9 and GPIO36-41 - exactly the camera pins - and the SoC
- *    brings that bank out on its own supply pin (U5 pin 36, VDDIO1). The LCD
- *    pins (GPIO10-17) sit in VDDIO_2 and stay at 3.3 V. So VDDIO1 must be fed
- *    1.8 V for the camera to work; that split is the whole reason the pin has
- *    its own net.
+ * 1. THE CAMERA BANK HAS ITS OWN SUPPLY, AND V1 POWERS THE SENSOR BELOW SPEC.
+ *    On IPRO7 the VDDIO_1 bank covers GPIO0-9 and GPIO36-41 - exactly the
+ *    camera pins - and the SoC brings that bank out on its own supply pin
+ *    (U5 pin 36, VDDIO1). The LCD pins (GPIO10-17) sit in VDDIO_2 at 3.3 V.
+ *    VDDIO1 also powers the in-package Flash (minimum about 2.7 V), so it
+ *    cannot be 1.8 V; on V1 it is fed 2.8 V (J6 pin 3 wired to pin 7,
+ *    2V8_CAM). The SC101IOT wants DOVDD 2.7-2.9 V, but V1 feeds its DOVDD and
+ *    DVDD from 1V8_SOC (pins 2/3 above), so the 2.8 V DVP/SCCB lines drive a
+ *    sensor powered at 1.8 V - it works on the bench but is outside the
+ *    sensor's datasheet. See bsp/board/ipro7/IPRO7AI_EVK.md.
  *
  * 2. RESET IS LEVEL-SHIFTED, NOT DIRECT. GPIO35 is in the VDDIO_3 bank
- *    (GPIO20-35) at 3.3 V, so it cannot drive a 1.8 V input. Q3 (PJA7002H
+ *    (GPIO20-35) at 3.3 V, so it cannot drive a 1.8 V input. Q3 (MSL2310-N
  *    N-MOSFET, gate on DOVDD1V8, drain on the 3.3 V side, source on the 1.8 V
  *    side) with R56 4.7k pulling up to DOVDD1V8 translates it. R55 - the
  *    3.3 V-side pull-up - is DNI, so the link is one-way: the SoC drives

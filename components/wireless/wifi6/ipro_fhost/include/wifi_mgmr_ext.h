@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "fhost_connect_result.h"
 
 #define MAX_FIXED_CHANNELS_LIMIT (14)
 #define MAX_AP_SCAN     50
@@ -57,6 +58,14 @@
 #define  CODE_WIFI_ON_EXIT_PS           24
 #define  CODE_WIFI_ON_GOT_IP6           25
 #define  CODE_WIFI_ON_SCAN_DONE_CONNECTING  31
+
+/* Completion payload (platform code2, int copied by ipro_event): applies to
+ * CODE_WIFI_ON_SCAN_DONE and CODE_WIFI_ON_SCAN_DONE_CONNECTING. This reports
+ * firmware completion, not request admission. No request token is carried;
+ * consumers must separately serialize/correlate scans and handle lost events.
+ * Do not treat a failed scan's retained cache as a successful fresh result. */
+#define WIFI_SCAN_RESULT_SUCCESS 0
+#define WIFI_SCAN_RESULT_FAILED  1
 
 #define WIFI_EVENT_BEACON_IND_AUTH_OPEN            0
 #define WIFI_EVENT_BEACON_IND_AUTH_WEP             1
@@ -359,11 +368,79 @@ int wifi_mgmr_sta_quickconnect(const char *ssid, const char *key, uint16_t freq1
  * param:
  *  param1 : Configuration of connecting
  * return:
- *  0 : Success
+ *  0 : Connection entry task accepted; association is asynchronous
  *  -1 : Failed
  *  Others is Failed
+ * Rejects a busy connection entry/worker without queuing. Failure does not guarantee
+ * that connection parameters or other manager state remain unchanged.
  */
 int wifi_mgmr_sta_connect(const wifi_mgmr_sta_connect_params_t *config);
+
+/** Submit a connection with an optional worker completion notification.
+ * Returns 0 for admission only, -1 for rejection (no callback). Accepted work
+ * reports once on normal worker exit or failure to create its CONNECT task.
+ * Callback can run before this function returns. Context must stay valid until
+ * callback returns. It runs on CONNECT/CONNECT_ENTRY, not the Matter event loop,
+ * outside critical sections while admission is still busy; only post a bounded
+ * notification and return. Do not block, delete the worker, or call CHIP APIs.
+ * CONNECTED is a WPA snapshot, not DHCP/IPv6 readiness. Manager timeout 0 keeps
+ * its legacy 200-second default (unlike fhost's direct async timeout 0 mode).
+ * Submission itself provides no cancellation/drain; see the separate terminal
+ * close API below. Reset/external task deletion cannot promise callback delivery.
+ * Like the legacy API, rejection at task admission does not roll back earlier
+ * STA state, saved reconnect parameters or sleep-prevention updates.
+ */
+int wifi_mgmr_sta_connect_with_completion(const wifi_mgmr_sta_connect_params_t *config,
+                                         fhost_connect_completion_fn completion,
+                                         void *context);
+/* Managed provisioning: same admission/completion contract, but restore
+ * automatic retries on the CONNECT worker after old-interface preparation.
+ * No WPA command runs on the submitting task. Preparation failure preserves
+ * policy; once new configuration starts, retries remain enabled even if
+ * association fails. Legacy connect APIs retain their existing policy.
+ * Caller must serialize live configuration ownership with other Wi-Fi writers. */
+int wifi_mgmr_sta_connect_managed(const wifi_mgmr_sta_connect_params_t *config,
+                                 fhost_connect_completion_fn completion, void *context);
+
+/* Task-only terminal shutdown stage, no locks held. Close all manager/fhost
+ * CONNECT and autoconnect-enable admission until reboot. Poll:
+ * 1=submission/enable-command/worker/callback/cleanup/pause-lease
+ * still active, 0=those paths drained (task self-deletion may remain). Existing
+ * work is not cancelled. Call only after fail-safe rollback is done; no further
+ * connection may start. This alone does not disable supplicant autoconnect;
+ * call autoconnect_disable only after drain succeeds. Does NOT fence other Wi-Fi writers, scan, direct WPA,
+ * autoreconnect, DHCP or lwIP, and does not disconnect/power down the radio. */
+int wifi_mgmr_sta_connect_close(void);
+/* Internal auto-reconnect task entry. Revalidates its arm-time generation and
+ * the auto-reconnect flag atomically with manager admission, before changing
+ * STA status/credentials. 0=admitted, -1=stale/disabled/busy/rejected; not an
+ * association result. Shares CONNECT pause/close and submission drainage. */
+int wifi_mgmr_sta_reconnect(uint32_t generation);
+/* wifi_mgmr_sta_reconnect that also runs with auto-reconnect off:
+ * the one-shot 20 MHz retry after a failed 40 MHz EAPOL exchange. */
+int wifi_mgmr_sta_reconnect_bw20(uint32_t generation);
+/* Internal DHCP-failure recovery with the same generation/admission fence.
+ * Retry if automatic reconnect is enabled; otherwise disconnect. The chosen
+ * action participates in pause/close drainage, including blocking WPA calls.
+ * Task-only, no locks held. 0=success/admitted, -1=stale/busy/failed. */
+int wifi_mgmr_sta_dhcp_recover(uint32_t generation);
+
+/* Task-only temporary pause of manager CONNECT/autoconnect-enable mutations
+ * and native CONNECT admission. One externally serialized owner: start with
+ * *lease=0, then poll using the returned nonzero token. 1=accepted, draining;
+ * 0=drained and lease held; -1=invalid/stale/other owner/closed/exhausted.
+ * Accepted submissions/workers run normally; no forced cancellation. Keep the
+ * lease through the exclusive operation and release once, even if a later
+ * poll fails due to terminal close. Close waits for this release.
+ * Does NOT fence scans, direct WPA/IPC network changes, DHCP or other writers;
+ * does not disable supplicant autoconnect or disconnect. Callers must separately
+ * coordinate those paths. Do not mix with direct native pause/resume calls. */
+int wifi_mgmr_sta_connect_pause(uint32_t *lease);
+
+/* Release a matching token (0=success, -1=invalid/stale/native error). The
+ * caller must stop exclusive work first, then clear its token after success.
+ * May abandon a still-draining pause; cannot undo terminal close. */
+int wifi_mgmr_sta_connect_resume(uint32_t lease);
 /**
  * wifi_sta_disconnect
  * Disconnect from the AP
@@ -507,6 +584,19 @@ int wifi_mgmr_sta_connect_ind_stat_get(wifi_mgmr_connect_ind_stat_info_t *wifi_m
  *  Others is Failed
  */
 int wifi_mgmr_sta_scan(const wifi_mgmr_scan_params_t *config);
+/* SDK-native tracked variant. For nonzero IDs both config and command must
+ * remain alive until completion or explicit rejection, including after an
+ * uncertain transport return. Do not read/write command while outstanding:
+ * the control task owns access after submission. The queue carries a pointer,
+ * NOT a copy. Config must remain immutable. Command embeds the SSID descriptor
+ * but borrows config's data arrays.
+ * Accepted completion uses fhost_scan_request_completed.
+ * See fhost_scan_result.h for ID lifetime, callback context and reset limits.
+ * A zero ID is untracked. Returns 0=accepted, -1=rejected, -2=uncertain transport
+ * outcome (a callback may still arrive). Does not impose a timeout. */
+struct cfgrwnx_scan;
+int wifi_mgmr_sta_scan_with_id(const wifi_mgmr_scan_params_t *config, uint32_t request_id,
+                             struct cfgrwnx_scan *command);
 
 /**
  * wifi_mgmr_sta_scanlist
@@ -650,6 +740,24 @@ int wifi_mgmr_set_country_code(char *country_code);
  *  Others is Failed
  */
 int wifi_mgmr_get_country_code(char *country_code);
+
+/**
+ * wifi_mgmr_sta_tx_ac_min_set
+ * Lowest WMM access category for station data frames:
+ * 0 = AC_BK (default, no change), 1 = AC_BE, 2 = AC_VI, 3 = AC_VO.
+ * A frame on a lower AC is sent on this one; an AP that requires
+ * admission control on it still gets the frame downgraded.
+ * return:
+ *  0 : Success
+ *  -1 : ac out of range
+ */
+int wifi_mgmr_sta_tx_ac_min_set(int ac);
+
+/**
+ * wifi_mgmr_sta_tx_ac_min_get
+ * return: the access category set by wifi_mgmr_sta_tx_ac_min_set
+ */
+int wifi_mgmr_sta_tx_ac_min_get(void);
 
 /**
  * wifi_mgmr_set_autoconnect_enable

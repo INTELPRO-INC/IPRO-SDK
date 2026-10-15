@@ -402,10 +402,6 @@ int mjpeg_init(struct mjpeg_hal_cfg_t *mjpeg_hal_cfg)
     Interrupt_Handler_Register(JCOMB_IRQn, mjpeg_irq_handler);
     CPU_Interrupt_Enable(JCOMB_IRQn);
 #endif
-#if defined(CONFIG_IPRO6LE)
-    Interrupt_Handler_Register(MJPEG_IRQn, mjpeg_irq_handler);
-    CPU_Interrupt_Enable(MJPEG_IRQn);
-#endif
 #if defined(CONFIG_IPRO7)
     Interrupt_Handler_Register(JPEG_IRQn, mjpeg_irq_handler);
     CPU_Interrupt_Enable(JPEG_IRQn);

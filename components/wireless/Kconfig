@@ -35,6 +35,15 @@ config PHY_CLI
       pulling in the full Wi-Fi 6 networking stack. For PHY/RF bring-up and
       manufacturing test on the ASIC via the WiFi IP macbypass hardware.
 
+config WL_BB_LOG_DISABLE
+    bool "Compile out the IPRO6 Wi-Fi baseband/RF debug log (WL_BB_LOG_EN=0)"
+    help
+      Builds the ipro6_rf driver with WL_BB_LOG_EN=0, which turns its
+      wl_logprintf() debug prints (PHY/RFC/calibration) into no-ops. Replies
+      of the PHY/RF test CLI are still printed. Unset keeps WL_BB_LOG_EN=1,
+      the logging every IPRO6 app had before. Per-app .config files get no
+      Kconfig defaults, so turning the log off is the explicit choice.
+
 config PHY_LPFW
     bool "Build the low-power-mode PHY variant (phy_lp.c)"
     help
@@ -51,8 +60,51 @@ config WIFI_HT40_ENABLE
       the modem capability (phy_get_bw, read-only) and the AP's HT Operation IE
       still decide the width actually used, so this is safe to leave on.
 
+      When set, the link governor also starts in auto mode: 40 MHz while
+      the secondary channel is clean, 20 MHz while it is busy (`lgov bw`
+      overrides it at runtime).
+
       Leave unset to keep the historic 20 MHz-only behaviour. Either way the
       `wifi_ht40` shell command overrides it at runtime, before stack_wifi.
+
+config IPRO6S_HOTCODE
+    bool "Place per-frame hot functions in TCM"
+    help
+      Functions marked HOTCODE or section(".hotcode") are placed in the
+      .hotcode input section. The IPRO6 generated flash linker script
+      places that section and the objects in HOTCODE_OBJECTS
+      (configs/ipro6_flash.cmake) in TCM.
+
+choice WIFI_MEM_PROFILE
+    prompt "IPRO6 standalone station memory profile"
+    depends on WIFI6 && IPRO6
+    default WIFI_MEM_PROFILE_PERF
+    help
+      Splits RAM between Wi-Fi throughput and the FreeRTOS heap on a
+      standalone station (lwIP on the IPRO6). The SDIO/USB bridges do
+      not use it.
+
+config WIFI_MEM_PROFILE_PERF
+    bool "Max throughput"
+    help
+      All of HOTCODE_OBJECTS in TCM, 70 KB lwIP heap, 20 RX buffers,
+      20 KB MAC RX buffer, 24-MSS TCP window, 34-MSS send buffer.
+
+config WIFI_MEM_PROFILE_BALANCED
+    bool "Balanced"
+    help
+      HOTCODE_OBJECTS_BALANCED in TCM, 32 KB lwIP heap, 12 RX
+      buffers, 12 KB MAC RX buffer, 8-MSS TCP window, 16-MSS send
+      buffer, 8-frame reorder window.
+
+config WIFI_MEM_PROFILE_APP
+    bool "Heavy application"
+    help
+      Only HOTCODE-marked functions in TCM, 24 KB lwIP heap, 10 RX
+      buffers, 12 KB MAC RX buffer, 6-MSS TCP window, 8-MSS send
+      buffer, 8-frame reorder window.
+
+endchoice
 
 if WIFI6
     osource "components/wireless/wifi6/sigma_dut/Kconfig"
@@ -60,6 +112,9 @@ endif
 
 # ATBM6162 (Altobeam OCEANUS) external Wi-Fi 6 over SDIO
 osource "components/wireless/wifi_atbm6162/Kconfig"
+
+# AIC8800 D80-H (AICSemi) external Wi-Fi 5 + BT combo over SDIO
+osource "components/wireless/wifi_aic8800/Kconfig"
 
 config LPAPP
     bool "Enable Low Power Application Processor"
@@ -79,6 +134,8 @@ config LOWER_MAC_15P4_LIB
     default IEEE802154_ENABLE
 
 osource "components/wireless/ieee802154/Kconfig"
+osource "components/wireless/ipro_intercom/Kconfig"
+osource "components/wireless/coex_bz/Kconfig"
 
 config OPENTHREAD_ENABLE
     bool "Enable OpenThread Stack"

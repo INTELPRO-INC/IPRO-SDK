@@ -28,7 +28,7 @@
 #include "platform_common.h"
 #include "system_soc.h"
 
-/* IPRO6LE compatibility: ARCH_Mem* maps to arch_mem* from misc.h */
+/* ARCH_Mem* maps to arch_mem* from misc.h */
 #define ARCH_MemCpy4     arch_memcpy4
 #define ARCH_MemCpy      arch_memcpy
 #define ARCH_MemCpy_Fast arch_memcpy_fast

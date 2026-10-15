@@ -21,8 +21,20 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/*
+ * Critical-section primitive for the SEC engine helpers.
+ *
+ * The HAL is RTOS-neutral: on the FreeRTOS SDK the kernel critical section
+ * (ECLIC MTH threshold) is used, exactly as before. Any other environment
+ * (bare metal, Zephyr) falls back to the global interrupt enable saved and
+ * restored around the section (__irq_save/__irq_restore from system_soc.h).
+ */
+#if defined(CONFIG_FREERTOS_SUPPORT) || defined(CONFIG_FREERTOS)
 #include <FreeRTOS.h>
 #include <task.h>
+#else
+#include "system_soc.h"
+#endif
 
 /*
  * SEC engine bring-up entry point (implemented in hal_sec_common.c).
@@ -90,7 +102,8 @@ typedef struct hal_sha512_ctx {
     uint32_t guard1_[7];
 } hal_sha512_ctx_t;
 
-static inline unsigned long hal_sec_enter_critical()
+#if defined(CONFIG_FREERTOS_SUPPORT) || defined(CONFIG_FREERTOS)
+static inline unsigned long hal_sec_enter_critical(void)
 {
     taskENTER_CRITICAL();
     return 0;
@@ -98,5 +111,17 @@ static inline unsigned long hal_sec_enter_critical()
 
 static inline void hal_sec_exit_critical(unsigned long prev_level)
 {
+    (void)prev_level;
     taskEXIT_CRITICAL();
 }
+#else
+static inline unsigned long hal_sec_enter_critical(void)
+{
+    return __irq_save();
+}
+
+static inline void hal_sec_exit_critical(unsigned long prev_level)
+{
+    __irq_restore((uint32_t)prev_level);
+}
+#endif

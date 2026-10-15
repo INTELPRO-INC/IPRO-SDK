@@ -182,6 +182,7 @@ mqtt_client_t *mqtt_client_new(void);
 void mqtt_client_free(mqtt_client_t* client);
 
 u8_t mqtt_client_is_connected(mqtt_client_t *client);
+u8_t mqtt_client_inpub_retained(const mqtt_client_t *client);
 
 void mqtt_set_inpub_callback(mqtt_client_t *client, mqtt_incoming_publish_cb_t,
                              mqtt_incoming_data_cb_t data_cb, void *arg);

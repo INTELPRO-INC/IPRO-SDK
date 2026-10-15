@@ -92,16 +92,26 @@ extern const int fhost_ping_priority;
 #define WPA_SUPPLICANT_STACK_SIZE   WPA_SMALL_STACK_SIZE 
 #endif
 
+#ifndef FHOST_WIFI_STACK_WORDS
+#define FHOST_WIFI_STACK_WORDS 512
+#endif
+#ifndef FHOST_TCPIP_STACK_WORDS
+#define FHOST_TCPIP_STACK_WORDS 1024
+#endif
+#ifndef FHOST_RX_STACK_WORDS
+#define FHOST_RX_STACK_WORDS 768
+#endif
+
 enum
 {
     /// WiFi task stack size
-    FHOST_WIFI_STACK_SIZE = 512,
+    FHOST_WIFI_STACK_SIZE = FHOST_WIFI_STACK_WORDS,
     /// Control task stack size
     FHOST_CNTRL_STACK_SIZE = 512,
     /// TCP/IP task stack size
-    FHOST_TCPIP_STACK_SIZE = 1024,
+    FHOST_TCPIP_STACK_SIZE = FHOST_TCPIP_STACK_WORDS,
     /// RX task stack size
-    FHOST_RX_STACK_SIZE = 768,
+    FHOST_RX_STACK_SIZE = FHOST_RX_STACK_WORDS,
     /// TX task stack size
     FHOST_TX_STACK_SIZE = 384,
     /// WPA task stack size

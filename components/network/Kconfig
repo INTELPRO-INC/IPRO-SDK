@@ -56,24 +56,27 @@ source "components/network/lte_modem/Kconfig"
 source "components/network/esp32_wifi_at/Kconfig"
 source "components/network/rtsp_server/Kconfig"
 
+# USBWIFI and SDIOWIFI are mutually exclusive. Only USBWIFI carries the
+# "depends on !" -- putting it on both sides is a dependency loop that
+# kconfiglib (menuconfig) refuses to parse.
 config COMPONENTS_USBWIFI_ENABLE
     bool "Enable USB-WiFi bridge device (ipro_iotnet)"
     depends on COMPONENTS_CHERRYUSB_ENABLE && WIFI6 && COMPONENTS_LWIP_ENABLE
     depends on !COMPONENTS_SDIOWIFI_ENABLE
     default n
     help
-      Port of bl_iot_sdk usbwifi. Device-class 0xFF + CDC-ACM interface.
+      Device-class 0xFF + CDC-ACM interface.
       VID/PID 0x349B:0x616F. Requires matching host driver (ipro_iotnet).
+      Hidden while SDIOWIFI is enabled.
 
 config COMPONENTS_SDIOWIFI_ENABLE
     bool "Enable SDIO-WiFi bridge device (ipro_iotnet, dev_net_sdio variant)"
-    depends on WIFI6 && COMPONENTS_LWIP_ENABLE
-    depends on !COMPONENTS_USBWIFI_ENABLE
+    depends on IPRO6 && WIFI6 && COMPONENTS_LWIP_ENABLE
     default n
     help
-      Port of bl_iot_sdk dev_net_sdio. Slave-mode SDIO peripheral on bl616
-      GPIO 10-15. Bouffalo silicon CIS 0x424C:0x0606 advertised to host.
-      Mutually exclusive with USBWIFI.
+      Slave-mode SDIO peripheral on GPIO 10-15 that advertises SDIO CIS
+      vendor/device 0x424C:0x0606 to the host.
+      Mutually exclusive with USBWIFI: enabling this turns USBWIFI off.
 
 config SMID_RAW_TX_TEST
     bool "SMID: raw device->host test sender (ipro_sdio_send_raw + upld pool)"
@@ -93,6 +96,28 @@ config COMPONENTS_REMOTE_NET_MANAGER_ENABLE
     default y if COMPONENTS_USBWIFI_ENABLE
     default y if COMPONENTS_SDIOWIFI_ENABLE
 
+config RNM_REBOOT_DL
+    bool "RNM: reboot to download mode on the I6RB user-ext command"
+    depends on COMPONENTS_REMOTE_NET_MANAGER_ENABLE && COMPONENTS_SDIOWIFI_ENABLE
+    default n
+    help
+      User-ext payload "I6RB" replies "I6OK", then reboots like the shell
+      reboot_dl command (HBN user boot + GLB power-on reset): the device
+      comes up in BROM download mode with GPIO10-13 back on CCI. The IPRO7
+      IPRO6S downloader (apps/turnkey/ipro7_ipro6s_downloader) uses it
+      when the running firmware holds the SDIO pins.
+
+config RNM_OTA
+    bool "RNM: host-driven firmware OTA over IPRO_CMD_OTA"
+    depends on IPRO6 && COMPONENTS_REMOTE_NET_MANAGER_ENABLE && COMPONENTS_SDIOWIFI_ENABLE
+    default n
+    help
+      START / PROGRAM_PART / COMMIT write the OTA package to the FW
+      entry's slot 1 through the ROM flash API, check its SHA-256
+      read back from flash, set activeIndex 1 and reboot into MEDIA
+      boot; boot2 installs the package. Without it IPRO_CMD_OTA
+      answers STATUS_NOT_IMPLEMENTED.
+
 config COMPONENTS_NET_PKT_FILTER_ENABLE
     bool "Enable net_pkt_filter inline helpers"
     depends on COMPONENTS_LWIP_ENABLE
@@ -109,6 +134,18 @@ config COMPONENTS_IPRONET_HOST_ENABLE
       protocol), presents the link as the lwIP netif iproeth0 and exposes
       ipronet_start/connect plus event callbacks (ipronet_host.h). The
       example app is apps/platform/ipro7_sdio_wifi; copy its lwipopts_app.h.
+
+config IPRO7_WIFI_HOST_HOTCODE
+    bool "Run the ipronet Wi-Fi host data path from PSRAM"
+    depends on COMPONENTS_IPRONET_HOST_ENABLE && USE_PSRAM
+    default n
+    help
+      Link ipronet_host, lwIP, the FreeRTOS kernel, esp_iperf, the OSAL and
+      the SDIO host driver (IPRO7_WIFI_HOST_HOTCODE_OBJECTS in
+      bsp/board/linker/configs/ipro7_flash.cmake) into .text_psram instead
+      of executing them from flash. From flash, I-cache misses dominate the
+      per-frame CPU cost; from PSRAM a Reef board moves 1.3x-1.8x more
+      traffic in every direction. Costs about 115 KB of PSRAM and no OCRAM.
 
 config COMPONENTS_SDIO_HOST_PROBE_ENABLE
     bool "Enable SDIO host bring-up probe helpers (IPRO7 SDH host)"

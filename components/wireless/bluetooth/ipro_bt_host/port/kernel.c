@@ -26,7 +26,14 @@
 struct k_work_q k_sys_work_q;
 
 #define IPRO_WORKQ_STATIC_SLOTS 6U
-#define IPRO_SYS_WORKQ_STACK_WORDS 512U
+/* Zephyr's system work queue (bt_sys_work). Size in bytes from the build
+ * (ipro_bt_host/CMakeLists.txt); the AIC8800 BR/EDR transport needs more than
+ * the LE-only default. */
+#ifndef CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE
+#define CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE 2048
+#endif
+#define IPRO_SYS_WORKQ_STACK_WORDS \
+	((CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE + sizeof(StackType_t) - 1U) / sizeof(StackType_t))
 #define IPRO_WORKQ_SLOTS_MAGIC 0x51574b31u
 #define IPRO_QUEUE_MAGIC 0x51495545u
 #define IPRO_WORKQ_MAGIC 0x57514d47u
@@ -584,7 +591,7 @@ static void ensure_system_work_queue(void)
 	if (k_sys_work_q.magic != IPRO_WORKQ_MAGIC ||
 	    k_sys_work_q.thread.hdl == NULL) {
 		k_work_queue_init(&k_sys_work_q);
-		k_work_queue_start(&k_sys_work_q, NULL, 2048, 6, &cfg);
+		k_work_queue_start(&k_sys_work_q, NULL, CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE, 6, &cfg);
 	}
 }
 

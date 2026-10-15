@@ -370,7 +370,7 @@ int fhost_configure_vif(struct fhost_cntrl_link *link, int fvif_idx,
 
 int fhost_scan(struct fhost_cntrl_link *link, int fvif_idx)
 {
-    struct cfgrwnx_scan cmd;
+    struct cfgrwnx_scan cmd = {0};
     struct cfgrwnx_resp resp;
     struct cfgrwnx_scan_ssid ssid;
 #if 0
@@ -1878,4 +1878,3 @@ int fhost_vif_is_up(int fhost_vif_idx)
 }
 
 /// @}
-

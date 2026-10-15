@@ -54,7 +54,7 @@ static void usage(void)
       "  cam pixels [n]          dump raw ARGB words of the newest frame\n"
       "  cam rst <0|1>           drive the sensor RESET line (0 = asserted)\n"
       "  wiring: SCL=GPIO%d SDA=GPIO%d  D0-D7=GPIO%d-%d  PCLK=GPIO%d\n"
-      "          VSYNC=GPIO%d HSYNC=GPIO%d MCLK=GPIO%d RST=GPIO%d (1.8V bus)\n",
+      "          VSYNC=GPIO%d HSYNC=GPIO%d MCLK=GPIO%d RST=GPIO%d (VDDIO1 bank)\n",
       CAM_PIN_SCL, CAM_PIN_SDA, CAM_PIN_D0, CAM_PIN_D0 + 7, CAM_PIN_PCLK,
       CAM_PIN_VSYNC, CAM_PIN_HSYNC, CAM_PIN_MCLK, CAM_PIN_RST);
 }
@@ -99,7 +99,7 @@ static void cmd_status(void)
     }
     if (!st.frames && cam_is_running()) {
         printf("hint    : still no ISP completions after waiting. PCLK/VSYNC/\n"
-               "          HSYNC or the 1.8 V VDDIO1 rail are the usual causes;\n"
+               "          HSYNC or VDDIO1 (J6 pin 3 - pin 7) are the usual causes;\n"
                "          `cam rst 0` then `cam rst 1` re-pulses the sensor.\n");
     }
 }

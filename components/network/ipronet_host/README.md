@@ -31,8 +31,9 @@ void app_main(void)
 }
 ```
 
-`ipronet_start()` is synchronous (~1.5 s, ~3.5 s when it power-cycles the
-device): SDH init, enumerate, 4-bit / 25 MHz / F1 block 512, RX task, HELLO,
+`ipronet_start()` is synchronous (~1.5 s; when it power-cycles the device it
+retries enumerate for up to 8 s while the device boots, ~4.5 s for
+`ipro6_if_wifi`): SDH init, enumerate, 4-bit / 25 MHz / F1 block 512, RX task, HELLO,
 GET_MAC, zero-copy opt-in, `iproeth0` up with the device STA MAC. Every
 failure rolls back to idle, so a retry loop is the normal way to wait for a
 booting device. `ipronet_stop()` undoes it.
@@ -98,6 +99,34 @@ if you need to act on it.
 | `IPRONET_ERR_NO_MAC` | GET_MAC reply did not arrive within 1 s |
 | `IPRONET_ERR_IO` | CMD53 write failed |
 | `IPRONET_ERR_PARAM` | bad argument |
+| `IPRONET_ERR_OTA_PKG` | OTA: package header precheck failed |
+| `IPRONET_ERR_OTA_DEVICE` | OTA: device rejected; see `dev_err` |
+| `IPRONET_ERR_OTA_TIMEOUT` | OTA: no device reply after retries |
+| `IPRONET_ERR_OTA_REBOOT` | OTA: device not back after reboot |
+| `IPRONET_ERR_OTA_SOURCE` | OTA: package reader failed |
+| `IPRONET_ERR_OTA_APPLY` | OTA: device back, but boot2 did not install the package |
+
+## Firmware OTA (`ipronet_ota.h`)
+
+    ipronet_ota_src_t src = { size, my_read, my_ctx };   /* package reader */
+    ipronet_ota_report_t rep;
+    int rc = ipronet_ota_update(&src, NULL, &rep);       /* blocks ~30-60 s */
+
+- Package: iprocube `FW_OTA.bin.xz.ota` (512 B header + XZ payload), HW
+  version `IPRO6*` only: the host precheck refuses other chips before START.
+- The device writes the package to the FW partition's slot 1, checks its
+  SHA-256 read back from flash, marks it active and reboots into MEDIA boot;
+  boot2 installs it. The call then re-enumerates without a power cycle
+  (60 s window, one rail cycle if the device does not come back), redoes
+  the bring-up, asks the device whether boot2 installed the package
+  (`rep.installed`, `IPRONET_ERR_OTA_APPLY` if not) and reconnects the STA
+  when `ipronet_connect` was armed.
+- While it runs, `ipronet_start/stop/connect/disconnect/scan` return
+  `IPRONET_ERR_STATE`. Traffic stops: the STA is taken down first.
+- `rep.ms[]` holds the time per phase, `rep.dev_err` the device's reason
+  on `IPRONET_ERR_OTA_DEVICE`. Shell front end:
+  `apps/platform/common/ipronet_ota_cli` (`ipro6s_ota <url>`).
+- Device side: `CONFIG_RNM_OTA` in `ipro6_if_wifi`.
 
 ## Not provided
 

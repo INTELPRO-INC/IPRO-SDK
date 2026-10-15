@@ -21,11 +21,43 @@
 #include "mbedtls/ecp.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
+#include "mbedtls/platform_util.h"
 #include "common.h"
 #include "crypto.h"
 #include "random.h"
+#include <limits.h>
+
+/* Keep the existing coordinate-based port compatible with mbedTLS 2.x and
+ * pinned 3.x without globally enabling MBEDTLS_ALLOW_PRIVATE_ACCESS. */
+#ifndef MBEDTLS_PRIVATE
+#define MBEDTLS_PRIVATE(member) member
+#endif
 
 #define HSU_HW_ENABLE 0
+
+#if defined(MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES) && !HSU_HW_ENABLE
+/* A fresh WPA context does not inherit Matter's registered entropy source.
+ * Use the existing SDK cryptographic RNG (os_get_random -> hal_rand_stream),
+ * never os_random/co_rand_word or the hardclock counter. */
+static int wpa_entropy_source(void *context, unsigned char *output, size_t length,
+                              size_t *written)
+{
+    (void)context;
+    if (written == NULL)
+        return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+    *written = 0;
+    if (output == NULL || length > INT_MAX)
+        return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+    if (length == 0)
+        return 0;
+    if (random_get_bytes(output, length) != 0) {
+        mbedtls_platform_zeroize(output, length);
+        return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+    }
+    *written = length;
+    return 0;
+}
+#endif
 
 #if HSU_HW_ENABLE
 #include "hsu.h"
@@ -473,9 +505,7 @@ int crypto_bignum_is_one(const struct crypto_bignum *a)
  */
 int crypto_bignum_is_odd(const struct crypto_bignum *a)
 {
-	if (a->mpi.p)
-		return (a->mpi.p[0] & 0x1);
-	return 0;
+	return mbedtls_mpi_get_bit(&a->mpi, 0);
 }
 
 /**
@@ -1207,7 +1237,7 @@ int crypto_ec_point_to_bin(struct crypto_ec *e,
     int len = mbedtls_mpi_size(&e->group.P);
 
     if (x) {
-        if(crypto_bignum_to_bin((struct crypto_bignum *) & ((mbedtls_ecp_point *) point)->X,
+        if(crypto_bignum_to_bin((struct crypto_bignum *) & ((mbedtls_ecp_point *) point)->MBEDTLS_PRIVATE(X),
                              x, len, len) < 0) {
             return -1;
         }
@@ -1215,7 +1245,7 @@ int crypto_ec_point_to_bin(struct crypto_ec *e,
     }
 
     if (y) {
-        if(crypto_bignum_to_bin((struct crypto_bignum *) & ((mbedtls_ecp_point *) point)->Y,
+        if(crypto_bignum_to_bin((struct crypto_bignum *) & ((mbedtls_ecp_point *) point)->MBEDTLS_PRIVATE(Y),
                              y, len, len) < 0) {
             return -1;
         }
@@ -1240,9 +1270,9 @@ struct crypto_ec_point *crypto_ec_point_from_bin(struct crypto_ec *e,
     pt = os_zalloc(sizeof(mbedtls_ecp_point));
     mbedtls_ecp_point_init(pt);
 
-    MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&pt->X, val, len));
-    MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&pt->Y, val + len, len));
-    MBEDTLS_MPI_CHK(mbedtls_mpi_lset((&pt->Z), 1));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&pt->MBEDTLS_PRIVATE(X), val, len));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_read_binary(&pt->MBEDTLS_PRIVATE(Y), val + len, len));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_lset((&pt->MBEDTLS_PRIVATE(Z)), 1));
 
     return (struct crypto_ec_point *) pt;
 
@@ -1282,6 +1312,10 @@ int crypto_ec_point_mul(struct crypto_ec *e, const struct crypto_ec_point *p,
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
+#if defined(MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES)
+    MBEDTLS_MPI_CHK(mbedtls_entropy_add_source(&entropy, wpa_entropy_source,
+                    NULL, 32, MBEDTLS_ENTROPY_SOURCE_STRONG));
+#endif
     MBEDTLS_MPI_CHK(mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                                     NULL, 0));
 
@@ -1312,8 +1346,8 @@ static int ecp_opp( const mbedtls_ecp_group *grp, mbedtls_ecp_point *R, const mb
     }
 
     /* In-place opposite */
-    if (mbedtls_mpi_cmp_int( &R->Y, 0) != 0) {
-        MBEDTLS_MPI_CHK(mbedtls_mpi_sub_mpi(&R->Y, &grp->P, &R->Y));
+    if (mbedtls_mpi_cmp_int( &R->MBEDTLS_PRIVATE(Y), 0) != 0) {
+        MBEDTLS_MPI_CHK(mbedtls_mpi_sub_mpi(&R->MBEDTLS_PRIVATE(Y), &grp->P, &R->MBEDTLS_PRIVATE(Y)));
     }
 
 cleanup:
@@ -1334,7 +1368,7 @@ int crypto_ec_point_solve_y_coord(struct crypto_ec *e,
     mbedtls_mpi_init(&temp);
     int ret = 0;
 
-    y = &((mbedtls_ecp_point *)p)->Y;
+    y = &((mbedtls_ecp_point *)p)->MBEDTLS_PRIVATE(Y);
 
     /* Faster way to find sqrt
      * Works only with curves having prime p
@@ -1358,8 +1392,8 @@ int crypto_ec_point_solve_y_coord(struct crypto_ec *e,
         if (y_bit != mbedtls_mpi_get_bit(y, 0))
             MBEDTLS_MPI_CHK(mbedtls_mpi_sub_mpi(y, &e->group.P, y));
 
-        MBEDTLS_MPI_CHK(mbedtls_mpi_copy(&((mbedtls_ecp_point* )p)->X, (const mbedtls_mpi*) x));
-        MBEDTLS_MPI_CHK(mbedtls_mpi_lset(&((mbedtls_ecp_point *)p)->Z, 1));
+        MBEDTLS_MPI_CHK(mbedtls_mpi_copy(&((mbedtls_ecp_point* )p)->MBEDTLS_PRIVATE(X), (const mbedtls_mpi*) x));
+        MBEDTLS_MPI_CHK(mbedtls_mpi_lset(&((mbedtls_ecp_point *)p)->MBEDTLS_PRIVATE(Z), 1));
     } else {
         ret = 1;
     }
@@ -1442,9 +1476,9 @@ int crypto_ec_point_is_on_curve(struct crypto_ec *e,
 
     /* Calculate y^2  mod P*/
     MBEDTLS_MPI_CHK(mbedtls_mpi_lset( &two, 2));
-    MBEDTLS_MPI_CHK(mbedtls_mpi_exp_mod(&y_sqr_lhs, &((const mbedtls_ecp_point *)p)->Y , &two, &e->group.P, NULL));
+    MBEDTLS_MPI_CHK(mbedtls_mpi_exp_mod(&y_sqr_lhs, &((const mbedtls_ecp_point *)p)->MBEDTLS_PRIVATE(Y) , &two, &e->group.P, NULL));
 
-    y_sqr_rhs = (mbedtls_mpi *) crypto_ec_point_compute_y_sqr(e, (const struct crypto_bignum *) & ((const mbedtls_ecp_point *)p)->X);
+    y_sqr_rhs = (mbedtls_mpi *) crypto_ec_point_compute_y_sqr(e, (const struct crypto_bignum *) & ((const mbedtls_ecp_point *)p)->MBEDTLS_PRIVATE(X));
 
     if (y_sqr_rhs && (mbedtls_mpi_cmp_mpi(y_sqr_rhs, &y_sqr_lhs) == 0)) {
         on_curve = 1;

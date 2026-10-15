@@ -80,10 +80,17 @@ function(generate_linker_script)
     # Load board configuration
     include(${CONFIG_FILE})
 
-    # IPRO6 controller applications normally reserve 32 KiB of the shared
-    # WRAM/EM macro. Keep that platform default, but allow the BTDM validation
-    # application to qualify the hardware-supported 64 KiB split.
-    if(DEFINED CONFIG_BTDM_EM_SIZE_64K AND CONFIG_BTDM_EM_SIZE_64K)
+    # Keep the 32 KiB platform default; BLE-only and dual-mode products can
+    # explicitly qualify the smaller/larger hardware carve.
+    if(CONFIG_BTDM_EM_SIZE_16K AND CONFIG_BTDM_EM_SIZE_64K)
+        message(FATAL_ERROR "Select only one IPRO6S controller EM size")
+    endif()
+    if(CONFIG_BTDM_EM_SIZE_16K)
+        if(NOT CONFIG_IPRO6 OR NOT CONFIG_BTDM_ENABLE OR CONFIG_BTDM_BT_ENABLE)
+            message(FATAL_ERROR "16 KiB EM requires the IPRO6S BLE-only controller")
+        endif()
+        set(IPRO6_CONTROLLER_EM_SIZE "16K")
+    elseif(CONFIG_BTDM_EM_SIZE_64K)
         set(IPRO6_CONTROLLER_EM_SIZE "64K")
     else()
         set(IPRO6_CONTROLLER_EM_SIZE "32K")
@@ -94,6 +101,61 @@ function(generate_linker_script)
     # Default: ${CHIP_NAME}_common.ld.in
     if(NOT DEFINED LINKER_TEMPLATE)
         set(LINKER_TEMPLATE "${CHIP_NAME}_common.ld.in")
+    endif()
+
+    # CONFIG_IPRO7_BLE_HOTCODE: IPRO7_BLE_HOTCODE_OBJECTS (configs/ipro7_flash.cmake)
+    # leave .text and run from OCRAM through .tcmcode.
+    set(IPRO7_TEXT_INPUT "*(.text .text.*)")
+    set(IPRO7_TEXT_HOT_EXCLUDE "")
+    set(IPRO7_TCM_HOTCODE "")
+    set(_hot_objs "")
+    if(CONFIG_IPRO7_BLE_HOTCODE)
+        if(NOT CHIP_NAME STREQUAL "ipro7" OR NOT GEN_BUILD_TYPE STREQUAL "flash"
+           OR NOT DEFINED IPRO7_BLE_HOTCODE_OBJECTS)
+            message(FATAL_ERROR "CONFIG_IPRO7_BLE_HOTCODE needs an IPRO7 flash build")
+        endif()
+        # The moved code fills the front of OCRAM and pushes .data/.bss past
+        # the 64 KB that PDS31 retains without misc_keep; nothing re-copies
+        # .tcmcode on wake. Not verified with any sleep configuration.
+        if(CONFIG_HAL_LP OR CONFIG_IPRO_PM_BLE OR CONFIG_IPRO_PM_PDS_CONNECTED
+           OR CONFIG_OCRAM_NORET_SPLIT)
+            message(FATAL_ERROR "CONFIG_IPRO7_BLE_HOTCODE is not supported with PDS / low-power layouts")
+        endif()
+        list(APPEND _hot_objs ${IPRO7_BLE_HOTCODE_OBJECTS})
+        set(IPRO7_TCM_HOTCODE "\n    /* CONFIG_IPRO7_BLE_HOTCODE: BLE per-packet path. */\n")
+        foreach(_obj ${IPRO7_BLE_HOTCODE_OBJECTS})
+            string(APPEND IPRO7_TCM_HOTCODE "    ${_obj}(.text .text.*)\n")
+        endforeach()
+        message(STATUS "IPRO7 BLE hot code in OCRAM (CONFIG_IPRO7_BLE_HOTCODE=y)")
+    endif()
+
+    # CONFIG_IPRO7_WIFI_HOST_HOTCODE: IPRO7_WIFI_HOST_HOTCODE_OBJECTS
+    # leave .text and run from PSRAM through .text_psram.
+    set(IPRO7_PSRAM_HOTCODE "")
+    if(CONFIG_IPRO7_WIFI_HOST_HOTCODE)
+        if(NOT CHIP_NAME STREQUAL "ipro7" OR NOT GEN_BUILD_TYPE STREQUAL "flash"
+           OR NOT CONFIG_USE_PSRAM OR NOT DEFINED IPRO7_WIFI_HOST_HOTCODE_OBJECTS)
+            message(FATAL_ERROR "CONFIG_IPRO7_WIFI_HOST_HOTCODE needs an IPRO7 flash build with CONFIG_USE_PSRAM")
+        endif()
+        if(CONFIG_IPRO7_BLE_HOTCODE)
+            message(FATAL_ERROR "CONFIG_IPRO7_WIFI_HOST_HOTCODE and CONFIG_IPRO7_BLE_HOTCODE both place libfreertos")
+        endif()
+        if(CONFIG_HAL_LP OR CONFIG_IPRO_PM_BLE OR CONFIG_IPRO_PM_PDS_CONNECTED
+           OR CONFIG_OCRAM_NORET_SPLIT)
+            message(FATAL_ERROR "CONFIG_IPRO7_WIFI_HOST_HOTCODE is not supported with PDS / low-power layouts")
+        endif()
+        list(APPEND _hot_objs ${IPRO7_WIFI_HOST_HOTCODE_OBJECTS})
+        set(IPRO7_PSRAM_HOTCODE "\n    /* CONFIG_IPRO7_WIFI_HOST_HOTCODE: Wi-Fi host data path. */\n")
+        foreach(_obj ${IPRO7_WIFI_HOST_HOTCODE_OBJECTS})
+            string(APPEND IPRO7_PSRAM_HOTCODE "    ${_obj}(.text .text.*)\n")
+        endforeach()
+        message(STATUS "IPRO7 Wi-Fi host hot code in PSRAM (CONFIG_IPRO7_WIFI_HOST_HOTCODE=y)")
+    endif()
+
+    if(_hot_objs)
+        string(JOIN " " _hot_exclude ${_hot_objs})
+        set(IPRO7_TEXT_INPUT "*(EXCLUDE_FILE(${_hot_exclude}) .text)\n    *(EXCLUDE_FILE(${_hot_exclude}) .text.*)")
+        set(IPRO7_TEXT_HOT_EXCLUDE " ${_hot_exclude}")
     endif()
 
     # Look for template in chip-specific directory
@@ -127,7 +189,7 @@ function(generate_linker_script)
     PROVIDE( _text_psram_lma = LOADADDR(.text_psram) );
     PROVIDE( _text_psram_vma = ADDR(.text_psram) );
     *(.psram_code)
-    *(.psram_code.*)
+    *(.psram_code.*)${IPRO7_PSRAM_HOTCODE}
     . = ALIGN(8);
     PROVIDE( _etext_psram = . );
   } >psram AT>ROM
@@ -472,6 +534,9 @@ function(generate_linker_script)
     #   - Split tcmcode: LP+Flash stay in ocram, others move to em_tcm_ret
     # When ENABLE_EM_TCM_RET=OFF:
     #   - All tcmcode stays in ocram (original behavior)
+    if(ENABLE_EM_TCM_RET AND CONFIG_IPRO7_BLE_HOTCODE)
+        message(FATAL_ERROR "CONFIG_IPRO7_BLE_HOTCODE does not fit the AI+MM split tcmcode layout")
+    endif()
     if(ENABLE_EM_TCM_RET)
         set(EM_TCM_RET_MEMORY_REGION "  em_tcm_ret (wxa!r) : ORIGIN = ${EM_TCM_RET_ORIGIN}, LENGTH = ${EM_TCM_RET_SIZE}")
 
@@ -590,7 +655,7 @@ function(generate_linker_script)
     *(.tcm_code.*)
     *(.tcm_const.*)
     *(.sclock_rlt_code.*)
-    *(.sclock_rlt_const.*)
+    *(.sclock_rlt_const.*)${IPRO7_TCM_HOTCODE}
     . = ALIGN(8);
   } >${_TCMCODE_REGION} AT>ROM
 
@@ -790,7 +855,7 @@ function(generate_linker_script)
             string(REGEX REPLACE "^\"(.*)\"$" "\\1" NVDS_SIZE "${NVDS_SIZE}")
         endif()
         if(NOT DEFINED NVDS_SIZE)
-            # Default 1 KB.  The RW BLE controller only stores a handful of
+            # Default 1 KB.  The BLE controller only stores a handful of
             # small tags (BD_ADDRESS, LPCLK_DRIFT, ACTCLK_DRIFT, SCA,
             # OSC/RM_WAKEUP_TIME, SLEEP_ENABLE …), so 1 KB is sufficient for
             # the generated default set.  Override via CONFIG_NVDS_SIZE if a
@@ -834,6 +899,26 @@ function(generate_linker_script)
   PROVIDE( _ld_nvds_addr = __nvds_start );
   PROVIDE( _ld_nvds_size = __nvds_size );
 ")
+    endif()
+
+    # CONFIG_IPRO6S_HOTCODE: HOTCODE_OBJECTS and .hotcode leave .text and
+    # are copied to RAM with .data.
+    set(TEXT_INPUT_SECTIONS "*(.text .text.*)")
+    set(HOTCODE_DATA_SECTION "")
+    if(CONFIG_IPRO6S_HOTCODE AND DEFINED HOTCODE_OBJECTS AND GEN_BUILD_TYPE STREQUAL "flash")
+        string(JOIN "\n                   " _hot_exclude ${HOTCODE_OBJECTS})
+        set(TEXT_INPUT_SECTIONS "*(EXCLUDE_FILE(${_hot_exclude}) .text)\n    *(EXCLUDE_FILE(${_hot_exclude}) .text.*)")
+        set(HOTCODE_DATA_SECTION "\n    /* Per-frame hot code executed from TCM. */\n    . = ALIGN(8);\n    PROVIDE( _hotcode_start = . );\n")
+        foreach(_obj ${HOTCODE_OBJECTS})
+            string(APPEND HOTCODE_DATA_SECTION "    ${_obj}(.text .text.*)\n")
+        endforeach()
+        string(APPEND HOTCODE_DATA_SECTION "    *(.hotcode .hotcode.*)\n\n    . = ALIGN(8);\n    PROVIDE( _hotcode_end = . );")
+        # HOTCODE_COLD_SECTIONS stay in flash: .text is matched
+        # before .data, so they never reach TCM.
+        if(DEFINED HOTCODE_COLD_SECTIONS)
+            string(JOIN "\n    " _hot_cold ${HOTCODE_COLD_SECTIONS})
+            string(APPEND TEXT_INPUT_SECTIONS "\n    PROVIDE( _hotcode_cold_start = . );\n    ${_hot_cold}\n    PROVIDE( _hotcode_cold_end = . );")
+        endif()
     endif()
 
     # Generate linker script using configure_file

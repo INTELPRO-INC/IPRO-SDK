@@ -19,6 +19,7 @@
 
 
 #include "drv_dbi.h"
+#include "drv_glb.h"
 
 #ifndef IPRO_USE_HAL_DRIVER
 static intCallback_Type *DBIIntCbfArra[DBI_INT_ALL] = {
@@ -60,6 +61,9 @@ void DBI_IRQHandler(void)
 
 int DBI_Init(DBI_CFG_Type *dbiCfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_DBI);
+
     uint32_t tmpVal;
 
     /* Check the parameters */

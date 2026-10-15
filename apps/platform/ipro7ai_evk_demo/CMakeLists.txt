@@ -7,8 +7,11 @@ __component_add_include_dirs(src)
 # main.c is registered only via __set_main_file() below so it compiles into the
 # ELF target alone - listing it here as well would double-define main() once the
 # app archive is force-linked with --whole-archive.
+# The ST7789P3 driver comes from components/board/ipro7ai_evk
+# (CONFIG_COMPONENTS_IPRO7AI_EVK_ENABLE in every config_* here). The camera
+# and audio bring-up tools stay app-local: they carry diagnostics the
+# library's evk_cam / evk_mic / evk_spk deliberately do not.
 target_sources(app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/st7789p3.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/st7789p3_patterns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/st7789p3_cli.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cam.c

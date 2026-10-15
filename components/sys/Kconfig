@@ -25,6 +25,15 @@ config SHELL_EXEC_THREAD
       This allows long-running commands without blocking the shell.
       Supports Ctrl+C to abort running commands.
 
+config SHELL_THREAD_STACK_WORDS
+    int "Shell task stack (32-bit words, 0 uses the default)"
+    depends on SHELL
+    range 0 8192
+    default 0
+    help
+      Static stack of the shell input task. With SHELL_EXEC_THREAD the
+      commands run in shell_exec, so the input task needs little.
+
 config CMD_SCHEDULER
     bool "Enable Command Scheduler"
     depends on SHELL && IPRO_EVENT
@@ -42,6 +51,7 @@ config COMPONENTS_CLI_CMD_ENABLE
       This is the old AliOS-based CLI. Consider using SHELL instead.
 
 source "components/sys/ipro_event/Kconfig"
+source "components/sys/ipro_pm/Kconfig"
 source "components/sys/usb_console/Kconfig"
 
 endmenu

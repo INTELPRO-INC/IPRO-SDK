@@ -59,8 +59,12 @@
  * Use the non-cache alias for the early hand-off copy. The cacheable alias
  * can contain stale lines on the boot2 -> FW boundary.
  */
+#ifndef BOOT2_PARAM_SRC_ADDR
 #define BOOT2_PARAM_SRC_ADDR            0x21010000
+#endif
+#ifndef BOOT2_PARAM_SRC_CACHE_ADDR
 #define BOOT2_PARAM_SRC_CACHE_ADDR      0x11010000
+#endif
 #define BOOT2_PARAM_LEGACY_ACTIVE_ADDR  0x4202DC00
 #define BOOT2_PARAM_LEGACY_TABLE_ADDR   0x4202DC04
 

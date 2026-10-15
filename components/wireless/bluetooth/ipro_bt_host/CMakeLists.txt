@@ -30,8 +30,22 @@ __component_add_include_dirs(${CMAKE_CURRENT_BINARY_DIR}/generated)
 # controller bring-up.
 sdk_ifndef(CONFIG_BT_TX_PROCESSOR_THREAD 1)
 sdk_ifndef(CONFIG_BT_TX_PROCESSOR_THREAD_PRIO 6)
+if(CONFIG_BT_CTLR_AIC8800_SDIO)
+    # The AIC8800 mailbox transport runs aic_hci_transport_send() - which
+    # printf()s every submission - on the TX processor, and BR/EDR adds L2CAP
+    # BR / SDP / AVDTP work to the RX and system work queues. Measured on Reef
+    # at the LE-sized defaults with no connection yet: system work queue 174 B
+    # free of 2048, TX processor near-full of 1024; a single extra log line on
+    # the TX path overflowed it. These are static stacks, so an overflow
+    # rewrites neighbouring .bss rather than faulting.
+    sdk_ifndef(CONFIG_BT_TX_PROCESSOR_STACK_SIZE 3072)
+    sdk_ifndef(CONFIG_BT_RX_STACK_SIZE 3072)
+    sdk_ifndef(CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE 4096)
+endif()
 sdk_ifndef(CONFIG_BT_TX_PROCESSOR_STACK_SIZE 1024)
 sdk_ifndef(CONFIG_BT_RX_STACK_SIZE 2048)
+# Zephyr system work queue emulated by port/kernel.c (static stack, bytes).
+sdk_ifndef(CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE 2048)
 if(CONFIG_BT_SMP)
     # The SDK consumes .config directly rather than resolving Zephyr's Kconfig
     # defaults. Preserve upstream's default: authenticated I/O capabilities
@@ -48,12 +62,21 @@ __component_add_include_dirs(
     ${IPRO_BT_HOST_TINYCRYPT}/include
 )
 
+# HCI transport: the on-chip IPRO controller's H4 byte-stream ring, or the
+# AIC8800 D80 combo chip's SDIO mailbox through the vendor's public transport
+# API (CONFIG_BT_CTLR_AIC8800_SDIO; aic_hci_transport.h comes from the
+# wifi_aic8800 component's public include path).
+if(CONFIG_BT_CTLR_AIC8800_SDIO)
+    __component_add_sources(port/hci_aic_sdio.c)
+else()
+    __component_add_sources(port/hci_ipro.c)
+endif()
+
 __component_add_sources(
     port/kernel.c
     port/assert.c
     port/crypto.c
     port/ecc.c
-    port/hci_ipro.c
     port/channel_map.c
     port/util.c
     port/uuid_port.c
@@ -121,6 +144,14 @@ endif()
 # builds without Connection Request/Complete handling, page accept, BR L2CAP,
 # SSP, or SCO support.
 if(CONFIG_BT_BREDR)
+    # Upstream l2cap_br.c mixes `#if defined(CONFIG_BT_L2CAP_RET_FC)` with a
+    # bare `#if !CONFIG_BT_L2CAP_RET_FC`; the latter only compiles under the
+    # SDK's -Wundef because the IPRO6S controller leaks -Wno-undef publicly.
+    # Keep upstream pristine and relax -Wundef for that one file instead, so
+    # IPRO7 + external controller builds Classic as well.
+    set_source_files_properties(
+        ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/classic/l2cap_br.c
+        PROPERTIES COMPILE_OPTIONS "-Wno-undef")
     __component_add_sources(
         ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/classic/br.c
         ${IPRO_BT_HOST_ZEPHYR}/subsys/bluetooth/host/classic/conn_br.c
@@ -134,6 +165,15 @@ if(CONFIG_BT_BREDR)
     sdk_ifndef(CONFIG_BT_LIMITED_DISCOVERABLE_DURATION 60)
     sdk_ifndef(CONFIG_BT_BR_MIN_ENC_KEY_SIZE 16)
     sdk_ifndef(CONFIG_BT_MAX_SCO_CONN 1)
+    # Upstream Kconfig: "default 0x0001 if BT_A2DP_SINK", else 0xFFFF. This SDK
+    # reads .config without resolving Kconfig defaults, so the conditional was
+    # lost and every A2DP sink got 0xFFFF: l2cap_br.c then answers an audio
+    # source's finite Flush Timeout on the media channel with Unacceptable
+    # Parameters, the source re-sends the same request (macOS: ~70 times a
+    # second) and gives up after 10 s - the stream never opens.
+    if(CONFIG_BT_A2DP_SINK)
+        sdk_ifndef(CONFIG_BT_L2CAP_RX_FLUSH_TO 0x0001)
+    endif()
     sdk_ifndef(CONFIG_BT_L2CAP_RX_FLUSH_TO 0xFFFF)
     sdk_ifndef(CONFIG_BT_L2CAP_BR_RET_TIMEOUT 2000)
     sdk_ifndef(CONFIG_BT_L2CAP_BR_MONITOR_TIMEOUT 2000)
@@ -941,6 +981,7 @@ __component_add_compile_definitions(
     -DCONFIG_BT_LIM_ADV_TIMEOUT=60
     -DCONFIG_BT_RECV_WORKQ_BT=1
     -DCONFIG_BT_RX_STACK_SIZE=${CONFIG_BT_RX_STACK_SIZE}
+    -DCONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE=${CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE}
     -DCONFIG_BT_RX_PRIO=6
     -DCONFIG_BT_DEVICE_NAME=\"${CONFIG_BT_DEVICE_NAME}\"
     -DCONFIG_BT_DEVICE_APPEARANCE=0

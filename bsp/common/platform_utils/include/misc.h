@@ -51,7 +51,10 @@ typedef enum {
  * Legacy defines for backward compatibility with BSP code.
  * Using numeric values to avoid conflicts with other libraries
  * (wpa_supplicant, LwIP) that use these names as enum identifiers.
+ * Middleware with macro-sensitive APIs (e.g. Matter logging) may opt out
+ * before the first include. The prefixed MISC_* enum values remain available.
  */
+#ifndef IPRO_NO_LEGACY_STATUS_MACROS
 #ifndef SUCCESS
 #define SUCCESS 0
 #endif
@@ -67,6 +70,7 @@ typedef enum {
 #ifndef NORESC
 #define NORESC 4
 #endif
+#endif /* IPRO_NO_LEGACY_STATUS_MACROS */
 
 typedef enum {
     DISABLE = 0,

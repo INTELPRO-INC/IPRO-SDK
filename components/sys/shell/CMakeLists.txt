@@ -29,8 +29,8 @@ if(CONFIG_CMD_SCHEDULER AND CONFIG_IPRO_EVENT)
     __component_add_include_dirs(cmd_scheduler)
 endif()
 
-# PHY/RF shell commands (IPRO6 only, not IPRO6LE) - requires ipro6_rf driver
-if((CONFIG_WIFI6 OR CONFIG_PHY_CLI) AND CONFIG_IPRO6 AND NOT CONFIG_IPRO6LE)
+# PHY/RF shell commands (IPRO6 only) - requires ipro6_rf driver
+if((CONFIG_WIFI6 OR CONFIG_PHY_CLI) AND CONFIG_IPRO6)
     __component_add_sources(${IPRO_SDK_BASE}/components/wireless/rf/ipro6_rf/cli/shell_phy.c)
     __component_add_include_dirs(${IPRO_SDK_BASE}/components/wireless/rf/ipro6_rf/cli)
 endif()

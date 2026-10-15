@@ -19,8 +19,8 @@
 #include "usbwifi.h"
 #include "utils.h"
 
-#if defined(IPRO6LE) || defined(IPRO6)
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
+#if defined(IPRO6)
 #include "drv_l1c.h"
 #else
 #include <bl616_l1c.h>

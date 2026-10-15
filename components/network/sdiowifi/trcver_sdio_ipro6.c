@@ -55,6 +55,7 @@
 #include <sdiowifi_utils.h>
 #include "trcver_sdio.h"
 #include "net_wifi_transceiver.h"
+#include <lwip/opt.h>
 #include "rx_profile.h"
 #include "sdiowifi_mgmr.h"
 #include "sdiowifi_mgmr_type.h"
@@ -69,47 +70,13 @@
 
 #define SMID_FUNC_WIFI        (1)                              /* SMID func # (1-based) */
 #define SMID_RX_QUEUE_DEPTH   IPRO6_SDIO3_FUNC_QUEUE_NUM_MAX   /* dnld HW queue depth (8) */
-/* The dnld buffer POOL is intentionally larger than the HW queue depth. On every
- * DNLD_CPL the ISR re-arms a FRESH pool buffer immediately, while the just-filled
- * buffer is still being delivered by the worker. With pool == queue depth (the old
- * behaviour, re-arm done in the worker) a host blind-write burst drains all 8 slots
- * before the deferred worker re-arms one -> frame 9 hits ERR_DNLD_QUEUE -> host
- * CMD53 -110 -> card removed -> soft reset. 2x the depth gives an 8-frame cushion
- * for worker scheduling latency; bump if a sustained burst still depletes it. */
-/* With dnld aggregation each posted buffer holds many frames, so far fewer
- * buffers are needed for the same frame throughput; keep pool > queue depth so
- * the ISR re-arm still has a cushion (DAT0 back-pressure is the real safety).
- * 10 x 6144 = 60 KB nocache (vs 16 x 2048 = 32 KB before). */
-/* [PERF 07-24] 10 -> 9: one 6KB buffer freed to help fund the hot-code-to-RAM
- * relocation in ipro6_if_wifi_flash.ld (.data globs). Must stay > the 8-deep
- * dnld HW queue (static_assert below) so the ISR re-arm keeps a cushion in
- * the disarmed/legacy fallback mode. */
-#define SMID_RX_POOL_CNT      (9)                              /* dnld buffer pool       */
+/* One 6 KB contiguous buffer, armed only while every zc slot is held
+ * and a host write has waited g_sdio_zc2_stall_ms (see the refill). */
+#define SMID_RELIEF_CNT       (1)
 
-/* DEBUG 2026-07-24 Phase-Z v1 (zero-copy TX inject, gated g_sdio_zerocopy):
- * additional dnld buffers that live in ram_wifi (SHRAM) and are armed at an
- * offset chosen so the eth frame lands EXACTLY at slot + 452
- * (= PBUF_LINK_ENCAPSULATION_HLEN in the wifi6_lwip_adapter lwipopts — the
- * 376B fhost desc + 802.11 headers build in the 452B in front). Wire layout
- * per frame is [2B len][4B bl602_sdio_msg][2B subtype][frame] = 8B before the
- * frame, so arming at slot+444 makes a completely UNCHANGED host wire format
- * land zero-copy-ready: the delivered pbuf can point straight into the slot
- * and the SDIO->pool memcpy + pool alloc both disappear for that frame.
- * The slot is owned by the pbuf from claim until TX-cfm free (pbuf custom
- * free -> smid_zc_slot_free -> pool_put + refill). Gate OFF -> the slots act
- * as small ordinary dnld buffers on the legacy copy path (zero behavior
- * change; ADMA overflow is impossible either way: armed data_len caps the
- * transfer at SLOT_SZ-ARM_OFF and the host sends single ~1.5KB frames).
- * 8 slots x 2KB = 16KB ram_wifi (fits the ~19.4KB currently free; the full
- * pool conversion that retires the WRAM TX-payload pool is Phase-Z v2). */
-/* Phase-Z v2a (2026-07-24): FULL pool conversion. v1 (8 slots alongside the
- * 24-slot copy pool) measured +15% with only ~26% zc coverage and showed the
- * dominant gain is in-flight CAPACITY (depth hist 9-16: 410->700). v2a makes
- * zero-copy the primary path: 24 zc slots (in-flight capacity for the whole
- * BAW/txdesc window) while the WRAM copy pool shrinks 24->6 and becomes the
- * bounce/pressure fallback. ram_wifi net -2.7KB. Gate-off now runs on the
- * 6-slot copy pool only (DEBUG degenerate mode, NOT the historical legacy
- * baseline — compare v2a against the v1 same-window numbers instead). */
+/* Zero-copy dnld slots in ram_wifi. Each frame lands at slot +
+ * PBUF_LINK_ENCAPSULATION_HLEN, so the slot itself becomes the TX pbuf;
+ * it returns to the pool at TX-cfm time (smid_zc_slot_free). */
 /* MEASURED 2026-07-29, do not shrink this on an argument. The mem-32K campaign
  * proposed 24 -> 20 (8,192 B of ram_wifi) on the theory that the pool was slack,
  * citing sdiowifi_tx_buf.c's F2 note that A-MPDU depth cannot exceed 16 because
@@ -134,15 +101,15 @@
  * 32 is the HARD ceiling here: smid_zc_out_map is a uint32_t bitmap. */
 #define SMID_ZC_SLOT_CNT      (32)
 #define SMID_ZC_SLOT_SZ       (2048)
-#define SMID_ZC_ARM_OFF       (444)   /* frame @ +444+8 = +452 = lwip HLEN   */
-#define SMID_RX_POOL_TOTAL    (SMID_RX_POOL_CNT + SMID_ZC_SLOT_CNT)
+#define SMID_ZC_WIRE_HDR      (8)     /* [2B len][4B msg][2B subtype]        */
+#define SMID_ZC_ARM_OFF       (PBUF_LINK_ENCAPSULATION_HLEN - SMID_ZC_WIRE_HDR)
+_Static_assert(SMID_ZC_SLOT_SZ - SMID_ZC_ARM_OFF >= SMID_ZC_WIRE_HDR + 1514,
+               "zc slot cannot hold a full frame behind the lwIP headroom");
+#define SMID_RX_POOL_TOTAL    (SMID_RELIEF_CNT + SMID_ZC_SLOT_CNT)
 #define SMID_TX_QUEUE_DEPTH   IPRO6_SDIO3_FUNC_QUEUE_NUM_MAX   /* upld queue depth (8)  */
 #define SMID_TX_MASK          (SMID_TX_QUEUE_DEPTH - 1)
 
-/* dnld RX buffer size. The host packs 1..N frames [2B len][body]... + a 0x0000
- * sentinel into ONE CMD53 write (TX aggregation), so this is the legacy
- * SDIO_DNLD_AGG_BUF_SIZE (6144) -- NOT the 2048 single-frame size. Kept SMID-
- * local so the shared SDIO_RX_BUF_SIZE (legacy ipro6le path) is untouched. */
+/* Largest dnld write: a 3-slot chain, and the relief buffer size. */
 #define SMID_DNLD_BUF_SIZE    SDIO_DNLD_AGG_BUF_SIZE
 
 /* upld (device->host) aggregate cap: the device packs 1..N frames
@@ -173,6 +140,7 @@
 #define SDU_WORKER_EV_NONE    (0)
 #define SDU_WORKER_EV_RESET   (1 << 0)
 #define SDU_WORKER_EV_TX_WDT  (1 << 1)
+#define SDU_WORKER_EV_REENUM  (1 << 2)
 
 /* ========================================================================= */
 /* State                                                                     */
@@ -203,16 +171,27 @@ static sdiowifi_task_t   sdu_irq_handle   = NULL;
 static bool              sdu_software_reset = false;
 
 static long              sdu_worker_ev;
+/* Transport-wedge watchdog: ms of continuous BUSY tran_sta before the
+ * re-enum below runs (0 disables). Must outlast the host's CMD53
+ * timeout + I/O abort, ~2.5 s on IPRO85 Linux. */
+volatile uint32_t        g_sdu_wedge_ms = 30000;
+volatile uint32_t        smid_wedge_trips;
+/* Re-enum asks the host for a card reset first (doorbell 0xFFFF)
+ * and resets the SDU block only if no host reset comes within this
+ * many ms (0 = SDU block reset at once). */
+volatile uint32_t        g_sdu_softrec_ms = 3000;
+static volatile uint8_t  smid_softrec_pending;
+volatile uint32_t        smid_softrec_reqs, smid_softrec_done, smid_glb_reenums;
+/* Wedge-recovery code: linked into flash (.xip_text_cold), not TCM. */
+#define SMID_COLD __attribute__((section(".xip_text_cold"), noinline))
+void notify_sdu_worker(int event, int isr);
+int ipro_sdu_self_reenum(void);
 static sdiowifi_timer_handle_t sdio_tx_wdt_timer;
 static sdiowifi_task_t   smid_keep_ready_handle = NULL;
 
-/* RX buffers: ADMA writes host data here, then the CPU reads it. Placed in the
- * non-cacheable section so reads are coherent without an explicit invalidate
- * (the SMID driver uses the same section for its ADMA descriptor). One per pool
- * entry (the pool is larger than the HW queue depth; see SMID_RX_POOL_CNT);
- * 32-byte aligned for the DMA engine. */
+/* Written by the ADMA and read by the CPU, so non-cacheable. */
 static ATTR_NOCACHE_RAM_SECTION uint8_t
-    smid_rx_buf[SMID_RX_POOL_CNT][SMID_DNLD_BUF_SIZE] __attribute__((aligned(32)));
+    smid_relief_buf[SMID_RELIEF_CNT][SMID_DNLD_BUF_SIZE] __attribute__((aligned(32)));
 
 /* Phase-Z v1 zero-copy slots: ram_wifi/SHRAM (the WiFi MAC HW can only fetch
  * TX descriptors/payload from the SHRAM window — OCRAM-alias TX hangs the
@@ -251,19 +230,14 @@ _Static_assert(sizeof(smid_zc_slot) % 4096 == 0,
                "smid_zc_slot must span whole 4 KB pages, or the linker-side "
                "alignment guard in ipro6_if_wifi_flash.ld stops being valid");
 
-/* Phase-Z gate + delivery-claim state (worker context only) + counters. */
-volatile uint32_t g_sdio_zerocopy = 0;
-/* v2b: zero-copy slots enter the dnld pool ONLY after the host opts in (in-band
- * USER_EXT "ZCEN1" -> smid_zc_host_enable). Boot default 0 keeps the pool
- * OCRAM-big-buffer-only, so a legacy host that aggregates >1604B per CMD53 can
- * never hit a small-capped slot (the -110 card-removed landmine). */
-static volatile uint8_t smid_zc_armed = 0;
+/* Zero-copy claim gate; the placement guard in smid_zc_try_claim
+ * clears it and every frame then takes the copy path. */
+volatile uint32_t g_sdio_zerocopy = 1;
 static const uint8_t *smid_zc_cur_arm = NULL;   /* armed ptr being delivered  */
 static uint8_t  smid_zc_cur_single = 0;         /* buffer holds exactly 1 frm */
 static uint8_t  smid_zc_claimed = 0;            /* consumer took ownership    */
 volatile uint32_t smid_zc_claims = 0;
 volatile uint32_t smid_zc_frees = 0;
-volatile uint32_t smid_zc_reserve_skips = 0;
 /* Bitmap of slots currently owned by an in-flight TX pbuf. Needed so a
  * transport reseed (host reset) does NOT reclaim a claimed slot into the
  * pool — the pbuf still returns it later via smid_zc_slot_free(), and a
@@ -350,62 +324,24 @@ static inline int smid_zc_is_slot_arm(const void *armed)
            ((const uint8_t *)armed <  &smid_zc_slot[0][0] + sizeof(smid_zc_slot));
 }
 
-/* DEBUG 2026-07-24 ZCEN2-stride (multi-frame CMD53, zero-copy preserved):
- * the host packs K frames at a FIXED SMID_ZC_SLOT_SZ wire stride (one frame
- * per stride, [2B len][body][0x0000] + zero-pad each) into ONE CMD53; the
- * device arms one dnld queue element as an ADMA scatter chain of K zc slots
- * (driver ipro6_sdio3_sg_desc_t: stride k's first slot_cap bytes -> slot[k],
- * the pad tail sinks into the same slot's headroom). Every frame therefore
- * lands at its own slot + 452 and the per-slot pre-classify / zc-claim /
- * pbuf-wrap flow is UNCHANGED — this batches the SDIO IRQ + worker-wake
- * ceremony (~30-45us/frame at 1 frame/CMD53) K-for-1 without giving up
- * zero-copy. Handshake: host USER_EXT "ZCEN2" -> reply "ZCOK2 <nslot>
- * <stride>"; boot default DISARMED and gate g_sdio_zc2_en default OFF (a
- * gate-off device answers nslot=0 and arms the v2b single-frame slots
- * instead, so the host falls back to zc_single).
- *
- * nslot default 3: 3 x 2048 = 6144 == SMID_DNLD_BUF_SIZE, so the advertised
- * dnld max never changes and ANY armed element (pre-enable OCRAM contiguous
- * or chain) accepts any post-ZCOK2 write — no arm-transition hazard at all.
- * nslot=4 (8192 capacity) is pokeable for A/B; it relies on the host-side
- * warm-up (first 8 post-ZCOK2 writes capped at 6144) to drain pre-enable
- * 6144-capped elements before any 8192 write, and on chain-only arming
- * (no OCRAM fallback) afterwards. */
+/* Every dnld queue element is an ADMA scatter chain of nslot zc slots.
+ * The host writes one frame per SMID_ZC_SLOT_SZ stride, so each frame
+ * lands at its own slot + ARM_OFF; a write <= slot_cap fills slot 0. */
 #define SMID_ZC2_ELEM_CNT     IPRO6_SDIO3_FUNC_QUEUE_NUM_MAX
-volatile uint32_t g_sdio_zc2_en = 1;      /* allow negotiated ZCEN2 stride arming  */
-volatile uint32_t g_sdio_zc2_nslot = 3;   /* advertised chain length (2..4)        */
-/* OCRAM contiguous fallback when the zc slots starve. DEFAULT OFF: the
- * fallback absorbs slot pressure through the copy path, so DAT0
- * back-pressure never reaches the host, the host qdisc never backlogs, and
- * stride packing never engages (bench 07-24: 30M blast stayed at ~1
- * frame/CMD53 with 58% of frames on the copy path). OFF = arm-starvation
- * stalls the host (deferred PROGRAM_DONE) -> host packs nslot frames/write
- * -> chain CPL returns nslot slots -> batched equilibrium. Cost: while a TX
- * wedge pins every slot, host cmd writes stall until the 450ms TX WDT frees
- * them (DEBUG-acceptable; poke to 1 to restore the always-armed behavior). */
-volatile uint32_t g_sdio_zc2_ctg_fb = 0;
-/* DAT0 stall bound (ms). With ctg_fb=0 the arm-starvation stall IS the
- * batcher — but on pathological air (LAB03 underrun storm, mpdu ok ~27%)
- * TX cfm slows so much that all slots stay pinned and the stall exceeds the
- * host's mmc timeout: CMD53 EBUSY cascade -> card drop (bench-proven 07-24).
- * The keep-ready 1ms poller counts consecutive stalled ticks; at the bound
- * it sets smid_zc2_relief, which lets the refill's contiguous-OCRAM branch
- * run (bounded ctg_fb) so the blocked host write completes into the copy
- * path. Relief self-clears on the next successful chain arm (slots freed) —
- * batching resumes with no operator action. 50ms = ~20x a normal batching
- * stall, ~20x under the mmc timeout. */
+/* chain length; 3 x 2048 == SMID_DNLD_BUF_SIZE, 4 disables relief */
+volatile uint32_t g_sdio_zc2_nslot = 3;
+/* DAT0 stall (ms) after which the refill may arm the relief buffer */
 volatile uint32_t g_sdio_zc2_stall_ms = 50;
 static volatile uint8_t  smid_zc2_relief = 0;
 static volatile uint32_t smid_zc2_relief_trips = 0;
-static volatile uint8_t smid_zc2_armed = 0;   /* stride contract live this session */
-static uint8_t smid_zc2_nslot_armed;          /* nslot latched at enable           */
+static uint8_t smid_zc2_nslot_armed;          /* nslot latched at reseed           */
 static ipro6_sdio3_sg_desc_t smid_zc2_elem[SMID_ZC2_ELEM_CNT];
 static ipro6_sdio3_sg_desc_t *smid_zc2_elem_stack[SMID_ZC2_ELEM_CNT];
 static uint8_t smid_zc2_elem_top;
 static volatile uint32_t smid_zc2_chains;      /* chain CPLs walked                 */
 static volatile uint32_t smid_zc2_strides;     /* filled strides delivered          */
 static volatile uint32_t smid_zc2_partial;     /* unfilled chain slots returned     */
-static volatile uint32_t smid_zc2_ctg;         /* contiguous-fallback arms in zc2   */
+static volatile uint32_t smid_zc2_ctg;         /* relief buffer arms                */
 static volatile uint32_t smid_zc2_arm_starve;  /* chain arm blocked: slots/elem dry */
 
 static inline int smid_zc2_is_elem(const void *buff)
@@ -471,23 +407,34 @@ static void smid_zc2_elem_reset(void)
  * boundary (see rnm_user_ext.c). The contract dies on reseed, like ZCEN2. */
 #define SMID_ZC3_STRIDE     (2048)   /* wire stride; must equal SMID_UPLD_COPY_SIZE */
 #define SMID_ZC3_WIRE_MAX   (IPRO6_SDIO3_SG_MAX * SMID_ZC3_STRIDE)
-/* Chain elems: pushed chains hold >= 2 cbufs each, so the 8-cbuf pool bounds
- * in-flight chains at 4; the OPEN chain holds no elem (acquired at push).
- * 4 is exact -- elem-dry keeps the chain open (retried on the next cfm). */
-#define SMID_ZC3_ELEM_CNT   (4)
-volatile uint32_t g_sdio_zc3_en = 1;      /* allow negotiated ZCEN3 upld agg     */
+/* One elem per queued SG transfer, so the upld queue depth bounds
+ * them; an elem-dry push keeps the open chain for the next cfm. */
+#define SMID_ZC3_ELEM_CNT   (8)
 volatile uint32_t g_sdio_zc3_uslots = 4;  /* advertised max chain depth (2..4)   */
 volatile uint32_t g_sdio_zc3_thresh = 1;  /* open a chain at inflight >= thresh  */
 static volatile uint8_t smid_zc3_wire = 0;        /* [2B len] upld wire live     */
 static volatile uint8_t smid_zc3_arm_pending = 0; /* flip after the ZCOK3 push   */
 static uint8_t smid_zc3_uslots_armed;
 static ipro6_sdio3_sg_desc_t smid_zc3_elem[SMID_ZC3_ELEM_CNT];
+/* Per-slot release: a copy buffer returns to its pool, a zero-copy
+ * frame frees its source pbuf. */
+struct smid_upld_rel {
+    sdio_tx_cfm_cb_t cb;
+    void            *arg;
+};
+static struct smid_upld_rel smid_zc3_elem_rel[SMID_ZC3_ELEM_CNT][IPRO6_SDIO3_SG_MAX];
 static ipro6_sdio3_sg_desc_t *smid_zc3_elem_stack[SMID_ZC3_ELEM_CNT];
 static uint8_t smid_zc3_elem_top;
 /* OPEN chain (filled cbufs not yet pushed) -- guarded by the trcver tx_lock:
  * every sender already holds it and the worker's cfm flush takes it too. */
 static void    *smid_zc3_open_slot[IPRO6_SDIO3_SG_MAX];
 static uint16_t smid_zc3_open_wire[IPRO6_SDIO3_SG_MAX];  /* block-rounded wire len */
+static struct smid_upld_rel smid_zc3_open_rel[IPRO6_SDIO3_SG_MAX];
+/* bytes the ADMA reads from each open slot */
+static uint16_t smid_zc3_open_len[IPRO6_SDIO3_SG_MAX];
+/* Stride tails of SG uploads are read from here, never past a frame.
+ * Written only by .bss zeroing; cleaned from the cache at reset. */
+static uint8_t smid_upld_zero[SMID_ZC3_STRIDE] __attribute__((aligned(32)));
 static volatile uint8_t smid_zc3_open_cnt;
 static volatile uint32_t smid_zc3_chains;     /* chained transfers pushed        */
 static volatile uint32_t smid_zc3_frames;     /* frames carried by those chains  */
@@ -546,16 +493,8 @@ static size_t            smid_tx_inflight;
 #define SMID_EVT_TX      (1)   /* upld complete: a queued TX finished       */
 #define SMID_EVT_RXERR   (2)   /* dnld abort/crc: buffer stays queued       */
 #define SMID_EVT_RESET   (3)   /* SMID soft / func reset                    */
-/* Phase-Z v2a: 64 (was 32) — the pool grew to 34 entries (10 legacy + 24 zc)
- * and the sizing assert needs ring-1 >= pool_total + tx queue depth.
- * [ZCEN3 funding 07-24] 64 -> 48: the assert floor is 34 + 8 + 1 = 43; the
- * indices use %, not a mask, so no power-of-two requirement. Frees 128B of
- * ram_tcm .bss for the upld chain elems/state (heap floor 80K enforced).
- * [P1 07-29] 48 -> 56: the zc pool grew 24 -> 32, so the assert floor rose to
- * (9 + 32) + 8 + 1 = 50 and 48 no longer clears it. 56 restores the 6-entry
- * headroom 48 had at 24 slots. Costs 64 B of ram_tcm .bss (8 entries x 8 B) --
- * paying back part of what the 64 -> 48 cut borrowed. */
-#define SMID_EVT_RING_LEN (56)
+/* Worst case: every dnld buffer completed plus a full upld queue. */
+#define SMID_EVT_RING_LEN (48)
 struct smid_evt {
     uint8_t  type;
     uint16_t len;
@@ -570,8 +509,6 @@ static volatile uint8_t smid_evt_out;
  * to disambiguate full vs empty). */
 _Static_assert(SMID_EVT_RING_LEN - 1 >= SMID_RX_POOL_TOTAL + SMID_TX_QUEUE_DEPTH,
                "SMID event ring too small for the RX pool + TX queue");
-_Static_assert(SMID_RX_POOL_CNT > SMID_RX_QUEUE_DEPTH,
-               "RX pool must exceed the HW queue depth for ISR re-arm to help");
 
 /* diag counters (read via a debug shell if wired) */
 static volatile uint32_t sdio_upld_timeout;
@@ -652,7 +589,9 @@ void ipro_sdio_tx_timer_stop(void)
  * with all 8 queued drops via smid_upld_nobuf (normal ring-overflow
  * semantics); the same flood measurement showed the pool fully idle, and the
  * Phase-2 upld aggregation rework re-budgets this pool anyway. */
-#define SMID_UPLD_COPY_CNT   (8)     /* == HW queue depth (8) */
+/* Fallback only: WiFi RX frames upload zero-copy from their fhost
+ * buffer; A-MSDU, unaligned and non-RX-buffer frames still copy. */
+#define SMID_UPLD_COPY_CNT   (6)
 /* Block-align the upld transfer to the host block size. A sub-block (byte-mode)
  * CMD53 read races the READ_START ISR that programs the ADMA: under the RX flood
  * the ISR is delayed past the host's data phase, which then clocks out the ADMA
@@ -674,6 +613,20 @@ static volatile uint32_t smid_upld_nobuf;      /* pool empty -> dropped (host sl
 /* [PERF gate 07-24] upld copy: 0 = MEMCPY_SAFE byte loop, 1 = arch_memcpy_fast.
  * Poke by address (nm g_upld_fastcpy). */
 volatile uint8_t g_upld_fastcpy = 0;
+/* Zero-copy upload: the ADMA reads a WiFi RX frame in its fhost RX
+ * buffer, header written into the rx_info room in front, and the
+ * pbuf is freed on UPLD_CPL. */
+volatile uint32_t g_upld_zc = 1;
+static volatile uint32_t smid_zc_up_ok, smid_zc_up_notrx, smid_zc_up_align,
+                         smid_zc_up_bounds, smid_zc_up_drop, smid_zc_up_reserve;
+/* largest eth header offset into the payload that goes zero-copy */
+#define SMID_ZC_UP_MAX_GAP   (64)
+/* RX buffers zero-copy never takes: kept free so the MAC still
+ * receives (beacons) while the host is slow to read */
+#define SMID_ZC_UP_RX_RESERVE (4)
+extern uint32_t fhost_rx_free_bufs(void);
+extern bool fhost_rx_buf_bounds(const void *ptr, uint8_t **info, uint8_t **payload,
+                                uint8_t **end);
 
 static void smid_upld_cbuf_put(void *b)
 {
@@ -701,6 +654,7 @@ static void smid_upld_cbuf_init(void)
     for (int i = 0; i < SMID_UPLD_COPY_CNT; i++) {
         smid_upld_cbuf_put(smid_upld_cbuf[i]);
     }
+    L1C_DCache_Clean_By_Addr((uintptr_t)smid_upld_zero, sizeof(smid_upld_zero));
 }
 
 /* upld completion: return the copy buffer to the pool (worker context) */
@@ -774,12 +728,44 @@ static int smid_upld(void *data, uint16_t total, uint8_t flags,
 static void smid_zc3_chain_free_cb(int idx, void *arg)
 {
     ipro6_sdio3_sg_desc_t *e = (ipro6_sdio3_sg_desc_t *)arg;
+    struct smid_upld_rel *rel = smid_zc3_elem_rel[e - smid_zc3_elem];
 
     (void)idx;
     for (uint8_t k = 0; k < e->cnt; k++) {
-        smid_upld_cbuf_put(e->slot[k]);
+        rel[k].cb(0, rel[k].arg);
     }
     smid_zc3_elem_put(e);
+}
+
+/* One frame, one transfer: a padded copy buffer goes contiguously, a
+ * zero-copy frame (len < xfer) as a 1-slot SG padded from
+ * smid_upld_zero. */
+static int smid_upld_one(void *buf, uint16_t len, uint16_t xfer, sdio_tx_cfm_cb_t cb, void *cb_arg)
+{
+    ipro6_sdio3_sg_desc_t *e;
+
+    if (len >= xfer) {
+        return smid_upld(buf, xfer, 0, cb, cb_arg);
+    }
+    e = smid_zc3_elem_get();
+    if (!e) {
+        return -1;
+    }
+    e->cnt      = 1;
+    e->rsvd     = 0;
+    e->stride   = xfer;
+    e->slot_cap = xfer;
+    e->pad_off  = 0;
+    e->slot[0]  = buf;
+    e->len[0]   = len;
+    e->pad_src  = smid_upld_zero;
+    smid_zc3_elem_rel[e - smid_zc3_elem][0].cb  = cb;
+    smid_zc3_elem_rel[e - smid_zc3_elem][0].arg = cb_arg;
+    if (smid_upld(e, xfer, IPRO6_SDIO3_TDF_SG, smid_zc3_chain_free_cb, e) != 0) {
+        smid_zc3_elem_put(e);
+        return -1;
+    }
+    return 0;
 }
 
 /* Push the OPEN chain as one upld transfer (a 1-frame chain pushes the cbuf
@@ -794,8 +780,8 @@ static void smid_zc3_push_open(void)
         return;
     }
     if (n == 1) {
-        if (smid_upld(smid_zc3_open_slot[0], smid_zc3_open_wire[0], 0,
-                      smid_upld_cbuf_free_cb, smid_zc3_open_slot[0]) != 0) {
+        if (smid_upld_one(smid_zc3_open_slot[0], smid_zc3_open_len[0], smid_zc3_open_wire[0],
+                          smid_zc3_open_rel[0].cb, smid_zc3_open_rel[0].arg) != 0) {
             smid_zc3_defer++;
             return;
         }
@@ -816,7 +802,10 @@ static void smid_zc3_push_open(void)
     e->pad_off  = 0;
     for (uint8_t k = 0; k < n; k++) {
         e->slot[k] = smid_zc3_open_slot[k];
+        e->len[k] = smid_zc3_open_len[k];
+        smid_zc3_elem_rel[e - smid_zc3_elem][k] = smid_zc3_open_rel[k];
     }
+    e->pad_src = smid_upld_zero;
     /* intermediate strides ride full-width; only the last is block-rounded */
     uint16_t total = (uint16_t)((n - 1) * SMID_ZC3_STRIDE + smid_zc3_open_wire[n - 1]);
     if (smid_upld(e, total, IPRO6_SDIO3_TDF_SG, smid_zc3_chain_free_cb, e) != 0) {
@@ -838,7 +827,8 @@ static void smid_zc3_cfm_flush(void)
         return;
     }
     sdiowifi_mutex_lock(g_sdiowifi_mgmr.trcver.tx_lock);
-    if (smid_zc3_open_cnt) {
+    /* after a host reset the RESET event drops the old-wire chain */
+    if (smid_zc3_open_cnt && smid_zc3_wire) {
         smid_zc3_flush++;
         smid_zc3_push_open();
     }
@@ -851,7 +841,7 @@ static void smid_zc3_drop_open(void)
 {
     sdiowifi_mutex_lock(g_sdiowifi_mgmr.trcver.tx_lock);
     for (uint8_t k = 0; k < smid_zc3_open_cnt; k++) {
-        smid_upld_cbuf_put(smid_zc3_open_slot[k]);
+        smid_zc3_open_rel[k].cb(0, smid_zc3_open_rel[k].arg);
     }
     smid_zc3_open_cnt = 0;
     sdiowifi_mutex_unlock(g_sdiowifi_mgmr.trcver.tx_lock);
@@ -861,7 +851,7 @@ static void smid_zc3_drop_open(void)
  * already carries the [2B len] wire prefix and is cache-clean for xfer bytes.
  * Returns 0 accepted (pushed, or parked on the open chain and pushed later),
  * <0 dropped (queue saturated; caller returns the cbuf and counts). */
-static int smid_zc3_accept(void *buf, uint16_t xfer)
+static int smid_zc3_accept(void *buf, uint16_t len, uint16_t xfer, sdio_tx_cfm_cb_t cb, void *cb_arg)
 {
     size_t inflight;
 
@@ -874,6 +864,9 @@ static int smid_zc3_accept(void *buf, uint16_t xfer)
     if (smid_zc3_open_cnt) {
         smid_zc3_open_slot[smid_zc3_open_cnt] = buf;
         smid_zc3_open_wire[smid_zc3_open_cnt] = xfer;
+        smid_zc3_open_len[smid_zc3_open_cnt] = len;
+        smid_zc3_open_rel[smid_zc3_open_cnt].cb = cb;
+        smid_zc3_open_rel[smid_zc3_open_cnt].arg = cb_arg;
         smid_zc3_open_cnt++;
         if (smid_zc3_open_cnt >= smid_zc3_uslots_armed) {
             smid_zc3_push_open();       /* may stay open on a full queue */
@@ -886,6 +879,9 @@ static int smid_zc3_accept(void *buf, uint16_t xfer)
     if (inflight >= g_sdio_zc3_thresh) {
         smid_zc3_open_slot[0] = buf;
         smid_zc3_open_wire[0] = xfer;
+        smid_zc3_open_len[0] = len;
+        smid_zc3_open_rel[0].cb = cb;
+        smid_zc3_open_rel[0].arg = cb_arg;
         smid_zc3_open_cnt = 1;
         /* lost-flush guard: the last inflight may have retired between the
          * check and the open -- then no cfm is coming, so push ourselves */
@@ -897,7 +893,7 @@ static int smid_zc3_accept(void *buf, uint16_t xfer)
         }
         return 0;
     }
-    if (smid_upld(buf, xfer, 0, smid_upld_cbuf_free_cb, buf) != 0) {
+    if (smid_upld_one(buf, len, xfer, cb, cb_arg) != 0) {
         return -1;
     }
     smid_zc3_single++;
@@ -1027,35 +1023,24 @@ static void smid_tx_confirm_one(void *buff)
     }
 }
 
+/* An inflight entry stays queued in the SDIO driver until its UPLD_CPL, so
+ * the host may still read it: reclaiming its buffer here would let a new
+ * frame (or a new ZCEN3 chain) overwrite what the host is about to read.
+ * Late entries are only counted; smid_tx_drain() reclaims them on reset. */
+static volatile uint32_t smid_tx_late;
+
 static void smid_tx_check_timeout(void)
 {
     sdiowifi_tick_t now = sdiowifi_tick_now(0);
 
-    for (;;) {
-        struct smid_tx_cfm done = { 0 };
-        bool have = false;
-
-        sdiowifi_enter_critical();
-        if (smid_tx_inflight) {
-            struct smid_tx_cfm *c = &smid_tx_cfm[smid_tx_cfm_head];
-            if (c->used &&
-                (now - c->tick) > sdiowifi_ms2ticks(SDIO_TX_WDT_TIMEOUT)) {
-                done = *c;
-                c->used = false;
-                smid_tx_cfm_head = (smid_tx_cfm_head + 1) & SMID_TX_MASK;
-                smid_tx_inflight--;
-                have = true;
-            }
-        }
-        sdiowifi_exit_critical(0);
-
-        if (!have) {
-            break;
-        }
-        if (done.cb) {
-            done.cb(0, done.cb_arg);
+    sdiowifi_enter_critical();
+    if (smid_tx_inflight) {
+        struct smid_tx_cfm *c = &smid_tx_cfm[smid_tx_cfm_head];
+        if (c->used && (now - c->tick) > sdiowifi_ms2ticks(SDIO_TX_WDT_TIMEOUT)) {
+            smid_tx_late++;
         }
     }
+    sdiowifi_exit_critical(0);
 }
 
 /* ========================================================================= */
@@ -1079,32 +1064,6 @@ static void smid_rx_pool_put(void *buff)
     ipro_irq_restore(flag);
 }
 
-static void *smid_rx_pool_get(void)
-{
-    void *buff = NULL;
-    uintptr_t flag = ipro_irq_save();
-    if (smid_rx_pool_top) {
-        /* Phase-Z: the pool is a LIFO, so a hot subset of buffers recycles
-         * and the zero-copy slots tend to sink to the stack bottom (measured
-         * ~7% claim rate). With the gate on, prefer a zero-copy slot when one
-         * is anywhere in the stack (swap-remove; <=18-entry scan under the
-         * IRQ-save section) so data frames land zero-copy-eligible. */
-        int pick = (int)smid_rx_pool_top - 1;
-        if (g_sdio_zerocopy) {
-            for (int i = pick; i >= 0; i--) {
-                if (smid_zc_is_slot_arm(smid_rx_pool[i])) {
-                    pick = i;
-                    break;
-                }
-            }
-        }
-        buff = smid_rx_pool[pick];
-        smid_rx_pool[pick] = smid_rx_pool[--smid_rx_pool_top];
-    }
-    ipro_irq_restore(flag);
-    return buff;
-}
-
 /* Pop a free buffer of one kind only: 1 = zero-copy slot arm, 0 = OCRAM
  * contiguous buffer. Scan-based swap-remove like the preference scan above
  * (<= pool-total entries under the irq-save section). */
@@ -1123,40 +1082,18 @@ static void *smid_rx_pool_get_kind(int zc_kind)
     return buff;
 }
 
-/* Return a delivered-but-unclaimed buffer. A zero-copy slot arriving here
- * while DISARMED (a reseed raced the delivery) is PARKED instead of pooled —
- * pooling it would hand a 1604B-capped slot to a legacy-host session; the
- * next host enable re-adds every slot not held by out_map. */
-static void smid_rx_buf_dispose(void *buff)
-{
-    uintptr_t flag = ipro_irq_save();
-    if (smid_zc_is_slot_arm(buff) && !smid_zc_armed) {
-        ipro_irq_restore(flag);
-        return;
-    }
-    if (smid_rx_pool_top < SMID_RX_POOL_TOTAL) {
-        smid_rx_pool[smid_rx_pool_top++] = buff;
-    }
-    ipro_irq_restore(flag);
-}
-
-/* Arm one buffer on the SMID dnld queue. Returns the driver push result (0 = ok,
- * <0 if the HW queue is full). */
+/* Arm the relief buffer on the dnld queue. 0 = ok, <0 = queue full. */
 static int smid_rx_arm(void *buff)
 {
     ipro6_sdio3_trans_desc_t d = {
         .func     = SMID_FUNC_WIFI,
-        /* Phase-Z: zero-copy slots are small — cap the ADMA transfer so a
-         * host aggregate can never overrun the 2KB slot. */
-        .data_len = smid_zc_is_slot_arm(buff)
-                        ? (uint16_t)(SMID_ZC_SLOT_SZ - SMID_ZC_ARM_OFF)
-                        : (uint16_t)SMID_DNLD_BUF_SIZE,
+        .data_len = (uint16_t)SMID_DNLD_BUF_SIZE,
         .buff     = buff,
     };
     return ipro6_sdio3_dnld_push(sdio_smid_dev(), &d);
 }
 
-/* ZCEN2: arm one dnld queue element as a scatter chain of nslot zc slots.
+/* Arm one dnld queue element as a scatter chain of nslot zc slots.
  * ALL-OR-NOTHING: a shorter chain would advertise less capacity than the host
  * may write (truncation -> the -110 cascade class), so a partial pop rolls
  * back. Returns 0 armed, -1 no free elem (== queue full: elem cnt == queue
@@ -1185,6 +1122,7 @@ static int smid_zc2_arm_chain(void)
     e->stride   = SMID_ZC_SLOT_SZ;
     e->slot_cap = SMID_ZC_SLOT_SZ - SMID_ZC_ARM_OFF;
     e->pad_off  = SMID_ZC_ARM_OFF;
+    e->pad_src  = NULL;
 
     ipro6_sdio3_trans_desc_t d = {
         .func     = SMID_FUNC_WIFI,
@@ -1202,195 +1140,77 @@ static int smid_zc2_arm_chain(void)
     return 0;
 }
 
-/* Top up the dnld HW queue from the free pool, stopping when the queue is full or
- * the pool is empty. Safe from both the ISR (immediate re-arm on DNLD_CPL) and the
- * worker (recovery after a buffer is returned, when the pool had run dry). */
+/* Top up the dnld queue with chains. When the slots run dry the host
+ * write waits on DAT0; after g_sdio_zc2_stall_ms (keep-ready poll sets
+ * relief) the relief buffer is armed so that write can complete. */
 static void smid_rx_refill(void)
 {
-    if (smid_zc2_armed) {
-        /* ZCEN2 stride mode: chains only. When the zc slots run dry (all held
-         * by in-flight TX pbufs / delivery), fall back to an OCRAM contiguous
-         * buffer to keep the queue armed — but ONLY while the advertised
-         * chain capacity fits it (nslot=3: 6144 == SMID_DNLD_BUF_SIZE); the
-         * worker stride-walks it on delivery. At nslot=4 the fallback is
-         * skipped and DAT0 back-pressure paces the host instead. */
-        for (;;) {
-            int ret = smid_zc2_arm_chain();
-            if (ret == 0) {
-                smid_zc2_relief = 0;    /* slots recovered -> batching resumes */
-                continue;
-            }
-            if (ret != -2) {
-                break;              /* queue full */
-            }
-            if (!g_sdio_zc2_ctg_fb && !smid_zc2_relief) {
-                break;              /* slot starve -> DAT0 back-pressure (see gate) */
-            }
-            if ((uint32_t)smid_zc2_nslot_armed * SMID_ZC_SLOT_SZ > SMID_DNLD_BUF_SIZE) {
-                break;              /* nslot=4: no safe contiguous fallback */
-            }
-            void *buff = smid_rx_pool_get_kind(0);
-            if (!buff) {
-                break;              /* pool fully drained */
-            }
-            if (smid_rx_arm(buff) != 0) {
-                smid_rx_pool_put(buff);
-                break;
-            }
-            smid_zc2_ctg++;
-        }
-        return;
-    }
     for (;;) {
-        void *buff = smid_rx_pool_get();
-        if (!buff) {
-            break;                      /* pool exhausted */
+        int ret = smid_zc2_arm_chain();
+        if (ret == 0) {
+            smid_zc2_relief = 0;
+            continue;
         }
-        if (smid_rx_arm(buff) != 0) {
-            smid_rx_pool_put(buff);     /* HW queue full -> return buffer, done */
+        if (ret != -2 || !smid_zc2_relief) {
             break;
         }
+        if ((uint32_t)smid_zc2_nslot_armed * SMID_ZC_SLOT_SZ > SMID_DNLD_BUF_SIZE) {
+            break;
+        }
+        void *buff = smid_rx_pool_get_kind(0);
+        if (!buff) {
+            break;
+        }
+        if (smid_rx_arm(buff) != 0) {
+            smid_rx_pool_put(buff);
+            break;
+        }
+        smid_zc2_ctg++;
     }
 }
 
-/* Reclaim every RX buffer to the free pool and re-arm the dnld queue from scratch.
- * Used at handshake (initial seed) and on a transport re-sync after a host reset:
- * the driver's reset handler emptied the dnld queue, so the buffers that were armed
- * are now orphaned -- put them all back and re-arm, restoring the exact initial
- * post-handshake pool/queue state (no leaked or double-armed buffers). */
+/* Empty the dnld queue, rebuild the free pool and re-arm (handshake,
+ * SDU re-init). Slots held by in-flight TX pbufs (out_map) stay out
+ * and come back through smid_zc_slot_free(). */
 static void smid_rx_pool_reseed(void)
 {
-    uintptr_t flag = ipro_irq_save();
-    smid_rx_pool_top = 0;
-    /* v2b: a reseed is a HOST-CONTRACT reset (boot handshake, or a transport
-     * re-sync after the host func-reset on re-enumeration). The new host may
-     * be a legacy aggregator, so the zero-copy opt-in dies with the old
-     * session: disarm, close the gate, seed OCRAM big buffers only. A v2b
-     * host re-advertises (ZCEN1) on every probe and gets the slots back.
-     * In-flight slots (out_map) return via smid_zc_slot_free(), which parks
-     * them while disarmed. Disarm inside this critical section so a
-     * concurrent slot_free can never re-add a slot to the rebuilt pool. */
-    smid_zc_armed = 0;
-    g_sdio_zerocopy = 0;
-    /* ZCEN2: the stride contract dies with the session too; every chain elem
-     * armed in the (zeroed) driver queue is dead, so reset the elem stack. */
-    smid_zc2_armed = 0;
-    smid_zc2_relief = 0;
-    smid_zc2_elem_reset();
-    /* ZCEN3: the upld wire contract dies with the session too. In-flight
-     * chains were already reclaimed by the tx drain (resync runs drain first);
-     * on the boot-time handshake path nothing is in flight. */
-    smid_zc3_wire = 0;
-    smid_zc3_arm_pending = 0;
-    smid_zc3_elem_reset();
-    ipro_irq_restore(flag);
-    for (int i = 0; i < SMID_RX_POOL_CNT; i++) {
-        smid_rx_pool_put(smid_rx_buf[i]);
-    }
-    smid_rx_refill();
-}
-
-/* v2b host opt-in: arm the zero-copy slots into the dnld pool and open the
- * claim gate. Called from the RNM USER_EXT handler when the host advertises
- * single-frame TX ("ZCEN1"), or from the DEBUG CLI. Idempotent. Returns the
- * number of slots armed (0 on repeat calls). Task context. */
-int smid_zc_host_enable(void)
-{
-    int armed = 0;
-    uintptr_t flag = ipro_irq_save();
-
-    /* One critical section for the arm + slot adds: a concurrent
-     * smid_zc_slot_free (cfm of a slot claimed before the last reseed) sees
-     * armed only after every free slot is already pooled, so it can never
-     * double-add the slot it just cleared from out_map. */
-    if (!smid_zc_armed) {
-        for (int i = 0; i < SMID_ZC_SLOT_CNT; i++) {
-            if (!(smid_zc_out_map & (1u << i)) &&
-                smid_rx_pool_top < SMID_RX_POOL_TOTAL) {
-                smid_rx_pool[smid_rx_pool_top++] = &smid_zc_slot[i][SMID_ZC_ARM_OFF];
-                armed++;
-            }
-        }
-        smid_zc_armed = 1;
-    }
-    g_sdio_zerocopy = 1;
-    ipro_irq_restore(flag);
-    if (armed) {
-        smid_rx_refill();
-    }
-    return armed;
-}
-
-/* ZCEN2 host opt-in: arm the zc slots (if not already) and switch the refill
- * policy to scatter chains. Returns the slot count armed into the pool, or
- * <0 when stride mode is REFUSED (-1 gate off, -2 a v2b ZCEN1 session already
- * armed single elements whose 1604B cap a stride write would overrun) — the
- * caller then answers nslot=0 and the host stays on the zc_single contract.
- * Task context (RNM handler). */
-int smid_zc2_host_enable(int *nslot_out, int *stride_out)
-{
-    int armed = 0;
     uint32_t nslot = g_sdio_zc2_nslot;
+    uintptr_t flag;
 
-    *stride_out = SMID_ZC_SLOT_SZ;
-    *nslot_out = 0;
-    if (!g_sdio_zc2_en) {
-        return -1;
-    }
     if (nslot < 2) {
         nslot = 2;
     } else if (nslot > IPRO6_SDIO3_SG_MAX) {
         nslot = IPRO6_SDIO3_SG_MAX;
     }
-
-    uintptr_t flag = ipro_irq_save();
-    if (smid_zc_armed && !smid_zc2_armed) {
-        /* ZCEN1 came first this session: single zc elements are already in
-         * the dnld queue and cannot be recalled — refuse stride. */
-        ipro_irq_restore(flag);
-        return -2;
-    }
-    if (!smid_zc_armed) {
-        for (int i = 0; i < SMID_ZC_SLOT_CNT; i++) {
-            if (!(smid_zc_out_map & (1u << i)) &&
-                smid_rx_pool_top < SMID_RX_POOL_TOTAL) {
-                smid_rx_pool[smid_rx_pool_top++] = &smid_zc_slot[i][SMID_ZC_ARM_OFF];
-                armed++;
-            }
-        }
-        smid_zc_armed = 1;
-    }
+    flag = ipro_irq_save();
+    ipro6_sdio3_dnld_queue_reset(sdio_smid_dev());
+    smid_rx_pool_top = 0;
     smid_zc2_nslot_armed = (uint8_t)nslot;
-    smid_zc2_armed = 1;
-    g_sdio_zerocopy = 1;
+    smid_zc2_relief = 0;
+    smid_zc2_elem_reset();
+    /* the upld wire goes back to legacy until the host sends ZCEN3 again */
+    smid_zc3_wire = 0;
+    smid_zc3_arm_pending = 0;
+    smid_zc3_elem_reset();
+    for (int i = 0; i < SMID_RELIEF_CNT; i++) {
+        smid_rx_pool[smid_rx_pool_top++] = smid_relief_buf[i];
+    }
+    for (int i = 0; i < SMID_ZC_SLOT_CNT; i++) {
+        if (!(smid_zc_out_map & (1u << i))) {
+            smid_rx_pool[smid_rx_pool_top++] = &smid_zc_slot[i][SMID_ZC_ARM_OFF];
+        }
+    }
     ipro_irq_restore(flag);
-
     smid_rx_refill();
-    *nslot_out = (int)nslot;
-    return armed;
 }
 
-/* ZCEN3 host opt-in: ZCEN2 dnld-stride semantics PLUS the upld aggregation
- * contract ([2B len]-prefixed upld wire, chained transfers). Returns the zc2
- * slot count armed (>= 0) with *uslots_out > 0 when upld agg is granted, or
- * < 0 when the dnld stride is refused (the caller falls back exactly like
- * ZCEN2 -- no upld agg either: one mode, one wire). The wire itself flips in
- * smid_zc3_wire_arm() AFTER the caller pushes the ZCOK3 response, so the
- * response still travels on the OLD wire and the strict upld FIFO hands the
- * host a clean format boundary. Task context (RNM handler). */
-int smid_zc3_host_enable(int *nslot_out, int *stride_out, int *uslots_out)
+/* Host "ZCEN3": grant the upld stride contract and report the dnld chain
+ * geometry already armed. The wire flips in smid_zc3_wire_arm() after
+ * the ZCOK3 response is pushed. Task context (RNM handler). */
+void smid_zc3_host_enable(int *nslot_out, int *stride_out, int *uslots_out)
 {
-    int armed;
     uint32_t u = g_sdio_zc3_uslots;
 
-    *uslots_out = 0;
-    armed = smid_zc2_host_enable(nslot_out, stride_out);
-    if (armed < 0) {
-        return armed;
-    }
-    if (!g_sdio_zc3_en) {
-        return armed;       /* dnld stride granted, upld agg refused */
-    }
     if (u < 2) {
         u = 2;
     } else if (u > IPRO6_SDIO3_SG_MAX) {
@@ -1398,8 +1218,9 @@ int smid_zc3_host_enable(int *nslot_out, int *stride_out, int *uslots_out)
     }
     smid_zc3_uslots_armed = (uint8_t)u;
     smid_zc3_arm_pending = 1;
+    *nslot_out = (int)smid_zc2_nslot_armed;
+    *stride_out = SMID_ZC_SLOT_SZ;
     *uslots_out = (int)u;
-    return armed;
 }
 
 /* Flip the upld wire to the [2B len]-prefixed format. MUST be called right
@@ -1415,8 +1236,13 @@ void smid_zc3_wire_arm(void)
         return;
     }
     sdiowifi_mutex_lock(g_sdiowifi_mgmr.trcver.tx_lock);
-    smid_zc3_arm_pending = 0;
-    smid_zc3_wire = 1;
+    uintptr_t flag = ipro_irq_save();
+    /* a host reset in between cancels the grant */
+    if (smid_zc3_arm_pending) {
+        smid_zc3_arm_pending = 0;
+        smid_zc3_wire = 1;
+    }
+    ipro_irq_restore(flag);
     sdiowifi_mutex_unlock(g_sdiowifi_mgmr.trcver.tx_lock);
 }
 
@@ -1425,19 +1251,16 @@ void smid_zc3_wire_arm(void)
 /* net_wifi_transceiver.c handle_sta_ap_to_wifi_tx)                          */
 /* ========================================================================= */
 
-/* Claim the CURRENT delivery buffer for zero-copy TX. Succeeds only when the
- * frame being delivered is the single frame of a zero-copy slot, the gate is
- * on, and the free pool keeps a re-arm reserve. On success the slot is NOT
- * returned to the pool after delivery — ownership passes to the caller's
- * pbuf until smid_zc_slot_free(). Worker context only. Returns the slot BASE
- * (pbuf payload_mem; the frame sits at base + 452) or NULL. */
+/* Claim the slot being delivered for zero-copy TX when it holds a single
+ * frame; the caller's pbuf then owns it until smid_zc_slot_free(). Worker
+ * context. Returns the slot base (frame at base + HLEN) or NULL. */
 void *smid_zc_try_claim(const void *frame, uint16_t frame_len)
 {
     if (!g_sdio_zerocopy || !smid_zc_cur_arm || !smid_zc_cur_single)
         return NULL;
     /* Placement guard, checked on the real address so no linker/section change
      * can defeat it. Two invariants, same safe failure: latch the gate off and
-     * fall back to the legacy copy path rather than corrupt silently.
+     * fall back to the copy path rather than corrupt silently.
      *   1. Address space (SoC rule: 0x1xxxxxxx = cacheable, 0x2xxxxxxx =
      *      non-cacheable). The whole zero-copy path — SMID ADMA write, CPU
      *      de-agg read, fhost desc/THD build, MAC HW fetch — is coherent ONLY
@@ -1455,18 +1278,6 @@ void *smid_zc_try_claim(const void *frame, uint16_t frame_len)
     }
     if ((const uint8_t *)frame != smid_zc_cur_arm + 8 || frame_len > 1514)
         return NULL;
-    /* Re-arm reserve: never let a claim leave the free pool too shallow for
-     * the ISR to keep the dnld HW queue armed (host would hit ERR_DNLD_QUEUE
-     * -> CMD53 -110). Refusing here just falls back to the legacy copy path.
-     * ZCEN2 stride mode skips the reserve: chains hold 3-4 slots each so the
-     * pool legitimately runs near-empty at depth, refused claims would push
-     * the load onto the 6-buffer bounce pool instead, and arm-starvation is
-     * SAFE there — the driver withholds PROGRAM_DONE (DAT0 back-pressure)
-     * until a cfm frees slots, so no -110 can result. */
-    if (!smid_zc2_armed && smid_rx_pool_top < 2) {
-        smid_zc_reserve_skips++;
-        return NULL;
-    }
     smid_zc_claimed = 1;
     smid_zc_claims++;
     {
@@ -1490,31 +1301,23 @@ void *smid_zc_try_claim(const void *frame, uint16_t frame_len)
     }
 }
 
-/* Return a claimed slot to the dnld pool (pbuf custom-free hook; runs in the
- * WiFi task at TX-cfm time). pool_put is IRQ-safe; refill re-arms. v2b: if a
- * reseed disarmed zero-copy meanwhile (host contract reset), the slot is
- * PARKED (bit cleared, not pooled) — the next smid_zc_host_enable() re-adds
- * it. armed-check + put share one critical section so this can't race the
- * reseed's disarm-then-rebuild. */
+/* Return a claimed slot to the dnld pool (pbuf custom-free hook, WiFi
+ * task at TX-cfm time) and top the queue up. */
 void smid_zc_slot_free(void *slot_base)
 {
     int idx = (int)(((uint8_t *)slot_base - &smid_zc_slot[0][0]) / SMID_ZC_SLOT_SZ);
-    int pooled;
     uintptr_t flag = ipro_irq_save();
     smid_zc_out_map &= ~(1u << idx);
     if (idx >= 0 && idx < SMID_ZC_SLOT_CNT && zc_claim_cyc[idx]) {
         zc_resid_note(zc_rdcycle() - zc_claim_cyc[idx]);
         zc_claim_cyc[idx] = 0;
     }
-    pooled = smid_zc_armed;
-    if (pooled && smid_rx_pool_top < SMID_RX_POOL_TOTAL) {
+    if (smid_rx_pool_top < SMID_RX_POOL_TOTAL) {
         smid_rx_pool[smid_rx_pool_top++] = (uint8_t *)slot_base + SMID_ZC_ARM_OFF;
     }
     ipro_irq_restore(flag);
     smid_zc_frees++;
-    if (pooled) {
-        smid_rx_refill();
-    }
+    smid_rx_refill();
 }
 
 /* Slot index for the consumer's per-slot pbuf wrappers. */
@@ -1536,12 +1339,9 @@ void smid_worker_prio_set(uint32_t prio)
     }
 }
 
-/* Deliver one contiguous [2B len][body]...[0x0000] region to the upper layer
- * WITHOUT any buffer disposition (the caller pools / parks / releases). This
- * is the whole legacy smid_rx_process body minus the pool_put: for a ZCEN2
- * chain it runs once per stride slot, so the Phase-Z pre-classify + claim
- * window per zero-copy slot is byte-for-byte UNCHANGED. Returns 1 if the
- * (slot) buffer was claimed by a zero-copy TX pbuf, 0 otherwise.
+/* Deliver one [2B len][body]...[0x0000] region (one stride slot) to the
+ * upper layer; the caller returns the buffer. Returns 1 if a zero-copy TX
+ * pbuf claimed the slot, 0 otherwise.
  *
  * `buff` is non-cacheable; the ADMA write is already visible. The region is
  * 1..N frames as [2B LE body_len][body]... terminated by a 0x0000 sentinel
@@ -1622,10 +1422,8 @@ static int smid_rx_deliver(void *buff, uint16_t len)
     return 0;
 }
 
-/* ZCEN2 chain CPL: walk each filled stride slot through the unchanged
- * per-slot delivery (pre-classify + claim per slot), return the unfilled
- * tail slots of a partial write, release the elem, and top the queue up
- * once at the end. */
+/* Chain CPL: deliver each filled stride slot, return the unfilled ones,
+ * release the elem and top the queue up once. */
 static void smid_zc2_process_chain(ipro6_sdio3_sg_desc_t *e, uint16_t len)
 {
     uint8_t n = (uint8_t)(((uint32_t)len + e->stride - 1) / e->stride);
@@ -1643,11 +1441,11 @@ static void smid_zc2_process_chain(ipro6_sdio3_sg_desc_t *e, uint16_t len)
             uint16_t dlen = (sb > e->slot_cap) ? e->slot_cap : (uint16_t)sb;
             smid_zc2_strides++;
             if (!smid_rx_deliver(e->slot[k], dlen)) {
-                smid_rx_buf_dispose(e->slot[k]);
+                smid_rx_pool_put(e->slot[k]);
             }
         } else {
             smid_zc2_partial++;
-            smid_rx_buf_dispose(e->slot[k]);
+            smid_rx_pool_put(e->slot[k]);
         }
     }
     smid_zc2_chains++;
@@ -1657,34 +1455,20 @@ static void smid_zc2_process_chain(ipro6_sdio3_sg_desc_t *e, uint16_t len)
 
 static void smid_rx_process(void *buff, uint16_t len)
 {
-    /* ZCEN2 chain element: per-stride scatter delivery. Identified by elem
-     * address, not by mode flags, so a chain armed just before a reseed still
-     * walks correctly after the disarm. */
     if (smid_zc2_is_elem(buff)) {
         smid_zc2_process_chain((ipro6_sdio3_sg_desc_t *)buff, len);
         return;
     }
-    /* ZCEN2 stride-format write landed on a contiguous OCRAM buffer (an
-     * element armed before the enable, or the slot-pressure fallback): the
-     * frames sit at fixed stride offsets, so walk each stride region through
-     * the same delivery (copy path; claims need a zc slot and refuse here). */
-    if (smid_zc2_armed && !smid_zc_is_slot_arm(buff)) {
-        for (uint32_t off = 0; off < len; off += SMID_ZC_SLOT_SZ) {
-            uint32_t sb = (uint32_t)len - off;
-            if (sb > SMID_ZC_SLOT_SZ) {
-                sb = SMID_ZC_SLOT_SZ;
-            }
-            smid_rx_deliver((uint8_t *)buff + off, (uint16_t)sb);
+    /* relief buffer: the frames sit at fixed stride offsets (copy path) */
+    for (uint32_t off = 0; off < len; off += SMID_ZC_SLOT_SZ) {
+        uint32_t sb = (uint32_t)len - off;
+        if (sb > SMID_ZC_SLOT_SZ) {
+            sb = SMID_ZC_SLOT_SZ;
         }
-        smid_rx_buf_dispose(buff);
-        smid_rx_refill();
-        return;
+        smid_rx_deliver((uint8_t *)buff + off, (uint16_t)sb);
     }
-    /* legacy / v2b single-buffer delivery */
-    if (!smid_rx_deliver(buff, len)) {
-        smid_rx_buf_dispose(buff);
-        smid_rx_refill();
-    }
+    smid_rx_pool_put(buff);
+    smid_rx_refill();
 }
 
 /* ========================================================================= */
@@ -1742,7 +1526,14 @@ static void smid_event_cb(void *arg, int event, void *data)
         break;
     case IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET:
     case IPRO6_SDIO3_IRQ_EVENT_FUNC1_RESET:
-        smid_evt_push(SMID_EVT_RESET, NULL, 0);
+        if (smid_softrec_pending) {
+            smid_softrec_pending = 0;
+            smid_softrec_done++;
+        }
+        /* the host parser restarts on the legacy wire */
+        smid_zc3_arm_pending = 0;
+        smid_zc3_wire = 0;
+        smid_evt_push(SMID_EVT_RESET, NULL, data ? *(const uint8_t *)data : 0);
         break;
     default:
         break;
@@ -1757,14 +1548,11 @@ static void smid_event_cb(void *arg, int event, void *data)
 /* Reset path                                                                */
 /* ========================================================================= */
 
-/* Drop every in-flight upld TX confirm (fire the cb with a done status so the
- * pbuf/buffer is released). The driver just reset the upld queue to empty, so the
- * TRANSFER_COMPLETE events that would normally retire these will never arrive --
- * draining here keeps smid_tx_inflight + the cfm FIFO consistent with the empty
- * driver queue (otherwise inflight leaks until it wedges the upld path). */
-static void smid_tx_drain(void)
+/* Fire the cfm cb of the n oldest in-flight uploads, whose queue
+ * entries the driver dropped: no UPLD_CPL will retire them. */
+static void smid_tx_drain_n(size_t n)
 {
-    for (;;) {
+    while (n--) {
         struct smid_tx_cfm done = { 0 };
         bool have = false;
 
@@ -1785,29 +1573,23 @@ static void smid_tx_drain(void)
             done.cb(0, done.cb_arg);
         }
     }
-    /* ZCEN3: the OPEN (never-pushed) chain is not in the cfm FIFO; a dead
-     * transport orphans it, so reclaim its cbufs here. */
+}
+
+/* Drop every in-flight upload and the open ZCEN3 chain (transport
+ * teardown). */
+static void smid_tx_drain(void)
+{
+    smid_tx_drain_n(SMID_TX_QUEUE_DEPTH);
     smid_zc3_drop_open();
 }
 
-/* Transport re-sync after a host reset (soft / func1), the trcver-side half of the
- * fix -- the driver ISR (ipro6_sdio3_reset_resync) already stopped the DMA and zeroed
- * BOTH queues (upld + dnld) + the doorbell. Here we (1) drain the now-orphaned upld
- * in-flight confirms so smid_tx_inflight stays consistent with the emptied queue, and
- * (2) reseed the dnld RX pool -- reclaim every buffer and re-arm from the zeroed queue,
- * restoring the exact post-handshake pool/queue state (so a reset can never leak or
- * strand a partially consumed buffer). We still deliberately do NOT set_present(false)
- * / re-init the MAC (cf. smid_software_reset): a host reset is part of NORMAL
- * enumeration (the host func-resets during enable), and tearing the transceiver down
- * there blocks upld (host_present=false, no re-hello) and drops the in-flight GET_MAC
- * response, breaking the handshake. The reseed only re-arms dnld buffers (no
- * present/MAC), and runs in the worker after all earlier RX events have been delivered
- * (the worker drains the event ring in order), so no in-flight buffer is re-armed while
- * still in use. */
-static void smid_transport_resync(void)
+/* Host reset: retire the upld transfers the driver dropped (oldest
+ * cfm entries) and drop the open ZCEN3 chain built for the old wire.
+ * The dnld queue and pool are untouched. */
+static void smid_transport_resync(uint16_t dropped)
 {
-    smid_tx_drain();
-    smid_rx_pool_reseed();
+    smid_tx_drain_n(dropped);
+    smid_zc3_drop_open();
 }
 
 static void smid_software_reset(void)
@@ -1845,31 +1627,65 @@ static void smid_keep_ready_task(void *arg)
     extern void txl_watchdog_backstop_poll(void);
     uint32_t backstop_div = 0;
 
-    /* ZCEN2 DAT0 stall bound: consecutive 1ms ticks with PROGRAM_DONE still
+    /* DAT0 stall bound: consecutive 1ms ticks with PROGRAM_DONE still
      * withheld. This task is the right watchdog context — top prio and the
      * one guaranteed alive while the data path is wedged. */
     uint32_t stall_ticks = 0;
 
+    /* Transport-wedge watchdog: consecutive 1ms ticks with the transaction
+     * state machine stuck BUSY. A real transfer is sub-millisecond at 25 MHz,
+     * so seconds of BUSY means the data phase will never finish -- the wedge.
+     * Recovery is too heavy for this task (it re-inits the SDU and touches the
+     * trcver), so hand it to the worker, exactly like the host-reset path. */
+    uint32_t wedge_ticks = 0;
+
+    /* ms the doorbell reset request has waited for the host */
+    uint32_t softrec_ticks = 0;
+
     (void)arg;
     for (;;) {
         ipro6_sdio3_keep_ready(dev);
+        if (smid_softrec_pending) {
+            uintptr_t flag = ipro_irq_save();
+            if (smid_softrec_pending) {
+                putreg16(IPRO6_SDIO3_DOORBELL_RESET_REQ,
+                         dev->reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
+            }
+            ipro_irq_restore(flag);
+            if (++softrec_ticks >= g_sdu_softrec_ms) {
+                softrec_ticks = 0;
+                notify_sdu_worker(SDU_WORKER_EV_REENUM, 0);
+            }
+        } else {
+            softrec_ticks = 0;
+        }
         if (++backstop_div >= 500U) {      /* every ~500 ms */
             backstop_div = 0;
             txl_watchdog_backstop_poll();
         }
-        if (smid_zc2_armed && !g_sdio_zc2_ctg_fb &&
-            ipro6_sdio3_dnld_pgmdone_deferred) {
+        if (ipro6_sdio3_dnld_pgmdone_deferred) {
             if (++stall_ticks >= g_sdio_zc2_stall_ms) {
                 stall_ticks = 0;
                 smid_zc2_relief_trips++;
                 smid_zc2_relief = 1;
-                /* refill: chain-first as always; with relief set the
-                 * contiguous-OCRAM branch may arm, whose dnld_push releases
-                 * the withheld PROGRAM_DONE and unblocks the host CMD53 */
+                /* the relief arm releases the withheld PROGRAM_DONE */
                 smid_rx_refill();
             }
         } else {
             stall_ticks = 0;
+        }
+        if (g_sdu_wedge_ms) {
+            uint8_t tsta = ipro6_sdio3_tran_sta();
+            if (tsta == IPRO6_SDIO3_TRAN_STA_BUSY_DNLD ||
+                tsta == IPRO6_SDIO3_TRAN_STA_BUSY_UPLD) {
+                if (++wedge_ticks >= g_sdu_wedge_ms) {
+                    wedge_ticks = 0;
+                    smid_wedge_trips++;
+                    notify_sdu_worker(SDU_WORKER_EV_REENUM, 0);
+                }
+            } else {
+                wedge_ticks = 0;
+            }
         }
         sdiowifi_delay_ms(SMID_KEEP_READY_MS);
     }
@@ -1906,13 +1722,7 @@ static void smid_worker_task(void *arg)
                 break;
             case SMID_EVT_RESET:
                 smid_reset_cnt++;
-                /* A host reset (soft / func1) desyncs the upld queue unless we
-                 * re-sync. The driver ISR already reset the upld queue + doorbell
-                 * (ipro6_sdio3_reset_resync); reconcile the trcver's upld TX
-                 * bookkeeping here so it does not leak against the emptied queue.
-                 * (Lightweight: does NOT reset present/MAC/dnld -- see the note in
-                 * smid_transport_resync.) */
-                smid_transport_resync();
+                smid_transport_resync(e.len);
                 break;
             default:
                 break;
@@ -1923,6 +1733,11 @@ static void smid_worker_task(void *arg)
             sdu_worker_ev &= ~SDU_WORKER_EV_RESET;
             HR_LOGI("SDU_WORKER_EV_RESET\r\n");
             smid_software_reset();
+        }
+        if (sdu_worker_ev & SDU_WORKER_EV_REENUM) {
+            sdu_worker_ev &= ~SDU_WORKER_EV_REENUM;
+            HR_LOGI("SDU_WORKER_EV_REENUM (wedge trip %lu)\r\n", (unsigned long)smid_wedge_trips);
+            ipro_sdu_self_reenum();
         }
         if (sdu_worker_ev & SDU_WORKER_EV_TX_WDT) {
             sdu_worker_ev &= ~SDU_WORKER_EV_TX_WDT;
@@ -1941,16 +1756,19 @@ static void smid_worker_task(void *arg)
 /* Init / handshake                                                          */
 /* ========================================================================= */
 
+/* File scope so the self-re-enumerate path can replay the exact same config. */
+static ipro6_sdio3_config_s s_sdu_cfg = {
+    .func_num            = 1,                       /* WiFi-only */
+    .func1_if_code       = IPRO6_SDIO3_STD_IF_WLAN, /* host reads class=7 */
+    .cap_flag            = 0,                       /* HS-only: keep SHS (-84 fix) */
+    .ocr                 = 0x00FF8000,              /* 2.7-3.6V window */
+    .func1_dnld_size_max = SMID_DNLD_BUF_SIZE,
+    .func2_dnld_size_max = 0,
+};
+
 int ipro_sdu_init(void)
 {
-    static ipro6_sdio3_config_s cfg = {
-        .func_num            = 1,                       /* WiFi-only */
-        .func1_if_code       = IPRO6_SDIO3_STD_IF_WLAN, /* host reads class=7 */
-        .cap_flag            = 0,                       /* HS-only: keep SHS (-84 fix) */
-        .ocr                 = 0x00FF8000,              /* 2.7-3.6V window */
-        .func1_dnld_size_max = SMID_DNLD_BUF_SIZE,
-        .func2_dnld_size_max = 0,
-    };
+    ipro6_sdio3_config_s *cfg = &s_sdu_cfg;
     ipro6_smid_dev_t *dev = sdio_smid_dev();
 
     HR_LOGI("ipro_sdu_init (SMID)\r\n");
@@ -1964,7 +1782,7 @@ int ipro_sdu_init(void)
 
     /* register the completion callback BEFORE ipro6_sdio3_init() enables the IRQ */
     ipro6_sdio3_irq_attach(dev, smid_event_cb, NULL);
-    ipro6_sdio3_init(dev, &cfg);
+    ipro6_sdio3_init(dev, cfg);
 
     /* worker + TX watchdog + keep-ready poller */
     sdiowifi_task_create(smid_worker_task, "smid_worker", 0, 512, NULL, SMID_WORKER_PRIO, &sdu_irq_handle);
@@ -1997,6 +1815,94 @@ int32_t ipro_sdio_handshake(void)
     return 0;
 }
 
+/* DIAG (2026-09-08): heavy device-side recovery for the SMID transport wedge.
+ *
+ * Everything lighter has been refuted. adma_stop + PROGRAM_DONE + reset_resync
+ * does not resynchronise the transport, and on the host side neither CCCR
+ * IO_ABORT, nor a func1 restart, nor mmc_hw_reset() gets the link back -- only
+ * a device power-cycle ever has. This is the one untried lever: reset the SDU
+ * block itself and re-run the bring-up, so the card returns to its pre-
+ * enumeration state and the host can re-probe it as if it had been replugged.
+ *
+ * The host does NOT rescan on its own (this board's mmc1 is non-removable with
+ * no card-detect), so recovery still needs a host-side re-probe -- unbind/bind
+ * by hand here, mmc_hw_reset() from the driver once this is proven. What this
+ * answers is the prior question: can the DEVICE become enumerable again
+ * without cutting its power?
+ */
+static SMID_COLD int smid_glb_reenum(void)
+{
+    sdiowifi_mgmr_t *sdm = &g_sdiowifi_mgmr;
+    ipro6_smid_dev_t *dev = sdio_smid_dev();
+
+    HR_LOGI("ipro_sdu_self_reenum: SDU block reset + re-init\r\n");
+    smid_softrec_pending = 0;
+    smid_glb_reenums++;
+
+    /* stop feeding the transport while the block is down */
+    if (sdm->init) {
+        ipro_net_wifi_trcver_set_present(&sdm->trcver, false);
+        smid_tx_drain();
+    }
+
+    /* the host loses the card here: full SDU block reset, then bring-up again */
+    sdio_gpio_init();
+    sdio_glb_reset();
+    for (volatile int i = 0; i < 10000; i++) {
+        __asm__ volatile("nop");
+    }
+    ipro6_sdio3_irq_attach(dev, smid_event_cb, NULL);
+    ipro6_sdio3_init(dev, &s_sdu_cfg);
+
+    /* empty both queues and re-arm before the card is advertised ready */
+    ipro6_sdio3_reset_resync(dev);
+    smid_rx_pool_reseed();
+    ipro6_sdio3_feature_control(dev, IPRO6_SDIO3_CMD_INIT_READY, SMID_FUNC_WIFI);
+    ipro6_sdio3_feature_control(dev, IPRO6_SDIO3_CMD_SET_FUNC_CARD_READY, SMID_FUNC_WIFI);
+
+    if (sdm->init) {
+        ipro_net_wifi_trcver_reinit(&sdm->trcver);
+        sdiowifi_tx_buf_update_credit(&sdm->tx_desc);
+    }
+
+    HR_LOGI("ipro_sdu_self_reenum: done, waiting for the host to re-enumerate\r\n");
+    return 0;
+}
+
+/* Stop the transfer state machine and the upld side and post
+ * RESET_REQ on the doorbell. A host reset (SOFT_RESET) ends the
+ * request; keep-ready reposts it, then resets the SDU block. */
+static SMID_COLD int smid_softrec_request(void)
+{
+    sdiowifi_mgmr_t *sdm = &g_sdiowifi_mgmr;
+    ipro6_smid_dev_t *dev = sdio_smid_dev();
+    uintptr_t flag;
+
+    HR_LOGI("ipro_sdu_self_reenum: asking the host for a card reset\r\n");
+    if (sdm->init) {
+        ipro_net_wifi_trcver_set_present(&sdm->trcver, false);
+    }
+    flag = ipro_irq_save();
+    ipro6_sdio3_reset_resync(dev);
+    putreg16(IPRO6_SDIO3_DOORBELL_RESET_REQ,
+             dev->reg_base + IPRO6_SDIO3_FUNCTION1_CONTROL_REGISTER_OFFSET);
+    smid_softrec_pending = 1;
+    smid_softrec_reqs++;
+    ipro_irq_restore(flag);
+    if (sdm->init) {
+        smid_tx_drain();
+    }
+    return 0;
+}
+
+int ipro_sdu_self_reenum(void)
+{
+    if (g_sdu_softrec_ms && !smid_softrec_pending) {
+        return smid_softrec_request();
+    }
+    return smid_glb_reenum();
+}
+
 int ipro_sdio_read_cb_register(void *env, ipro_sdio_read_cb_t cb, void *cb_arg)
 {
     (void)env; (void)cb_arg;
@@ -2016,16 +1922,16 @@ void trcver_sdio_stats_display(void)
             (unsigned long)smid_rx_err_cnt,
             (unsigned long)smid_reset_cnt,
             (unsigned long)smid_evt_drop);
-    /* Phase-Z v1 zero-copy accounting (gate g_sdio_zerocopy). */
-    HR_LOGI("smid zc armed:%u gate:%lu claims:%lu frees:%lu inflight:%lu rsv_skip:%lu\r\n",
-            (unsigned)smid_zc_armed,
+    HR_LOGI("smid wedge trips:%lu softrec req:%lu done:%lu pend:%u glb:%lu\r\n",
+            (unsigned long)smid_wedge_trips, (unsigned long)smid_softrec_reqs,
+            (unsigned long)smid_softrec_done, (unsigned)smid_softrec_pending,
+            (unsigned long)smid_glb_reenums);
+    HR_LOGI("smid zc gate:%lu claims:%lu frees:%lu inflight:%lu\r\n",
             (unsigned long)g_sdio_zerocopy,
             (unsigned long)smid_zc_claims, (unsigned long)smid_zc_frees,
-            (unsigned long)(smid_zc_claims - smid_zc_frees),
-            (unsigned long)smid_zc_reserve_skips);
-    /* ZCEN2 stride accounting (gate g_sdio_zc2_en; armed by host "ZCEN2"). */
-    HR_LOGI("smid zc2 armed:%u nslot:%u chains:%lu strides:%lu partial:%lu ctg:%lu starve:%lu elems:%u/%u relief:%u trips:%lu\r\n",
-            (unsigned)smid_zc2_armed, (unsigned)smid_zc2_nslot_armed,
+            (unsigned long)(smid_zc_claims - smid_zc_frees));
+    HR_LOGI("smid zc2 nslot:%u chains:%lu strides:%lu partial:%lu ctg:%lu starve:%lu elems:%u/%u relief:%u trips:%lu\r\n",
+            (unsigned)smid_zc2_nslot_armed,
             (unsigned long)smid_zc2_chains, (unsigned long)smid_zc2_strides,
             (unsigned long)smid_zc2_partial, (unsigned long)smid_zc2_ctg,
             (unsigned long)smid_zc2_arm_starve,
@@ -2050,11 +1956,16 @@ void trcver_sdio_stats_display(void)
             (unsigned long)smid_rx_agg_ovf);
     /* upld copy pool: drops indicate the frame exceeded the copy buffer (oversize)
      * or the pool was drained because the host read slower than the RX rate (nobuf). */
-    HR_LOGI("smid upldcopy free:%u/%u oversize:%lu nobuf:%lu\r\n",
+    HR_LOGI("smid zcup ok:%lu notrx:%lu align:%lu bounds:%lu reserve:%lu drop:%lu\r\n",
+            (unsigned long)smid_zc_up_ok, (unsigned long)smid_zc_up_notrx,
+            (unsigned long)smid_zc_up_align, (unsigned long)smid_zc_up_bounds,
+            (unsigned long)smid_zc_up_reserve, (unsigned long)smid_zc_up_drop);
+    HR_LOGI("smid upldcopy free:%u/%u oversize:%lu nobuf:%lu late:%lu\r\n",
             (unsigned)smid_upld_cbuf_top, (unsigned)SMID_UPLD_COPY_CNT,
             (unsigned long)smid_upld_oversize,
-            (unsigned long)smid_upld_nobuf);
-    /* ZCEN3 upld aggregation (gate g_sdio_zc3_en; wire armed by host "ZCEN3").
+            (unsigned long)smid_upld_nobuf,
+            (unsigned long)smid_tx_late);
+    /* ZCEN3 upld aggregation (wire armed by host "ZCEN3").
      * chain ratio under flood ~= frames/chains; defer = queue-full deferrals
      * (retried, not lost); open = frames parked on the open chain right now. */
     HR_LOGI("smid zc3 wire:%u uslots:%u chains:%lu frames:%lu single:%lu "
@@ -2239,6 +2150,53 @@ int ipro_sdio_write_pbuf(void *env, uint16_t type, uint16_t subtype,
         return IPRO_MSG_ERR_TIMEOUT;
     }
 
+    if (g_upld_zc && !is_amsdu) {
+        uint8_t *info, *pay, *end;
+        uint8_t *eth = (uint8_t *)p->payload;
+        uint8_t *hdr = eth - pld_off - (wire ? 2 : 0);
+        uint16_t zx  = (uint16_t)((wire_len + (SMID_UPLD_BLOCK - 1)) & ~(SMID_UPLD_BLOCK - 1));
+
+        if (!fhost_rx_buf_bounds(eth, &info, &pay, &end)) {
+            smid_zc_up_notrx++;
+        } else if (((uintptr_t)hdr & 3u) != 0) {
+            smid_zc_up_align++;
+        } else if (hdr < info || hdr + zx > end || eth > pay + SMID_ZC_UP_MAX_GAP) {
+            smid_zc_up_bounds++;
+        } else if (fhost_rx_free_bufs() < SMID_ZC_UP_RX_RESERVE) {
+            smid_zc_up_reserve++;
+        } else {
+            if (wire) {
+                hdr[0] = (uint8_t)(total & 0xff);
+                hdr[1] = (uint8_t)(total >> 8);
+                msg = (struct sdio_top_msg *)(hdr + 2);
+            } else {
+                msg = (struct sdio_top_msg *)hdr;
+            }
+            msg->type_lsb = LSB(type);
+            msg->type_msb = SLSB(type);
+            msg->len_lsb  = LSB(data_len);
+            msg->len_msb  = SLSB(data_len);
+            msg->pld_off  = pld_off;
+            msg->is_amsdu = 0;
+            msg->has_twin = 0;
+            msg->subtype_lsb = LSB(subtype);
+            msg->subtype_msb = SLSB(subtype);
+            msg->first_part_len_lsb = LSB(p->len);
+            msg->first_part_len_msb = SLSB(p->len);
+            /* ADMA lines are whole 32-bit words; the up-to-3 extra
+             * bytes are still inside the buffer */
+            uint16_t zl = (uint16_t)((wire_len + 3u) & ~3u);
+            int r = wire ? smid_zc3_accept(hdr, zl, zx, (sdio_tx_cfm_cb_t)cb, cb_arg)
+                         : smid_upld_one(hdr, zl, zx, (sdio_tx_cfm_cb_t)cb, cb_arg);
+            if (r != 0) {
+                smid_zc_up_drop++;
+                return IPRO_MSG_ERR_TIMEOUT;
+            }
+            smid_zc_up_ok++;
+            return 0;
+        }
+    }
+
     /* COPY into a device-owned stable buffer so the transient RX-ring pbuf is not
      * held across the host read (the zero-copy version let the RX DMA overwrite a
      * queued upld -> host read garbage -> flap). */
@@ -2298,7 +2256,7 @@ int ipro_sdio_write_pbuf(void *env, uint16_t type, uint16_t subtype,
     if (wire) {
         /* opportunistic chain: push now while the queue is idle, batch under
          * host-read backlog (see the ZCEN3 block comment) */
-        if (smid_zc3_accept(buf, xfer) != 0) {
+        if (smid_zc3_accept(buf, xfer, xfer, smid_upld_cbuf_free_cb, buf) != 0) {
             smid_upld_cbuf_put(buf);
             smid_upld_nobuf++;  /* queue saturated: same drop semantics as pool-dry */
             return IPRO_MSG_ERR_TIMEOUT;

@@ -48,6 +48,6 @@ static inline struct utils_list_hdr *atomic_list_pop_front(struct utils_list *li
     return node;
 }
 
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
 #define MAWOC(addr) ((((uintptr_t)(addr) & ~0xF0000000) | 0x20000000))
 #endif

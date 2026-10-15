@@ -120,152 +120,87 @@ The OTA service provides three characteristics:
 
 | Characteristic | UUID | Properties | Size | Description |
 |----------------|------|------------|------|-------------|
-| **OTA Control** | `0xFF61` | Write | 1-9 bytes | Command channel |
-| **OTA Data** | `0xFF62` | Write No Response | 250 bytes | Firmware data transfer |
-| **OTA Status** | `0xFF63` | Read, Notify | 13 bytes | Status and progress |
+| **OTA Control** | `0xFF61` | Write | 1-5 bytes | Command channel |
+| **OTA Data** | `0xFF62` | Write No Response | 6 + up to 512 bytes | Firmware data transfer |
+| **OTA Status** | `0xFF63` | Read, Notify | 5 bytes | Status and progress |
 
 ---
 
 ### 1. OTA Control (0xFF61)
 
-**Properties:** Write  
-**Command Format:**
+**Properties:** Write (with response)
 
-#### START Command
-```
-Byte 0:     0x01 (START)
-Byte 1-4:   Firmware size (uint32_t, Little Endian)
-Byte 5-8:   CRC32 checksum (uint32_t, Little Endian)
-```
+> ⚠️ Corrected 2026-10-06 against `src/services/ota_service.c` and a BLE OTA run on
+> the IPRO7AI Reef. Earlier versions of this section listed other command codes,
+> a CRC in START and a 13-byte status; the firmware never implemented those.
 
-**Example:**
-```
-// Firmware: 258,288 bytes, CRC32: 0x4F8608A9
-01 F0 F0 03 00 A9 08 86 4F
-```
+| Command | Bytes | Meaning |
+|---------|-------|---------|
+| START  | `01` + size (u32 LE) | Erase what the image needs in the inactive FW slot; status goes to RECEIVING when done |
+| END    | `02` + CRC32 (u32 LE) | After the last data packet; the device checks the size and CRC32 of what it wrote |
+| ABORT  | `03` | Drop the session |
+| VERIFY | `04` | Re-read the slot and check the CRC32 again (optional) |
+| REBOOT | `05` | After COMPLETE: reset into the new firmware |
 
-#### DATA Command
-```
-Byte 0-1:   Sequence number (uint16_t, Little Endian, 0-based)
-Byte 2-247: Firmware data (up to 244 bytes)
-```
+CRC32 is the standard reflected CRC-32 (polynomial 0xEDB88320, as `zlib.crc32`)
+over the whole file sent.
 
-**Example:**
 ```
-// Packet #0: seq=0x0000, 244 bytes data
-00 00 [244 bytes of firmware data]
-
-// Packet #1: seq=0x0001, 244 bytes data  
-01 00 [244 bytes of firmware data]
+START, 344,732-byte package:  01 9C 42 05 00
+END,   CRC32 0x1593C243:      02 43 C2 93 15
 ```
-
-**Note:** Sequence number auto-increments. No explicit command byte needed for DATA packets.
-
-#### END Command
-```
-Byte 0:     0x02 (END)
-```
-
-Signals completion of data transfer. Device begins queued flash write operations.
-
-#### VERIFY Command
-```
-Byte 0:     0x03 (VERIFY)
-```
-
-Ensures all asynchronous flash writes complete before CRC32 verification.
-
-#### REBOOT Command
-```
-Byte 0:     0x04 (REBOOT)
-```
-
-Reboots device into new firmware (only valid after successful verification).
-
-#### ABORT Command
-```
-Byte 0:     0x05 (ABORT)
-```
-
-Cancels ongoing OTA update.
 
 ---
 
 ### 2. OTA Data (0xFF62)
 
-**Properties:** Write No Response  
-**Max Size:** 250-518 bytes (dynamic based on MTU)
+**Properties:** Write Without Response
 
-**Packet Format:**
 ```
-┌──────────────┬──────────────┬─────────────────────────┐
-│ Sequence (2B)│              │   Firmware Data         │
-│  Little      │              │   (244-512 bytes)       │
-│  Endian      │              │                         │
-└──────────────┴──────────────┴─────────────────────────┘
+┌──────────────┬──────────────┬──────────────┬──────────────────────┐
+│ Sequence u16 │ Length u16   │ Reserved u16 │ Data (Length bytes)  │
+│ 0-based, LE  │ LE           │ 0            │                      │
+└──────────────┴──────────────┴──────────────┴──────────────────────┘
 ```
 
-**MTU-Based Optimization:**
-- **MTU 247**: Packet size 246 bytes (2-byte seq + 244-byte payload) - Standard BLE
-- **MTU 513+**: Packet size 506 bytes (2-byte seq + 504-byte payload) - Optimized (default)
-- **MTU 517**: Device negotiates 517 bytes, auto-detects actual payload from phone
-- Uses WRITE_NO_RESPONSE for maximum throughput
-
-**Transmission Strategy:**
-- Send packets continuously without waiting for ACK
-- Use sequence numbers for packet loss detection
-- Device auto-detects payload size from first packet
-- Retransmit missing packets based on bitmap feedback (future enhancement)
-
-**Performance Impact:**
-| MTU | Payload Size | Transfer Speed | Time (250KB) |
-|-----|-------------|----------------|--------------|
-| 247 | 244 bytes | ~2 KB/s | ~125 seconds |
-| 513+ | 504 bytes | ~12.3 KB/s | ~20 seconds |
-
-> 📝 **Note**: The device will automatically adjust to your phone's actual MTU. Most modern phones support MTU 512+.
+- Data per packet = MTU - 3 (ATT) - 6 (header), at most 512. MTU 247 -> 238 bytes.
+- Every packet except the last carries the same length; the device takes it from packet 0.
+- Flow control: the device queues 20 packets and writes flash as they arrive. Sending
+  as fast as the phone stack allows overflows that queue (packets are dropped and END
+  fails with error 1). Pace the writes: e.g. read OTA Status after every 8 packets
+  (the read completes only after the queued writes), as `tools/reef_ota.py` does -
+  20-26 KB/s at MTU 247 on macOS.
 
 ---
 
 ### 3. OTA Status (0xFF63)
 
-**Properties:** Read, Notify  
-**Size:** 13 bytes
+**Properties:** Read, Notify — 5 bytes
 
-**Status Format:**
 ```c
 typedef struct __attribute__((packed)) {
-    uint8_t  state;              // Byte 0: Current state
-    uint32_t total_size;         // Byte 1-4: Total firmware size
-    uint32_t received_bytes;     // Byte 5-8: Bytes received so far
-    uint32_t calculated_crc32;   // Byte 9-12: Device-calculated CRC32
-} ota_status_t;
+    uint8_t  status;    // ota_status_t
+    uint8_t  error;     // ota_error_t
+    uint8_t  progress;  // 0-100 %
+    uint16_t reserved;
+} ota_status_notif_t;
 ```
 
-**State Values:**
+| status | Meaning |
+|--------|---------|
+| 0x00 | IDLE |
+| 0x01 | RECEIVING (also sent when the START erase has finished) |
+| 0x02 | VERIFYING |
+| 0x03 | READY (CRC32 matched) |
+| 0x04 | COMPLETE (partition switched: send REBOOT) |
+| 0xFF | ERROR, see `error` (`ota_error_t` in `include/ota_service.h`) |
 
-| Value | State | Description |
-|-------|-------|-------------|
-| 0 | IDLE | No OTA operation |
-| 1 | READY | Ready to receive firmware |
-| 2 | RECEIVING | Receiving firmware data |
-| 3 | VERIFY | Verifying CRC32 |
-| 4 | COMPLETE | OTA successful, ready to reboot |
-| 5 | ERROR | OTA failed |
+### What to send on the IPRO7AI Reef
 
-**Example (Little Endian):**
-```
-// State: RECEIVING (2)
-// Total: 258,288 bytes (0x0003F0F0)
-// Received: 122,000 bytes (0x0001DC90)
-// CRC32: Not yet calculated (0x00000000)
-02 F0 F0 03 00 90 DC 01 00 00 00 00 00
-```
-
-**Notification Timing:**
-- Sent every ~10 packets during RECEIVING state
-- Sent immediately on state changes
-- Always sent after VERIFY command
+The Reef image (`defconfig_reef`) uses boot2 and `partition_cfg_2M_remote_ab.toml`:
+the file sent must be a boot2 OTA package (`tools/make_reef_ota.sh` -> `.xz.ota`),
+which the app stages in FW slot B and boot2 unpacks into slot A on the next boot.
+See README "IPRO7AI Reef 板".
 
 ---
 

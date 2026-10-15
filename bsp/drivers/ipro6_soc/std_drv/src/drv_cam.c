@@ -99,6 +99,9 @@ static void CAM_IntHandler(CAM_ID_Type camId)
 
 void CAM_DFE_Init(CAM_DFE_Cfg_Type* dfeCfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_MM_MISC);
+
     uint32_t tmpVal;
 
     /* Check the parameters */

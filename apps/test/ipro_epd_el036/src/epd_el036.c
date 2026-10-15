@@ -27,6 +27,7 @@
 #include "hal_spi.h"
 #include "drv_spi.h"
 #include "drv_glb.h"
+#include "drv_common.h"
 #include "ipro_log.h"
 
 #define TAG "EPD036"
@@ -266,6 +267,21 @@ static void hw_spi_send(void *buf, uint32_t len)
     }
 }
 
+/*
+ * SPI_SendData() returns once the TX FIFO is empty and BUSY reads clear - but there are a cycle or two
+ * after the shifter takes the last byte from the FIFO and before BUSY rises, and a return in that
+ * window lets CSB go high mid-byte. The panel drops that byte and the rest of the frame lands one
+ * byte early: on the Zinwell board (2026-10-11) app images came out shifted left from some row on,
+ * wrapping at the right edge, once or twice a frame. Wait one byte time, then for BUSY to clear.
+ */
+static void hw_spi_settle(void)
+{
+    uint32_t byte_us = (8000000u + s_hw_hz - 1u) / (s_hw_hz ? s_hw_hz : 1u);
+    arch_delay_us(byte_us + 1u);
+    for (uint32_t i = 0; i < 100000u && SPI_GetBusyStatus(EPD_HW_SPI_ID) == SET; i++) {
+    }
+}
+
 /* Hand SCL/SDA back to the bit-banger. */
 static void hw_spi_release(void)
 {
@@ -426,6 +442,7 @@ static void spi_write(uint8_t val, bool is_data)
         if (is_data) { DC_H(); } else { DC_L(); }
         CSB_L();
         hw_spi_send(&val, 1);
+        hw_spi_settle();
         CSB_H();
         return;
     }
@@ -668,6 +685,32 @@ static void gpio_setup(void)
 
 /* --- Public ------------------------------------------------------------- */
 
+/*
+ * Diagnostic: power the panel up as a refresh would, then read the temperature register (TSC 0x40,
+ * two bytes) and the status flags (FLG 0x71, one byte). The panel picks its OTP waveform by
+ * temperature, so a reading far from the room is worth knowing. Nothing is written but PON / POF.
+ */
+int epd_read_temperature(uint8_t raw[2], uint8_t *flags)
+{
+    if (epd_init() != 0) {
+        return -1;
+    }
+    spi_cmd(CMD_PON);
+    if (wait_busy_stage(10000, "PON (temperature read)") != 0) {
+        return -1;
+    }
+    spi_cmd(0x40);
+    raw[0] = spi_read_byte();
+    raw[1] = spi_read_byte();
+    spi_cmd(0x71);
+    *flags = spi_read_byte();
+    spi_cmd(CMD_POF);
+    spi_data(0x00);
+    (void)wait_busy_stage(10000, "POF (temperature read)");
+    epd_sleep();
+    return 0;
+}
+
 int epd_read_rev(uint8_t *out_rev)
 {
     gpio_setup();
@@ -754,6 +797,10 @@ int epd_init(void)
  */
 static int refresh_tail(void)
 {
+    /* Application Note Figure 12. On the Zinwell AI Assistant board's panel (EL036MF1, 2026-10-11)
+     * blue comes out grey-green and green near black with this flow; the factory firmware's longer
+     * waits (200 ms after PON and after BTST2) and its single reset pulse changed nothing, and the
+     * register values are the reference's byte for byte - see the voice_device README. */
     spi_cmd(CMD_PON);
     if (wait_busy_stage(10000, "PON (power on)") != 0) {
         return -1;
@@ -816,6 +863,7 @@ static void spi_data_burst(const uint8_t *buf, uint32_t len)
     DC_H();
     CSB_L();
     hw_spi_send((void *)buf, len);
+    hw_spi_settle();
     CSB_H();
 #else
     (void)buf; (void)len;

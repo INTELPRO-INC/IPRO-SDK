@@ -20,8 +20,10 @@
 #include <string.h>
 #include <drv_sdh.h>
 #include "drv_common.h"   /* arch_delay_ms + per-SoC core timer (SysTimer/MTimer) */
-#include "drv_clock.h"    /* CPU_Get_MTimer_Counter (IPRO6LE) */
 #include "system_soc.h"   /* L1C_DCACHE_CLEAN_RANGE */
+
+/* Defined below, after SDH_WaitCommandDone; the PIO read path needs it too. */
+static void SDH_ResetDatLine(SD_ID_Type sdId);
 
 /* Driver-level millisecond tick for bounded SDH DMA polling. Built directly on
  * the per-SoC driver timer (the same primitives hal_mtimer composes) so this
@@ -29,9 +31,7 @@
  * us>>10 ~= ms (2.4% fast, fine for a multi-second poll cap). */
 static inline uint32_t sdh_now_ms(void)
 {
-#if defined(CONFIG_IPRO6LE)
-    return (uint32_t)(CPU_Get_MTimer_Counter() >> 10);
-#elif defined(CONFIG_IPRO7)
+#if defined(CONFIG_IPRO7)
     return (uint32_t)((SysTimer_GetLoadValue() >> 2) >> 10);
 #elif defined(CONFIG_IPRO6)
     return (uint32_t)(SysTimer_GetLoadValue() >> 10);
@@ -350,6 +350,7 @@ SDH_Stat_Type SDH_ReadDataPortBlock(SDH_Data_Cfg_Type *dataCfg, SD_ID_Type sdId)
 {
     uint32_t intStatus = 0U;
     SDH_Stat_Type error = SDH_STAT_SUCCESS;
+    uint32_t poll_start = sdh_now_ms();
 
     /* Make sure the buffer size is 4 byte aligned */
     if (dataCfg->blockSize % sizeof(uint32_t) != 0U) {
@@ -358,6 +359,15 @@ SDH_Stat_Type SDH_ReadDataPortBlock(SDH_Data_Cfg_Type *dataCfg, SD_ID_Type sdId)
 
     while (!(intStatus & (SDH_INT_BUFFER_READ_READY | SDH_INT_DATA_ERRORS | SDH_INT_TUNE_ERROR))) {
         intStatus = SDH_GetIntStatus(sdId);
+        /* A card that never fills the FIFO used to wedge this loop for good.
+         * Same 5 s budget as the DMA data-phase poll, then reset the DAT line
+         * so the controller can accept the next data command. */
+        if ((uint32_t)(sdh_now_ms() - poll_start) > SDH_DATA_POLL_TIMEOUT_MS) {
+            printf("SDH PIO RX timeout: status=0x%08lx\r\n", (unsigned long)intStatus);
+            SDH_ResetDatLine(sdId);
+            SDH_ClearIntStatus(intStatus, sdId);
+            return SDH_STAT_RECV_DATA_FAIL;
+        }
     }
 
     /* during std tuning process, software do not need to read data, but wait BRR is enough */
@@ -384,6 +394,32 @@ SDH_Stat_Type SDH_ReadDataPortBlock(SDH_Data_Cfg_Type *dataCfg, SD_ID_Type sdId)
         /* clear buffer read ready */
         SDH_ClearIntStatus(SDH_INT_BUFFER_READ_READY, sdId);
         intStatus = 0U;
+        /* Draining the FIFO is not the end of the wire transaction: the card is
+         * still clocking out CRC and the end bit. Returning here let the caller
+         * put the next CMD52/CMD53 on the bus mid-data-phase, which the AIC8800
+         * single-block RX PIO path showed as corrupted follow-on transfers. */
+        poll_start = sdh_now_ms();
+        do {
+            intStatus = SDH_GetIntStatus(sdId);
+            if (intStatus & (SDH_INT_DATA_ERRORS | SDH_INT_TUNE_ERROR)) {
+                /* enableIgnoreError tolerates a (false) DATA_CRC here as well,
+                 * exactly as the pre-read check above does. */
+                if (!(dataCfg->enableIgnoreError) || (intStatus & SDH_INT_DATA_TIMEOUT)) {
+                    error = SDH_STAT_RECV_DATA_FAIL;
+                }
+                break;
+            }
+            if ((uint32_t)(sdh_now_ms() - poll_start) > SDH_DATA_POLL_TIMEOUT_MS) {
+                printf("SDH PIO RX completion timeout: status=0x%08lx\r\n",
+                       (unsigned long)intStatus);
+                error = SDH_STAT_RECV_DATA_FAIL;
+                break;
+            }
+        } while (!(intStatus & SDH_INT_DATA_COMPLETED));
+        if (error != SDH_STAT_SUCCESS) {
+            SDH_ResetDatLine(sdId);
+            SDH_ClearIntStatus(intStatus, sdId);
+        }
     }
 
     /* Clear data complete flag after the last read operation. */
@@ -542,14 +578,18 @@ SDH_Stat_Type SDH_WaitCommandDone(SDH_CMD_Cfg_Type *cmd, SD_ID_Type sdId)
          * callers' retry/error paths run instead. */
         if (sdh_now_ms() - t0 > 1000U) {
             uint32_t base = sdAddr[sdId];
+            /* Read the state that explains the stall BEFORE resetting it away. */
+            uint32_t present = readl(base + SDH_SD_PRESENT_STATE_1_OFFSET);
             uint16_t tc = readw(base + 0x2E);
             uint32_t spin = 100000U;
             writew(tc | (1U << 9) | (1U << 10), base + 0x2E);   /* SW_RST_CMD | SW_RST_DAT */
             while ((readw(base + 0x2E) & ((1U << 9) | (1U << 10))) && --spin) {}
             if (!spin) printf("  SW_RST_CMD/DAT did not self-clear!\r\n");
             SDH_ClearIntStatus(SDH_GetIntStatus(sdId), sdId);
-            printf("SDH cmd-phase timeout: CMD%d never completed, bus reset\r\n",
-                   (int)cmd->index);
+            printf("SDH cmd-phase timeout: CMD%d never completed, bus reset "
+                   "(arg=0x%08lx present=0x%08lx int=0x%08lx)\r\n",
+                   (int)cmd->index, (unsigned long)cmd->argument,
+                   (unsigned long)present, (unsigned long)intStatus);
             return SDH_STAT_SEND_CMD_FAIL;
         }
     }

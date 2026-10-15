@@ -47,6 +47,12 @@ osource "components/sensor/Kconfig"
 # IMU Sensors
 osource "components/imu/Kconfig"
 
+# Board libraries (drivers for the peripherals soldered to a specific board)
+osource "components/board/ipro7ai_evk/Kconfig"
+
+# On-device tool-calling model (tools/ipro_llm)
+osource "components/ipro_llm/Kconfig"
+
 # Software CRC Utilities
 osource "components/softcrc/Kconfig"
 

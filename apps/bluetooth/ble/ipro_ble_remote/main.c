@@ -68,6 +68,9 @@ extern void remote_app_process_env_notify(void);
 // External function to process pending image transfer chunks
 extern void image_transfer_process(void);
 
+// Wake this task when there is work instead of polling
+extern void remote_app_bind_worker(TaskHandle_t task);
+
 static void remote_demo_task(void *pvParameters)
 {
     (void)pvParameters;
@@ -104,16 +107,17 @@ static void remote_demo_task(void *pvParameters)
         return;
     }
     IPRO_LOGI(LOG_TAG, "[OK] Remote application ready");
-    // Main loop - process pending notifications
+    // Main loop - process pending notifications when the timer wakes us, so
+    // the CPU is not woken every 10 ms for nothing
+    remote_app_bind_worker(xTaskGetCurrentTaskHandle());
     while (1) {
+        (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
         // Process any pending environment notifications from timer
         remote_app_process_env_notify();
         
         // Process any pending image transfer chunks
         image_transfer_process();
-        
-        // Short delay to allow other tasks to run
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

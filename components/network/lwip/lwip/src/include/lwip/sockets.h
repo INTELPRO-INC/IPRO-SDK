@@ -606,6 +606,14 @@ int lwip_poll(struct pollfd *fds, nfds_t nfds, int timeout);
 #endif
 int lwip_ioctl(int s, long cmd, void *argp);
 int lwip_fcntl(int s, int cmd, int val);
+#ifdef CONFIG_LWIP_LP
+/* ipro lp change: 1 = TCP segments still unsent/unacked, 0 = drained, -1 = error (errno). */
+int lwip_sock_tx_pending(int s);
+#if defined(CONFIG_IPRO6) && defined(CONFIG_USE_MACSW) && !IPRO_WIFI_LP_FW && TCP_TIMER_PRECISE_NEEDED && LWIP_TCPIP_CORE_LOCKING && LWIP_NETCONN
+/* Runtime candidate: -1=query, 0=off, 1=on. Returns mode or -1 if invalid. */
+int lwip_tcpidle_control(int mode);
+#endif
+#endif
 const char *lwip_inet_ntop(int af, const void *src, char *dst, socklen_t size);
 int lwip_inet_pton(int af, const char *src, void *dst);
 

@@ -156,7 +156,9 @@ static netif_addr_idx_t etharp_cached_entry;
 #endif
 
 
+#ifndef CONFIG_LWIP_LP
 static err_t etharp_request_dst(struct netif *netif, const ip4_addr_t *ipaddr, const struct eth_addr *hw_dst_addr);
+#endif
 static err_t etharp_raw(struct netif *netif,
                         const struct eth_addr *ethsrc_addr, const struct eth_addr *ethdst_addr,
                         const struct eth_addr *hwsrc_addr, const ip4_addr_t *ipsrc_addr,
@@ -1292,13 +1294,30 @@ etharp_raw(struct netif *netif, const struct eth_addr *ethsrc_addr,
  *         ERR_MEM if the ARP packet couldn't be allocated
  *         any other err_t on failure
  */
+#ifdef CONFIG_LWIP_LP
+/* ipro lp change: non-static so the LP keepalive can announce its address
+ * UNICAST to the peer it keeps alive instead of to the broadcast domain. */
+err_t
+#else
 static err_t
+#endif
 etharp_request_dst(struct netif *netif, const ip4_addr_t *ipaddr, const struct eth_addr *hw_dst_addr)
 {
   return etharp_raw(netif, (struct eth_addr *)netif->hwaddr, hw_dst_addr,
                     (struct eth_addr *)netif->hwaddr, netif_ip4_addr(netif), &ethzero,
                     ipaddr, ARP_REQUEST);
 }
+
+#ifdef CONFIG_LWIP_LP
+/* ipro lp change: unicast ARP reply announcing our address to one host. */
+err_t
+etharp_reply_dst(struct netif *netif, const ip4_addr_t *ipdst, const struct eth_addr *hw_dst_addr)
+{
+  return etharp_raw(netif, (struct eth_addr *)netif->hwaddr, hw_dst_addr,
+                    (struct eth_addr *)netif->hwaddr, netif_ip4_addr(netif), hw_dst_addr,
+                    ipdst, ARP_REPLY);
+}
+#endif
 
 /**
  * Send an ARP request packet asking for ipaddr.

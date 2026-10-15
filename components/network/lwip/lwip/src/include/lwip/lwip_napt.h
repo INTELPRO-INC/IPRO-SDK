@@ -42,6 +42,8 @@
 
 #include "lwip/opt.h"
 
+#include "lwip/err.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,6 +78,31 @@ extern "C" {
 #ifndef IP_NAPT_PORT_RANGE_END
 #define IP_NAPT_PORT_RANGE_END   61439
 #endif
+
+/* Bounded local Echo-ID reservations, including queries sent before enabling
+ * NAPT. Keep them for at least a minute; this does not alter legacy NAPT's
+ * separate mapping timeout. IDs are never silently stolen from local queries. */
+#ifndef IP_NAPT_ICMP_HOST_MAX
+#define IP_NAPT_ICMP_HOST_MAX 16
+#endif
+#ifndef IP_NAPT_ICMP_HOST_TIMEOUT_MS
+#define IP_NAPT_ICMP_HOST_TIMEOUT_MS LWIP_MAX(60000U, IP_NAPT_TIMEOUT_MS_ICMP)
+#endif
+#if IP_NAPT_ICMP_HOST_MAX < 1
+#error "IP_NAPT_ICMP_HOST_MAX must be positive"
+#endif
+
+struct netif;
+
+/** Enable NAPT with an explicit shared-table budget (lwIP core lock required).
+ * Limits must not exceed IP_NAPT_MAX/IP_PORTMAP_MAX; zero static slots is valid.
+ * Returns ERR_MEM without enabling the interface on allocation failure, ERR_ARG
+ * for invalid limits, or ERR_USE if another active owner chose different limits.
+ * Existing tables are never resized or discarded by an enable operation.
+ * Disable with ip_napt_enable_no(). Legacy enable APIs use the compile defaults;
+ * new integrations should use this API and check its result.
+ */
+err_t ip_napt_enable_netif(struct netif *netif, u16_t max_entries, u8_t max_portmaps);
 
 /**
  * Enable/Disable NAPT for a specified interface.

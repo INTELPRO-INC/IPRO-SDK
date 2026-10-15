@@ -1,0 +1,61 @@
+menu "IPRO7AI EVK board library"
+
+config COMPONENTS_IPRO7AI_EVK_ENABLE
+    bool "IPRO7AI EVK board library (ST7789P3 LCD, camera, mic, speaker)"
+    default n
+    help
+      Board layer for the IPRO7AI EVK sub-board (CONFIG_IPRO7AI_EVK): the
+      ST7789P3 2.4" panel driver with row-compositing text/overlay helpers,
+      and - opt-in below - the SC101IOT camera pipeline (ISP channel 0 to
+      the panel, channel 1 to the NPU), the IM69D129 PDM microphone and the
+      DAC + TPA2037D1 speaker. One evk_begin() brings the board up.
+
+      Raw per-app .config files do not resolve Kconfig `depends on`, so an
+      app sets the sub-options below explicitly together with what they
+      need (MM_SUPPORT + COMPONENTS_SENSOR_ENABLE for the camera,
+      AUDIO_OUTPUT + DMA_CHANNEL_ALLOCATOR for the audio).
+
+config EVK_CAMERA
+    bool "Camera: SC101IOT -> ISP -> LCD preview + NPU feed"
+    depends on COMPONENTS_IPRO7AI_EVK_ENABLE
+    depends on MM_SUPPORT && COMPONENTS_SENSOR_ENABLE
+    default n
+    help
+      evk_cam_*: DVP bring-up, sensor probe, ISP channel 0 (YUYV preview
+      into PSRAM ping-pong) and channel 1 (a sensor ROI scaled to the NPU
+      input, one frame in flight). Needs PSRAM for the frames.
+
+config EVK_AUDIO
+    bool "Audio: PDM microphone (evk_mic) and DAC speaker (evk_spk)"
+    depends on COMPONENTS_IPRO7AI_EVK_ENABLE
+    depends on AUDIO_OUTPUT
+    default n
+    help
+      evk_mic_*: AUADC PDM capture on GPIO18/19 (AON pads handed back to
+      the GLB mux first). evk_spk_*: components/audio DAC sink opened with
+      this board's active-high amplifier enable, Q12 volume, tone generator.
+      Both integer-only. Set CONFIG_DMA_CHANNEL_ALLOCATOR=y as well, or the
+      AUADC and DAC DMAs both take channel 0.
+
+config EVK_SDCARD
+    bool "micro-SD on the SDH controller, FatFS at sd:/"
+    depends on COMPONENTS_IPRO7AI_EVK_ENABLE
+    depends on COMPONENTS_FATFS_ENABLE && EVFS_USE_FATFS
+    default n
+    help
+      evk_sd_*: card detect, 4-bit mount at "sd:", free space, exists().
+      Needs CONFIG_EVFS=y + CONFIG_EVFS_USE_FATFS=y +
+      CONFIG_COMPONENTS_FATFS_ENABLE=y (+ the code page keys). With
+      CONFIG_AI_MODEL_FROM_FILE=y the NPU runtime can then load models
+      from the card instead of the flash mfg partition.
+
+config EVK_SHELL
+    bool "Shell commands: lcd, cam, mic, spk, sd"
+    depends on COMPONENTS_IPRO7AI_EVK_ENABLE && SHELL
+    default n
+    help
+      Board-level bench commands. Leave off in an app that registers its
+      own `lcd` or `cam` command - the export macro creates one global
+      symbol per command name and two of them do not link.
+
+endmenu

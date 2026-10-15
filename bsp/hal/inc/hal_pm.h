@@ -138,6 +138,12 @@ void *pm_pds_get_level31_cfg(void);
 #define PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_MISC_LIVE  (1U << 7)
 #define PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_CLOCKS     (1U << 8)
 #define PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_GLOBAL_PWR (1U << 9)
+/* keep AVDD14 and the system bandgap on through PDS (the no-PSRAM default
+ * turns both off); candidate for RC32K frequency stability across PDS */
+#define PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_ANALOG     (1U << 10)
+/* do not let PDS drive the SoC reset line (PDS_CTL pdsRstSocEn) even with
+ * BLE_PWR_OFF: the 802.15.4 MAC keeps its registers (ipro_pm Thread) */
+#define PM_PDS_BLE_CTLR_DOMAIN_POLICY_NO_SOC_RST      (1U << 11)
 
 #define PM_PDS_BLE_CTLR_DOMAIN_POLICY_CONNECTED_BASELINE \
     (PM_PDS_BLE_CTLR_DOMAIN_POLICY_ENABLE |              \
@@ -172,6 +178,23 @@ void pm_pds_set_dcdc11_vsel(uint8_t vsel, bool enable);
 
 /** Read back what pm_pds_set_dcdc11_vsel() will apply. Zeroed on non-IPRO6. */
 void pm_pds_get_dcdc11_vsel(uint8_t *vsel, uint8_t *enable);
+
+/**
+ * @brief Set the LDO11 retention voltage (HBN_GLB[27:24], PDS-retained).
+ *
+ * @param sel 0.60 + 0.05*sel volts; silicon default 10 (1.10 V), qualified
+ *            LP value 6 (0.90 V, CONFIG_LP_LDO11_RT_SEL). IPRO6-only.
+ */
+void pm_ldo11_rt_set(uint8_t sel);
+
+/**
+ * @brief Hand the 1.1 V core rail to an external DCDC.
+ *
+ * Steps LDO11 SOC and RT to 1.05 V, waits 1 ms, then sets 1.00 V, so the
+ * external 1.1 V supply carries the load. Only for boards with that DCDC
+ * (CONFIG_LP_LDO11_EXT_DCDC). IPRO6-only.
+ */
+void pm_ldo11_use_ext_dcdc(void);
 
 /**
  * @brief Pick the 32 kHz source and hand ownership of it to the caller.
@@ -228,6 +251,9 @@ int pm_pds_gpio_wakeup_set(uint8_t pin, uint8_t trigger);
 /** @brief Disarm every GPIO wakeup source armed by pm_pds_gpio_wakeup_set(). */
 void pm_pds_gpio_wakeup_clear(void);
 
+/** @brief Disarm one pin armed by pm_pds_gpio_wakeup_set() (IPRO7). */
+void pm_pds_gpio_wakeup_unset(uint8_t pin);
+
 /**
  * @brief Dump the PDS wake configuration and what PDS currently senses.
  *
@@ -248,6 +274,14 @@ int pm_pds_gpio_wakeup_source(void);
  * when another always-on hardware block owns the sleep deadline.
  */
 void pm_pds_rtc_target_override_set(uint64_t target_ticks);
+
+/**
+ * One-shot bound for the WFI that enters PDS (IPRO7): if the core is still
+ * running @p counts MTIME counts later, the machine timer ends the WFI and the
+ * entry returns (hal_lp_enter(): HAL_LP_ERR_ENTRY_ABORTED).  0 parks the
+ * compare, as before.  Consumed by the next pm_pds_enable().
+ */
+void pm_pds_wfi_fallback_set(uint64_t counts);
 
 /**
  * Re-enter PDS31 from the wake path (DTIM loop) without resuming the full

@@ -2,7 +2,8 @@
  * @file ble_demo.h
  * @brief BLE Demo API Header
  * 
- * Provides BLE peripheral and central functionality using Direct API.
+ * Provides BLE peripheral and central functionality on the Zephyr Bluetooth
+ * host API, over the IPRO BLE controller.
  * 
  * Features:
  * - Peripheral: Advertise and accept connections (auto-restart after disconnect)
@@ -19,13 +20,14 @@
 
 #ifdef CONFIG_BLUETOOTH_LE_ENABLE
 
-// Forward declaration from RivieraWaves stack
-struct ke_msg_handler;
+#include <FreeRTOS.h>
+#include <task.h>
 
 /**
  * @brief Initialize BLE demo
  * 
- * Initializes the BLE controller.
+ * Starts the BLE controller and enables the Bluetooth host. Blocks until the
+ * host is up, so call it from a task after the scheduler has started.
  * Must be called before using any BLE functionality.
  * 
  * @return 0 on success, negative error code on failure
@@ -33,11 +35,10 @@ struct ke_msg_handler;
 int ble_demo_init(void);
 
 /**
- * @brief Start as BLE peripheral (Direct API)
+ * @brief Start as BLE peripheral
  * 
  * Device will start advertising as "IPRO7_DEMO" and wait for connection.
  * Auto-restarts advertising after disconnection.
- * Supports pairing with Just Works authentication.
  * 
  * CLI Usage:
  * @code
@@ -76,9 +77,9 @@ void app_process_fsm(void);
 void app_set_fsm_task_handle(TaskHandle_t task_handle);
 
 /**
- * @brief Start BLE central scan (Direct API)
+ * @brief Start BLE central scan
  * 
- * Scans for BLE devices for 10 seconds.
+ * Scans for BLE devices for 1 second.
  * If auto-connect is enabled, automatically connects to "IPRO7_DEMO" device.
  * 
  * CLI Usage:
@@ -91,7 +92,7 @@ void ble_central_scan(void);
 /**
  * @brief List all scanned devices
  * 
- * Prints scan results to console with index, address, RSSI, and name.
+ * Prints scan results to console with index, name and address.
  * 
  * CLI Usage:
  * @code

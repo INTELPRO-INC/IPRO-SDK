@@ -9,6 +9,7 @@
 #include "includes.h"
 
 #include "os.h"
+#include "export/common/co_math.h"
 #include <stdarg.h>
 #include <hal_sec_trng.h>
 

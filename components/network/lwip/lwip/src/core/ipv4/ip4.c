@@ -330,20 +330,20 @@ ip4_forward(struct pbuf *p, struct ip_hdr *iphdr, struct netif *inp)
     return;
   }
 
-#if IP_NAPT
-  /* If the output netif uses NAPT, we will not perform NAPT forwarding (because NAPT netif will not search the NAPT table on ip4_input) */
-  if (!netif->napt) {
-    if (ip_napt_forward(p, iphdr, inp, netif) != ERR_OK)
-      return;
-  }
-#endif
-
   /* Incrementally update the IP checksum. */
   if (IPH_CHKSUM(iphdr) >= PP_HTONS(0xffffU - 0x100)) {
     IPH_CHKSUM_SET(iphdr, (u16_t)(IPH_CHKSUM(iphdr) + PP_HTONS(0x100) + 1));
   } else {
     IPH_CHKSUM_SET(iphdr, (u16_t)(IPH_CHKSUM(iphdr) + PP_HTONS(0x100)));
   }
+
+#if IP_NAPT
+  /* Keep the decremented TTL checksum valid at the NAPT validation boundary. */
+  if (!netif->napt) {
+    if (ip_napt_forward(p, iphdr, inp, netif) != ERR_OK)
+      return;
+  }
+#endif
 
   LWIP_DEBUGF(IP_DEBUG, ("ip4_forward: forwarding packet to %"U16_F".%"U16_F".%"U16_F".%"U16_F"\n",
                          ip4_addr1_16(ip4_current_dest_addr()), ip4_addr2_16(ip4_current_dest_addr()),
@@ -426,6 +426,70 @@ ip4_input_accept(struct netif *netif)
   return 0;
 }
 
+#if IP_NAPT
+/* Consume incomplete/invalid packets; otherwise return the owned complete
+ * packet. The IPv4 header and its checksum have already been checked. */
+static struct pbuf *
+ip4_napt_prepare(struct pbuf *p, struct netif *inp)
+{
+  struct ip_hdr *iphdr = (struct ip_hdr *)p->payload;
+  ip4_addr_t src;
+  u16_t required;
+  ip4_addr_copy(src, iphdr->src);
+  /* Do not allocate reassembly state for an invalid source. 0.0.0.0 is
+   * left for the ordinary DHCP-specific source checks below. */
+  if (ip4_addr_ismulticast(&src) ||
+      (!ip4_addr_isany_val(src) && ip4_addr_isbroadcast(&src, inp)))
+    goto drop;
+  if (IPH_OFFSET(iphdr) & PP_HTONS(IP_OFFMASK | IP_MF)) {
+#if IP_REASSEMBLY
+    struct netif *previous_input;
+    u16_t payload_len = p->tot_len - IPH_HL_BYTES(iphdr);
+    if (payload_len == 0 || ((IPH_OFFSET(iphdr) & PP_HTONS(IP_MF)) && (payload_len & 7)))
+      goto drop;
+    /* Native reassembly consults this for per-interface checksum generation.
+     * Restore the caller context even when a fragment remains queued. */
+    previous_input = ip_data.current_input_netif;
+    ip_data.current_input_netif = inp;
+    p = ip4_reass(p);
+    ip_data.current_input_netif = previous_input;
+    if (p == NULL)
+      return NULL;
+    iphdr = (struct ip_hdr *)p->payload;
+    /* The software NAPT boundary also validates checksums when TX offload
+     * would otherwise defer the reassembled IPv4 checksum to the device. */
+    IPH_CHKSUM_SET(iphdr, 0);
+    IPH_CHKSUM_SET(iphdr, inet_chksum(iphdr, IPH_HL_BYTES(iphdr)));
+#else
+    goto drop;
+#endif
+  }
+  switch (IPH_PROTO(iphdr)) {
+    case IP_PROTO_TCP: required = TCP_HLEN; break;
+    case IP_PROTO_UDP: required = UDP_HLEN; break;
+    case IP_PROTO_ICMP: required = 8; break;
+    default: return p;
+  }
+  required += IPH_HL_BYTES(iphdr);
+  if (p->len < required && p->tot_len >= required) {
+    /* Only split transport headers need copying. Ordinary chained payloads
+     * are checksummed in place, without another full-datagram allocation. */
+    struct pbuf *q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
+    if (q == NULL)
+      goto drop;
+    q->flags |= p->flags & (PBUF_FLAG_LLBCAST | PBUF_FLAG_LLMCAST);
+    q->if_idx = p->if_idx;
+    pbuf_free(p);
+    p = q;
+  }
+  return p;
+drop:
+  pbuf_free(p);
+  IP_STATS_INC(ip.drop);
+  return NULL;
+}
+#endif /* IP_NAPT */
+
 /**
  * This function is called by the network interface device driver when
  * an IP packet is received. The function does the basic checks of the
@@ -459,9 +523,22 @@ ip4_input(struct pbuf *p, struct netif *inp)
 #endif /* LWIP_RAW */
 
   LWIP_ASSERT_CORE_LOCKED();
+#if IP_NAPT
+  p->flags &= (u8_t)~IP_NAPT_RECV_FLAG;
+#endif
+
 
   IP_STATS_INC(ip.recv);
   MIB2_STATS_INC(mib2.ipinreceives);
+
+  /* Even the version/length fields require a complete first IPv4 header. */
+  if (p->len < IP_HLEN) {
+    pbuf_free(p);
+    IP_STATS_INC(ip.lenerr);
+    IP_STATS_INC(ip.drop);
+    MIB2_STATS_INC(mib2.ipindiscards);
+    return ERR_OK;
+  }
 
   /* identify the IP header */
   iphdr = (struct ip_hdr *)p->payload;
@@ -534,6 +611,15 @@ ip4_input(struct pbuf *p, struct netif *inp)
 #endif
 
 #if IP_NAPT
+  if (ip_napt_is_active() &&
+      (inp->napt || ip4_addr_cmp(&iphdr->dest, netif_ip4_addr(inp)))) {
+    p = ip4_napt_prepare(p, inp);
+    if (p == NULL)
+      return ERR_OK;
+    iphdr = (struct ip_hdr *)p->payload;
+    iphdr_hlen = IPH_HL_BYTES(iphdr);
+    iphdr_len = lwip_ntohs(IPH_LEN(iphdr));
+  }
   /* for unicast packet, check NAPT table and modify dest if needed */
   if (!inp->napt && ip4_addr_cmp(&iphdr->dest, netif_ip4_addr(inp)))
     ip_napt_recv(p, iphdr);
@@ -1006,6 +1092,14 @@ ip4_output_if_opt_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *d
     ip4_addr_copy(dest_addr, iphdr->dest);
     dest = &dest_addr;
   }
+
+#if IP_NAPT && LWIP_ICMP
+  if (IPH_PROTO(iphdr) == IP_PROTO_ICMP) {
+    err_t napt_error = ip_napt_icmp_output(p, iphdr);
+    if (napt_error != ERR_OK)
+      return napt_error;
+  }
+#endif
 
   IP_STATS_INC(ip.xmit);
 

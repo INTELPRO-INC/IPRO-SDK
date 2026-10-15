@@ -324,7 +324,6 @@ if (CONFIG_MM_SUPPORT)
     if (NOT CONFIG_AI_SUPPORT)
         list(FILTER MM_DEMO_SRC_FILES EXCLUDE REGEX "/uvc_ai_demo\\.c$")
         list(FILTER MM_DEMO_SRC_FILES EXCLUDE REGEX "/lcd_ai_demo\\.c$")
-        list(FILTER MM_DEMO_SRC_FILES EXCLUDE REGEX "/stream_control\\.c$")
     endif()
     if (NOT CONFIG_DEMO_SPICAM)
         list(FILTER MM_DEMO_SRC_FILES EXCLUDE REGEX "/mm_demo\\.c$")
@@ -393,23 +392,11 @@ if (CONFIG_BLUETOOTH_LE_ENABLE)
     __component_add_include_dirs(./demo/bluetooth)
 
     # ============================================================================
-    # Zephyr Bluetooth Stack Includes (Same as ipro_ble_remote)
+    # IPRO BLE controller + Zephyr Bluetooth host includes (same as ipro_ble_remote)
     # ============================================================================
-
-    # Add BLE controller includes
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/btble_inc)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/rwip/api)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/common/api)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/ke/api)
-
-    # Add platform/compiler includes
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/plf/ipro7/src/arch)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/plf/ipro7/src/arch/compiler)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/btblecontroller/plf/ipro7/src/arch/compiler/riscvgcc)
-
-    # Add Zephyr blestack includes
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/blestack/src/include)
-    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/blestack/src/host)
+    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/ipro_ble_controller/include)
+    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/ipro_bt_host/port/include)
+    __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/wireless/bluetooth/ipro_bt_host/upstream/zephyr/include)
 
     # Add IPRO Log System includes
     __component_add_include_dirs(${CMAKE_SOURCE_DIR}/components/utils/include)

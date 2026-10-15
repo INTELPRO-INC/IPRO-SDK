@@ -941,18 +941,34 @@ _exit:
     return;
 }
 
+/* Runs in tcpip_thread context, where the stack state may be touched directly.
+ * Takes the netif itself rather than routing through dhcpd_stop(): that path went
+ * through a shared static 2-byte name buffer (a second caller overwrote the first
+ * one's argument before the callback ran) and a name lookup that cannot tell two
+ * netifs with the same 2-letter name apart. */
+static void dhcpd_stop_netif_cb(void *ctx)
+{
+    struct netif *netif = (struct netif *)ctx;
+
+    if (netif == NULL) {
+        return;
+    }
+
+    dhcp_server_clear_dns_server();
+    dhcp_server_stop(netif);
+    DEBUG_PRINTF("dhcpd_stop complete: %c%c\r\n",
+                 netif->name[0], netif->name[1]);
+}
+
 void dhcpd_stop_with_netif(const struct netif *netif)
 {
     int res;
-    static char netif_name[3] = {0};
 
     if (!netif) {
         return;
     }
 
-    netif_name[0] = netif->name[0];
-    netif_name[1] = netif->name[1];
-    res = tcpip_callback((tcpip_callback_fn)dhcpd_stop, netif_name);
+    res = tcpip_callback(dhcpd_stop_netif_cb, (void *)netif);
     if (res != ERR_OK) {
         DEBUG_PRINTF("dhcp_server_stop res: %d.\r\n", res);
     }

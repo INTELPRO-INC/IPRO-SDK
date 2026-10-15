@@ -48,7 +48,6 @@
 #endif
 
 #include "hal_uart.h"
-#include "ble_lib_api.h"
 #include "ipro_log.h"
 #include "freertos_app_hooks.h"
 

@@ -185,15 +185,24 @@ static void cmd_pcm(int argc, char **argv)
  * Usage:
  *   dac vol <0-100>      - Set volume (0-100 -> gain 0.0-1.0)
  *   dac gain <0.0-2.0>   - Set linear gain directly
+ *   dac spk <dB>         - Speaker trim, 0 .. -30 dB (only while the amp is on)
+ *   dac os <0|1|2>       - Output path: 32 kHz direct, or 512 kHz noise shaped
+ *   dac range <0|1|3>    - GPDAC output range (0.8 / 1.2 / 1.6 V span)
+ *   dac pad <on|off>     - connect / disconnect the DAC output pad (noise tests)
  *   dac status           - Show DAC status
  */
 #if defined(CONFIG_BSP_USING_DAC) && !defined(CONFIG_AUDIO_OUTPUT_UAC)
 static void cmd_dac(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("Usage: dac <vol|gain|status>\n");
+        printf("Usage: dac <vol|gain|spk|status>\n");
         printf("  dac vol <0-100>     - Set volume level (gain 0.0-1.0)\n");
         printf("  dac gain <0.0-2.0>  - Set linear gain directly\n");
+        printf("  dac spk <0..%d>    - Speaker trim in dB, applied only while the amp is on\n",
+               DAC_SPK_TRIM_MIN_DB);
+        printf("  dac os <0|1|2>      - 0: 32 kHz direct, 1/2: 512 kHz + 1st/2nd order noise shaping\n");
+        printf("  dac range <0|1|3>   - DAC output span 0.8 / 1.2 / 1.6 V (pops if playing)\n");
+        printf("  dac pad <on|off>    - connect / disconnect the DAC output pad (noise tests)\n");
         printf("  dac status          - Show DAC status\n");
         printf("\nCurrent gain: %.2f\n", app_dac_get_gain());
         return;
@@ -219,6 +228,34 @@ static void cmd_dac(int argc, char **argv)
         }
         printf("\n");
     }
+    else if (strcmp(argv[1], "os") == 0 && argc >= 3) {
+        if (app_dac_set_os((uint8_t)atoi(argv[2])) != 0) {
+            printf("dac os <0|1|2>\n");
+        } else {
+            printf("Output path order %s requested (now %u; a playing stream restarts)\n",
+                   argv[2], app_dac_get_os());
+        }
+    }
+    else if (strcmp(argv[1], "range") == 0 && argc >= 3) {
+        int r = atoi(argv[2]);
+        if (r != 0 && r != 1 && r != 3) {
+            printf("dac range <0|1|3>\n");
+        } else {
+            app_dac_set_range((uint8_t)r);
+            printf("DAC range %u\n", app_dac_get_range());
+        }
+    }
+    else if (strcmp(argv[1], "pad") == 0 && argc >= 3) {
+        app_dac_set_pad(strcmp(argv[2], "off") != 0);
+        printf("DAC pad %s\n", app_dac_get_pad() ? "connected" : "disconnected");
+    }
+    else if (strcmp(argv[1], "spk") == 0 && argc >= 3) {
+        app_dac_route_t route;
+
+        app_dac_set_spk_trim_db(atoi(argv[2]));
+        app_dac_get_route(&route);
+        printf("Speaker trim %d dB\n", route.spk_trim_db);
+    }
     else if (strcmp(argv[1], "status") == 0) {
         app_dac_stats_t stats;
         app_dac_get_stats(&stats);
@@ -229,6 +266,21 @@ static void cmd_dac(int argc, char **argv)
         printf("Buffers Sent:     %lu\n", (unsigned long)stats.buffers_sent);
         printf("Underruns:        %lu\n", (unsigned long)stats.underruns);
         printf("Errors:           %lu\n", (unsigned long)stats.errors);
+
+        app_dac_route_t route;
+        app_dac_get_route(&route);
+        printf("Speaker Amp:      %s (trim %d dB)\n", route.amp_on ? "on" : "off",
+               route.spk_trim_db);
+        if (route.jack >= 0) {
+            printf("Headphone Jack:   %s\n", route.jack ? "plug in (speaker muted)" : "empty");
+        }
+        static const char *const range_name[4] = { "0.2-1.0 V", "0.225-1.425 V", "?", "0.2-1.8 V" };
+        uint8_t os = app_dac_get_os();
+        printf("Output Path:      %s\n", os == 0 ? "32 kHz direct"
+               : os == 1 ? "512 kHz, 1st-order noise shaping" : "512 kHz, 2nd-order noise shaping");
+        printf("DAC Range:        %s, pad %s\n", range_name[app_dac_get_range() & 3u],
+               app_dac_get_pad() ? "connected" : "disconnected");
+        printf("Late Ring Segs:   %lu\n", (unsigned long)stats.os_late);
 
         const app_audio_config_t* cfg = app_audio_get_config();
         printf("\n=== Audio Config ===\n");
@@ -616,6 +668,34 @@ SHELL_CMD_EXPORT_ALIAS(cmd_dac, dac, DAC control);
 SHELL_CMD_EXPORT_ALIAS(cmd_test_tone, test_tone, Play test tone for hardware verification);
 SHELL_CMD_EXPORT_ALIAS(cmd_dac_raw, dac_raw, Test DAC with raw reference pattern);
 #endif
+
+/*
+ * taskprio <name> [prio] - read or set a task's FreeRTOS priority, for
+ * finding which thread a CPU-heavy path starves (the BLE host's
+ * ipro_hci_rx / bt_work threads run at 6).
+ */
+static void cmd_taskprio(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("taskprio <name> [prio]\n");
+        return;
+    }
+    TaskHandle_t t = xTaskGetHandle(argv[1]);
+    if (t == NULL) {
+        printf("no task '%s'\n", argv[1]);
+        return;
+    }
+    if (argc >= 3) {
+        int prio = atoi(argv[2]);
+        if (prio < 1 || prio >= (int)configMAX_PRIORITIES) {
+            printf("prio 1..%d\n", (int)configMAX_PRIORITIES - 1);
+            return;
+        }
+        vTaskPrioritySet(t, (UBaseType_t)prio);
+    }
+    printf("%s: priority %lu\n", argv[1], (unsigned long)uxTaskPriorityGet(t));
+}
+SHELL_CMD_EXPORT_ALIAS(cmd_taskprio, taskprio, Read or set a task priority);
 
 SHELL_CMD_EXPORT_ALIAS(cmd_vol, vol, Volume control status);
 SHELL_CMD_EXPORT_ALIAS(cmd_media, media, Media player status);

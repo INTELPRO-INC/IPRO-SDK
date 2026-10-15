@@ -44,7 +44,15 @@ VERBOSE=0
 DEFCONFIG=""
 ACTIONS=()
 PROJECT_INPUT=""
-FLASH_TOOL="$SDK_BASE/tools/ipro_iot_tool_lite/ipro_iot_tool_lite"
+# IntelProCube v0.6.3 command-line flasher (no --flash-pin flag: flash_pin lives in
+# <tool dir>/chips/ipro7/eflash_loader/eflash_loader_cfg.ini). Set IPRO_FLASH_TOOL to
+# it, or put the IntelProCube directory on PATH.
+case "$(uname -s)" in
+    Darwin) FLASH_TOOL_NAME="ipro_iot_tool_macos" ;;
+    Linux)  FLASH_TOOL_NAME="ipro_iot_tool_linux" ;;
+    *)      FLASH_TOOL_NAME="ipro_iot_tool.exe" ;;
+esac
+FLASH_TOOL="${IPRO_FLASH_TOOL:-$(command -v "$FLASH_TOOL_NAME" || true)}"
 SERIAL_MONITOR="$SDK_BASE/tools/serial_monitor.py"
 
 # --- Color support ---
@@ -348,28 +356,48 @@ action_flash() {
     fi
 
     if [ ! -x "$FLASH_TOOL" ]; then
-        fail "Flash tool not found: $FLASH_TOOL"
+        fail "Flash tool not found: ${FLASH_TOOL:-$FLASH_TOOL_NAME}"
+        echo "  Set IPRO_FLASH_TOOL to IntelProCube's $FLASH_TOOL_NAME, or put its directory on PATH."
         return 1
     fi
 
-    info "Entering download mode..."
-    python3 "$SERIAL_MONITOR" "$SERIAL_PORT" --send reboot_dl --timeout 2 2>/dev/null || true
-    sleep 2
+    if [ -f "$SERIAL_MONITOR" ]; then
+        info "Entering download mode..."
+        python3 "$SERIAL_MONITOR" "$SERIAL_PORT" --send reboot_dl --timeout 2 2>/dev/null || true
+        sleep 2
+    else
+        warn "No serial monitor: put the board in download mode yourself (reboot_dl at the console, or the BOOT strap)"
+    fi
 
     info "Flashing ${BOLD}$(basename "$BIN_PATH")${RESET}..."
     local start=$SECONDS
-    if "$FLASH_TOOL" --chipname ipro7 --port "$SERIAL_PORT" --firmware "$BIN_PATH" --baudrate 921600 --flash-pin 0x02; then
+    # The tool exits 0 even when flashing fails; "[All Success]" is the verdict.
+    local log
+    log="$(mktemp)"
+    if "$FLASH_TOOL" --chipname ipro7 --port "$SERIAL_PORT" --firmware "$BIN_PATH" --baudrate 921600 2>&1 \
+            | tee "$log" && grep -q "\[All Success\]" "$log"; then
         local dur=$(( SECONDS - start ))
+        rm -f "$log"
         ok "Flash succeeded ($(elapsed $dur))"
     else
         local dur=$(( SECONDS - start ))
+        rm -f "$log"
         fail "Flash failed ($(elapsed $dur))"
         return 1
     fi
 }
 
+# tools/serial_monitor.py is an internal tool; customer SDK packages do not carry it.
+require_serial_monitor() {
+    [ -f "$SERIAL_MONITOR" ] && return 0
+    fail "Serial monitor not found: $SERIAL_MONITOR"
+    echo "  Open $SERIAL_PORT at 115200 8N1 with any terminal instead."
+    return 1
+}
+
 action_monitor() {
     local project_dir="$1"
+    require_serial_monitor || return 1
     info "Opening serial monitor on ${BOLD}$SERIAL_PORT${RESET}..."
 
     local mon_args=("$SERIAL_PORT" "--timeout" "$TIMEOUT" "--send" "reboot")
@@ -406,6 +434,7 @@ action_test() {
     local project_dir="$1"
 
     # test = build + flash + monitor with test pattern
+    require_serial_monitor || return 1
     action_build "$project_dir"
     action_flash "$project_dir"
 

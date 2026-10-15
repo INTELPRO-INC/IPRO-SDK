@@ -305,8 +305,8 @@ footer{
       <b>Zero frames <em>and</em> zero errors means no pixel data arrives at all</b> —
       not corrupted data, none. If SCCB still answers, the sensor has power and
       I²C works, so look at the DVP side. MCLK shares GPIO41 with the boot
-      strap, so a jumper left on J6 silences the sensor clock while I²C carries
-      on regardless.
+      strap, but on V1 boards BOOT is no longer on J6, so no J6 jumper can
+      hold it.
     </p>
   </section>
 

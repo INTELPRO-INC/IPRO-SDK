@@ -33,6 +33,9 @@
 #include "shell.h"
 #endif
 
+#include <FreeRTOS.h>
+#include <task.h>
+
 #undef STRINGIFY
 #undef likely
 #undef unlikely
@@ -66,6 +69,8 @@ static int cmd_tp_help_handler(int argc, char **argv)
     printf("                          Example: tp conn 6 6 (7.5ms)\n");
     printf("  tp interval <ms>      - Set TX interval during test (1-1000ms)\n");
     printf("  tp phy <1|2|3>        - Set PHY (1=1M, 2=2M, 3=Coded)\n");
+    printf("  tp cpu                - CPU share and minimum free stack per task\n");
+    printf("                          (since the previous 'tp cpu'; the first call covers boot)\n");
     printf("  tp help               - Show this help\n");
     printf("\n");
     printf("=== Quick Start Guide ===\n");
@@ -166,6 +171,60 @@ static int cmd_tp_stats_handler(int argc, char **argv)
     (void)argc; (void)argv;
 
     throughput_app_print_stats();
+    return 0;
+}
+
+#define CPU_MAX_TASKS 16
+
+/* Per-task CPU share since the previous call, from FreeRTOS run-time stats,
+ * and each task's minimum free stack since boot. During a flood the sender's
+ * IDLE share is the headroom left before the CPU, not the radio, limits the
+ * throughput. ISR time is charged to no task, so the shares sum below 100%. */
+static int cmd_tp_cpu_handler(int argc, char **argv)
+{
+    static TaskStatus_t now[CPU_MAX_TASKS];
+    static struct {
+        TaskHandle_t handle;
+        uint32_t run_time;
+    } prev[CPU_MAX_TASKS];
+    static uint32_t prev_total;
+    uint32_t total = 0;
+    UBaseType_t count;
+
+    (void)argc; (void)argv;
+
+    count = uxTaskGetSystemState(now, CPU_MAX_TASKS, &total);
+    if (count == 0U) {
+        printf("ERROR: more than %d tasks\n", CPU_MAX_TASKS);
+        return -1;
+    }
+
+    uint32_t span = total - prev_total;
+    printf("CPU share over the last %lu run-time ticks:\n", (unsigned long)span);
+    for (UBaseType_t i = 0; i < count; i++) {
+        uint32_t before = 0;
+        for (UBaseType_t j = 0; j < CPU_MAX_TASKS; j++) {
+            if (prev[j].handle == now[i].xHandle) {
+                before = prev[j].run_time;
+                break;
+            }
+        }
+        uint32_t used = now[i].ulRunTimeCounter - before;
+        /* a deleted task's handle may be reused by a newer one */
+        if (used > span) {
+            used = now[i].ulRunTimeCounter <= span ? now[i].ulRunTimeCounter : span;
+        }
+        printf("  %-16s %3lu.%lu%%  stack free min %lu B\n", now[i].pcTaskName,
+               (unsigned long)(span ? (uint64_t)used * 100U / span : 0U),
+               (unsigned long)(span ? ((uint64_t)used * 1000U / span) % 10U : 0U),
+               (unsigned long)(now[i].usStackHighWaterMark * sizeof(StackType_t)));
+    }
+
+    for (UBaseType_t i = 0; i < CPU_MAX_TASKS; i++) {
+        prev[i].handle = (i < count) ? now[i].xHandle : NULL;
+        prev[i].run_time = (i < count) ? now[i].ulRunTimeCounter : 0U;
+    }
+    prev_total = total;
     return 0;
 }
 
@@ -300,6 +359,8 @@ static int cmd_tp_handler(int argc, char **argv)
         return cmd_tp_interval_handler(argc, argv);
     } else if (strcmp(subcmd, "phy") == 0) {
         return cmd_tp_phy_handler(argc, argv);
+    } else if (strcmp(subcmd, "cpu") == 0) {
+        return cmd_tp_cpu_handler(argc, argv);
     } else {
         printf("Unknown subcommand: %s\n", subcmd);
         printf("Use 'tp help' for available commands\n");

@@ -19,6 +19,7 @@
 
 
 #include "drv_dac.h"
+#include "drv_glb.h"
 
 #define GPIP_CLK_SET_DUMMY_WAIT \
     {                           \
@@ -34,6 +35,9 @@
 
 void GLB_DAC_Init(GLB_DAC_Cfg_Type *cfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_GPIP);
+
     uint32_t tmpVal;
 
     /* Check the parameters */
@@ -184,6 +188,9 @@ void GPIP_DAC_DMA_WriteData(uint32_t data)
 
 int GLB_GPIP_DAC_Init(GLB_GPIP_DAC_Cfg_Type *cfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_GPIP);
+
     uint32_t tmpVal;
 
     /* AON Set DAC config */

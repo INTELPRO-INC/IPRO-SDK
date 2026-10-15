@@ -13,7 +13,7 @@ FreeRTOS, Bluetooth 5.4 with LE Audio, BR/EDR, Wi-Fi 6, and on-device AI.**
 | Bluetooth | BLE 5.4, LE Audio (ISO) | BLE 5.4 + BR/EDR: A2DP, AVRCP, HFP-HF, SCO |
 | Wi-Fi | external SDIO module (ATBM6162) | on-chip Wi-Fi 6 |
 | NPU / ISP | yes | - |
-| Reference boards | IPRO7 EVB, IPRO7AI EVK | IPRO6S EVB |
+| Reference boards | IPRO7 EVB, IPRO7AI EVK, IPRO7AI Reef EVK | IPRO6S EVB |
 
 Both SoCs build from the same tree with the same toolchain. They share the
 RTOS, the Bluetooth host, the HAL and the utility components; they differ in
@@ -63,15 +63,28 @@ Some projects carry more than one board configuration and select it with
 make -C apps/multimedia/ipro_pdm_mic_demo BOARD=evk    # IPRO7AI EVK; uses config_evk, builds in build_config_evk/
 ```
 
-### Flash and monitor
-
-Firmware is downloaded over the serial port with the IntelPro flash tool
-(obtained separately from the SDK):
+Others carry alternate configurations as `defconfig_*` files and select one
+with `DEFCONFIG=`; the build goes to `build_<name>/`:
 
 ```bash
-ipro_iot_tool_lite --chipname ipro7 --port /dev/cu.usbserial-XXXX --baudrate 921600 \
-    --flash-pin 0x02 --firmware apps/bluetooth/ble/ipro_ble_remote/build/build_out/ipro_ble_remote_IPRO7.bin
+make -C apps/multimedia/ipro7_uvc_cam DEFCONFIG=defconfig_reef_rps    # IPRO7AI Reef EVK; builds in build_reef_rps/
 ```
+
+### Flash and monitor
+
+Firmware is downloaded over the serial port with the command-line tool of
+IntelProCube v0.6.3 (obtained separately from the SDK): `ipro_iot_tool.exe`,
+`ipro_iot_tool_macos` or `ipro_iot_tool_linux`.
+
+```bash
+ipro_iot_tool_macos --chipname ipro7 --chip-variant IPRO7 --port /dev/cu.usbserial-XXXX \
+    --baudrate 2000000 --firmware apps/bluetooth/ble/ipro_ble_remote/build/build_out/ipro_ble_remote_IPRO7.bin
+```
+
+The tool has no `--flash-pin` option: `--chip-variant` writes `flash_pin` in
+`<IntelProCube dir>/chips/ipro7/eflash_loader/eflash_loader_cfg.ini` (`IPRO7`
+→ `0x2`; `IPRO7AI` → `0x9`, for the IPRO7AI EVK). It exits 0 even when
+flashing fails, so look for `[All Success]` in its output.
 
 The console runs at 115200 baud on the IPRO7 EVB and 921600 on the IPRO7AI
 EVK. On macOS use `/dev/cu.*`, not `/dev/tty.*` (the latter blocks on
@@ -87,10 +100,8 @@ carrier detect).
 |-------------|-------------|-----|
 | `ipro7_demo` | Full-chip reference: GPIO, UART, SPI, USB, ISP camera, audio, Ethernet, NPU person detection | IPRO7 |
 | `ipro7ai_evk_demo` | IPRO7AI EVK board: ST7789 panel, camera, PDM mic, speaker, SD card, BLE, LE Audio; prebuilt images and an Android control app under `release/` | IPRO7 |
+| `ipro7ai_reef_demo` | IPRO7AI Reef EVK board: a shell command per block - WS2812 LED, keys, DAC speaker and headphone, PDM / headset / AUX-IN capture, SD card (FatFS), OV5640 / OV2640 camera; `defconfig_wifi_ipro6s` adds Wi-Fi through the IPRO6S_FIN and an RTSP camera stream; console at 115200 baud | IPRO7 |
 | `ipro7_sdio_wifi` | Wi-Fi over SDIO host (ATBM6162): transport, netif, DHCP, iperf | IPRO7 |
-| `ipro6_demo` | Wi-Fi 6 reference: station, soft-AP, lwIP, shell | IPRO6S |
-| `ipro6_if_wifi` | Wi-Fi interface example | IPRO6S |
-| `ipro6_btdm_phyrf` | BLE + BR/EDR: A2DP sink (SBC), AVRCP, HFP-HF, SCO audio over I2S | IPRO6S |
 
 ### Bluetooth LE
 
@@ -110,6 +121,7 @@ carrier detect).
 | `ipro_meeting_poc` | Speaker recognition on the NPU; the model is loaded at boot from the `mfg` flash partition | IPRO7 |
 | `ipro_npu_yolo` | YOLOv8 person detection on the NPU | IPRO7 |
 | `ipro_ai_bench` | NPU vs CPU inference timing | IPRO7 |
+| `ipro_ai_link` | Board firmware for IPRO AI Studio "Run on board": models and inputs from the SD card (`sd:/`), raw outputs back to the host over USB | IPRO7 |
 | `ipro_tflm_test` | TensorFlow Lite Micro with NMSIS-NN kernels | IPRO7 |
 | `ipro_tflm_yolo` | YOLO on TensorFlow Lite Micro | IPRO7 |
 | `ipro_nmsis_nn_test` | NMSIS-NN operator tests | IPRO7 |
@@ -119,6 +131,7 @@ carrier detect).
 
 | Application | Description | SoC |
 |-------------|-------------|-----|
+| `ipro7_uvc_cam` | USB webcam: DVP sensor, ISP, hardware MJPEG, USB Video Class. `.config` is the IPRO7 EVB with SC101IOT; `defconfig_reef_ov5640` the IPRO7AI Reef EVK with OV5640; `defconfig_reef_rps` adds rock-paper-scissors on the NPU, drawn into the stream | IPRO7 |
 | `ipro_gh7007_test` | GH7007 5" SPI LCD bring-up | IPRO7 |
 | `ipro_gh7007_video` | Video playback on the GH7007 panel | IPRO7 |
 | `ipro_epd_test` | E-paper display driver | IPRO7 |
@@ -386,4 +399,4 @@ their own notices (lwIP, mbedTLS, Zephyr, wpa_supplicant, FreeRTOS,
 TensorFlow Lite Micro and others are under their respective open-source
 licenses).
 
-**SDK version**: IPRO-SDK-V2.0.1 (2026-09-09)
+**SDK version**: IPRO-SDK-V2.0.9 (2026-10-15)

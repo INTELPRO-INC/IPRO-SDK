@@ -68,6 +68,17 @@
  */
 struct fhost_tx_env_tag fhost_tx_env;
 
+/// Frames an AC may have in flight in the MAC: its descriptor count,
+/// capped for BE by FHOST_TX_HWQ_BE_MAX when the build defines it
+static int16_t fhost_tx_hwq_max(int ac)
+{
+    #ifdef FHOST_TX_HWQ_BE_MAX
+    if (ac == AC_BE && FHOST_TX_HWQ_BE_MAX < get_nx_txdesc_cnt(ac))
+        return FHOST_TX_HWQ_BE_MAX;
+    #endif
+    return get_nx_txdesc_cnt(ac);
+}
+
 /// Fake function used to detected too small TX headroom
 void net_all_tx_headroom_too_small(void);
 
@@ -178,6 +189,70 @@ void fhost_tx_cfm_batch_end(void)
  * fhost_tx_schedule (sc). Defined here so fhost_tx_req_do (below) can use the
  * inline helpers. The dur/lock/body buckets live further down with the rest
  * of the tx_trace block. */
+/* A TX frame whose data straddles a 16 KB boundary loses the 4-byte word AT the
+ * boundary: the MAC fetches 0x00000000 there while memory holds the real value.
+ * Measured 2026-09-10 over 350 corrupt segments -- always exactly a 4-byte run,
+ * and three audit points (before tx_desc_init_for_fhost, after it, and at TX
+ * confirm) read the frame correct 0/310 while the wire was corrupt, so software
+ * never writes a wrong byte. The victim address pins it:
+ *     0x21067f8c + 116 = 0x21068000   and   0x2106bdcc + 564 = 0x2106c000
+ * i.e. frame_start + victim_offset lands exactly on a 16 KB boundary, which is
+ * why the frame-relative offset moves whenever the heap layout moves.
+ *
+ * This is the same silicon flaw ipro6_common.ld.in already documents for the RX
+ * descriptor ring ("the first word at or after [a 32 KB boundary] is never
+ * written"), seen here on the TX fetch side.
+ *
+ * Fix by construction: hand the MAC two payload descriptors that meet at the
+ * boundary, so neither fetch crosses it. Costs no memory and no copy -- pbd[]
+ * already supports a chain, and TX frames are otherwise single-segment.
+ *
+ * A fetch that STARTS on a boundary is fine, and this fix is its own proof: the
+ * second descriptor begins exactly at the boundary, and with 9,076 frames split
+ * the pattern-fill detector saw 0 corrupt segments in 109,052 (baseline
+ * 2.1-4.7%). 9,076 is 8.3% of frames against a 9.2% crossing rate predicted for
+ * a 1500-byte frame, so the split fires where it should and nowhere else. */
+static volatile uint32_t g_tx_split;     /* frames split at a 16 KB boundary */
+static volatile uint32_t g_tx_nosplit;   /* crossed but could not be split */
+#define TX_DMA_BOUNDARY  0x4000u
+
+static int tx_split_at_boundary(int seg_cnt, uint32_t seg_addr[], uint16_t seg_len[])
+{
+    uint32_t start, end, bound;
+    int i;
+
+    if (seg_cnt != 1)
+    {
+        /* Not observed: chains measure single-segment 4832/4832, counted before
+         * any rejection. Splitting one would need a third descriptor, and the
+         * real bound is txl_buffer_tag::pbd[3] in txl_buffer.h -- NOT the
+         * TX_PBD_CNT this file sees from export_macsw.h, which is 5; pbd[3]
+         * lands on pbd_tail and pbd[4] on sec_tail[]. So count a crossing here
+         * rather than split it, because a silent return cannot be told apart
+         * from "never happened". */
+        for (i = 0; i < seg_cnt; i++)
+        {
+            start = seg_addr[i];
+            end   = start + seg_len[i] - 1;
+            if ((start >> 14) != (end >> 14))
+                g_tx_nosplit++;
+        }
+        return seg_cnt;
+    }
+    if (seg_len[0] < 2)
+        return seg_cnt;
+    start = seg_addr[0];
+    end   = start + seg_len[0] - 1;
+    bound = (start + TX_DMA_BOUNDARY) & ~(TX_DMA_BOUNDARY - 1u);
+    if (bound > end)
+        return seg_cnt;                  /* does not cross */
+    seg_addr[1] = bound;
+    seg_len[1]  = (uint16_t)(end - bound + 1);
+    seg_len[0]  = (uint16_t)(bound - start);
+    g_tx_split++;
+    return 2;
+}
+
 static volatile uint32_t tx_trace_di_lt5us   = 0;
 static volatile uint32_t tx_trace_di_lt20us  = 0;
 static volatile uint32_t tx_trace_di_lt100us = 0;
@@ -252,6 +327,51 @@ static const char *volatile sc_producer_name = "?";  /* who runs fhost_tx_schedu
  * Early-return / drop paths do NOT accumulate — parse/queue only tick once the
  * frame actually reaches tx_desc_init. Printed by fhost_tx_trace_print(). */
 static volatile uint32_t req_info_sum_us  = 0, req_info_n  = 0;  /* net_buf_tx_info */
+_Static_assert(sizeof(struct fhost_tx_desc_tag) + 3 + NET_AL_TX_DESC_SHIFT
+               <= NET_AL_TX_HEADROOM,
+               "shifted TX descriptor overruns the TX headroom");
+/// MAC-fetched blocks relative to fhost_tx_desc_tag::pad
+static const struct
+{
+    uint16_t offset;
+    uint16_t bytes;
+} fhost_tx_hw_desc[] = {
+    {0, 68},    /* THD */
+    {72, 52},   /* policy table */
+    {136, 80},  /* txl_buffer_tag pbd[3] and pbd_tail */
+};
+volatile uint32_t fhost_tx_thd_x4k, fhost_tx_thd_x1k, fhost_tx_thd_x16k;
+/// Boundary the MAC-fetched blocks keep clear: 0 (off), 0x1000 or 0x4000
+volatile uint32_t fhost_tx_thd_avoid = 0x4000u;
+volatile uint32_t fhost_tx_thd_moved, fhost_tx_thd_stuck;
+
+/* Returns true when any MAC-fetched block of the descriptor whose THD
+ * starts at thd spans a span boundary. */
+static inline bool fhost_tx_thd_crosses(uint32_t thd, uint32_t span)
+{
+    for (unsigned i = 0; i < CO_ARRAY_SIZE(fhost_tx_hw_desc); i++)
+    {
+        uint32_t start = thd + fhost_tx_hw_desc[i].offset;
+        uint32_t end = start + fhost_tx_hw_desc[i].bytes - 1;
+
+        if ((start ^ end) & ~(span - 1))
+            return true;
+    }
+    return false;
+}
+
+/* Returns the smallest 4-byte displacement, up to
+ * NET_AL_TX_DESC_SHIFT, that keeps the MAC-fetched blocks clear of a
+ * span boundary, or -1. */
+static int fhost_tx_thd_shift(uint32_t thd, uint32_t span)
+{
+    for (int shift = 0; shift <= NET_AL_TX_DESC_SHIFT; shift += 4)
+    {
+        if (!fhost_tx_thd_crosses(thd + shift, span))
+            return shift;
+    }
+    return -1;
+}
 static volatile uint32_t req_parse_sum_us = 0, req_parse_n = 0;  /* eth parse + staid + txq lookup */
 static volatile uint32_t req_queue_sum_us = 0, req_queue_n = 0;  /* tx_cfm_lat_enter + fhost_tx_queue */
 
@@ -267,6 +387,12 @@ static inline uint32_t sc_rdcycle(void)
  * stop accumulating; poke g_txprof_en=1 for profiling arms. Functional
  * timeout reads of inline_hal_machw_time() are NOT gated. */
 volatile uint8_t g_txprof_en = 0;
+#if defined(__ZEPHYR__) && defined(CONFIG_IPRO_WIFI_TX_PROFILE)
+extern void ipro_zp_mark(int i);
+#define ZEPHYR_TX_MARK(i) ipro_zp_mark(i)
+#else
+#define ZEPHYR_TX_MARK(i) do { } while (0)
+#endif
 static inline uint32_t prof_time(void)  { return g_txprof_en ? inline_hal_machw_time() : 0; }
 static inline uint32_t prof_cycle(void) { return g_txprof_en ? sc_rdcycle() : 0; }
 
@@ -641,11 +767,25 @@ static struct fhost_tx_queue_tag *fhost_tx_get_txq(uint8_t vif_idx, uint16_t sta
 
 
 /// Mapping table of access category and traffic ID
-static const int fhost_tx_ac2tid[3] = {
+static const int fhost_tx_ac2tid[AC_MAX] = {
     [AC_BK] = TID_2,
     [AC_BE] = TID_0,
     [AC_VI] = TID_5,
+    [AC_VO] = TID_6,
 };
+
+/// Lowest access category for STA data frames (AC_BK = no floor)
+static volatile uint8_t fhost_tx_ac_min = AC_BK;
+
+void fhost_tx_ac_min_set(uint8_t ac)
+{
+    fhost_tx_ac_min = (ac < AC_MAX) ? ac : AC_BK;
+}
+
+uint8_t fhost_tx_ac_min_get(void)
+{
+    return fhost_tx_ac_min;
+}
 
 /**
  ****************************************************************************************
@@ -1735,6 +1875,8 @@ int fhost_tx_req_do(net_al_if_t net_if, net_al_tx_t net_buf, enum fhost_tx_buf_t
 
     /* 2026-07-23 (T2 profile): t0 entry -> req_info (net_buf_tx_info). */
     uint32_t t0 = prof_time();
+    int shift = 0;
+
     desc = net_buf_tx_info(net_buf, &buf_len, &seg_cnt, seg_addr, seg_len, &headroom_len);//len
 
     if (!desc || !seg_cnt || seg_cnt > TX_PBD_CNT || (headroom_len < sizeof(struct fhost_tx_desc_tag)))
@@ -1743,6 +1885,27 @@ int fhost_tx_req_do(net_al_if_t net_if, net_al_tx_t net_buf, enum fhost_tx_buf_t
         fhost_tx_release_buf(net_buf, 0, cfm_cb, cfm_cb_arg, buf_rx);
         fhost_printf("[FH]%s relese this buf(Line:%d), len:%d-%d\r\n", __func__, __LINE__, headroom_len, sizeof(struct fhost_tx_desc_tag));
         return -1;
+    }
+    if (fhost_tx_thd_avoid == 0x1000 || fhost_tx_thd_avoid == 0x4000)
+        shift = fhost_tx_thd_shift((uint32_t)desc->pad, fhost_tx_thd_avoid);
+
+    {
+        uint32_t thd = (uint32_t)desc->pad;
+
+        fhost_tx_thd_x1k += fhost_tx_thd_crosses(thd, 0x400);
+        fhost_tx_thd_x4k += fhost_tx_thd_crosses(thd, 0x1000);
+        fhost_tx_thd_x16k += fhost_tx_thd_crosses(thd, 0x4000);
+        if (shift > 0)
+        {
+            desc = (struct fhost_tx_desc_tag *)((uint8_t *)desc + shift);
+            fhost_tx_thd_moved++;
+        }
+        else if (shift < 0)
+        {
+            fhost_tx_thd_stuck++;
+            fhost_tx_release_buf(net_buf, 0, cfm_cb, cfm_cb_arg, buf_rx);
+            return -1;
+        }
     }
 
     uint32_t t1 = prof_time();
@@ -1801,6 +1964,10 @@ int fhost_tx_req_do(net_al_if_t net_if, net_al_tx_t net_buf, enum fhost_tx_buf_t
         {
             host->tid = 0;
         }
+
+        // Raise the TID to the configured lowest access category
+        if (mac_tid2ac[host->tid] < fhost_tx_ac_min)
+            host->tid = fhost_tx_ac2tid[fhost_tx_ac_min];
 
         // and skip it once info have been extracted
         seg_addr[0] += sizeof(*eth_hdr);
@@ -1893,6 +2060,7 @@ int fhost_tx_req_do(net_al_if_t net_if, net_al_tx_t net_buf, enum fhost_tx_buf_t
         req_parse_sum_us += t2 - t1;
         req_parse_n++;
     }
+    seg_cnt = tx_split_at_boundary(seg_cnt, seg_addr, seg_len);
     {
         uint32_t t_di_a = prof_time();
         tx_desc_init_for_fhost(desc, seg_cnt, seg_addr, seg_len);
@@ -1940,7 +2108,7 @@ int fhost_tx_req_do(net_al_if_t net_if, net_al_tx_t net_buf, enum fhost_tx_buf_t
      * error path is not worth it. */
     if ((txq->status & (TXQ_ENABLED | TXQ_STOP)) == (TXQ_ENABLED | TXQ_STOP_FULL) &&
         txq->credits <= 0 && txq->nb_ready &&
-        fhost_tx_env.hwq_credits[txq->ac] == get_nx_txdesc_cnt(txq->ac))
+        fhost_tx_env.hwq_credits[txq->ac] == fhost_tx_hwq_max(txq->ac))
     {
         /* Restore the AC's descriptor count, not NX_DEFAULT_TX_CREDIT_CNT.
          * Re-flooring to the bare default while a 32-deep BA agreement is up
@@ -2800,7 +2968,7 @@ int fhost_tx_init(void)
     // Initialize per HW-queue credits
     for (int i = 0; i < NX_TXQ_CNT; i++)
     {
-        fhost_tx_env.hwq_credits[i] = get_nx_txdesc_cnt(i);
+        fhost_tx_env.hwq_credits[i] = fhost_tx_hwq_max(i);
     }
 
 #if NX_BEACONING
@@ -2902,9 +3070,11 @@ int fhost_tx_start(net_al_if_t net_if, net_al_tx_t net_buf,
 
     tx_start_cnt++;
     FHOST_TX_LOCK();
+    ZEPHYR_TX_MARK(14);
     t_locked = prof_time();
     dur_lock_us = t_locked - t_enter;
     ret = fhost_tx_req(net_if, net_buf, IEEE802_3, cfm_cb, cfm_cb_arg, NULL, 0);
+    ZEPHYR_TX_MARK(15);
     FHOST_TX_UNLOCK();
     dur_total_us = prof_time() - t_enter;
     tx_start_ok++;
@@ -2972,7 +3142,7 @@ int fhost_tx_start(net_al_if_t net_if, net_al_tx_t net_buf,
  * enqueue side writes two words per MPDU on the TX hot path for a number no
  * shipping build ever reads. The runtime g_txprof_en gate stops the writes but
  * not the KB. Build it with -DTX_CFM_LAT_PROFILE; the print/reset entry points
- * stay linkable either way (ipro6le_demo calls them).
+ * stay linkable either way.
  * ============================================================================
  */
 #ifdef TX_CFM_LAT_PROFILE
@@ -3252,6 +3422,11 @@ int16_t fhost_tx_hwq_credits_get(int ac)
     return fhost_tx_env.hwq_credits[ac];
 }
 
+int16_t fhost_tx_hwq_credits_max(int ac)
+{
+    return fhost_tx_hwq_max(ac);
+}
+
 /* DEBUG 2026-07-23 F2b: runtime override of the per-AC outstanding-MPDU cap.
  * Poke while IDLE only (the counter is live inc/dec under traffic). Used to
  * cap MAC-outstanding at 24 while the SDIO TX pool is 32 so the extra 8
@@ -3441,3 +3616,34 @@ uint32_t fhost_send_80211_frame(int fvif_idx, const uint8_t *frame, uint32_t len
 
 /// @}
 
+
+#ifdef __ZEPHYR__
+/* Snapshot helpers for the MAC hold ring (txl_agg.c). */
+uint32_t fhost_tx_be_snapshot(void)
+{
+    /* nb_ready of the STA BE queue (txq 0 in practice) << 16 | BE credits */
+    uint32_t ready = 0;
+    for (int i = 0; i < FHOST_TXQ_CNT; i++)
+        if ((fhost_tx_env.tx_q[i].status & TXQ_ENABLED) && fhost_tx_env.tx_q[i].ac == AC_BE)
+            ready += fhost_tx_env.tx_q[i].nb_ready;
+    return (ready << 16) | (uint8_t)fhost_tx_env.hwq_credits[AC_BE];
+}
+
+/* fhost TX queue state for the Zephyr port's `wifi_ipro txdiag`. */
+void fhost_tx_diag_print(void)
+{
+    printf("fhost tx_desc_tag %u B (headroom %u)\r\n", (unsigned)sizeof(struct fhost_tx_desc_tag), NET_AL_TX_HEADROOM);
+    printf("fhost hwq_credits BK %d BE %d VI %d VO %d, queue_tx %d, tx_start %lu ok %lu cfm %lu\r\n",
+           fhost_tx_env.hwq_credits[0], fhost_tx_env.hwq_credits[1], fhost_tx_env.hwq_credits[2],
+           fhost_tx_env.hwq_credits[3], rtos_queue_cnt(fhost_tx_env.queue_tx),
+           (unsigned long)tx_start_cnt, (unsigned long)tx_start_ok, (unsigned long)fhost_tx_cfm_cnt);
+    for (int i = 0; i < FHOST_TXQ_CNT; i++)
+    {
+        struct fhost_tx_queue_tag *txq = &fhost_tx_env.tx_q[i];
+
+        if (txq->status & TXQ_ENABLED)
+            printf("  txq %d: status 0x%02x credits %d nb_ready %u ac %u\r\n", i, txq->status,
+                   txq->credits, txq->nb_ready, txq->ac);
+    }
+}
+#endif

@@ -387,6 +387,16 @@ int hal_boot2_init(void)
     hal_boot2_get_efuse_cfg(&g_efuse_cfg);
 
     memcpy(&ipro_partition_table, (void *)PARTITION_TABLE_PARAM_ADDR+4, sizeof(ipro_partition_table));   
+    /* A BootROM-direct image has no boot2 handoff. Do not interpret stale
+     * SRAM as a partition table or reinitialize the live XIP flash from it. */
+    if (ipro_partition_table.table.ptTable.magicCode != PT_MAGIC_CODE ||
+        ipro_partition_table.partition_active_idx > 1 ||
+        ipro_partition_table.table.ptTable.entryCnt >
+            sizeof(ipro_partition_table.table.ptEntries) /
+                sizeof(ipro_partition_table.table.ptEntries[0])) {
+        memset(&ipro_partition_table, 0, sizeof(ipro_partition_table));
+        return -ENOENT;
+    }
     printf("Active Partition[%u], Size %d Bytes\r\n",
             ipro_partition_table.partition_active_idx,
             sizeof(PtTable_Config) + sizeof(PtTable_Entry_Config) * ipro_partition_table.table.ptTable.entryCnt + 4

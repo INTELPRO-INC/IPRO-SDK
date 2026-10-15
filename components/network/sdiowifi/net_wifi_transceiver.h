@@ -43,7 +43,7 @@
 #define TTY_RCV_BUF_REM_OFFSET(tty_id) (1  + (tty_id))
 #define CREDIT_HI_SCRATCH_OFFSET       16
 /* una_seq reuses the boot-src slot after the boot handshake completes
- * (ipro6le wrote it raw at SDU_BASE+0x167 = scratch offset 7). */
+ * (legacy SDU address SDU_BASE+0x167 = scratch offset 7). */
 #define UNA_SEQ_SCRATCH_OFFSET         7
 #define IPRO_BOOT_SRC_PING_VALUE         0xEE
 #define IPRO_BOOT_SRC_PONG_VALUE         0xEF

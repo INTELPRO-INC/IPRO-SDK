@@ -53,6 +53,12 @@ int uart_init(int uart_id, uint16_t caps)
     uart_device->tx_dma = -1;
     uart_device->rx_dma = -1;
 
+#if defined(CONFIG_IPRO6)
+    /* GLB software reset: the configuration below starts from the
+     * UART's register reset values. */
+    UART_DeInit(uart_device->id);
+#endif
+
     UART_IntMask(uart_device->id, UART_INT_ALL, MASK);
     UART_Disable(uart_device->id, UART_TXRX);
 

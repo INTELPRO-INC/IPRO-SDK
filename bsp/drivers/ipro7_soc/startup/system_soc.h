@@ -32,6 +32,30 @@ typedef void (*pFunc)(void);
 #define INTLEVEL 1
 #define INTPRIORITY 0
 
+/*
+ * Interrupt controller seam.
+ *
+ * The HAL registers its ISRs and enables lines through these macros. On the
+ * bare-metal / FreeRTOS SDK they program the ECLIC directly. When the HAL is
+ * compiled into an RTOS that owns the interrupt controller (Zephyr, see
+ * zephyr/hal_glue/ipro_irq_glue.c) the same calls are routed to the RTOS
+ * so its ISR table stays authoritative. The HAL itself never includes an
+ * RTOS header: only these prototypes are shared. IPRO_HAL_OS_IRQ_SEAM
+ * selects the same routing explicitly (host-side HAL tests, tests/hal/).
+ */
+#if defined(__ZEPHYR__) || defined(IPRO_HAL_OS_IRQ_SEAM)
+void ipro_os_irq_register(uint32_t irq, void (*handler)(void));
+void ipro_os_irq_enable(uint32_t irq);
+void ipro_os_irq_disable(uint32_t irq);
+void ipro_os_irq_pending_clear(uint32_t irq);
+void (*ipro_os_irq_handler_get(uint32_t irq))(void);
+
+#define CPU_Interrupt_Enable(irq)            ipro_os_irq_enable(irq)
+#define CPU_Interrupt_Disable(irq)           ipro_os_irq_disable(irq)
+#define CPU_Interrupt_Pending_Clear(irq)     ipro_os_irq_pending_clear(irq)
+#define CPU_Interrupt_Handler_Get(irq)       ipro_os_irq_handler_get(irq)
+#define Interrupt_Handler_Register(irq, fun) ipro_os_irq_register(irq, (void (*)(void))(fun))
+#else
 #define CPU_Interrupt_Enable ECLIC_EnableIRQ
 #define CPU_Interrupt_Disable ECLIC_DisableIRQ
 #define CPU_Interrupt_Pending_Clear ECLIC_ClearPendingIRQ
@@ -39,6 +63,7 @@ typedef void (*pFunc)(void);
 #define Interrupt_Handler_Register(irq, fun)                                   \
     ECLIC_Register_IRQ(irq, ECLIC_NON_VECTOR_INTERRUPT, ECLIC_LEVEL_TRIGGER,   \
                        INTLEVEL, INTPRIORITY, fun)
+#endif
 
 #define L1C_DCACHE_CLEAN_RANGE(addr, size)                                     \
     MFlushDCacheRange((uintptr_t)(addr), (size))

@@ -359,7 +359,10 @@ void * pvPortMalloc( size_t xWantedSize )
         if( pvReturn == NULL )
         {
             extern volatile size_t g_last_malloc_failed_size;
+            extern void * volatile g_last_malloc_failed_caller;
             g_last_malloc_failed_size = xWantedSize;
+            /* Capture the allocator's caller, not the hook's return address. */
+            g_last_malloc_failed_caller = __builtin_return_address( 0 );
             vApplicationMallocFailedHook();
         }
         else

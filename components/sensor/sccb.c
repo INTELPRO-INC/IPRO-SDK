@@ -120,9 +120,29 @@ int SCCB_Read(uint8_t slave_addr, uint8_t reg_addr, uint8_t* rdata, uint8_t rdsi
     return i2c_transfer(I2C_INDEX, &msg, 1);
 }
 
+/*
+ * 16-bit register address (OmniVision OV5640 and friends). The I2C engine
+ * clocks the sub-address register out low byte first, while SCCB wants the
+ * high byte of the address on the wire first, so the two bytes are swapped
+ * before they go into the register - same trick ipro7_demo's ADAU1761 code
+ * uses. These two used to be empty stubs that returned success.
+ */
+static uint32_t sccb_subaddr16(uint16_t reg_addr)
+{
+    return (uint32_t)((reg_addr >> 8) | ((reg_addr & 0xFFu) << 8));
+}
+
 int SCCB_Read_Reg16(uint8_t slave_addr, uint16_t reg_addr, uint8_t* rdata, uint8_t rdsize)
 {
-    return 0;
+    i2c_msg_t msg = {
+        .slaveaddr = slave_addr,
+        .subaddr   = sccb_subaddr16(reg_addr),
+        .flags     = SUB_ADDR_2BYTE | I2C_RD,
+        .len       = rdsize,
+        .buf       = rdata,
+    };
+
+    return i2c_transfer(I2C_INDEX, &msg, 1);
 }
 
 int SCCB_Write(uint8_t slave_addr, uint8_t reg_addr, uint8_t* data)
@@ -141,6 +161,14 @@ int SCCB_Write(uint8_t slave_addr, uint8_t reg_addr, uint8_t* data)
 
 int SCCB_Write_Reg16(uint8_t slave_addr, uint16_t reg_addr, uint8_t* data)
 {
-    return 0;
+    i2c_msg_t msg = {
+        .slaveaddr = slave_addr,
+        .subaddr   = sccb_subaddr16(reg_addr),
+        .flags     = SUB_ADDR_2BYTE | I2C_WR,
+        .len       = 1,
+        .buf       = data,
+    };
+
+    return i2c_transfer(I2C_INDEX, &msg, 1);
 }
 

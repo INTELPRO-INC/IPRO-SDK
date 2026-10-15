@@ -1,0 +1,268 @@
+# SPDX-FileCopyrightText: 2026 IPRO Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig IPRO_PM
+    bool "IPRO power management (automatic idle-mode selection)"
+    default n
+    depends on FREERTOS_SUPPORT
+    help
+      Owns the FreeRTOS tickless-idle hooks and picks the deepest idle mode
+      (WFI, BLE native sleep, platform PDS) that each idle window, the
+      application's hold reasons and the radio allow.  Requires
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE=1 and CONFIG_FREERTOS_IDLE_HOOK=y;
+      the build stops with #error otherwise.  Initialised from
+      ipro_platform_init(); applications only register hold reasons,
+      vetoes and devices (ipro_pm.h).
+
+if IPRO_PM
+
+config IPRO_PM_BLE
+    bool "BLE controller backend (IPRO7 connected PDS)"
+    default y
+    depends on IPRO7 && BT_CTLR_IPRO && BLUETOOTH_LE_ENABLE
+    help
+      Coordinates idle windows with the IPRO7 BLE controller: clamps WFI to
+      the next radio event and offers long connection-event gaps to the
+      controller's platform-PDS snapshot/restore.
+
+config IPRO_PM_PDS_CONNECTED
+    bool "Platform PDS during BLE connections"
+    default n
+    depends on IPRO_PM_BLE
+    help
+      Let the controller enter PDS31 between connection events of a link in
+      the PDS profile.  Needs the controller built from source with the
+      connected-PDS patch series (CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=y)
+      and a 16 KB exchange memory.  Off: links stay on WFI.
+
+config IPRO_PM_BLE_PDS_MIN_INTERVAL_MS
+    int "Shortest connection interval put in the PDS profile (ms)"
+    default 200
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      A PDS cycle costs a snapshot and a restore; below this interval WFI
+      uses less energy.  The default comes from the energy model: ~66 ms of
+      PDS pays for one cycle, and the controller keeps a ~29 ms wake reserve.
+
+config IPRO_PM_BLE_IDLE_INTERVAL_MS
+    int "Connection interval to request once a link settles (ms, 0 = never)"
+    default 0
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      The framework asks the central for this interval (rounded to the
+      Apple-accepted grid by ipro_pm_ble_conn_param_hint()) a few seconds
+      after each connection, so a link opened with a short interval moves to
+      the PDS profile without application code.  Use how often the product
+      needs a connection event, e.g. 1000 for a sensor that reports every
+      second.
+
+config IPRO_PM_BLE_IDLE_DELAY_MS
+    int "Delay before the idle-parameter request (ms)"
+    default 5000
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      Service discovery and pairing usually run right after connecting with
+      the central's short interval; the request waits for them.
+
+config IPRO_PM_BLE_EXEC_WAKE_US
+    int "BLE PDS: CPU back this long before another radio's deadline (us)"
+    default 12000
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      When the BLE controller runs a connected PDS and another radio (a
+      Thread CSL window or data poll) has an earlier deadline, the sleep is
+      cut so the controller has restored (<= ~9 ms) and the CPU is free
+      this long before that deadline.
+
+config IPRO_PM_IDLE_PDS
+    bool "PDS from the idle task (radios that do not run PDS themselves)"
+    default n
+    depends on IPRO7
+    select IPRO_PM_TIMEBASE
+    help
+      The idle task enters platform PDS31 itself when every radio
+      participant (e.g. Thread through CONFIG_IPRO_PM_THREAD) can be
+      suspended: sized to the RTOS and radio deadlines, with the machine
+      timer written forward across the sleep.  Never used while the BLE
+      controller is up (only the controller can keep the BLE core across a
+      PDS).  Raw per-app .config builds must also set
+      CONFIG_IPRO_PM_TIMEBASE=y.
+
+if IPRO_PM_IDLE_PDS
+
+config IPRO_PM_IDLE_PDS_NO_RADIO
+    bool "Also without any radio participant (bench)"
+    default n
+    help
+      Enter PDS from the idle task even when no radio participant is
+      registered.  For bring-up of the executor itself.
+
+config IPRO_PM_IDLE_PDS_DOMAIN_POLICY
+    hex "PDS domain policy (PM_PDS_BLE_CTLR_DOMAIN_POLICY_* bits)"
+    default 0xe9
+    help
+      0xe9 = ENABLE | BLE_PWR_OFF | KEEP_MISC | SAFE_OCRAM | KEEP_MISC_LIVE:
+      MISC stays powered and out of reset (UART, the whole OCRAM), the BLE
+      domain is powered down and the RF is under PDS control.  BLE_PWR_OFF
+      also keeps PDS driving the SoC reset line (PDS_CTL pdsRstSocEn), and
+      that is required: without the SoC reset a PDS about one time in
+      150-250 never wakes up (measured on the IPRO7 EVB: 0 in 1772 with
+      it).  The SoC reset clears the 802.15.4 MAC (written back from a
+      per-entry register snapshot), the timer block's clock setup and the
+      AHB clock gates (both written back).  0xe5 (KEEP_BZ, no BLE_PWR_OFF)
+      keeps the MAC but has the no-wake failure: bench use only.
+
+config IPRO_PM_IDLE_PDS_WAKE_US
+    int "Wake path: RTC target to devices restored (us)"
+    default 1500
+
+config IPRO_PM_IDLE_PDS_GUARD_US
+    int "Extra guard before a deadline (us)"
+    default 300
+
+config IPRO_PM_IDLE_PDS_MIN_SLEEP_US
+    int "Shortest PDS worth entering (us)"
+    default 10000
+
+config IPRO_PM_IDLE_PDS_ENTRY_FALLBACK_US
+    int "Give up an entry that never powers down after (us)"
+    default 50000
+    help
+      Bound on the PDS WFI when the power-down sequencer does not take the
+      core: the entry returns HAL_LP_ERR_ENTRY_ABORTED after this long,
+      and never later than the planned sleep (0: the planned sleep).
+
+endif
+
+config IPRO_PM_LP_WDT
+    bool "AON watchdog and PDS breadcrumbs (bench)"
+    default n
+    depends on IPRO_PM_IDLE_PDS
+    help
+      A 64 s AON watchdog, fed from the idle task, turns a hang in or after
+      a PDS into a reset that keeps HBN RAM; the next boot prints the reset
+      cause, the HAL's PDS stage words and the executor's last steps.
+
+config IPRO_PM_FAULT_INJECT
+    bool "Fault injection for the bench (pm inject)"
+    default n
+    depends on IPRO_PM_SHELL
+
+config IPRO_PM_TIMEBASE
+    bool "Keep the machine timer continuous across PDS"
+    default n
+    help
+      Calibrate the 32 kHz sleep clock against the machine timer while
+      awake and write the machine timer forward after every PDS by the
+      measured sleep.  OpenThread's microsecond time is the machine timer.
+
+config IPRO_PM_RC32K_CAL
+    bool "Select and calibrate RC32K at boot (no BLE controller)"
+    default y if IPRO_PM_IDLE_PDS && !IPRO_PM_BLE
+    depends on IPRO_PM_TIMEBASE
+    help
+      The BLE controller qualifies the 32 kHz source at its init; without
+      it the HBN RTC runs on whatever the boot left.  Select RC32K and run
+      the ~2 s crystal-referenced calibration once at ipro_pm_init().
+
+config IPRO_PM_LPCLK_BOUND_PPM
+    int "32 kHz sleep clock error bound once calibrated (ppm)"
+    default 200
+    depends on IPRO_PM_TIMEBASE
+    help
+      RC32K wanders by ~110-130 ppm per second around its average on the
+      IPRO7 EVB; sleeps are cut short by this fraction.
+
+config IPRO_PM_LPCLK_UNCAL_PPM
+    int "32 kHz sleep clock error bound before calibration (ppm)"
+    default 1000
+    depends on IPRO_PM_TIMEBASE
+
+config IPRO_PM_LPCLK_CAL_WINDOW_MS
+    int "32 kHz calibration window: awake time per estimate (ms)"
+    default 250
+    range 50 2000
+    depends on IPRO_PM_TIMEBASE
+    help
+      The sleep clock is measured against the crystal over the awake
+      spans between PDS; every this much measured time is one estimate,
+      averaged in by 1/4.  With the device awake ~5 % of the time, 250 ms
+      is an estimate every ~5 s.  RC32K follows the die temperature: going
+      from active to mostly PDS it moved ~900 ppm in minutes on the IPRO7
+      EVB, and 1 s windows (an estimate every ~20 s) lagged that by
+      ~250 ppm - more than a CSL receiver's announced accuracy.
+
+config IPRO_PM_MAX_MODE
+    int "Default deepest idle mode (0 active, 1 WFI, 2 native, 3 PDS)"
+    range 0 3
+    default 1
+    help
+      Application ceiling at boot; ipro_pm_policy_set() changes it at run
+      time.  Low-power product configurations set 3.
+
+config IPRO_PM_MAX_REASONS
+    int "Maximum hold reasons"
+    default 16
+
+config IPRO_PM_MAX_VETOES
+    int "Maximum PDS vetoes"
+    default 4
+
+config IPRO_PM_MAX_DEVICES
+    int "Maximum PDS devices"
+    default 8
+
+config IPRO_PM_MAX_NOTIFIERS
+    int "Maximum notifiers"
+    default 4
+
+config IPRO_PM_SHELL
+    bool "pm shell command"
+    default y
+    depends on SHELL
+
+config IPRO_PM_CONSOLE_RX_HOLD_MS
+    int "Console input keeps the part out of PDS for (ms, 0 = off)"
+    default 3000
+    depends on SHELL
+    help
+      The UART cannot receive during PDS.  Every character the shell
+      receives holds the depth at WFI for this long, so a command typed
+      after the first character is received whole.  A bench sends a
+      character, waits for the echo, then the command.  (GPIO wake on the
+      console RX pad does not work on IPRO7: the PDS pad logic never sees
+      GPIO21.)
+
+config IPRO_PM_CONSOLE_VETO
+    bool "Keep the console UART's last log line out of PDS"
+    default y
+    help
+      Refuse a PDS window while UART0 is still transmitting.  Without it a
+      log line printed just before a PDS loses its tail (the UART is powered
+      down).  Costs the occasional window on a chatty console.
+
+menu "Energy model (for est_avg_ua; no effect on behaviour)"
+
+config IPRO_PM_MODEL_ACTIVE_UA
+    int "Active current (uA, estimate)"
+    default 3500
+
+config IPRO_PM_MODEL_WFI_UA
+    int "WFI current (uA, estimate - not yet measured)"
+    default 600
+
+config IPRO_PM_MODEL_NATIVE_UA
+    int "WFI with BLE native sleep current (uA, estimate)"
+    default 550
+
+config IPRO_PM_MODEL_PDS_UA
+    int "PDS floor with the connected keep-RF policy (uA, measured ~80)"
+    default 80
+
+config IPRO_PM_MODEL_PDS_CYCLE_UAMS
+    int "Charge per PDS cycle, snapshot + restore (uA*ms, measured ~11.4 ms at ~3 mA)"
+    default 34200
+
+endmenu
+
+endif

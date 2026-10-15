@@ -613,7 +613,7 @@ void wpa_debug_close_file(void)
 void wpa_debug_setup_stdout(void)
 {
 #ifndef _WIN32
-	setvbuf(stdout, NULL, _IOLBF, 0);
+	setvbuf(stdout, NULL, _IONBF, 0);
 #endif /* _WIN32 */
 }
 

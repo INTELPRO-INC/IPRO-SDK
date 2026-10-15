@@ -1,0 +1,40 @@
+config COEX_BZ
+    bool "BLE / 802.15.4 radio arbiter (IPRO7 PTA)"
+    default n
+    depends on IPRO7 && IEEE802154_ENABLE
+    help
+        Arbitrate the BLE controller and the 802.15.4 MAC on the one
+        radio: the PTA arbiter enable and the MAC's request priorities,
+        written once after the 802.15.4 driver is up and put back after a
+        platform PDS.  Defaults are the Matter bench's (a connected BLE
+        link through Thread attach and SRP): the MAC wins its ACK windows
+        against BLE connection events (~7), BLE advertising loses to
+        802.15.4 listening.
+
+if COEX_BZ
+config COEX_BZ_TX_PRI
+    int "802.15.4 TX priority (0..15)"
+    range 0 15
+    default 12
+config COEX_BZ_RX_UNICAST_PRI
+    int "802.15.4 unicast RX priority (0..15)"
+    range 0 15
+    default 11
+config COEX_BZ_RX_SFD_PRI
+    int "802.15.4 priority after SFD (0..15)"
+    range 0 15
+    default 8
+config COEX_BZ_RX_IDLE_PRI
+    int "802.15.4 idle-listening priority (0..15)"
+    range 0 15
+    default 8
+config COEX_BZ_RX_ON_AFTER_ABORT
+    bool "802.15.4 receiver back on after the arbiter took the radio"
+    default y
+    help
+      The MAC turns its receiver on again by itself once BLE hands the
+      radio back.  Right for a receiver that is always on (router, MED).
+      A sleepy device (SED / SSED) opens short receive windows; one BLE
+      cut short is then reopened behind the driver's back and stays open
+      (power, no PDS, and idle listening outranking BLE).  Say n there.
+endif

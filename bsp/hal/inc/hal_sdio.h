@@ -196,6 +196,11 @@ SDIO_Status_Type sdio_card_enumerate(SDIO_Host_Type *host);
  * @brief Switch bus width. Card must support 4-bit (most do).
  */
 SDIO_Status_Type sdio_set_bus_width(SDIO_Host_Type *host, uint8_t width);
+/* Change the card CCCR width bits and the host width bit only -- no clock or
+ * controller re-init -- on a live, already-enumerated bus. This is the primitive
+ * sdio_cmd53_xfer uses for its per-read width flip; a caller must hold the host
+ * (sdio_claim_host) so it cannot race a transfer in another thread. */
+void sdio_set_bus_width_fast(SDIO_Host_Type *host, uint8_t width);
 
 /**
  * @brief Enable High Speed (50 MHz) if both host and card support it.
@@ -212,6 +217,9 @@ SDIO_Status_Type sdio_set_clock(SDIO_Host_Type *host, uint32_t hz);
  * @brief Enable(1)/disable(0) routing small CMD53 transfers through PIO instead of
  * ADMA2 (workaround for tiny ADMA descriptors that fail to engage the data engine at
  * HS/4-bit). Bulk transfers stay on ADMA. Default disabled.
+ *
+ * 0 = off (all DMA), 1 = transfers of at most 64 bytes use PIO,
+ * 2 = also route whole-block (512 byte) READS through PIO, TX untouched.
  */
 void sdio_set_small_pio(int enable);
 
@@ -232,6 +240,12 @@ void sdio_set_ignore_rd_crc(int enable);
  * WRITES stay at the configured width. Switch is atomic under the SDIO lock. Default off.
  */
 void sdio_set_reads_1bit(int enable);
+
+/* Hybrid width: reads of at most max_bytes go through 1-bit while larger reads keep
+ * the configured width (see the 1-bit switch in sdio_cmd53_xfer). Keeps short
+ * CFG/event aggregates on the robust capture without giving up bulk RX throughput.
+ * 0 disables. Independent of sdio_set_reads_1bit, which forces every read. */
+void sdio_set_read_1bit_max(uint32_t max_bytes);
 
 /**
  * @brief One SDH sampling-phase setting: the full GLB smih_0_io_dly_0 register word

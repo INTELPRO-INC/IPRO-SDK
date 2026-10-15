@@ -439,14 +439,22 @@ static int cis_collect_cb(uint8_t code, uint8_t link,
     return 0;
 }
 
+/* CCCR I/O Abort RES (I/O reset) bit: writing it puts the card's I/O
+ * portion back to its power-on state without a power cycle. */
+#ifndef SDIO_CCCR_IO_ABORT_RES
+#define SDIO_CCCR_IO_ABORT_RES      0x08
+#endif
+
 SDIO_Status_Type sdio_card_enumerate(SDIO_Host_Type *host)
 {
     SDIO_Status_Type st;
     uint32_t r4 = 0;
     uint32_t cccr_cis_lo = 0, cccr_cis_mid = 0, cccr_cis_hi = 0;
+    bool io_reset_tried = false;
 
     if (host == NULL) return Status_SDIO_InvalidArg;
 
+retry_after_io_reset:
     /* Step 1: idle the bus */
     st = sdio_cmd0(host);
     if (st != Status_SDIO_Success) return st;
@@ -457,7 +465,42 @@ SDIO_Status_Type sdio_card_enumerate(SDIO_Host_Type *host)
     /* Step 3: CMD5 OCR negotiation. First call with arg=0 reads OCR;
      * second call asserts our voltage window and waits for C flag. */
     st = sdio_cmd5(host, 0, &r4);
-    if (st != Status_SDIO_Success) return st;
+    if (st != Status_SDIO_Success) {
+        /* A card that stayed powered across a host reset is still selected
+         * (cmd state, RCA assigned): CMD0 does not reset SDIO cards and CMD5
+         * is illegal there, so it never answers. CMD52 is legal in that
+         * state - write the CCCR I/O Abort RES bit to reset the I/O
+         * functions, then enumerate from scratch. */
+        if (!io_reset_tried) {
+            uint8_t cccr_rev = 0xff;
+            SDIO_Status_Type rd_st, res_st;
+
+            io_reset_tried = true;
+            rd_st = sdio_cmd52_raw(host, 0, false, false, 0x00, 0, &cccr_rev);
+            res_st = sdio_cmd52_raw(host, 0, true, false, SDIO_CCCR_IO_ABORT,
+                                    SDIO_CCCR_IO_ABORT_RES, NULL);
+            SDIO_LOG("no CMD5 response (st=%d): CCCR[0] read st=%d val=0x%02x, "
+                     "I/O reset (RES) st=%d - re-enumerating\r\n",
+                     (int)st, (int)rd_st, cccr_rev, (int)res_st);
+            /* Give the card time to re-initialise its I/O block, then poll
+             * CMD5 directly (no CMD0: that is what a warm SDIO card ignores). */
+            for (int poll = 0; poll < 20; poll++) {
+                vTaskDelay(pdMS_TO_TICKS(50));
+                st = sdio_cmd5(host, 0, &r4);
+                if (st == Status_SDIO_Success) {
+                    SDIO_LOG("CMD5 answered %d ms after RES\r\n", 50 * (poll + 1));
+                    break;
+                }
+            }
+            if (st != Status_SDIO_Success) {
+                goto retry_after_io_reset;
+            }
+        }
+        if (st != Status_SDIO_Success) {
+            SDIO_LOG("enumerate: CMD5 still unanswered after I/O reset (st=%d)\r\n", (int)st);
+            return st;
+        }
+    }
     if ((r4 & SDIO_OCR_NIO_FUNCS_MASK) == 0) {
         /* No IO functions reported — not an SDIO card. */
         return Status_SDIO_NotSDIOCard;
@@ -526,7 +569,7 @@ SDIO_Status_Type sdio_card_enumerate(SDIO_Host_Type *host)
     return Status_SDIO_Success;
 }
 
-/* CCCR bus-interface-ctrl byte (width bits masked off), cached for sdh_set_width_fast.
+/* CCCR bus-interface-ctrl byte (width bits masked off), cached for sdio_set_bus_width_fast.
  * 0xff = uninitialised; invalidated whenever sdio_set_bus_width reprograms CCCR_IF. */
 static uint8_t s_cccr_if_base = 0xffu;
 
@@ -748,7 +791,10 @@ SDIO_Status_Type sdio_writeb_readback(SDIO_Host_Type *host, uint8_t func_num,
  * such descriptor. Bulk transfers stay on ADMA. Default off (no behaviour change). */
 int g_sdh_small_pio = 0;
 #define SDH_SMALL_PIO_MAX 64u
-void sdio_set_small_pio(int en) { g_sdh_small_pio = en ? 1 : 0; }
+/* Mode 2 additionally routes whole-block (512 B) READS through PIO and leaves TX
+ * and bulk DMA alone. The AIC8800 D80 release drives the bus this way: at 1-bit /
+ * 10 MHz its single-block RX is reliable through the FIFO but not through ADMA. */
+void sdio_set_small_pio(int en) { g_sdh_small_pio = (en == 2) ? 2 : (en ? 1 : 0); }
 
 /* Accept READ data even when the SDH flags DATA_CRC (but NOT on data-timeout). On the
  * 4-bit flywire the SDH clocks one extra nibble in the read data phase: the data body is
@@ -763,8 +809,13 @@ void sdio_set_ignore_rd_crc(int en) { g_sdh_ignore_rd_crc = en ? 1 : 0; }
  * is atomic against concurrent bh/TX threads — unlike a caller-side width flip. */
 int g_sdh_reads_1bit = 0;
 void sdio_set_reads_1bit(int en) { g_sdh_reads_1bit = en ? 1 : 0; }
+/* Hybrid width: reads of at most this many bytes take the 1-bit path while larger
+ * reads keep the configured width. Short control/event aggregates (CFG, scan, EAPOL)
+ * stay on the robust 1-bit capture; bulk RX keeps 4-bit throughput. 0 = off. */
+static uint32_t g_sdh_read_1bit_max = 0;
+void sdio_set_read_1bit_max(uint32_t max_bytes) { g_sdh_read_1bit_max = max_bytes; }
 
-static void sdh_set_width_fast(SDIO_Host_Type *host, uint8_t width)
+void sdio_set_bus_width_fast(SDIO_Host_Type *host, uint8_t width)
 {
     if (s_cccr_if_base == 0xffu) {
         uint8_t bic = 0;
@@ -928,10 +979,10 @@ static SDIO_Status_Type sdio_cmd53_xfer(SDIO_Host_Type *host,
     trans.dataCfg = &data;
 
     /* ADMA2 fetches from / writes to physical RAM. Cached buffers in OCRAM
-     * (s_tx_buf at 0x110xxxxx in ipro6le_probe) need an explicit cache
+     * (e.g. a TX buffer at 0x110xxxxx) need an explicit cache
      * sync: clean before write so DMA sees CPU stores; clean+invalidate
      * around read so the post-DMA CPU load picks up RAM, not stale cache.
-     * Without this, the IPRO6LE SDIO target sees a 2048-byte block of zeros
+     * Without this, the SDIO target sees a 2048-byte block of zeros
      * (the pre-build memset state in RAM) and never asserts data-done. */
     if (write) {
         L1C_DCACHE_CLEAN_RANGE((uintptr_t)buf, total_bytes);
@@ -940,8 +991,18 @@ static SDIO_Status_Type sdio_cmd53_xfer(SDIO_Host_Type *host,
     }
 
     /* Small transfers: optionally use PIO (dmaCfg=NULL) — a 4-byte ADMA descriptor can
-     * fail to engage the data engine at HS/4-bit. Bulk stays on ADMA. */
-    bool use_pio = (g_sdh_small_pio != 0) && (total_bytes <= SDH_SMALL_PIO_MAX);
+     * fail to engage the data engine at HS/4-bit. Bulk stays on ADMA. Mode 2 adds
+     * single-block reads (see sdio_set_small_pio). */
+    bool use_pio = (g_sdh_small_pio == 1 && total_bytes <= SDH_SMALL_PIO_MAX) ||
+                   (g_sdh_small_pio == 2 && !write && total_bytes == 512u);
+    if (use_pio) {
+        /* In the PIO path drv_sdh uses these as a *word index* that it
+         * post-increments (rxData[rxDataLen++]), not as a length: leaving the
+         * byte count in them makes the FIFO drain write 512 bytes past the end
+         * of `buf` and return nothing in it. ADMA ignores them. */
+        data.txDataLen = 0;
+        data.rxDataLen = 0;
+    }
 
     xSemaphoreTakeRecursive((SemaphoreHandle_t)host->mutex, portMAX_DELAY);
     /* Direction-keyed sampling phase (see sdio_set_dir_phase). Applied before the
@@ -954,18 +1015,30 @@ static SDIO_Status_Type sdio_cmd53_xfer(SDIO_Host_Type *host,
      * under the mutex so concurrent threads can't transfer at the wrong width. */
     int restore_width = 0;
     uint8_t saved_width = host->bus_width;
-    if (!write && g_sdh_reads_1bit && host->bus_width != SDIO_BUS_WIDTH_1BIT) {
-        sdh_set_width_fast(host, SDIO_BUS_WIDTH_1BIT);
+    if (!write &&
+        (g_sdh_reads_1bit ||
+         (g_sdh_read_1bit_max && total_bytes <= g_sdh_read_1bit_max)) &&
+        host->bus_width != SDIO_BUS_WIDTH_1BIT) {
+        sdio_set_bus_width_fast(host, SDIO_BUS_WIDTH_1BIT);
         restore_width = 1;
     }
     SDH_Stat_Type sdh_st = SDH_TransferBlocking(use_pio ? NULL : &dma, &trans, host->sd_id);
     if (restore_width) {
-        sdh_set_width_fast(host, saved_width);
+        sdio_set_bus_width_fast(host, saved_width);
     }
     xSemaphoreGiveRecursive((SemaphoreHandle_t)host->mutex);
 
-    if (!write && sdh_st == SDH_STAT_SUCCESS) {
-        L1C_DCACHE_CLEAN_INVALID_RANGE((uintptr_t)buf, total_bytes);
+    if (!write && !use_pio && sdh_st == SDH_STAT_SUCCESS) {
+        /* DMA has just written RAM: the CPU must not write anything back here. A line
+         * of `buf` that was refilled during the transfer (still holding the allocator's
+         * fill pattern) is clean, so a flush leaves it alone; only a line the CPU dirtied
+         * meanwhile -- an adjacent variable sharing the buffer's first/last line -- would
+         * be written over the received bytes. That aliasing is a caller-side alignment
+         * bug either way (system_soc.h maps both macros to flush+invalidate on IPRO7 for
+         * that reason); invalidate-only states the intent. AIC8800 bring-up saw the
+         * 0xAA pool pattern inside received frames when this went wrong.
+         * A PIO read needs none of this: the CPU itself stored the bytes. */
+        L1C_DCACHE_INVALID_RANGE((uintptr_t)buf, total_bytes);
     }
 
     if (sdh_st == SDH_STAT_SUCCESS) {

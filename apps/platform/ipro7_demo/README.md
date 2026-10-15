@@ -17,29 +17,55 @@ A comprehensive demo application for the IPRO7 platform, showcasing peripheral d
 
 ### Bluetooth Low Energy (BLE)
 
-**BLE 5.4 Stack**: RivieraWaves BLE 5.4 with LE Audio support
+Off by default (`CONFIG_BLUETOOTH_LE_ENABLE` is not set in `.config` or any
+`defconfig_*`). The dedicated BLE applications under `apps/bluetooth/` are the
+reference; this is a minimal peripheral / central demo on the same stack: the
+Zephyr Bluetooth host (`ipro_bt_host`) over the IPRO BLE controller
+(`ipro_ble_controller`).
 
 | Demo | Description | Shell Command |
 |------|-------------|---------------|
-| BLE Peripheral | Simple peripheral advertising | `ble_peripheral` |
-| BLE Status | Show BLE connection status | `ble_status` |
+| BLE Peripheral | Advertise as `IPRO7_DEMO`, restart after disconnect | `ble_peripheral` |
+| BLE Central | Scan 1 s, auto-connect to an `IPRO7_DEMO` peripheral | `ble_central` |
+| Scan results | List the devices found by the last scan | `ble_list` |
+| Connect | Connect to device `<n>` of `ble_list` | `ble_connect <n>` |
+| Disconnect | Drop the current link | `ble_disconnect` |
 
-**Architecture**:
-- Direct API calls (no ke_msg system)
-- Callback-based event handling
-- Simple state machine (INIT → READY → ADVERTISING → CONNECTED)
+**Enabling it**: in `.config`, replace `# CONFIG_BLUETOOTH_LE_ENABLE is not set`
+with the block below (a controller library with both roles, the host, and
+central + peripheral). The demo already fills most of the 1 MB flash, so the
+BLE host only fits once something else is switched off - for example
+`CONFIG_COMPONENTS_IPERF_ENABLE`, which builds at about 99% of flash.
 
-**Features**:
-- Device name: `IPRO7_DEMO`
-- Advertising interval: 100-200ms
-- Connectable and discoverable
-- Automatic advertising start after configuration
+```
+CONFIG_BLUETOOTH_LE_ENABLE=y
+CONFIG_BT_CTLR_IPRO=y
+CONFIG_IPRO_BLE_CTLR_LINK1=y
+CONFIG_IPRO_BLE_CTLR_LIB="link1"
+CONFIG_IPRO_BLE_CTLR_FEATURE_BT52=y
+CONFIG_IPRO_BLE_CTLR_FEATURE="bt52"
+CONFIG_EM_SIZE=32
+CONFIG_BT_HOST_IPRO_V44=y
+CONFIG_BT_CONN=1
+CONFIG_BT_CENTRAL=y
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_OBSERVER=y
+CONFIG_BT_BROADCASTER=y
+CONFIG_PHY_UPDATE=y
+CONFIG_BT_AUTO_PHY_PERIPHERAL_NONE=y
+CONFIG_BT_DATA_LEN_UPDATE=y
+CONFIG_BT_AUTO_DATA_LEN_UPDATE=y
+CONFIG_BT_SMP=y
+CONFIG_BT_GATT_CLIENT=y
+```
 
-**Implementation** (`demo/bluetooth/ble_demo_app.c`):
-- Uses `gapm_reset()` → `gapm_configure()` → `gapm_le_create_adv_legacy()` sequence
-- Hardware error callback for stack monitoring
-- Activity callbacks for advertising lifecycle
-- Supports connection events (ready for future expansion)
+**Implementation** (`demo/bluetooth/`):
+- `ble_demo.c`: `ipro_ble_ctlr_controller_init()` → `hci_driver_ipro_ble_ctlr_init()`
+  → `bt_enable()`, run from the `ble_fsm` task (it blocks until the host is up),
+  and the shell commands above
+- `ble_demo_app.c`: advertising, scanning and connections on the `bt_*` API,
+  with `bt_conn_cb` callbacks driving a small state machine
+  (INIT → READY → ADVERTISING / SCANNING → CONNECTED)
 
 ### Peripheral Demos
 | Demo | Description | Shell Command |
@@ -179,42 +205,30 @@ build/build_out/
 
 ### BLE Peripheral Demo
 
-Start BLE advertising:
+With BLE enabled (see above), start advertising:
 ```bash
 ipro /> ble_peripheral
-
-=== BLE Peripheral (Direct API) ===
-Device: IPRO7_DEMO
-Interval: 100-200 ms
-
-I (xxx) BLE_APP: Resetting GAPM...
-I (xxx) BLE_APP: GAPM reset complete, now configuring...
-I (xxx) BLE_APP: Configuring GAP device...
-I (xxx) BLE_APP: Device configured successfully
-I (xxx) BLE_APP: Creating advertising activity...
-I (xxx) BLE_APP: Activity created: actv_idx=0, tx_pwr=0
-I (xxx) BLE_APP: Set advertising data (len=14)
-I (xxx) BLE_APP: Advertising data set, now starting advertising...
-I (xxx) BLE_APP: Advertising started
+I (xxx) BLE_APP: Advertising started as "IPRO7_DEMO"
 ```
 
-Check BLE status:
+From a second board running the demo, scan and connect:
 ```bash
-ipro /> ble_status
-
-=== BLE Status ===
-State: ADVERTISING
-Activity: 0
-Connection: 255
+ipro /> ble_central
+I (xxx) BLE_APP: Scanning started for 1000 ms...
+I (xxx) BLE_APP: [1] IPRO7_DEMO (xx:xx:xx:xx:xx:xx (random))
+I (xxx) BLE_APP: Scan complete. Found 1 devices.
+I (xxx) BLE_APP: Auto-connecting to IPRO7_DEMO...
 ```
 
 **Expected Behavior**:
 1. Device appears as "IPRO7_DEMO" in BLE scanner apps
 2. Advertising with flags 0x06 (General Discoverable, BR/EDR not supported)
 3. Advertising interval: 100-200ms
-4. Device is connectable and scannable
+4. Device is connectable; advertising restarts after a disconnect
 
 **Troubleshooting**:
-- If `GAP configure failed: 0x0040` appears, ensure BLE controller is initialized
-- Check that no other BLE operations are in progress
-- Verify `gapm_reset()` completes successfully before configuration
+- `BLE not initialized`: the BLE task failed to start the stack - look for
+  `Controller init failed` / `HCI driver init failed` / `Bluetooth init failed`
+  earlier in the boot log
+- `region 'flash' overflowed` when building: switch another feature off (see
+  "Enabling it" above)

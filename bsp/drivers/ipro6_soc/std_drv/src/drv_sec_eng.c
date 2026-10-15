@@ -22,6 +22,7 @@
 #include "drv_sec_eng.h"
 // #include "drv_tzc_sec.h"    TODO
 #include "drv_l1c.h"
+#include "drv_glb.h"
 
 #define PUT_UINT32_BE(n, b, i)               \
     {                                        \
@@ -153,6 +154,9 @@ static intCallback_Type *secEngIntCbfArra[SEC_ENG_INT_ALL] = { NULL };
 
 void Sec_Eng_SHA256_Init(SEC_Eng_SHA256_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, SEC_ENG_SHA_Type shaType, uint32_t shaTmpBuf[16], uint32_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     uint32_t SHAx = SEC_ENG_BASE;
     uint32_t tmpVal;
 
@@ -186,6 +190,9 @@ void Sec_Eng_SHA256_Init(SEC_Eng_SHA256_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, 
 
 void Sec_Eng_SHA512_Init(SEC_Eng_SHA512_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, SEC_ENG_SHA_Type shaType, uint64_t shaTmpBuf[16], uint64_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     uint32_t SHAx = SEC_ENG_BASE;
     uint32_t tmpVal;
 
@@ -220,6 +227,9 @@ void Sec_Eng_SHA512_Init(SEC_Eng_SHA512_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, 
 
 void Sec_Eng_MD5_Init(SEC_Eng_MD5_Ctx *md5Ctx, SEC_ENG_SHA_ID_Type shaNo, SEC_ENG_SHA_Type shaType, uint32_t md5TmpBuf[16], uint32_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     uint32_t SHAx = SEC_ENG_BASE;
     uint32_t tmpVal;
 
@@ -1025,6 +1035,9 @@ void Sec_Eng_SHA_Disable_Link(SEC_ENG_SHA_ID_Type shaNo)
 
 void Sec_Eng_SHA256_Link_Init(SEC_Eng_SHA256_Link_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, uint32_t linkAddr, uint32_t shaTmpBuf[16], uint32_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     /* Check the parameters */
 
     /* Clear context */
@@ -1045,6 +1058,9 @@ void Sec_Eng_SHA256_Link_Init(SEC_Eng_SHA256_Link_Ctx *shaCtx, SEC_ENG_SHA_ID_Ty
 
 void Sec_Eng_SHA512_Link_Init(SEC_Eng_SHA512_Link_Ctx *shaCtx, SEC_ENG_SHA_ID_Type shaNo, uint32_t linkAddr, uint64_t shaTmpBuf[16], uint64_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     /* Check the parameters */
 
     /* Clear context */
@@ -1065,6 +1081,9 @@ void Sec_Eng_SHA512_Link_Init(SEC_Eng_SHA512_Link_Ctx *shaCtx, SEC_ENG_SHA_ID_Ty
 
 void Sec_Eng_MD5_Link_Init(SEC_Eng_MD5_Link_Ctx *md5Ctx, SEC_ENG_SHA_ID_Type shaNo, uint32_t linkAddr, uint32_t md5TmpBuf[16], uint32_t padding[16])
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     /* Check the parameters */
 
     /* Clear context */
@@ -1838,6 +1857,9 @@ int Sec_Eng_Group1_Release_SHA_Access(void)
 
 int Sec_Eng_AES_Init(SEC_Eng_AES_Ctx *aesCtx, SEC_ENG_AES_ID_Type aesNo, SEC_ENG_AES_Type aesType, SEC_ENG_AES_Key_Type keyType, SEC_ENG_AES_EnDec_Type enDecType)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     uint32_t AESx = SEC_ENG_BASE;
     uint32_t tmpVal;
     uint32_t timeoutCnt = SEC_ENG_AES_BUSY_TIMEOUT_COUNT;
@@ -2343,6 +2365,9 @@ int Sec_Eng_Group1_Release_AES_Access(void)
 
 int Sec_Eng_Trng_Enable(void)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_SEC);
+
     uint32_t TRNGx = SEC_ENG_BASE;
     uint32_t tmpVal;
     uint32_t timeoutCnt = SEC_ENG_TRNG_BUSY_TIMEOUT_COUNT;

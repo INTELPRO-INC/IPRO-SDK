@@ -10,10 +10,17 @@ endif()
 if(CONFIG_IEEE802154_ENABLE)
 endif()
 
+if(CONFIG_COMPONENTS_IPRO_INTERCOM_ENABLE)
+endif()
+
 if(CONFIG_ZIGBEE_STACK)
 endif()
 
 if(CONFIG_OPENTHREAD_ENABLE)
+endif()
+
+if(CONFIG_COEX_BZ)
+add_subdirectory(coex_bz)
 endif()
 
 if(CONFIG_BTBLECONTROLLER_LIB OR CONFIG_BLUETOOTH_LE_ENABLE OR CONFIG_IEEE802154_ENABLE OR CONFIG_ZIGBEE_STACK OR CONFIG_OPENTHREAD_ENABLE OR CONFIG_WIFI6 OR CONFIG_BTDM_ENABLE OR CONFIG_PHY_CLI)
@@ -21,7 +28,6 @@ add_subdirectory(rf)
 endif()
 
 if(CONFIG_WIFI6)
-if(CONFIG_USE_MACSW)
 # WiFi/BT PTA arbiter. Gated on exactly what gates CFG_COEX in wifi6's
 # CMakeLists (and therefore RW_WLAN_COEX_EN, and therefore the hal_machw_init()
 # call site): every build that compiles the coex block must link this, and the
@@ -31,14 +37,18 @@ add_subdirectory(ipro_coex)
 endif()
 add_subdirectory(macsw)
 add_subdirectory(wifi6)
-else()
-endif()
 endif()
 
 # ATBM6162 (Altobeam OCEANUS) external Wi-Fi 6 over SDIO — independent of the
-# on-chip RivieraWaves WIFI6 stack above. ATBM has its own RF; no IPRO7 rf component.
+# on-chip WIFI6 stack above. ATBM has its own RF; no IPRO7 rf component.
 if(CONFIG_WIFI_ATBM6162)
 add_subdirectory(wifi_atbm6162)
+endif()
+
+# AIC8800 D80-H (AICSemi) external Wi-Fi 5 + BT combo over SDIO — prebuilt vendor
+# archive with its own RF, wpa_supplicant and lwIP glue; no IPRO7 rf component.
+if(CONFIG_WIFI_AIC8800)
+add_subdirectory(wifi_aic8800)
 endif()
 
 if(CONFIG_BTDM_ENABLE AND NOT CONFIG_BLUETOOTH_LE_ENABLE)

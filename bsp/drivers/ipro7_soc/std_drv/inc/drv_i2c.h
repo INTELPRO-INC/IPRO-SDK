@@ -24,7 +24,7 @@
 
 typedef enum {
     I2C0_ID = 0, /*!< I2C0 define */
-    I2C1_ID = 0, /*!< I2C1 define */
+    I2C1_ID = 1, /*!< I2C1 define (0x30019000, i2cAddr[1]) */
     I2C_ID_MAX,  /*!< I2C max define */
 } I2C_ID_Type;
 

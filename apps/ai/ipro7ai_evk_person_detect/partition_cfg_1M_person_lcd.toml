@@ -1,0 +1,72 @@
+# 1 MiB flash layout for ipro7ai_evk_person_detect.
+#
+# The IPRO7AI EVK module carries a 1 MiB flash (JEDEC EF4014), and the
+# person_pet_detect model is 700,088 bytes, so the two have to share it:
+#
+#   0x000000  boot info / partition table (fixed by the flash tool)
+#   0x003000  FW      320 KB   firmware (build is ~200 KB, headroom for growth)
+#   0x053000  mfg     688 KB   person_pet_detect.blai at +0x1000
+#                              (0x1000 header + 700,088 B = 704,184 B,
+#                               fits 0xAC000 = 704,512 B with 320 B to spare -
+#                               the same slot size the SDK's other camera tables use)
+#   0x0FF000  factory   4 KB
+#
+# No PSM / backup / media partitions: this app has no settings store and no
+# OTA. The FW partition has a single slot for the same reason - an OTA copy
+# of a 200 KB image plus the model would not fit in 1 MiB anyway.
+#
+# Flash it with the IntelProCube tool, once, together with the firmware:
+#
+#   ipro_iot_tool_macos --chipname ipro7 --port /dev/cu.usbserial-2120 \
+#       --baudrate 921600 --skip-ota \
+#       --pt  apps/ai/ipro7ai_evk_person_detect/partition_cfg_1M_person_lcd.toml \
+#       --firmware apps/ai/ipro7ai_evk_person_detect/build/build_out/ipro7ai_evk_person_detect_IPRO7.bin \
+#       --mfg apps/platform/ipro7_demo/demo/ai/ai_model/person_pet_detect.inm
+#
+# After that, re-flash the firmware with the same --pt but without --mfg; the
+# model stays where it is. Swap the model with --pt and --mfg only. Always
+# pass --pt: the tool's default table has no mfg entry.
+
+[pt_table]
+#partition table is 4K in size
+address0 = 0x1000
+address1 = 0x2000
+
+[[pt_entry]]
+type = 0
+name = "FW"
+device = 0
+address0 = 0x3000
+size0 = 0x50000
+address1 = 0
+size1 = 0
+# compressed image must set len,normal image can left it to 0
+len = 0
+activeindex = 0
+age = 0
+
+[[pt_entry]]
+type = 1
+name = "mfg"
+device = 0
+address0 = 0x53000
+size0 = 0xAC000
+address1 = 0
+size1 = 0
+# compressed image must set len,normal image can left it to 0
+len = 0
+activeindex = 0
+age = 0
+
+[[pt_entry]]
+type = 5
+name = "factory"
+device = 0
+address0 = 0xFF000
+size0 = 0x1000
+address1 = 0
+size1 = 0
+# compressed image must set len,normal image can left it to 0
+len = 0
+activeindex = 0
+age = 0

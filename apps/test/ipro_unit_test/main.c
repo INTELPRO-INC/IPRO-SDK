@@ -40,13 +40,9 @@
 #include "freertos_app_hooks.h"
 
 #ifdef CONFIG_TEST_BLE
-/* New stack: ipro_ble_controller with the Zephyr 4.4 host. ble_lib_api.h
- * still exists and still declares the controller entry point, but the entry
- * point itself is now ipro_ble_ctlr_controller_init(). */
-#include <ble_lib_api.h>
+/* New stack: ipro_ble_controller with the Zephyr 4.4 host. The controller
+ * entry point is ipro_ble_ctlr_controller_init(). */
 #include <hci_driver_ipro_ble_ctlr.h>
-/* ble_lib_api.h still declares the old ble_controller_init(); the new tree's
- * entry point is declared here instead. */
 #include <ipro_ble_ctlr_arch.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #endif

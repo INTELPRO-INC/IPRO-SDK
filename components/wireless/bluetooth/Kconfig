@@ -20,18 +20,37 @@
 
 menu "Controller Configuration"
 
+    config BTDM_WLAN_COEX
+        bool "Enable IPRO6S controller WLAN coexistence signalling"
+        default n
+        depends on IPRO6 && BTDM_ENABLE && WIFI6
+        help
+          Enable the controller's WLAN coexistence interface and activity
+          priority signalling to the shared RF arbiter. The Wi-Fi and board
+          RF routing must also be configured for hardware arbitration.
+
+    config BTDM_EM_SIZE_16K
+        bool "Use 16 KiB EM for the IPRO6S BLE-only controller"
+        default n
+        depends on IPRO6 && BTDM_ENABLE && BTDM_BLE_ENABLE && !BTDM_BT_ENABLE
+        depends on !BTDM_EM_SIZE_64K
+        help
+          Reserve 16 KiB for BLE and leave 144 KiB of WRAM for Wi-Fi.
+          Requires a source-built controller; its exact exchange-memory
+          layout is checked at compile time. Qualify RF coexistence and
+          memory access on the target board before using this in a release.
+
     config BT_CTLR_IPRO
-        bool "Use ipro_ble_controller (pristine RivieraWaves v14.0.2 + byte-stream HCI)"
+        bool "Use ipro_ble_controller (IPRO BLE controller + byte-stream HCI)"
         default n
         help
           Build the BLE controller from components/wireless/bluetooth/ipro_ble_controller/
           instead of the removed btblecontroller/.
 
-          ipro_ble_controller keeps the RivieraWaves v14.0.2 sources pristine (upstream/ is
-          read-only) and confines all IPRO7-specific code to plf/ipro7/. The
-          host/controller boundary is a true H4 byte stream over a shared ring
-          buffer, so no RivieraWaves structures or Exchange Memory offsets cross
-          it.
+          ipro_ble_controller is the IPRO BLE controller; all IPRO7-specific
+          code is confined to plf/ipro7/. The host/controller boundary is a true
+          H4 byte stream over a shared ring buffer, so no controller structures
+          or Exchange Memory offsets cross it.
 
           Supported customer-library resource and feature profiles are selected
           below. LE Audio runs in the host; ISO/CIS/BIS capability is selected
@@ -46,6 +65,34 @@ menu "Controller Configuration"
         select BT_CTLR_IPRO
         help
           Deprecated compatibility selector. Use BT_CTLR_IPRO.
+
+    config BT_CTLR_AIC8800_SDIO
+        bool "External AIC8800 D80 BT controller over the SDIO mailbox HCI"
+        default n
+        depends on WIFI_AIC8800
+        depends on !BT_CTLR_IPRO && !BTDM_ENABLE
+        help
+          Run the Zephyr v4.4 host on the AICSemi AIC8800 D80 combo chip's
+          BR/EDR + LE controller instead of the on-chip IPRO7 BLE controller.
+          This is what gives IPRO7 BR/EDR profiles (A2DP, AVRCP, SPP): the
+          on-chip controller is LE-only. No ipro_ble_controller archive is
+          linked and no Exchange Memory is carved from OCRAM.
+
+          Transport: ipro_bt_host/port/hci_aic_sdio.c, a client of the vendor's
+          public SDIO mailbox API (aic_hci_transport.h, release
+          aic8800_release_d80_20261002) in host flow-control mode. Command,
+          Event and ACL only - no SCO/eSCO/ISO, so HFP voice is not possible -
+          and an ACL MTU of 1019, which the driver enforces by rewriting the
+          Controller's Read Buffer Size answer (it claims 1021).
+
+          The AIC Wi-Fi driver must be up first (aic_start /
+          aic_wifi_demo_test): its SDIO probe loads the BT patch tables before
+          aic_btsdio_init() and the host's HCI Reset can succeed.
+
+          The 2026-09 mailbox firmware reported "BR/EDR Not Supported" and
+          BR/EDR needed the chip's BT UART. The 2026-10-02 release carries
+          BR/EDR over the mailbox: verified on IPRO7AI Reef 2026-10-06 (LMP
+          features bf 2e 4d fe d8 3f 7b 87, A2DP SBC streaming from macOS).
 
     choice IPRO_BLE_CTLR_VARIANT
         depends on BT_CTLR_IPRO
@@ -120,16 +167,32 @@ menu "Controller Configuration"
           Ignore a matching prebuilt archive and compile the controller source.
 
     config IPRO_BLE_CTLR_CFG_DBG
-        bool "Build ipro_ble_controller with RivieraWaves CFG_DBG"
+        bool "Build ipro_ble_controller with its debug profile (CFG_DBG)"
         depends on BT_CTLR_IPRO
         default n
         help
           Keep this disabled for customer-release controller builds unless a
           debug-only workaround or trace run explicitly requires CFG_DBG.
-          CFG_DBG maps to RivieraWaves RW_DEBUG/RW_SWDIAG/KE_PROFILING and
-          IPRO PLF_DEBUG, so it is a controller behavior/profile selector, not
-          just extra log text. Debug applications and diagnostic library
+          CFG_DBG turns on the controller's debug, software-diagnostic and
+          kernel-profiling builds and IPRO PLF_DEBUG, so it is a controller
+          behavior/profile selector, not just extra log text. Debug applications and diagnostic library
           variants must opt in explicitly.
+
+    config IPRO7_BLE_HOTCODE
+        bool "Run the IPRO7 BLE data path from OCRAM"
+        depends on BT_CTLR_IPRO && IPRO7
+        default n
+        help
+          Link the per-packet path of the controller, the Zephyr host and the
+          FreeRTOS kernel (IPRO7_BLE_HOTCODE_OBJECTS in
+          bsp/board/linker/configs/ipro7_flash.cmake) into .tcmcode instead
+          of flash. Executed from flash, I-cache misses cost more CPU time per
+          packet than the packet spends on air at 2M, which caps bulk
+          throughput near 0.9 Mbps; from OCRAM it reaches 1.3 Mbps.
+          Costs about 88 KB of OCRAM. The linker script generator rejects it
+          with the AI+MM split tcmcode layout and with PDS / low-power
+          configurations (CONFIG_HAL_LP, CONFIG_IPRO_PM_*, OCRAM_NORET_SPLIT),
+          where the moved code and data would sit outside retained OCRAM.
 
     config IPRO_BLE_CTLR_TRACE_BUFFERS
         bool "Keep large ipro_ble_controller post-PDS trace buffers"
@@ -173,12 +236,12 @@ menu "Controller Configuration"
           timing-sensitive media tests.
 
     config IPRO_BLE_CTLR_NATIVE_SLEEP_DEFAULT
-        bool "Enable RivieraWaves native BLE-IP deep sleep by default"
+        bool "Enable the controller's native BLE-IP deep sleep by default"
         depends on BT_CTLR_IPRO
         default n
         help
-          Controls the reset-time PARAM_ID_SLEEP_ENABLE value passed to RWIP
-          and the controller runtime native-sleep gate default.
+          Controls the reset-time PARAM_ID_SLEEP_ENABLE value passed to the
+          controller and its runtime native-sleep gate default.
 
           Leave disabled for the current customer/function baseline: IPRO7
           keeps connections on the active XTAL32M timing domain when the
@@ -211,11 +274,15 @@ menu "Controller Configuration"
           calibrated RC32K and compensates the signed residual in the BLE
           timebase conversion path.
 
-          Keep 0 for the controller default: publish the measured 32 kHz
-          accuracy bound.  RC32K-only products that use platform PDS and have
-          verified the compensated wake timing may set a smaller post-
-          compensation uncertainty, for example 100 ppm.  This prevents RW from
-          opening multi-millisecond RX windows at long connection intervals and
+          Keep 0 for the controller default: on RC32K the controller publishes
+          the oscillator-class bound, 500 ppm (the BLE maximum), or the
+          measured bound when that is larger; with a qualified XTAL32K it
+          publishes the measured bound (50 ppm floor).  A boot-time one-second
+          sample is not a valid accuracy for an RC oscillator.  RC32K-only
+          products that use platform PDS and have verified the compensated
+          wake timing over temperature may set a smaller post-compensation
+          floor, for example 100 ppm.  This prevents the controller from opening
+          multi-millisecond RX windows at long connection intervals and
           creating false-sync/CRC failures.
 
     choice BTBLECONTROLLER_VARIANT
@@ -339,6 +406,74 @@ menu "Controller Configuration"
 
           When enabled, the full controller is compiled from source,
           allowing code changes to take effect.
+
+    comment "IPRO7 platform PDS during connections (source build; see components/sys/ipro_pm)"
+        depends on BT_CTLR_IPRO && IPRO7
+
+    config IPRO_BLE_PDS_WAKE_BUDGET_US
+        int "Wake + restore budget reserved after a platform PDS (us)"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 20000
+        help
+          Time the controller keeps between the PDS wake-up and the next radio
+          event for the boot stub, CPU/BLE-domain restore and the first
+          connection-event prefetch.  27000 is validated on the IPRO7 EVB
+          (RC32K) with the connected policy; the ipro_pm backend sizes its
+          grants with the same value.
+
+    config IPRO_BLE_PDS_DEADLINE_GUARD_US
+        int "Extra guard before the next radio event (us)"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 2000
+
+    config IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_RX_OK
+        int "Clean packets required after a PDS before the next one"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 0
+        help
+          Admission gap between consecutive connected PDS cycles.  0 (with
+          IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_EVENTS=1) lets PDS run in every
+          connection interval once the post-PDS event re-anchored; larger
+          values trade energy for margin (the count starts at that re-anchor,
+          so 1 already skips every other interval).
+          Tunable at run time through ipro_ble_ctlr_pds_gap_rx_ok.
+
+    config IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_EVENTS
+        int "Connection events required after a PDS before the next one"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 1
+        help
+          Complements IPRO_BLE_PDS_DEFAULT_CYCLE_GAP_RX_OK: RX_OK counts
+          packets, several of which can arrive in one event.  Run-time:
+          ipro_ble_ctlr_pds_gap_events.
+
+    config IPRO_BLE_PDS_RETIME_SUBMIT_ET_AFTER_WAKE
+        int "Re-submit the waiting connection ET from the restore path"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 0
+        help
+          Keep 0.  Pushing the recovery event from restore context raced the
+          arbiter's own push and raised ACT_SCHDL_ENTRY_ERROR on the first
+          post-PDS event (2026-09-27).
+
+    config IPRO_BLE_PDS_RXWINSZDEF
+        int "BLE RXWINSZDEF register value used after a PDS restore"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 16
+        help
+          Radio timing restored into the rebuilt BLE core; 16 / RXPATHDLY0 7 /
+          RXPWRUP0 88 are the validated IPRO7 values (the code falls back to
+          the register reset values when the symbols are absent).
+
+    config IPRO_BLE_PDS_RXPATHDLY0
+        int "BLE RXPATHDLY0 used after a PDS restore"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 7
+
+    config IPRO_BLE_PDS_RXPWRUP0
+        int "BLE RXPWRUP0 used after a PDS restore"
+        depends on BT_CTLR_IPRO && IPRO7
+        default 88
 
     config EM_SIZE
         int "Exchange Memory Size (KB)"
@@ -612,6 +747,17 @@ menu "Host Stack Options"
           Select the pinned Zephyr v4.4.0 based unified BT + BLE host. The
           legacy hosts remain the default until board qualification completes.
 
+    config IPRO_BT_HOST_LOG_LEVEL
+        int "Unified BT host compile-time log level"
+        range 0 4
+        default 4
+        depends on BT_HOST_IPRO_V44
+        help
+          Host logging ceiling: 0=off, 1=error, 2=warning, 3=info, 4=debug.
+          The SDK global log level may further suppress output. Disabled
+          host messages and their arguments are removed at compile time.
+          This does not change controller or application logging.
+
     config BT_EXT_ADV
         bool "Zephyr host extended advertising/scanning API"
         default n
@@ -723,6 +869,14 @@ menu "Host Stack Options"
         help
           Enable SMP for pairing and encryption.
 
+    config BT_SMP_APP_PAIRING_ACCEPT
+        bool "Application authorization of incoming pairing"
+        depends on BT_SMP
+        default n
+        help
+          Expose the synchronous pairing_accept callback for applications
+          which restrict new pairing to a physical setup window.
+
     config BT_BONDABLE
         bool "Allow bonding"
         default y
@@ -732,6 +886,15 @@ menu "Host Stack Options"
         bool "Allow application fixed passkey"
         default n
         depends on BT_SMP
+
+    config BT_APP_PASSKEY
+        bool "Allow the application to provide pairing passkeys"
+        default n
+        depends on BT_SMP && !BT_FIXED_PASSKEY
+        help
+          Enables the app_passkey() callback of bt_conn_auth_cb, which
+          supersedes the deprecated bt_passkey_set(). The application is then
+          responsible for the quality of the passkeys it returns.
 
     config BT_SMP_ENFORCE_MITM
         bool "Enforce MITM when local I/O permits authenticated pairing"

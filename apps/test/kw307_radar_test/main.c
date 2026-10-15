@@ -104,16 +104,12 @@ static void check_pad_bank(int tx, int rx, int gpo)
 {
 #ifdef CONFIG_IPRO7AI_EVK
     if (in_vddio1_bank(tx) || in_vddio1_bank(rx) || in_vddio1_bank(gpo)) {
-        printf("\r\n*** CHECK J6 BEFORE POWERING THE MODULE ***\r\n");
+        printf("\r\n*** CHECK THE PADS BEFORE POWERING THE MODULE ***\r\n");
         printf("  GPIO%d/%d/%d are in the VDDIO_1 bank (GPIO0-9, GPIO36-41),\r\n",
                tx, rx, gpo);
-        printf("  which J6 sets to 1.8 V (PIN1/PIN3) or 3.3 V (PIN3/PIN5).\r\n");
-        printf("  The KW307 is 3.3 V logic and NOT 5 V tolerant, so this bank\r\n");
-        printf("  MUST be on 3.3 V - J6 shorting PIN3/PIN5. At 1.8 V the\r\n");
-        printf("  module's 3.3 V TX exceeds the pad rating (a damage path) and\r\n");
-        printf("  our 1.8 V TX never reaches its input threshold.\r\n");
-        printf("  At 3.3 V the camera is unusable: its DOVDD is 1.8 V and its\r\n");
-        printf("  DVP data lines are these same pads. This app does not use it.\r\n\r\n");
+        printf("  which a V1 EVK runs at 2.8 V only (J6 pin 3 - pin 7).\r\n");
+        printf("  The KW307 is 3.3 V logic: its TX drives these pads above\r\n");
+        printf("  their supply. Use a level shifter or a pad in GPIO10-35.\r\n\r\n");
     }
 #else
     (void)tx; (void)rx; (void)gpo;

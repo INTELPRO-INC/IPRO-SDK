@@ -167,6 +167,7 @@ struct audio_output {
     volatile uint8_t    fill_idx;
     volatile int        buf_ready[8];     /* max 8 buffers, plenty */
     volatile uint32_t   segments_done;    /* DMA segments played since start */
+    volatile uint32_t   segments_stale;   /* of those, started before the writer had refilled them */
     volatile int        running;
 
     /* Leftover accumulator for partial segments (streaming) */
@@ -214,6 +215,9 @@ static void dac_dma_callback(void *dev, uint32_t event)
         out->active_idx = (done + 1) % out->ring_count;
         out->buf_ready[done] = 0;
         out->segments_done++;
+        if (!out->buf_ready[out->active_idx]) {
+            out->segments_stale++;          /* the DMA moved on to a segment it already played */
+        }
         xSemaphoreGiveFromISR(out->feed_sem, &woken);
     }
     portYIELD_FROM_ISR(woken);
@@ -479,6 +483,14 @@ uint32_t audio_output_dac_consumed(audio_output_t *out)
         return 0;
     }
     return out->segments_done * out->ring_samples;
+}
+
+uint32_t audio_output_dac_stale_segments(audio_output_t *out)
+{
+    if (!out || out->cfg.mode != AUDIO_OUTPUT_MODE_STREAMING) {
+        return 0;
+    }
+    return out->segments_stale;
 }
 
 uint32_t audio_output_dac_segment_samples(audio_output_t *out)

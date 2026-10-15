@@ -372,8 +372,9 @@ endif()
 if(CONFIG_BT_HFP AND NOT (CONFIG_BT_HFP_HF OR CONFIG_BT_HFP_AG))
     message(FATAL_ERROR "[ipro_bt_host] HFP needs HF and/or AG")
 endif()
-if(CONFIG_BT_BREDR AND NOT CONFIG_IPRO6)
-    message(FATAL_ERROR "[ipro_bt_host] BR/EDR is supported only by the IPRO6S controller")
+if(CONFIG_BT_BREDR AND NOT CONFIG_IPRO6 AND NOT CONFIG_BT_CTLR_AIC8800_SDIO)
+    message(FATAL_ERROR "[ipro_bt_host] BR/EDR needs the IPRO6S controller or an external "
+                        "BR/EDR controller (CONFIG_BT_CTLR_AIC8800_SDIO)")
 endif()
 if(CONFIG_BT_ISO AND CONFIG_BT_CTLR_IPRO AND
    NOT CONFIG_IPRO_BLE_CTLR_FEATURE STREQUAL "bt54_iso2")

@@ -35,7 +35,19 @@
  *   - Significantly reduces underrun risk compared to ping-pong
  */
 
+/*
+ * Board wiring. Where the board header names the amplifier enable, it wins
+ * over the EVB/EVK pin in app_dac.h; that has to happen before app_dac.h is
+ * read.
+ */
+#include "board_config.h"
+#ifdef BOARD_SPK_EN_PIN
+#define DAC_GPIO_SPEAKER_EN         BOARD_SPK_EN_PIN
+#define DAC_SPK_EN_ACTIVE           BOARD_SPK_EN_ACTIVE
+#endif
+
 #include "app_dac.h"
+#include "dac_ns.h"
 #include "audio_speaker_eq.h"
 #include "audio_bass_boost.h"
 #include "drv_clock.h"
@@ -51,6 +63,7 @@
 #include <hal_dac.h>
 #include <hal_gpio.h>
 #include <drv_glb.h>
+#include <drv_dac.h>
 #include "system_soc.h"
 
 #define TAG "DAC"
@@ -72,6 +85,84 @@
 
 /* Gain: shift=4 (÷16) with soft limiter to avoid hard clipping */
 #define DAC_GAIN_SHIFT       4
+
+/*
+ * Default speaker trim.
+ *
+ * The IPRO7AI Reef's PAM8302A takes DAC A through R52 10k for a gain of
+ * 15-30 V/V, against 2 V/V for the EVK's TPA2037D1 that the volume curve was
+ * set on, and it runs straight off USB VBUS - full scale into it clips and
+ * can brown the board out. -12 dB is a starting point, not a measurement;
+ * `dac spk <dB>` changes it at run time.
+ */
+#if defined(CONFIG_IPRO7AI_REEF)
+#define DAC_SPK_TRIM_DEFAULT_DB     (-12)
+#else
+#define DAC_SPK_TRIM_DEFAULT_DB     0
+#endif
+
+/* round(65536 * 10^(-n/20)) for n = 0 .. -DAC_SPK_TRIM_MIN_DB */
+static const uint32_t s_trim_q16[] = {
+    65536, 58409, 52057, 46396, 41350, 36854, 32846, 29274,
+    26090, 23253, 20724, 18471, 16462, 14672, 13076, 11654,
+    10387, 9257, 8250, 7353, 6554, 5841, 5206, 4640,
+    4135, 3685, 3285, 2927, 2609, 2325, 2072,
+};
+_Static_assert(sizeof(s_trim_q16) / sizeof(s_trim_q16[0]) == 1 - DAC_SPK_TRIM_MIN_DB,
+               "one entry per dB from 0 to DAC_SPK_TRIM_MIN_DB");
+
+#ifdef BOARD_HP_DET_PIN
+/* Two equal reads, one per fed segment, before the jack state is believed. */
+#define DAC_JACK_DEBOUNCE           2
+#endif
+
+/*
+ * Output path.
+ *
+ * Order 0 is the original path: the DMA plays the segment buffers as 32 kHz
+ * DAC codes. Orders 1 and 2 run the DAC at 512 kHz instead: the segment
+ * buffers hold 32 kHz samples, and dac_os_task() expands them through
+ * dac_ns (interpolation + noise shaping of that order) into a small DMA ring.
+ * That moves the 10-bit quantisation hiss out of the audio band. The Reef
+ * starts in order 1; `dac os <0|1|2>` switches at run time.
+ */
+#if defined(CONFIG_IPRO7AI_REEF)
+#define DAC_OS_DEFAULT_ORDER        1
+#else
+#define DAC_OS_DEFAULT_ORDER        0
+#endif
+
+#define OS_IN_PER_SEG               512                          /* 32 kHz samples per ring segment */
+#define OS_SEG_SAMPLES              (OS_IN_PER_SEG * DAC_NS_OSR) /* 8192 codes = 16 ms at 512 kHz */
+#define OS_TASK_STACK_WORDS         512
+
+/*
+ * Below the BLE host threads (ipro_hci_rx, bt_work: priority 6). At
+ * configMAX_PRIORITIES - 2 the expander's bursts made the stream lose 4-13%
+ * of its ISO packets on the bench, and none at 5: the output can ride out a
+ * late refill, the HCI receive path cannot. The ring gives it 48 ms of slack
+ * (three 16 ms segments) against everything above it - including console
+ * output, which holds the CPU for about 10 ms a line at 115200 baud.
+ */
+#define OS_TASK_PRIORITY            5
+
+_Static_assert(DAC_GAIN_SHIFT == DAC_NS_IN_SHIFT, "dac_ns and the 32 kHz path must share a scale");
+_Static_assert(DAC_SAMPLE_RATE_HZ * DAC_NS_OSR == 512000, "the oversampled DAC rate is 512 kHz");
+_Static_assert(DAC_SAMPLES_PER_SEGMENT % OS_IN_PER_SEG == 0, "segment boundaries must fall on ring boundaries");
+
+/*
+ * The 512 kHz DMA ring. It reuses the segment count of the 32 kHz path, so
+ * the DMA channel's LLI layout (lli_count, fixed at dma_setConfig) is the
+ * same in both modes and only the source address and size change.
+ *
+ * In OCRAM, not with the rest of .bss in PSRAM: the DMA reads it 512 000
+ * times a second, and PSRAM is shared with code and data the BLE controller
+ * fetches through the cache. 4 x 16 KB.
+ */
+static uint16_t s_os_ring[DAC_BUFFER_COUNT * OS_SEG_SAMPLES]
+    __attribute__((section(".ocram_bss"), aligned(32)));
+
+static void dac_os_task(void *arg);
 
 /*
  * Private Data
@@ -97,6 +188,15 @@ static struct {
      */
     int32_t volume_gain_q16;
 
+    // Speaker routing: amplifier state, trim, and the debounced jack state
+    volatile bool amp_on;
+    int8_t  spk_trim_db;
+    int32_t spk_trim_q16;
+#ifdef BOARD_HP_DET_PIN
+    bool    hp_in;
+    uint8_t hp_disagree;
+#endif
+
     // Triple DMA buffer (contiguous, cache-aligned)
     // [0 .. DAC_SAMPLES_PER_SEGMENT-1] = Buffer 0
     // [DAC_SAMPLES_PER_SEGMENT .. 2*DAC_SAMPLES_PER_SEGMENT-1] = Buffer 1
@@ -111,6 +211,18 @@ static struct {
 
     // Synchronization
     SemaphoreHandle_t feed_sem;         // Signaled when buffer needs filling
+
+    // 512 kHz output path
+    uint8_t  os_req;                    // order asked for (`dac os`), applied while stopped
+    uint8_t  os_order;                  // order in effect
+    bool     os;                        // buffers hold 32 kHz samples for dac_ns, DAC at 512 kHz
+    uint32_t rd_pos;                    // expander's read position in buffer[active_idx]
+    volatile uint32_t os_played;        // ring segments the DMA has finished (ISR)
+    uint32_t os_filled;                 // ring segments refilled since start; the next is
+                                        // os_filled % DAC_BUFFER_COUNT
+    dac_ns_t ns;
+    SemaphoreHandle_t os_sem;           // wakes the expander when a ring segment finishes
+    SemaphoreHandle_t os_lock;          // expander vs. start/stop
 
     // Statistics
     app_dac_stats_t stats;
@@ -134,32 +246,40 @@ static uint32_t s_dither_lfsr = 0xACE1u;
  * - Produces uncorrelated noise floor (no harmonic artifacts)
  * - Is the standard for professional audio bit-depth reduction
  *
- * Returns: dither value in range approximately -32 to +30 (±1 LSB at >>5 scale)
+ * Returns: dither in int16 units, +-1 DAC LSB peak (each uniform spans one
+ * LSB = 1 << DAC_GAIN_SHIFT). It used to be +-32, which was +-1 LSB when the
+ * shift was 5; after the shift went to 4 it was twice the TPDF width and
+ * added 4.8 dB of hiss.
  */
+#define DITHER_SPAN                 (1 << DAC_GAIN_SHIFT)
+
 static inline int32_t get_tpdf_dither(void)
 {
     // LFSR for fast pseudo-random generation (Galois LFSR)
     s_dither_lfsr ^= s_dither_lfsr >> 7;
     s_dither_lfsr ^= s_dither_lfsr << 9;
     s_dither_lfsr ^= s_dither_lfsr >> 13;
-    int32_t r1 = (s_dither_lfsr & 0x1F) - 16;  // Uniform: -16 ~ +15
+    int32_t r1 = (int32_t)(s_dither_lfsr & (DITHER_SPAN - 1)) - DITHER_SPAN / 2;
 
     s_dither_lfsr ^= s_dither_lfsr >> 7;
     s_dither_lfsr ^= s_dither_lfsr << 9;
     s_dither_lfsr ^= s_dither_lfsr >> 13;
-    int32_t r2 = (s_dither_lfsr & 0x1F) - 16;  // Uniform: -16 ~ +15
+    int32_t r2 = (int32_t)(s_dither_lfsr & (DITHER_SPAN - 1)) - DITHER_SPAN / 2;
 
     // Sum of two uniform distributions = triangular distribution
-    return r1 + r2;  // TPDF: -32 ~ +30
+    return r1 + r2;
 }
 
 /*
- * Fill buffer with silence (DAC center value)
+ * Fill buffer with silence: the DAC centre code on the 32 kHz path, sample
+ * value 0 when the buffers feed dac_ns.
  */
 static void fill_silence(uint16_t *buf, uint32_t count)
 {
+    const uint16_t v = s_dac.os ? 0 : DAC_SILENCE_VALUE;
+
     for (uint32_t i = 0; i < count; i++) {
-        buf[i] = DAC_SILENCE_VALUE;
+        buf[i] = v;
     }
 }
 
@@ -169,6 +289,118 @@ static void fill_silence(uint16_t *buf, uint32_t count)
 static inline uint16_t* get_buffer_segment(uint8_t idx)
 {
     return &s_dac.buffer[idx * DAC_SAMPLES_PER_SEGMENT];
+}
+
+/*
+ * Speaker amplifier: on while DMA runs and, on a board with a jack detect,
+ * no plug is in. Start, stop and the jack poll can run in different tasks,
+ * so the decision and the pin write happen together.
+ */
+static void amp_apply(void)
+{
+    taskENTER_CRITICAL();
+    bool on = s_dac.running;
+#ifdef BOARD_HP_DET_PIN
+    on = on && !s_dac.hp_in;
+#endif
+    gpio_write(DAC_GPIO_SPK, on ? DAC_SPK_EN_ACTIVE : !DAC_SPK_EN_ACTIVE);
+    s_dac.amp_on = on;
+    taskEXIT_CRITICAL();
+}
+
+#ifdef BOARD_HP_DET_PIN
+static bool jack_plugged_now(void)
+{
+    return gpio_read(BOARD_HP_DET_PIN) == BOARD_HP_DET_ACTIVE;
+}
+
+/* Once per fed segment, i.e. every DAC_BUFFER_DURATION_MS while playing. */
+static void jack_poll(void)
+{
+    bool in = jack_plugged_now();
+
+    if (in == s_dac.hp_in) {
+        s_dac.hp_disagree = 0;
+        return;
+    }
+    if (++s_dac.hp_disagree < DAC_JACK_DEBOUNCE) {
+        return;
+    }
+    s_dac.hp_disagree = 0;
+    s_dac.hp_in = in;
+    amp_apply();
+    IPRO_LOGI(TAG, "Headphone %s, speaker %s", in ? "plugged in" : "removed",
+              s_dac.amp_on ? "on" : "off");
+}
+#endif
+
+/*
+ * One segment has been played out: advance active_idx, release the segment to
+ * the feeder and keep the underrun statistics. Runs in the DMA ISR on the
+ * 32 kHz path and in dac_os_task() (interrupts masked) on the 512 kHz path.
+ * Returns the consecutive-underrun count, 0 when the next segment was ready.
+ */
+static uint32_t segment_complete(uint32_t now_ms, uint8_t *ready_out)
+{
+    // Previous segment completed, DMA now playing the next segment
+    uint8_t completed_idx = s_dac.active_idx;
+    s_dac.active_idx = (s_dac.active_idx + 1) % DAC_BUFFER_COUNT;
+
+    // Mark completed buffer as consumed (needs refill)
+    s_dac.buffer_ready[completed_idx] = false;
+
+    // Count how many buffers are ready (excluding the one being played)
+    uint8_t ready_count = 0;
+    for (int i = 0; i < DAC_BUFFER_COUNT; i++) {
+        if (s_dac.buffer_ready[i]) ready_count++;
+    }
+    *ready_out = ready_count;
+
+    s_dac.stats.buffers_sent++;
+
+    // Check if next buffer has valid data
+    // NOTE: Do NOT fill silence in ISR - buffer should already be pre-filled
+    // with silence during init. Just track the underrun for statistics.
+    if (!s_dac.buffer_ready[s_dac.active_idx]) {
+        // Buffer underrun - the 32 kHz DMA plays whatever is in the buffer;
+        // the 512 kHz expander plays silence
+        s_dac.stats.underruns++;
+        s_dac.stats.consecutive_underruns++;
+        s_dac.stats.buffers_ready_at_underrun = ready_count;
+
+        // Track max consecutive underruns
+        if (s_dac.stats.consecutive_underruns > s_dac.stats.max_consecutive_underruns) {
+            s_dac.stats.max_consecutive_underruns = s_dac.stats.consecutive_underruns;
+        }
+        s_dac.stats.last_underrun_time_ms = now_ms;
+        return s_dac.stats.consecutive_underruns;
+    }
+
+    // Buffer was ready - reset consecutive counter
+    s_dac.stats.consecutive_underruns = 0;
+
+    // Track minimum buffers ready (when not underrunning)
+    if (s_dac.stats.min_buffers_ready == 0 || ready_count < s_dac.stats.min_buffers_ready) {
+        s_dac.stats.min_buffers_ready = ready_count;
+    }
+    return 0;
+}
+
+/* printf, not IPRO_LOG*: this can run in the ISR, where the log mutex would hang. */
+static void log_underrun(uint32_t consecutive, uint8_t ready_count, uint32_t now_ms)
+{
+    // Log when underrun starts (first in sequence)
+    if (consecutive == 1) {
+        printf("[E][DAC] UNDERRUN START @%lums: ready=%d/%d, total=%lu\n",
+               (unsigned long)now_ms, ready_count, DAC_BUFFER_COUNT,
+               (unsigned long)s_dac.stats.underruns);
+    }
+
+    // Log every 10 consecutive underruns to track ongoing issues
+    if (consecutive != 0 && consecutive % 10 == 0) {
+        printf("[E][DAC] UNDERRUN x%lu @%lums\n",
+               (unsigned long)consecutive, (unsigned long)now_ms);
+    }
 }
 
 /*
@@ -189,74 +421,20 @@ static void dac_dma_callback(void *dev, uint32_t event)
     (void)dev;  // Unused parameter
 
     if (event == HAL_DMA_INT_COMPLETE) {
-        // Previous segment completed, DMA now playing the next segment
-        uint8_t completed_idx = s_dac.active_idx;
-        s_dac.active_idx = (s_dac.active_idx + 1) % DAC_BUFFER_COUNT;
-
-        // Mark completed buffer as consumed (needs refill)
-        s_dac.buffer_ready[completed_idx] = false;
-
-        // Count how many buffers are ready (excluding the one being played)
-        uint8_t ready_count = 0;
-        for (int i = 0; i < DAC_BUFFER_COUNT; i++) {
-            if (s_dac.buffer_ready[i]) ready_count++;
+        if (s_dac.os) {
+            // 512 kHz ring: count the finished segment and wake the expander.
+            // The count, not the semaphore, says what to refill, so a
+            // saturated semaphore loses nothing.
+            s_dac.os_played++;
+            (void)xSemaphoreGiveFromISR(s_dac.os_sem, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            return;
         }
 
-        // Check if next buffer has valid data
-        // NOTE: Do NOT fill silence in ISR - buffer should already be pre-filled
-        // with silence during init. Just track the underrun for statistics.
-        if (!s_dac.buffer_ready[s_dac.active_idx]) {
-            // Buffer underrun - DMA will play whatever is in buffer (should be silence from init)
-            s_dac.stats.underruns++;
-            s_dac.stats.consecutive_underruns++;
-            s_dac.stats.buffers_ready_at_underrun = ready_count;
-
-            // Track max consecutive underruns
-            if (s_dac.stats.consecutive_underruns > s_dac.stats.max_consecutive_underruns) {
-                s_dac.stats.max_consecutive_underruns = s_dac.stats.consecutive_underruns;
-            }
-
-            // Get timestamp (from ISR context)
-            uint32_t now_ms = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
-            s_dac.stats.last_underrun_time_ms = now_ms;
-
-            // ISR-safe logging: use printf directly (no mutex)
-            // Log when underrun starts (first in sequence)
-            if (s_dac.stats.consecutive_underruns == 1) {
-                printf("[E][DAC] UNDERRUN START @%lums: ready=%d/%d, total=%lu\n",
-                       (unsigned long)now_ms, ready_count, DAC_BUFFER_COUNT,
-                       (unsigned long)s_dac.stats.underruns);
-            }
-
-            // Log every 10 consecutive underruns to track ongoing issues
-            if (s_dac.stats.consecutive_underruns % 10 == 0) {
-                printf("[E][DAC] UNDERRUN x%lu @%lums\n",
-                       (unsigned long)s_dac.stats.consecutive_underruns,
-                       (unsigned long)now_ms);
-            }
-        } else {
-            // Buffer was ready - reset consecutive counter
-            s_dac.stats.consecutive_underruns = 0;
-
-            // Track minimum buffers ready (when not underrunning)
-            if (s_dac.stats.min_buffers_ready == 0 || ready_count < s_dac.stats.min_buffers_ready) {
-                s_dac.stats.min_buffers_ready = ready_count;
-            }
-        }
-
-        s_dac.stats.buffers_sent++;
-
-        // Debug log every 50 callbacks - use printf directly (no mutex)
-        // NOTE: Commented out to minimize ISR latency - uncomment for debugging
-        // static uint32_t cb_count = 0;
-        // cb_count++;
-        // if (cb_count % 50 == 1) {
-        //     printf("[I][DAC] DMA cb #%lu: sent=%lu, underrun=%lu (max_consec=%lu)\n",
-        //            (unsigned long)cb_count,
-        //            (unsigned long)s_dac.stats.buffers_sent,
-        //            (unsigned long)s_dac.stats.underruns,
-        //            (unsigned long)s_dac.stats.max_consecutive_underruns);
-        // }
+        uint32_t now_ms = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
+        uint8_t ready_count;
+        uint32_t consecutive = segment_complete(now_ms, &ready_count);
+        log_underrun(consecutive, ready_count, now_ms);
 
         // Signal application to fill the completed buffer
         xSemaphoreGiveFromISR(s_dac.feed_sem, &xHigherPriorityTaskWoken);
@@ -314,6 +492,51 @@ static uint32_t get_dac_sample_rate(uint32_t sample_rate)
     }
 }
 
+/* (Re)initialise the GPDAC for the current path: 512 kHz when dac_ns feeds it. */
+static void dac_hw_init(void)
+{
+    dac_device_t dac_cfg = {
+        .caps = COMMON_CAPS_DMA_TX,
+        .channels = DAC_CHANNEL,
+        .sample_freq = s_dac.os ? DAC_SAMPLE_FREQ_512KHZ
+                                : get_dac_sample_rate(s_dac.config.sample_rate),
+        .vref = DAC_VREF_INTERNAL
+    };
+
+    hal_dac_setConfig(&dac_cfg);
+    hal_dac_init(dac_dma_dev.id);
+    hal_dac_control(dac_dma_dev.id, DAC_CTRL_TX_DMA, (void *)(uintptr_t)dac_dma_dev.ch);
+}
+
+/*
+ * Apply a pending `dac os` request. Only while stopped: the segment buffers
+ * change format with the path, so they are flushed, and the GPDAC is
+ * re-initialised when its rate changes. dac_ns needs exactly 32 kHz input;
+ * any other stream rate stays on the direct path.
+ */
+static void dac_mode_apply(void)
+{
+    s_dac.os_order = s_dac.os_req;
+
+    const bool os = s_dac.os_order != 0 && s_dac.config.sample_rate == DAC_SAMPLE_RATE_HZ;
+    if (os == s_dac.os) {
+        return;
+    }
+    s_dac.os = os;
+
+    for (int i = 0; i < DAC_BUFFER_COUNT; i++) {
+        fill_silence(get_buffer_segment(i), DAC_SAMPLES_PER_SEGMENT);
+        s_dac.buffer_ready[i] = false;
+    }
+    L1C_DCACHE_CLEAN_RANGE(s_dac.buffer, DAC_TOTAL_SAMPLES * sizeof(uint16_t));
+    s_dac.next_fill_idx = 0;
+
+    if (s_dac.initialized) {
+        dac_hw_init();
+    }
+    IPRO_LOGI(TAG, "Output path: %s", os ? "512 kHz, noise shaped" : "32 kHz direct");
+}
+
 /*
  * Public API Implementation - Ping-Pong Mode
  */
@@ -338,6 +561,15 @@ int app_dac_init(const app_dac_config_t* config)
 
     // Initialize software volume gain (1.0 = unity gain, no change)
     s_dac.volume_gain_q16 = 65536;
+    app_dac_set_spk_trim_db(DAC_SPK_TRIM_DEFAULT_DB);
+
+#if defined(CONFIG_IPRO7AI_REEF)
+    /* The speaker EQ was fitted to the EVK's speaker. On the Reef the DAC
+     * drives a flat headphone buffer, and J_SPK takes whatever speaker is
+     * plugged in, so the correction would only colour the sound. `eq on`
+     * still turns it back on. */
+    audio_speaker_eq_enable(false);
+#endif
 
     // Create semaphore for buffer-ready signaling
     if (s_dac.feed_sem == NULL) {
@@ -347,6 +579,20 @@ int app_dac_init(const app_dac_config_t* config)
             return -1;
         }
     }
+
+    // 512 kHz path: ring-refill semaphore, lock and the expander task
+    if (s_dac.os_sem == NULL) {
+        s_dac.os_sem = xSemaphoreCreateCounting(DAC_BUFFER_COUNT, 0);
+        s_dac.os_lock = xSemaphoreCreateMutex();
+        if (!s_dac.os_sem || !s_dac.os_lock ||
+            xTaskCreate(dac_os_task, "dac_os", OS_TASK_STACK_WORDS, NULL,
+                        OS_TASK_PRIORITY, NULL) != pdPASS) {
+            IPRO_LOGE(TAG, "Failed to create the 512 kHz expander");
+            return -1;
+        }
+    }
+    s_dac.os_req = s_dac.os_order = DAC_OS_DEFAULT_ORDER;
+    s_dac.os = s_dac.os_order != 0 && s_dac.config.sample_rate == DAC_SAMPLE_RATE_HZ;
 
     // Initialize triple buffer state
     s_dac.active_idx = 0;
@@ -362,14 +608,6 @@ int app_dac_init(const app_dac_config_t* config)
         fill_silence(get_buffer_segment(i), DAC_SAMPLES_PER_SEGMENT);
     }
     L1C_DCACHE_CLEAN_RANGE(s_dac.buffer, DAC_TOTAL_SAMPLES * sizeof(uint16_t));
-
-    // Configure DAC device
-    dac_device_t dac_cfg = {
-        .caps = COMMON_CAPS_DMA_TX,
-        .channels = DAC_CHANNEL,
-        .sample_freq = get_dac_sample_rate(s_dac.config.sample_rate),
-        .vref = DAC_VREF_INTERNAL
-    };
 
     // DAC GPIO Init
     GLB_GPIO_Cfg_Type gpio_cfg;
@@ -390,13 +628,22 @@ int app_dac_init(const app_dac_config_t* config)
     dma_ioctl(dac_dma_dev.id, dac_dma_dev.ch, DMA_CTRL_SET_CALLBACK, dac_dma_callback);
 
     // Initialize DAC
-    hal_dac_setConfig(&dac_cfg);
-    hal_dac_init(dac_dma_dev.id);
-    hal_dac_control(dac_dma_dev.id, DAC_CTRL_TX_DMA, (void *)(uintptr_t)dac_dma_dev.ch);
+    dac_hw_init();
 
     // Start with the amplifier off until playback begins
     gpio_set_mode(DAC_GPIO_SPK, GPIO_OUTPUT_PP_MODE);
-    gpio_write(DAC_GPIO_SPK, !DAC_SPK_EN_ACTIVE);
+    amp_apply();
+
+#ifdef BOARD_HP_DET_PIN
+    /* Same set-up as the Reef demo's `hp`: input with the pull-up, which
+     * reads HIGH with no plug (against R51 1M) and LOW with an earpiece on
+     * the line. */
+    gpio_set_mode(BOARD_HP_DET_PIN, GPIO_INPUT_PP_MODE);
+    s_dac.hp_in = jack_plugged_now();
+    s_dac.hp_disagree = 0;
+    IPRO_LOGI(TAG, "Headphone jack (GPIO%d): %s", BOARD_HP_DET_PIN,
+              s_dac.hp_in ? "plug in" : "empty");
+#endif
 
     // Reset statistics
     memset(&s_dac.stats, 0, sizeof(s_dac.stats));
@@ -406,6 +653,8 @@ int app_dac_init(const app_dac_config_t* config)
     IPRO_LOGI(TAG, "DAC initialized: %lu Hz, %d buffers x %u samples, gain_shift=%d, knee=%d",
               (unsigned long)s_dac.config.sample_rate, DAC_BUFFER_COUNT, DAC_SAMPLES_PER_SEGMENT,
               DAC_GAIN_SHIFT, DAC_KNEE);
+    IPRO_LOGI(TAG, "Output path: %s (order %u)",
+              s_dac.os ? "512 kHz, noise shaped" : "32 kHz direct", s_dac.os_order);
 
     return 0;
 }
@@ -423,7 +672,7 @@ void app_dac_deinit(void)
     }
 
     // Amplifier off
-    gpio_write(DAC_GPIO_SPK, !DAC_SPK_EN_ACTIVE);
+    amp_apply();
 
     // Delete semaphore
     if (s_dac.feed_sem) {
@@ -442,17 +691,24 @@ int app_dac_reconfigure(const app_dac_config_t* config)
     
     // Update configuration
     memcpy(&s_dac.config, config, sizeof(app_dac_config_t));
-    
-    // Reconfigure DAC
+
+    // Reconfigure DAC. A new stream rate can take the stream on or off the
+    // 512 kHz path; while playing that waits for the next stop.
+    if (!s_dac.running && s_dac.os != (s_dac.os_req != 0 &&
+                                       config->sample_rate == DAC_SAMPLE_RATE_HZ)) {
+        dac_mode_apply();
+        return 0;
+    }
+
     dac_device_t dac_cfg = {
         .caps = COMMON_CAPS_DMA_TX,
         .channels = DAC_CHANNEL,
-        .sample_freq = get_dac_sample_rate(config->sample_rate),
+        .sample_freq = s_dac.os ? DAC_SAMPLE_FREQ_512KHZ : get_dac_sample_rate(config->sample_rate),
         .vref = DAC_VREF_INTERNAL
     };
-    
+
     hal_dac_setConfig(&dac_cfg);
-    
+
     return 0;
 }
 
@@ -491,7 +747,11 @@ static void convert_samples(const int16_t* src, uint16_t* dst, uint32_t count)
 {
     uint32_t t0 = dac_mcycle();
     const int shift = DAC_GAIN_SHIFT;
-    const int32_t gain_q16 = s_dac.volume_gain_q16;
+    const bool os = s_dac.os;
+    /* The trim follows the amplifier, so a headphone keeps the full level. */
+    const int32_t gain_q16 = s_dac.amp_on
+        ? (int32_t)(((int64_t)s_dac.volume_gain_q16 * s_dac.spk_trim_q16) >> 16)
+        : s_dac.volume_gain_q16;
 
     // Debug: log once per session
     static bool logged = false;
@@ -548,6 +808,18 @@ static void convert_samples(const int16_t* src, uint16_t* dst, uint32_t count)
         else if (sample < -DAC_KNEE)
             sample = -DAC_KNEE + ((sample + DAC_KNEE) >> 2);
 
+        // 512 kHz path: dac_ns quantises later; keep the full-resolution
+        // sample, clipped to the shaper's headroom
+        if (os) {
+            if (sample > DAC_NS_TARGET_MAX) {
+                sample = DAC_NS_TARGET_MAX;
+            } else if (sample < -DAC_NS_TARGET_MAX) {
+                sample = -DAC_NS_TARGET_MAX;
+            }
+            dst[i] = (uint16_t)(int16_t)sample;
+            continue;
+        }
+
         // Apply TPDF dither only to non-silent samples
         // Noise gate: skip dither when signal is near silence
         if (sample > 64 || sample < -64) {
@@ -584,6 +856,121 @@ static void convert_samples(const int16_t* src, uint16_t* dst, uint32_t count)
     }
 }
 
+/*
+ * 512 kHz path. A segment buffer holds DAC_SAMPLES_PER_SEGMENT samples, a
+ * whole number of OS_IN_PER_SEG blocks, so a block never straddles two.
+ * Crossing a segment boundary does what the DMA ISR does on the 32 kHz path;
+ * a segment that is not ready plays as silence.
+ */
+static uint64_t s_os_cycles;
+static uint32_t s_os_samples;
+static const int16_t s_os_silence[OS_IN_PER_SEG];
+
+static void os_consume_block(void)
+{
+    s_dac.rd_pos += OS_IN_PER_SEG;
+    if (s_dac.rd_pos == DAC_SAMPLES_PER_SEGMENT) {
+        uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        uint8_t ready_count;
+        uint32_t consecutive;
+
+        s_dac.rd_pos = 0;
+        taskENTER_CRITICAL();
+        consecutive = segment_complete(now_ms, &ready_count);
+        taskEXIT_CRITICAL();
+        log_underrun(consecutive, ready_count, now_ms);
+        xSemaphoreGive(s_dac.feed_sem);
+    }
+}
+
+static void os_fill_segment(uint16_t *dst)
+{
+    const uint32_t t0 = dac_mcycle();
+    const uint8_t idx = s_dac.active_idx;
+    const int16_t *src = s_dac.buffer_ready[idx]
+        ? (const int16_t *)&s_dac.buffer[idx * DAC_SAMPLES_PER_SEGMENT + s_dac.rd_pos]
+        : s_os_silence;
+
+    dac_ns_run(&s_dac.ns, src, OS_IN_PER_SEG, dst);
+    L1C_DCACHE_CLEAN_RANGE(dst, OS_SEG_SAMPLES * sizeof(uint16_t));
+    os_consume_block();
+
+    s_os_cycles  += (uint32_t)(dac_mcycle() - t0);
+    s_os_samples += OS_SEG_SAMPLES;
+}
+
+/*
+ * Refill j (ring segment j % N) is due once the DMA has finished it
+ * (os_played > j) and must land before the DMA comes back to it
+ * (os_played < j + N). Falling further behind than that means the DMA is
+ * already replaying stale codes: skip forward to the segment after the one
+ * playing, and drop the input that would have filled the skipped ones so
+ * the stream stays in time.
+ */
+static void os_service_ring(void)
+{
+    for (;;) {
+        const uint32_t behind = s_dac.os_played - s_dac.os_filled;
+
+        if (behind == 0u) {
+            return;
+        }
+        if (behind >= DAC_BUFFER_COUNT) {
+            const uint32_t skip = behind - (DAC_BUFFER_COUNT - 1u);
+
+            for (uint32_t k = 0; k < skip; k++) {
+                os_consume_block();
+            }
+            s_dac.os_filled += skip;
+            s_dac.stats.os_late += skip;
+            continue;
+        }
+        os_fill_segment(&s_os_ring[(s_dac.os_filled % DAC_BUFFER_COUNT) * OS_SEG_SAMPLES]);
+        s_dac.os_filled++;
+    }
+}
+
+static void dac_os_task(void *arg)
+{
+    (void)arg;
+
+    for (;;) {
+        xSemaphoreTake(s_dac.os_sem, portMAX_DELAY);
+        xSemaphoreTake(s_dac.os_lock, portMAX_DELAY);
+        if (s_dac.running && s_dac.os) {
+            os_service_ring();
+        }
+        xSemaphoreGive(s_dac.os_lock);
+    }
+}
+
+/* 512 kHz path: prime the whole ring from the segment buffers and start the DMA. */
+static int os_start(void)
+{
+    int ret;
+
+    xSemaphoreTake(s_dac.os_lock, portMAX_DELAY);
+    while (xSemaphoreTake(s_dac.os_sem, 0) == pdTRUE) {
+    }
+    s_dac.active_idx = 0;
+    s_dac.rd_pos = 0;
+    s_dac.os_played = 0;
+    s_dac.os_filled = 0;
+    dac_ns_reset(&s_dac.ns, s_dac.os_order);
+    for (int i = 0; i < DAC_BUFFER_COUNT; i++) {
+        os_fill_segment(&s_os_ring[i * OS_SEG_SAMPLES]);
+    }
+
+    ret = dma_reload(dac_dma_dev.id, dac_dma_dev.ch, (uint32_t)s_os_ring, DMA_ADDR_DAC_TDR,
+                     OS_SEG_SAMPLES * sizeof(uint16_t), NULL);
+    if (ret == 0) {
+        dma_channel_start(dac_dma_dev.id, dac_dma_dev.ch);
+        s_dac.running = true;
+    }
+    xSemaphoreGive(s_dac.os_lock);
+    return ret;
+}
+
 /**
  * @brief Start DMA playback (call after first feed)
  *
@@ -603,6 +990,21 @@ int app_dac_start(void)
 
     if (s_dac.running) {
         IPRO_LOGW(TAG, "Already running");
+        return 0;
+    }
+
+    if (s_dac.os) {
+        if (os_start() != 0) {
+            IPRO_LOGE(TAG, "512 kHz start failed");
+            return -1;
+        }
+#ifdef BOARD_HP_DET_PIN
+        s_dac.hp_in = jack_plugged_now();
+        s_dac.hp_disagree = 0;
+#endif
+        amp_apply();
+        IPRO_LOGI(TAG, "DMA started at 512 kHz (noise shaping order %u), speaker %s",
+                  s_dac.os_order, s_dac.amp_on ? "unmuted" : "muted (headphone)");
         return 0;
     }
 
@@ -639,10 +1041,14 @@ int app_dac_start(void)
     dma_channel_start(dac_dma_dev.id, dac_dma_dev.ch);
     s_dac.running = true;
 
-    // Amplifier on
-    gpio_write(DAC_GPIO_SPK, DAC_SPK_EN_ACTIVE);
+    // Amplifier on, unless a headphone is in
+#ifdef BOARD_HP_DET_PIN
+    s_dac.hp_in = jack_plugged_now();
+    s_dac.hp_disagree = 0;
+#endif
+    amp_apply();
 
-    IPRO_LOGI(TAG, "DMA started, speaker unmuted");
+    IPRO_LOGI(TAG, "DMA started, speaker %s", s_dac.amp_on ? "unmuted" : "muted (headphone)");
 
     return 0;
 }
@@ -661,15 +1067,25 @@ int app_dac_stop(void)
     // Amplifier off first, to avoid a pop
     gpio_write(DAC_GPIO_SPK, !DAC_SPK_EN_ACTIVE);
 
-    // Stop DMA
+    // Stop DMA. The lock keeps the 512 kHz expander out while state resets.
+    xSemaphoreTake(s_dac.os_lock, portMAX_DELAY);
     dma_channel_stop(dac_dma_dev.id, dac_dma_dev.ch);
     s_dac.running = false;
+
+    // A jack poll that raced the write above may have switched the amplifier
+    // back on; with running false this settles it off.
+    amp_apply();
 
     // Reset buffer state
     for (int i = 0; i < DAC_BUFFER_COUNT; i++) {
         s_dac.buffer_ready[i] = false;
     }
     s_dac.next_fill_idx = 0;    // Reset for next start
+    xSemaphoreGive(s_dac.os_lock);
+
+    if (s_dac.os_req != s_dac.os_order) {
+        dac_mode_apply();
+    }
 
     return 0;
 }
@@ -694,6 +1110,10 @@ int app_dac_feed(const int16_t* samples, uint32_t count)
     if (!samples || count == 0) {
         return -1;
     }
+
+#ifdef BOARD_HP_DET_PIN
+    jack_poll();
+#endif
 
     // Determine which buffer to fill
     // Use critical section to prevent race with ISR modifying active_idx
@@ -827,6 +1247,12 @@ int app_dac_write(const int16_t* samples, uint32_t count, bool auto_start)
     const int16_t* src = samples;
     uint32_t remaining = count;
 
+    // `dac os` while playing: stop here, in the feeding task, so the switch
+    // never races a feed; the pre-fill below restarts on the new path.
+    if (s_dac.running && s_dac.os_req != s_dac.os_order) {
+        app_dac_stop();
+    }
+
     // If not running, pre-fill all buffers for seamless start
     if (!s_dac.running && auto_start) {
         uint32_t segment_bytes = DAC_SAMPLES_PER_SEGMENT * sizeof(uint16_t);
@@ -879,6 +1305,8 @@ void app_dac_profile_reset(void)
 {
     s_prof_cycles = 0;
     s_prof_samples = 0;
+    s_os_cycles = 0;
+    s_os_samples = 0;
 }
 
 void app_dac_profile_report(void)
@@ -902,6 +1330,16 @@ void app_dac_profile_report(void)
     printf("bass=%s  eq=%s\n",
            audio_bass_boost_enabled() ? "on" : "off",
            audio_speaker_eq_enabled() ? "on" : "off");
+
+    if (s_os_samples != 0u) {
+        /* Per 512 kHz output sample. This is wall time: the expander runs
+         * below nearly everything, so it includes time spent preempted and
+         * overstates the cost; `ps` gives its real CPU share (about 8%). */
+        uint32_t ocps = (uint32_t)(s_os_cycles / s_os_samples);
+        printf("512 kHz expander: %lu cycles/sample wall time incl. preemption "
+               "(late ring segments %lu)\n",
+               (unsigned long)ocps, (unsigned long)s_dac.stats.os_late);
+    }
 }
 
 void app_dac_set_gain(float gain)
@@ -921,6 +1359,71 @@ void app_dac_set_gain(float gain)
     }
 
     IPRO_LOGI(TAG, "Gain set to %.2f (volume=%d%%)", gain, s_dac.config.volume);
+}
+
+void app_dac_set_spk_trim_db(int db)
+{
+    if (db > 0) db = 0;
+    if (db < DAC_SPK_TRIM_MIN_DB) db = DAC_SPK_TRIM_MIN_DB;
+
+    s_dac.spk_trim_db = (int8_t)db;
+    s_dac.spk_trim_q16 = (int32_t)s_trim_q16[-db];
+}
+
+int app_dac_set_os(uint8_t order)
+{
+    if (order > 2) {
+        return -1;
+    }
+    s_dac.os_req = order;
+    if (!s_dac.running) {
+        dac_mode_apply();
+    }
+    return 0;
+}
+
+uint8_t app_dac_get_os(void)
+{
+    return s_dac.os ? s_dac.os_order : 0;
+}
+
+void app_dac_set_range(uint8_t range)
+{
+    uint32_t v = readl(GLB_BASE + GLB_GPDAC_ACTRL_OFFSET);
+
+    v = reg_set_bits(v, GLB_GPDAC_A_RNG, range & 3u);
+    writel(v, GLB_BASE + GLB_GPDAC_ACTRL_OFFSET);
+}
+
+void app_dac_set_pad(bool on)
+{
+    uint32_t v = readl(GLB_BASE + GLB_GPDAC_ACTRL_OFFSET);
+
+    v = reg_set_bits(v, GLB_GPDAC_IOA_EN, on ? 1u : 0u);
+    writel(v, GLB_BASE + GLB_GPDAC_ACTRL_OFFSET);
+}
+
+bool app_dac_get_pad(void)
+{
+    return reg_get_bits(readl(GLB_BASE + GLB_GPDAC_ACTRL_OFFSET), GLB_GPDAC_IOA_EN) != 0u;
+}
+
+uint8_t app_dac_get_range(void)
+{
+    return (uint8_t)reg_get_bits(readl(GLB_BASE + GLB_GPDAC_ACTRL_OFFSET), GLB_GPDAC_A_RNG);
+}
+
+void app_dac_get_route(app_dac_route_t *route)
+{
+    if (!route) return;
+
+    route->amp_on = s_dac.amp_on;
+#ifdef BOARD_HP_DET_PIN
+    route->jack = s_dac.hp_in ? 1 : 0;
+#else
+    route->jack = -1;
+#endif
+    route->spk_trim_db = s_dac.spk_trim_db;
 }
 
 float app_dac_get_gain(void)

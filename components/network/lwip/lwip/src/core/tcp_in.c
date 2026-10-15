@@ -42,6 +42,11 @@
  */
 
 #include "lwip/opt.h"
+#if defined(CONFIG_IPRO6) && defined(CONFIG_USE_MACSW) && defined(CONFIG_LWIP_LP) && !IPRO_WIFI_LP_FW
+#include "lp_rx_witness.h"
+#define LP_RXW_DIAG 1
+#endif
+
 
 #if LWIP_TCP /* don't build if not configured for use in lwipopts.h */
 
@@ -70,28 +75,16 @@
 #include LWIP_HOOK_FILENAME
 #endif
 
+/* Ceiling for pcb->rto, in slow-timer ticks (measured at 511 ms on this
+ * image); 0 = stock. Defined in tcp.c. */
+extern s16_t lp_tcp_rto_max_ticks;
+
 /** Initial CWND calculation as defined RFC 2581 */
 #define LWIP_TCP_CALC_INITIAL_CWND(mss) ((tcpwnd_size_t)LWIP_MIN((4U * (mss)), LWIP_MAX((2U * (mss)), 4380U)))
 
 /* These variables are global to all functions involved in the input
    processing of TCP segments. They are set by the tcp_input()
    function. */
-#ifdef _LP_TCP_OPTIMIZE
-/* Dup-ACK count that arms fast retransmit. 1 was the original fork value and
- * stays the default so other apps are bit-identical. The fork lowered it from
- * the RFC 5681 value of 3 on the premise that this path never reorders, so a
- * dup-ACK can only mean loss. On the SDIO bridge that premise does not hold:
- * the 1-tick rexmit RTO resends data the receiver already has, so most dup-ACKs
- * report a DUPLICATE, not a gap. Arming on the first one then halves cwnd per
- * spurious retransmission and the two feed each other -- measured 1319 dup-ACKs
- * with 2 genuinely lost segments, cwnd pinned at the 2 MSS floor (median 1 MSS
- * in flight) and 50% of the run stalled. Raise it with LP_TCP_REXMIT_RTO_TICKS,
- * not instead of it: one stops the amplification, the other stops the source. */
-#ifndef LP_TCP_DUPACK_THRESH
-#define LP_TCP_DUPACK_THRESH 1
-#endif
-u8_t lp_tcp_dupack_thresh = LP_TCP_DUPACK_THRESH;
-#endif
 
 static struct tcp_seg inseg;
 static struct tcp_hdr *tcphdr;
@@ -279,6 +272,18 @@ tcp_input(struct pbuf *p, struct netif *inp)
    * TCP_TMR Optimization, only enable tcp_tmr MAX_TCP_ONCE_RUNNING_TIME
    **/
   LWIP_DEBUGF(TCP_DEBUG, ("tcp_timer_opt tcp_input"));
+#if defined(LP_RXW_DIAG) && LWIP_IPV4
+  if (LP_RXW_ON && !ip_current_is_v6()) {
+    const struct ip_hdr *iph = ip4_current_header();
+    uint32_t data[LP_RXW_WORDS] = {
+      lwip_ntohl(iph->src.addr), lwip_ntohl(iph->dest.addr),
+      ((uint32_t)tcphdr->src << 16) | tcphdr->dest,
+      seqno, ackno, flags, p->tot_len, lwip_ntohs(IPH_ID(iph)),
+      (uint32_t)(uintptr_t)p, netif_get_index(inp), 0
+    };
+    lp_rxw_emit(LP_RXW_TCP, LP_RXW_TCP_INPUT, data, LP_RXW_WORDS);
+  }
+#endif
   tcp_timer_needed();
 #endif
 
@@ -630,6 +635,19 @@ aborted:
     pbuf_free(p);
   }
 
+#ifdef TCP_LP_IDLE_CANDIDATE
+  /* ACK processing and application callbacks have finished; scan live lists,
+   * never the local PCB which a callback may have freed. */
+  tcp_timer_lp_recheck();
+#endif
+#if TCP_TIMER_PRECISE_NEEDED && defined(CONFIG_LWIP_LP)
+  /* An idle socket's ACK just landed here on the RX task under the core lock;
+   * stop the on-demand TCP timer now if nothing else needs it, rather than at
+   * its next fire. On a DTIM standby that fire is one full-firmware wake per
+   * keepalive delivering nothing (2026-09-11: BUDG at +512/+1024 ms after
+   * every KA). */
+  tcpip_tcp_timer_recheck();
+#endif
   LWIP_ASSERT("tcp_input: tcp_pcbs_sane()", tcp_pcbs_sane());
   PERF_STOP("tcp_input");
   return;
@@ -1290,27 +1308,6 @@ tcp_receive(struct tcp_pcb *pcb)
               if ((u8_t)(pcb->dupacks + 1) > pcb->dupacks) {
                 ++pcb->dupacks;
               }
-#ifdef _LP_TCP_OPTIMIZE
-              /* Low-BDP SDIO-WiFi bridge: cwnd sits at ~2-3 MSS (BDP at the
-               * ~5ms link RTT is only ~3 segments), so an isolated loss produces
-               * fewer than 3 dup-acks and the standard fast-retransmit trigger
-               * (>=3) NEVER engages -> every loss falls to a ~50ms RTO stall
-               * (host goes idle, TCP TX craters on lossy/long runs: 7.6 -> 3.4
-               * Mbps). This link is a single in-order path (tcpdump shows
-               * out_of_order=0), so a dup-ack means loss, not reordering:
-               * trigger fast retransmit on the FIRST dup-ack (RFC 5827 early-
-               * retransmit spirit). Turns each 50ms RTO into a ~1-RTT (4-11ms)
-               * recovery. tcp_rexmit_fast is self-gated by TF_INFR, so it fires
-               * once per recovery, not per dup-ack. */
-              if (pcb->dupacks > lp_tcp_dupack_thresh) {
-                /* Inflate the congestion window */
-                TCP_WND_INC(pcb->cwnd, pcb->mss);
-              }
-              if (pcb->dupacks >= lp_tcp_dupack_thresh) {
-                /* Do fast retransmit (checked via TF_INFR, not via dupacks count) */
-                tcp_rexmit_fast(pcb);
-              }
-#else
               if (pcb->dupacks > 3) {
                 /* Inflate the congestion window */
                 TCP_WND_INC(pcb->cwnd, pcb->mss);
@@ -1319,7 +1316,6 @@ tcp_receive(struct tcp_pcb *pcb)
                 /* Do fast retransmit (checked via TF_INFR, not via dupacks count) */
                 tcp_rexmit_fast(pcb);
               }
-#endif
             }
           }
         }
@@ -1347,6 +1343,20 @@ tcp_receive(struct tcp_pcb *pcb)
 
       /* Reset the retransmission time-out. */
       pcb->rto = (s16_t)((pcb->sa >> 3) + pcb->sv);
+      /* 2026-09-10: the same ceiling as tcp_slowtmr's, applied to the ESTIMATOR.
+       * The cap in tcp.c only clamps the BACKED-OFF value, so the FIRST timeout
+       * still waits for whatever (sa >> 3) + sv produced -- and that is what sets
+       * the length of the stall. Measured on IPRO-LAB10 from the air: seven events
+       * in one 60 s leg, each 1.1-1.9 s of total silence in BOTH directions, ended
+       * by the retransmission; the live rto read 3-6 ticks (1.5-3 s) at the time,
+       * matching those durations, while the link's RTT was ~10 ms (min 6.7, max
+       * 217 ms over a day). The variance, not the mean, is what inflates sv here.
+       * A 1 s bucket needs >= 860 ms of dead time to score under 1 Mbps, so a
+       * bounded wait is the difference between a scored hole and none.
+       * 0 keeps stock behaviour exactly, so one image still A/Bs against itself. */
+      if (lp_tcp_rto_max_ticks > 0 && pcb->rto > lp_tcp_rto_max_ticks) {
+        pcb->rto = lp_tcp_rto_max_ticks;
+      }
 
       /* Record how much data this ACK acks */
       acked = (tcpwnd_size_t)(ackno - pcb->lastack);
@@ -1470,6 +1480,10 @@ tcp_receive(struct tcp_pcb *pcb)
       m = (s16_t)(m - (pcb->sv >> 2));
       pcb->sv = (s16_t)(pcb->sv + m);
       pcb->rto = (s16_t)((pcb->sa >> 3) + pcb->sv);
+      /* Same estimator ceiling as above; see the first site for the rationale. */
+      if (lp_tcp_rto_max_ticks > 0 && pcb->rto > lp_tcp_rto_max_ticks) {
+        pcb->rto = lp_tcp_rto_max_ticks;
+      }
 
       LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_receive: RTO %"U16_F" (%"U16_F" milliseconds)\n",
                                   pcb->rto, (u16_t)(pcb->rto * TCP_SLOW_INTERVAL)));

@@ -62,8 +62,15 @@
 #define MSTATUS64_SD        0x8000000000000000
 
 #define MSTATUS_FS_INITIAL  0x00002000
+/* Guarded: Zephyr's <zephyr/arch/riscv/arch.h> defines the same two values
+ * (as (2UL << 13) / (3UL << 13)); the guard lets both headers coexist in the
+ * Zephyr driver adapters without -Wredefined noise. */
+#ifndef MSTATUS_FS_CLEAN
 #define MSTATUS_FS_CLEAN    0x00004000
+#endif
+#ifndef MSTATUS_FS_DIRTY
 #define MSTATUS_FS_DIRTY    0x00006000
+#endif
 
 #define MSTATUS_VS_INITIAL  0x00000200
 #define MSTATUS_VS_CLEAN    0x00000400

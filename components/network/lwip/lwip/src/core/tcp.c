@@ -129,6 +129,7 @@
 #include "lwip/ip6.h"
 #include "lwip/ip6_addr.h"
 #include "lwip/nd6.h"
+#include "lwip/ip4_napt.h"
 
 #include <string.h>
 
@@ -179,28 +180,17 @@ static u16_t tcp_port = TCP_LOCAL_PORT_RANGE_START;
 /* Incremented every coarse grained timer shot (typically every 500 ms). */
 u32_t tcp_ticks;
 
-#ifdef _LP_TCP_OPTIMIZE
-/* Rexmit RTO under _LP_TCP_OPTIMIZE, in slow-timer ticks. 1 was the original
- * fork value and stays the default so other apps are bit-identical; an app that
- * runs over a link whose RTT jitter exceeds one tick raises it from lwipopts.
- * At 1 tick the RTO sits below the jitter and tcp_rexmit_rto_prepare() resends
- * every unacked segment on each expiry: measured on the SDIO bridge as 27% of
- * data packets retransmitted against 2 genuinely lost segments, with snd_nxt
- * barely advancing (1.45 MSS in flight against a 64 KB window). */
-#ifndef LP_TCP_REXMIT_RTO_TICKS
-#define LP_TCP_REXMIT_RTO_TICKS 1
-#endif
-s16_t lp_tcp_rexmit_rto_ticks = LP_TCP_REXMIT_RTO_TICKS;
-
-static const u8_t tcp_backoff[49] =
-{ 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7,
-  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 
-  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7};
-#else
 static const u8_t tcp_backoff[13] =
 { 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7};
+
+/* Ceiling on the backed-off retransmission timeout, in slow-timer ticks
+ * (500 ms each). 0 = stock lwIP, i.e. bounded only by the backoff table's
+ * shift of 7. Runtime so one image can be A/B'd against itself; see the use
+ * site in tcp_slowtmr() for the measurement that motivates it. */
+#ifndef LP_TCP_RTO_MAX_TICKS
+#define LP_TCP_RTO_MAX_TICKS 0
 #endif
+s16_t lp_tcp_rto_max_ticks = LP_TCP_RTO_MAX_TICKS;
 
 /* Times per slowtmr hits */
 const u8_t tcp_persist_backoff[7] = { 3, 6, 12, 24, 48, 96, 120 };
@@ -452,6 +442,10 @@ tcp_close_shutdown_fin(struct tcp_pcb *pcb)
 {
   err_t err;
   LWIP_ASSERT("pcb != NULL", pcb != NULL);
+#ifdef TCP_LP_IDLE_CANDIDATE
+  /* Includes FIN allocation/output failure and the CLOSEPEND retry path. */
+  tcp_timer_lp_work_changed();
+#endif
 
   switch (pcb->state) {
     case SYN_RCVD:
@@ -749,6 +743,12 @@ tcp_bind(struct tcp_pcb *pcb, const ip_addr_t *ipaddr, u16_t port)
   }
 #endif /* LWIP_IPV6 && LWIP_IPV6_SCOPES */
 
+  /* NAPT reservations are not reusable host sockets. */
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  if (port != 0 && !IP_IS_V6(ipaddr) && ip_napt_port_in_use(IP_PROTO_TCP, port)) {
+    return ERR_USE;
+  }
+#endif
   if (port == 0) {
     port = tcp_new_port();
     if (port == 0) {
@@ -907,6 +907,13 @@ tcp_listen_with_backlog_and_err(struct tcp_pcb *pcb, u8_t backlog, err_t *err)
     res = ERR_ALREADY;
     goto done;
   }
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  /* netconn may promote a bound IPv6-any PCB to a dual-stack listener. */
+  if (!IP_IS_V6_VAL(pcb->local_ip) && ip_napt_port_in_use(IP_PROTO_TCP, pcb->local_port)) {
+    res = ERR_USE;
+    goto done;
+  }
+#endif
 #if SO_REUSE
   if (ip_get_option(pcb, SOF_REUSEADDR)) {
     /* Since SOF_REUSEADDR allows reusing a local address before the pcb's usage
@@ -1008,6 +1015,9 @@ tcp_update_rcv_ann_wnd(struct tcp_pcb *pcb)
  * @param pcb the tcp_pcb for which data is read
  * @param len the amount of bytes that have been read by the application
  */
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 void
 tcp_recved(struct tcp_pcb *pcb, u16_t len)
 {
@@ -1063,6 +1073,14 @@ again:
   if (tcp_port == TCP_LOCAL_PORT_RANGE_END) {
     tcp_port = TCP_LOCAL_PORT_RANGE_START;
   }
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  if (ip_napt_port_in_use(IP_PROTO_TCP, tcp_port)) {
+    if (++n > (TCP_LOCAL_PORT_RANGE_END - TCP_LOCAL_PORT_RANGE_START)) {
+      return 0;
+    }
+    goto again;
+  }
+#endif
   /* Check all PCB lists. */
   for (i = 0; i < NUM_TCP_PCB_LISTS; i++) {
     for (pcb = *tcp_pcb_lists[i]; pcb != NULL; pcb = pcb->next) {
@@ -1122,6 +1140,15 @@ tcp_connect(struct tcp_pcb *pcb, const ip_addr_t *ipaddr, u16_t port,
   LWIP_ERROR("tcp_connect: invalid ipaddr", ipaddr != NULL, return ERR_ARG);
 
   LWIP_ERROR("tcp_connect: can only connect from state CLOSED", pcb->state == CLOSED, return ERR_ISCONN);
+
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  /* An IPv6-any bind can acquire an IPv4 source here. Check before changing
+   * either address or queuing a SYN, while the original PCB is still intact. */
+  if (IP_IS_V4(ipaddr) && pcb->local_port != 0 &&
+      ip_napt_port_in_use(IP_PROTO_TCP, pcb->local_port)) {
+    return ERR_USE;
+  }
+#endif
 
   LWIP_DEBUGF(TCP_DEBUG, ("tcp_connect to port %"U16_F"\n", port));
   ip_addr_set(&pcb->remote_ip, ipaddr);
@@ -1356,11 +1383,11 @@ tcp_slowtmr_start:
             if (pcb->state != SYN_SENT) {
               u8_t backoff_idx = LWIP_MIN(pcb->nrtx, sizeof(tcp_backoff) - 1);
               int calc_rto = ((pcb->sa >> 3) + pcb->sv) << tcp_backoff[backoff_idx];
-            #ifdef _LP_TCP_OPTIMIZE
-              pcb->rto = lp_tcp_rexmit_rto_ticks;
-            #else
               pcb->rto = (s16_t)LWIP_MIN(calc_rto, 0x7FFF);
-            #endif
+              /* Ceiling on the backed-off RTO, in slow-timer ticks;
+               * 0 keeps stock behaviour (`lp rtomax` at runtime). */
+              if (lp_tcp_rto_max_ticks > 0 && pcb->rto > lp_tcp_rto_max_ticks)
+                pcb->rto = lp_tcp_rto_max_ticks;
             }
 
             /* Reset the retransmission timer. */
@@ -1370,7 +1397,6 @@ tcp_slowtmr_start:
             pcb->rtime = tcp_ticks;
 #endif
 
-            #ifndef _LP_TCP_OPTIMIZE
             /* Reduce congestion window and ssthresh. */
             eff_wnd = LWIP_MIN(pcb->cwnd, pcb->snd_wnd);
             pcb->ssthresh = eff_wnd >> 1;
@@ -1381,7 +1407,6 @@ tcp_slowtmr_start:
             LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_slowtmr: cwnd %"TCPWNDSIZE_F
                                          " ssthresh %"TCPWNDSIZE_F"\n",
                                          pcb->cwnd, pcb->ssthresh));
-            #endif
             pcb->bytes_acked = 0;
 
             /* The following needs to be called AFTER cwnd is set to one
@@ -1820,6 +1845,9 @@ tcp_segs_free(struct tcp_seg *seg)
  *
  * @param seg single tcp_seg to free
  */
+#ifdef CONFIG_IPRO6S_HOTCODE
+__attribute__((section(".hotcode")))
+#endif
 void
 tcp_seg_free(struct tcp_seg *seg)
 {
@@ -2330,6 +2358,11 @@ tcp_poll(struct tcp_pcb *pcb, tcp_poll_fn poll, u8_t interval)
   LWIP_UNUSED_ARG(poll);
 #endif /* LWIP_CALLBACK_API */
   pcb->pollinterval = interval;
+#ifdef TCP_LP_IDLE_CANDIDATE
+  if (poll != NULL || interval != 0) {
+    tcp_timer_lp_work_changed();
+  }
+#endif
 }
 
 /**

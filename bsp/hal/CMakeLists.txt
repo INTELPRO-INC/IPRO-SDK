@@ -30,22 +30,21 @@ set_property(GLOBAL APPEND PROPERTY SDK_LIBS
 __component_add_include_dirs(lp_framework/ipro7)
 endif()
 
-if("${CONFIG_CHIP}" STREQUAL "IPRO6LE")
-# IPRO6 uses IPRO6LE's SoC peripherals
-__component_add_sources(src/hal_boot2_ipro6le.c)
-endif()
-
 # hal_wireless.c provides hal_wireless_default_tx_power_get() for BLE RF init
 if(CONFIG_BLUETOOTH_LE_ENABLE)
 __component_add_sources(src/hal_wireless.c)
 endif()
 
 if("${CONFIG_CHIP}" STREQUAL "IPRO6")
-# MJDEC only available for IPRO6 (ipro6le_soc lacks drv_mjdec.h)
 __component_add_sources(src/hal_mjpeg.c)
 __component_add_sources(src/hal_mjdec.c)
 __component_add_sources(src/hal_wireless.c)
 __component_add_sources(src/hal_boot2_ipro6.c)
+# 32 kHz source selection + RC32K trim: board_init() needs them on every IPRO6
+# image, low-power or not. The lp_framework include is for the RC32K register
+# map header only -- no LP code is linked.
+__component_add_sources(src/hal_clock.c)
+__component_add_private_include_dirs(lp_framework/ipro6)
 # Low-power: pm_ layer + LP resume framework (opt-in via CONFIG_HAL_LP)
 if(CONFIG_HAL_LP)
 __component_add_sources(src/hal_pm.c)
@@ -108,6 +107,9 @@ __component_add_sources(src/hal_wdt.c)
 __component_add_sources(src/hal_aon_wdt.c)
 __component_add_sources(src/hal_flash.c)
 __component_add_sources(src/hal_sec_ecdsa.c)
+if(CONFIG_IPRO7)
+    __component_add_sources(src/hal_sec_p256.c)
+endif()
 __component_add_sources(src/hal_sec_hash.c)
 __component_add_sources(src/hal_timer.c)
 __component_add_sources(src/hal_spi.c)

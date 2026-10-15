@@ -112,6 +112,11 @@ void DMA_Enable(DMA_ID_Type dmaId)
 
     /* Check the parameters */
 
+    /* Disable clock gate when use DMA0 */
+    if (DRV_DMA0_ID == dmaId) {
+        GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_DMA_0);
+    }
+
     tmpVal = readl(DMAChs + DMA_TOP_CONFIG_OFFSET);
     tmpVal = reg_set_bit(tmpVal, DMA_E);
     writel(tmpVal, DMAChs + DMA_TOP_CONFIG_OFFSET);

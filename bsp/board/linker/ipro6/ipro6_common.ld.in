@@ -1,6 +1,6 @@
 OUTPUT_ARCH( "riscv" )
 
-/* IPRO6 uses IPRO7's CPU but IPRO6LE's memory layout */
+/* IPRO6 uses IPRO7's CPU with its own memory layout */
 ENTRY( _start )
 
 /*
@@ -67,7 +67,7 @@ SECTIONS
 
     *(.text.unlikely .text.unlikely.*)
     *(.text.startup .text.startup.*)
-    *(.text .text.*)
+    @TEXT_INPUT_SECTIONS@
     *(.gnu.linkonce.t.*)
 
     . = ALIGN(4);
@@ -242,6 +242,7 @@ SECTIONS
     PROVIDE( _data_run = ADDR(.data) );
     PROVIDE( _data_lma = LOADADDR(.data) );
     PROVIDE( _data = ADDR(.data) );
+@HOTCODE_DATA_SECTION@
 
     *(.data .data.*)
     *(.gnu.linkonce.d.*)
@@ -294,7 +295,7 @@ SECTIONS
     KEEP(*(.coredump_binary_id))
 
     . = ALIGN(4);
-    *(.tcm_code.*)
+    *(.tcm_code .tcm_code.*)
     *(.tcm_const.*)
     /* ATTR_DTCM_SECTION (.tcm_data) — initialized data that lives in DTCM/OCRAM
      * but must be copied from its flash LMA at startup. Without these globs the
@@ -362,6 +363,10 @@ SECTIONS
     *(.sbss*)
     *(.gnu.linkonce.sb.*)
     *(.bss .bss.*)
+    /* BR BLE builds opt into per-pool sections. MLD membership records are
+     * CPU metadata; moving just this pool leaves WRAM room for 16 KiB EM
+     * without relocating packet storage or reducing listener capacity. */
+    *(.lwip_mem.memp_memory_MLD6_GROUP_base)
     /* FreeRTOS PRIVILEGED_DATA et al. land here (mpu_wrappers.h); IPRO6 has
      * no retained-OCRAM split, so fold them into regular zero-init BSS to
      * keep them out of orphan PROGBITS placement after .data. */

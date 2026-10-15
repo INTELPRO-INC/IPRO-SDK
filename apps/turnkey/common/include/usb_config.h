@@ -17,7 +17,8 @@
  */
 
 /*
- * CherryUSB configuration for the fall turnkey apps — CDC ACM console only.
+ * CherryUSB configuration for the fall turnkey apps (tag CDC-ACM console,
+ * gateway CDC-ECM or CDC-NCM network).
  * Shared by ipro7_fall_neck and ipro7_fall_gateway via the
  * apps/turnkey/common include path.
  */
@@ -51,6 +52,20 @@
 
 #ifndef CONFIG_USBDEV_MSC_MAX_BUFSIZE
 #define CONFIG_USBDEV_MSC_MAX_BUFSIZE 512
+#endif
+
+/* CDC-NCM (ipro7_fall_gateway's Windows-capable USB link): lwIP pbuf
+ * helpers usbd_cdc_ncm_eth_rx/_eth_tx. */
+#ifdef CONFIG_CHERRYUSB_DEVICE_CDC_NCM
+#define CONFIG_USBDEV_CDC_NCM_USING_LWIP
+/* The NCM NTB buffers are ordinary .bss (PSRAM, cacheable) and RX lands by
+ * DMA: the class invalidates/cleans them through these (same as ipro7_demo).
+ * The ECM class keeps its buffers in .noncacheable and needs none. */
+#include "ipro7.h"
+#include "core_feature_cache.h"
+#define USB_DCACHE_FLUSH(addr, size)       MFlushDCacheRange((unsigned long)(addr), (unsigned long)(size))
+#define USB_DCACHE_INVAL(addr, size)       MInvalDCacheRange((unsigned long)(addr), (unsigned long)(size))
+#define USB_DCACHE_FLUSH_INVAL(addr, size) MFlushInvalDCacheRange((unsigned long)(addr), (unsigned long)(size))
 #endif
 
 /* ================ USB Device Port Configuration ================*/

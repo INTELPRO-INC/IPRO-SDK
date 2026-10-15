@@ -34,4 +34,11 @@ uint8_t vcp_server_get_volume(void);
  */
 bool vcp_server_is_muted(void);
 
+/**
+ * @brief Check that the renderer is registered
+ *
+ * @return true once bt_vcp_vol_rend_register() has succeeded
+ */
+bool vcp_server_is_ready(void);
+
 #endif /* VCP_SERVER_H */

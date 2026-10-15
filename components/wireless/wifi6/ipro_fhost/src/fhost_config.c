@@ -58,35 +58,8 @@ struct me_chan_config_req fhost_chan = {
     .chan2G4[12] = CHAN_24(2472, 0, 20),
     .chan2G4[13] = CHAN_24(2484, 0, 20),
 
-    .chan5G_cnt = 28,
-    .chan5G[0] = CHAN_5(5180, 0, 20),
-    .chan5G[1] = CHAN_5(5200, 0, 20),
-    .chan5G[2] = CHAN_5(5220, 0, 20),
-    .chan5G[3] = CHAN_5(5240, 0, 20),
-    .chan5G[4] = CHAN_5(5260, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[5] = CHAN_5(5280, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[6] = CHAN_5(5300, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[7] = CHAN_5(5320, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[8] = CHAN_5(5500, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[9] = CHAN_5(5520, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[10] = CHAN_5(5540, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[11] = CHAN_5(5560, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[12] = CHAN_5(5580, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[13] = CHAN_5(5600, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[14] = CHAN_5(5620, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[15] = CHAN_5(5640, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[16] = CHAN_5(5660, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[17] = CHAN_5(5680, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[18] = CHAN_5(5700, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[19] = CHAN_5(5720, CHAN_NO_IR|CHAN_RADAR, 20),
-    .chan5G[20] = CHAN_5(5745, 0, 20),
-    .chan5G[21] = CHAN_5(5765, 0, 20),
-    .chan5G[22] = CHAN_5(5785, 0, 20),
-    .chan5G[23] = CHAN_5(5805, 0, 20),
-    .chan5G[24] = CHAN_5(5825, 0, 20),
-    .chan5G[25] = CHAN_5(5845, 0, 20),
-    .chan5G[26] = CHAN_5(5865, 0, 20),
-    .chan5G[27] = CHAN_5(5885, 0, 20),
+    /* The IPRO6 radio is 2.4 GHz only */
+    .chan5G_cnt = 0,
 };
 
 #if NX_FHOST_RX_STATS
@@ -549,8 +522,7 @@ void fhost_config_prepare(struct fhost_me_config_req *me_config, struct fhost_mm
         HE_MAC_CAPA_VAL_SET(he_cap, TF_MAC_PAD_DUR, 16US);
         #endif
         
-        if (ht40)
-            HE_PHY_CAPA_VAL_SET(he_cap, CHAN_WIDTH_SET, 40MHZ_IN_2G);
+        // HE stays at 20 MHz in 2.4 GHz; 40 MHz there is HT only
         if (vht80)
             HE_PHY_CAPA_VAL_SET(he_cap, CHAN_WIDTH_SET, 40MHZ_80MHZ_IN_5G);
         if (ldpc_rx)
@@ -614,8 +586,6 @@ void fhost_config_prepare(struct fhost_me_config_req *me_config, struct fhost_mm
         #endif
         if (vht80)
             HE_PHY_CAPA_VAL_SET(he_cap, DCM_MAX_BW, 80MHZ);
-        else if (ht40)
-            HE_PHY_CAPA_VAL_SET(he_cap, DCM_MAX_BW, 40MHZ);
         HE_PHY_CAPA_BIT_SET(he_cap, RX_FULL_BW_SU_COMP_SIGB);
         HE_PHY_CAPA_BIT_SET(he_cap, RX_FULL_BW_SU_NON_COMP_SIGB);
         HE_PHY_CAPA_VAL_SET(he_cap, NOMINAL_PACKET_PADDING, 16US);

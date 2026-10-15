@@ -23,7 +23,7 @@
  * Central management of HBN RAM (4KB) layout for IPRO SoC.
  * All modules should use these definitions instead of hardcoding addresses.
  *
- * Memory Map (IPRO7: 0x20090000, IPRO6LE: 0x20010000):
+ * Memory Map (IPRO7/IPRO6: 0x20090000):
  *
  *   +---------------------+ HBN_RAM_BASE + 0x000
  *   | LP Firmware Code    |
@@ -71,10 +71,8 @@ extern "C" {
 #include "ipro7.h"
 #elif defined(CONFIG_IPRO6) || defined(IPRO6)
 #include "ipro6.h"
-#elif defined(CONFIG_IPRO6LE) || defined(IPRO6LE)
-#include "ipro6le.h"
 #else
-#error "Unknown IPRO SoC - please define CONFIG_IPRO7, CONFIG_IPRO6LE, or CONFIG_IPRO6"
+#error "Unknown IPRO SoC - please define CONFIG_IPRO7 or CONFIG_IPRO6"
 #endif
 #endif
 
@@ -219,7 +217,9 @@ typedef struct {
  */
 #define HAL_HBNRAM_BOOT2_OFFSET         0x660
 #define HAL_HBNRAM_BOOT2_SIZE           0x284   /* 4B magic + 640B raw */
+#ifndef HAL_HBNRAM_BOOT2_ADDR   /* overridable so host tests can point it at a buffer */
 #define HAL_HBNRAM_BOOT2_ADDR           (HBN_RAM_BASE + HAL_HBNRAM_BOOT2_OFFSET)
+#endif
 #define HAL_HBNRAM_BOOT2_DATA_SIZE      0x280   /* 640B payload */
 #define HAL_HBNRAM_BOOT2_MAGIC          0x32544F42  /* "BOT2" */
 
@@ -238,6 +238,13 @@ typedef struct {
 #define HAL_HBNRAM_RESERVED_SIZE        0x61C   /* 1564B */
 #endif
 #define HAL_HBNRAM_RESERVED_ADDR        (HBN_RAM_BASE + HAL_HBNRAM_RESERVED_OFFSET)
+
+/* Sleep-clock override word (`lp clk32k`, 2026-09-13): the LAST word of the
+ * reserved region, so it neither touches the boot magic at RESERVED_ADDR nor
+ * the WLCAL/iot2lp regions above it (iot2lp_para_t fills its 256 B exactly:
+ * 0x20090FF4/FF8 are struct fields, not spare words). */
+#define HAL_HBNRAM_CLK32K_OVR_OFFSET    (HAL_HBNRAM_RESERVED_OFFSET + HAL_HBNRAM_RESERVED_SIZE - 4)
+#define HAL_HBNRAM_CLK32K_OVR_ADDR      (HBN_RAM_BASE + HAL_HBNRAM_CLK32K_OVR_OFFSET)
 
 /*
  * Region: iot2lp_para (lp_fw <-> full firmware wake parameters)
@@ -258,8 +265,8 @@ typedef struct {
  * - Backing store for the WiFi/RF driver's wl_rmem_t (wl_cfg + rf_calib_data + wl_env,
  *   ~992B). The RF driver writes per-channel LO cal (lo[].fcal/acal) etc. here, so it
  *   MUST be writable retained RAM.
- * - Before this region existed the RF CLI hardcoded 0x20010600, which on IPRO6 maps to
- *   the (broken) ipro6le HBN base and is NOT backed by writable SRAM: cal results were
+ * - Before this region existed the RF CLI hardcoded 0x20010600, which on IPRO6 is
+ *   NOT backed by writable SRAM: cal results were
  *   dropped, config_channel read fcal=0, the LO never locked and txcal hung.
  * - Carved from the tail of the RESERVED region (ends exactly at IOT2LP). A
  *   _Static_assert in wl_api.c pins sizeof(struct wl_rmem_t) <= HAL_HBNRAM_WLCAL_SIZE.

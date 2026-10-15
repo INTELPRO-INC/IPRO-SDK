@@ -25,7 +25,7 @@
  * five-group interrupt structure.
  *
  * Clock and PHY bring-up happens in usb_dc_init():
- *   - GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_USB20_SDU)  enable the USB v2 AHB clock
+ *   - GLB_PER_Clock_UnGate(USB20_SDU | USB11)  USB AHB clocks
  *   - GLB_Set_USB_CLK_From_WIFIPLL(1)                route the USB clock from WIFIPLL
  *   - PDS_Turn_On_USB(1)                             PHY power-on + reset sequence
  * The WIFIPLL must already be running because it is the USB clock source.
@@ -210,8 +210,10 @@ int usb_dc_init(void)
     tmpVal = reg_clr_bit(tmpVal, PDS_CR_PDS_CTRL_USBPLL_PD);
     writel(tmpVal, PDS_BASE + PDS_CTL_OFFSET);
 
-    /* USB v2 clock + PHY bring-up (WIFIPLL must already be running). */
-    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_USB20_SDU);
+    /* USB v2 clock + PHY bring-up (WIFIPLL must already be running).
+     * The device never gets configured by the host unless the USB11
+     * AHB clock runs too. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_USB20_SDU | GLB_AHB_CLOCK_USB11);
     GLB_Set_USB_CLK_From_WIFIPLL(1);
     PDS_Turn_On_USB(1);
 

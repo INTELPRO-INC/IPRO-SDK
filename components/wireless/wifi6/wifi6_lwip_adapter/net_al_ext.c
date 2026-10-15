@@ -70,6 +70,11 @@ void net_al_ext_sta_reconnect_reset(void)
 void net_al_ext_sta_reconnect_suppress(void)
 {
 }
+bool net_al_ext_sta_reconnect_valid(uint32_t generation)
+{
+    (void)generation;
+    return false;
+}
 int net_dhcpd_start(net_al_if_t net_if, int start, int limit)
 {
     return -1
@@ -428,8 +433,12 @@ static int show_ip(uint8_t fhost_vif_idx)
  * DHCP-failure retry in wifi_sta_dhcpc_start below. */
 #define STA_RECONNECT_DELAY_MIN_MS 10000
 #define STA_RECONNECT_DELAY_MAX_MS 30000
+#define STA_RECONNECT_BW20_DELAY_MS 1000
 static uint32_t sta_reconnect_delay_ms = STA_RECONNECT_DELAY_MIN_MS;
 static bool sta_reconnect_pending;
+/* Set when the pending attempt is the 20 MHz retry: it runs after
+ * STA_RECONNECT_BW20_DELAY_MS whatever disable_autoreconnect says. */
+static bool sta_reconnect_bw20;
 /* Set by wifi_sta_disconnect(): the next disconnect indication is one we asked
  * for, so do not fight the caller by re-associating. Cleared when someone asks
  * for a connection again. */
@@ -440,15 +449,34 @@ static bool sta_reconnect_suppressed;
  * 2026-07-25 caught exactly that, a leftover attempt undoing an operator's
  * wifi_sta_disconnect 8 s later. */
 static uint32_t sta_reconnect_gen;
+static bool sta_reconnect_exhausted;
+
+bool net_al_ext_sta_reconnect_valid(uint32_t generation)
+{
+    uint32_t protection = rtos_protect();
+    const bool valid = !sta_reconnect_exhausted && generation == sta_reconnect_gen;
+    rtos_unprotect(protection);
+    return valid;
+}
+
+/* Caller holds the reconnect-state critical section. Never recycle a token. */
+static void sta_reconnect_advance(void)
+{
+    if (sta_reconnect_gen == UINT32_MAX)
+        sta_reconnect_exhausted = true;
+    else
+        ++sta_reconnect_gen;
+}
 
 static RTOS_TASK_FCT(sta_reconnect_task)
 {
-    uint32_t delay = sta_reconnect_delay_ms;
-    uint32_t gen = sta_reconnect_gen;
+    bool bw20 = sta_reconnect_bw20;
+    uint32_t delay = bw20 ? STA_RECONNECT_BW20_DELAY_MS : sta_reconnect_delay_ms;
+    uint32_t gen = (uint32_t)(uintptr_t)env;
 
     rtos_task_suspend((int)delay);
 
-    if (gen != sta_reconnect_gen)
+    if (!net_al_ext_sta_reconnect_valid(gen))
     {
         printf("[STA] auto-reconnect stale (gen %lu != %lu), dropping\r\n",
                (unsigned long)gen, (unsigned long)sta_reconnect_gen);
@@ -459,15 +487,21 @@ static RTOS_TASK_FCT(sta_reconnect_task)
 
     /* Re-check the gate: the user may have disabled auto-reconnect while we
      * were sleeping. */
-    if (!wifiMgmr.disable_autoreconnect &&
+    if ((!wifiMgmr.disable_autoreconnect || bw20) &&
         (wifiMgmr.sta_connect_param.ssid_len != 0))
     {
         printf("[STA] auto-reconnect after %lums\r\n", (unsigned long)delay);
-        delay <<= 1;
-        sta_reconnect_delay_ms = (delay > STA_RECONNECT_DELAY_MAX_MS) ?
-                                 STA_RECONNECT_DELAY_MAX_MS : delay;
+        if (!bw20)
+        {
+            delay <<= 1;
+            sta_reconnect_delay_ms = (delay > STA_RECONNECT_DELAY_MAX_MS) ?
+                                     STA_RECONNECT_DELAY_MAX_MS : delay;
+        }
         sta_reconnect_pending = false;
-        wifi_mgmr_sta_connect(&wifiMgmr.sta_connect_param);
+        if (bw20)
+            wifi_mgmr_sta_reconnect_bw20(gen);
+        else
+            wifi_mgmr_sta_reconnect(gen);
     }
     else
     {
@@ -479,8 +513,10 @@ static RTOS_TASK_FCT(sta_reconnect_task)
 
 void net_al_ext_sta_reconnect_suppress(void)
 {
+    uint32_t protection = rtos_protect();
     sta_reconnect_suppressed = true;
-    sta_reconnect_gen++;   /* invalidate any attempt already sleeping */
+    sta_reconnect_advance(); /* invalidate sleeping AND already-awake retries */
+    rtos_unprotect(protection);
 }
 
 void net_al_ext_sta_reconnect_arm(void)
@@ -488,25 +524,37 @@ void net_al_ext_sta_reconnect_arm(void)
     /* One line per disconnect: an arm that silently declines is impossible to
      * tell from a reconnect that failed, and on the bench it cost a whole
      * repro cycle to find out which. */
-    printf("[STA] reconnect arm: sup=%d dis=%u pend=%d ssid_len=%u\r\n",
-           (int)sta_reconnect_suppressed, wifiMgmr.disable_autoreconnect,
-           (int)sta_reconnect_pending, wifiMgmr.sta_connect_param.ssid_len);
+    bool bw20 = fhost_bw20_retry_take();
 
+    printf("[STA] reconnect arm: sup=%d dis=%u pend=%d ssid_len=%u bw20=%d\r\n",
+           (int)sta_reconnect_suppressed, wifiMgmr.disable_autoreconnect,
+           (int)sta_reconnect_pending, wifiMgmr.sta_connect_param.ssid_len, (int)bw20);
+
+    uint32_t protection = rtos_protect();
     if (sta_reconnect_suppressed)
     {
         /* One-shot: consume it, so a later unsolicited deauth still recovers. */
         sta_reconnect_suppressed = false;
+        rtos_unprotect(protection);
         return;
     }
-    if (wifiMgmr.disable_autoreconnect || sta_reconnect_pending)
+    if ((wifiMgmr.disable_autoreconnect && !bw20) || sta_reconnect_pending ||
+        sta_reconnect_exhausted) {
+        rtos_unprotect(protection);
         return;
+    }
     /* Nothing to reconnect to until the STA has been told an SSID once. */
-    if (wifiMgmr.sta_connect_param.ssid_len == 0)
+    if (wifiMgmr.sta_connect_param.ssid_len == 0) {
+        rtos_unprotect(protection);
         return;
+    }
 
     sta_reconnect_pending = true;
+    sta_reconnect_bw20 = bw20;
+    const uint32_t generation = sta_reconnect_gen;
+    rtos_unprotect(protection);
     if (rtos_task_create(sta_reconnect_task, "sta_reconnect", WPA_CONNECTED_TASK,
-                         512, NULL, fhost_wpa_priority, NULL))
+                         512, (void *)(uintptr_t)generation, fhost_wpa_priority, NULL))
     {
         /* Out of heap for the task - drop the attempt rather than leaving the
          * gate latched, so the next disconnect event can try again. */
@@ -517,17 +565,23 @@ void net_al_ext_sta_reconnect_arm(void)
 
 void net_al_ext_sta_reconnect_reset(void)
 {
+    uint32_t protection = rtos_protect();
     sta_reconnect_delay_ms = STA_RECONNECT_DELAY_MIN_MS;
     /* A link that came up cancels any stale suppression, so the first deauth
      * after it is treated as unsolicited even if the previous disconnect never
      * produced an indication. It also invalidates any attempt still sleeping -
      * whoever brought the link up (us, or the supplicant's own retry) won. */
     sta_reconnect_suppressed = false;
-    sta_reconnect_gen++;
+    sta_reconnect_advance();
+    rtos_unprotect(protection);
 }
 
-static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx)
+static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx, uint32_t generation)
 {
+    /* A queued task may start after an explicit disconnect/rollback. Do not
+     * let that stale task start DHCP on the now-current interface. */
+    if (!net_al_ext_sta_reconnect_valid(generation))
+        return -1;
     struct net_al_ext_ip_addr_cfg ip_cfg;
     ip_cfg.mode = IP_ADDR_DHCP_CLIENT;
     ip_cfg.default_output = true;
@@ -535,6 +589,12 @@ static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx)
     int ret = 0;
 
     ret = net_al_ext_set_vif_ip(fhost_vif_idx, &ip_cfg);
+    /* DHCP may block for 15 seconds. Neither late success nor late failure is
+     * evidence about a replacement connection. In particular, do not clear
+     * its shared sleep-prevention flag or publish GOT_IP from this old work.
+     * This check does not drain/fence lwIP operations already in progress. */
+    if (!net_al_ext_sta_reconnect_valid(generation))
+        return -1;
     if (ret)
     {
         if (ret != DHCPC_START_ABORT) {
@@ -543,11 +603,7 @@ static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx)
             } else {
                 printf("dhcpc start error, ret is %d\n", ret);
             }
-            if (!wifiMgmr.disable_autoreconnect) {
-                wifi_mgmr_sta_connect(&wifiMgmr.sta_connect_param);
-            } else {
-                wifi_sta_disconnect();
-            }
+            wifi_mgmr_sta_dhcp_recover(generation);
         } else {
             printf("dhcpc start abort\n");
         }
@@ -556,7 +612,16 @@ static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx)
     } else {
         /* Link is fully up again - forget the backoff so the next outage gets
          * a fast first retry instead of inheriting a 30 s delay. */
+        uint32_t protection = rtos_protect();
+        if (!net_al_ext_sta_reconnect_valid(generation)) {
+            rtos_unprotect(protection);
+            return -1;
+        }
+        /* Do not let an intervening suppression be cleared by an old DHCP
+         * success. Only this state reset is atomic; event delivery remains a
+         * separate path, not proof that the link is still current later. */
         net_al_ext_sta_reconnect_reset();
+        rtos_unprotect(protection);
         platform_post_event(EV_WIFI, CODE_WIFI_ON_GOT_IP, 0);
         show_ip(fhost_vif_idx);
         PLATFORM_HOOK(prevent_sleep, PSM_EVENT_CONNECT, 0);
@@ -568,7 +633,7 @@ static int wifi_sta_dhcpc_start(uint8_t fhost_vif_idx)
 }
 
 static RTOS_TASK_FCT(fhost_wpa_connected_task) {
-    wifi_sta_dhcpc_start(MGMR_VIF_STA);
+    wifi_sta_dhcpc_start(MGMR_VIF_STA, (uint32_t)(uintptr_t)env);
 
     rtos_task_delete(NULL);
 }
@@ -728,8 +793,21 @@ static void net_al_create_ip6_linklocal_address(void)
 }
 #endif
 
+/* Static IP and quick connect bring the link up at association, with
+ * no DHCP task: reset the reconnect state here as a DHCP success does. */
+static void sta_reconnect_link_up(uint32_t generation)
+{
+    uint32_t protection = rtos_protect();
+    if (net_al_ext_sta_reconnect_valid(generation))
+        net_al_ext_sta_reconnect_reset();
+    rtos_unprotect(protection);
+}
+
 void net_al_ext_dhcp_connect(void)
 {
+    uint32_t protection = rtos_protect();
+    const uint32_t generation = sta_reconnect_gen;
+    rtos_unprotect(protection);
     net_al_if_t net_if = fhost_to_net_if(MGMR_VIF_STA);
 
     printf("DHCP_CONN: use_dhcp=%d qc=%d net_if=%p\r\n",
@@ -741,14 +819,21 @@ void net_al_ext_dhcp_connect(void)
     #error To do add netif msg call
 #endif
     if (wifiMgmr.sta_connect_param.use_dhcp) {
-        net_if_disable_arp_for_us(net_if);
+        /* Stop answering ARP only while the interface has no IPv4 address. */
+        if (ip4_addr_isany_val(*netif_ip4_addr((struct netif *)net_if))) {
+            net_if_disable_arp_for_us(net_if);
+        }
         if (wifiMgmr.sta_connect_param.quick_connect) {
             net_quick_dhcp_restore(net_if);
+            sta_reconnect_link_up(generation);
         } else {
             printf("start dhcping ... \r\n");
             rtos_task_create(fhost_wpa_connected_task, "fhost_wpa_connected_task",
-                             WPA_CONNECTED_TASK, 512, NULL, fhost_wpa_priority, NULL);
+                             WPA_CONNECTED_TASK, 512, (void *)(uintptr_t)generation,
+                             fhost_wpa_priority, NULL);
         }
+    } else {
+        sta_reconnect_link_up(generation);
     }
 
 #ifdef CFG_IPV6
@@ -893,6 +978,84 @@ int net_al_sta_arp_announce(void)
     etharp_gratuitous(nif);
     UNLOCK_TCPIP_CORE();
     return 0;
+}
+
+/*
+ * Announce our address to ONE peer, unicast, instead of to the broadcast
+ * domain.
+ *
+ * The broadcast form above invites every host on the segment to answer, and
+ * on a production LAN some do: on 2026-09-10 two hosts replied to 42 of 45
+ * of our gratuitous ARPs. The AP holds our broadcast until its DTIM
+ * (~0.5 s), so the reply lands after the keepalive
+ * has already gone back to PM=1, sets our TIM bit and buys a full-firmware
+ * wake that delivers nothing lwIP wants -- 8 of 8 "WIFI wake without data"
+ * in a 10-minute leg were exactly this. The cache we need to keep warm is the
+ * peer's alone, so send the same announcement to its MAC: no broadcast to
+ * hold, nothing for third parties to answer.
+ *
+ * Falls back to the broadcast form when the peer is not in our ARP table --
+ * an announcement that reaches nobody would defeat the purpose.
+ * Returns 0 unicast, 1 broadcast fallback, -1 no route.
+ */
+int net_al_sta_arp_announce_to(const char *peer)
+{
+    struct netif *nif = (struct netif *)fhost_to_net_if(MGMR_VIF_STA);
+    ip4_addr_t peer_ip;
+    struct eth_addr *peer_mac = NULL;
+    const ip4_addr_t *cached_ip = NULL;
+    int rc;
+
+    if (nif == NULL || !netif_is_up(nif) ||
+        ip4_addr_isany_val(*netif_ip4_addr(nif))) {
+        return -1;
+    }
+    if (peer == NULL || !ip4addr_aton(peer, &peer_ip)) {
+        return net_al_sta_arp_announce();
+    }
+    LOCK_TCPIP_CORE();
+#ifdef CONFIG_LWIP_LP
+    if (etharp_find_addr(nif, &peer_ip, &peer_mac, &cached_ip) >= 0 &&
+        peer_mac != NULL) {
+        etharp_request_dst(nif, netif_ip4_addr(nif), peer_mac);
+        rc = 0;
+    } else
+#endif
+    {
+        etharp_gratuitous(nif);
+        rc = 1;
+    }
+    UNLOCK_TCPIP_CORE();
+    return rc;
+}
+
+/* Unicast ARP reply to the next hop towards peer (peer itself when on-link,
+ * else the gateway). Returns 0 sent, 1 next hop not in the ARP cache (nothing
+ * sent), -1 no usable interface or address. */
+int net_al_sta_arp_reply_nexthop(const char *peer)
+{
+    struct netif *nif = (struct netif *)fhost_to_net_if(MGMR_VIF_STA);
+    ip4_addr_t peer_ip, hop;
+    struct eth_addr *hop_mac = NULL;
+    const ip4_addr_t *cached_ip = NULL;
+    int rc = 1;
+
+    if (nif == NULL || !netif_is_up(nif) ||
+        ip4_addr_isany_val(*netif_ip4_addr(nif)) ||
+        peer == NULL || !ip4addr_aton(peer, &peer_ip)) {
+        return -1;
+    }
+    hop = ip4_addr_netcmp(&peer_ip, netif_ip4_addr(nif), netif_ip4_netmask(nif))
+              ? peer_ip : *netif_ip4_gw(nif);
+    LOCK_TCPIP_CORE();
+#ifdef CONFIG_LWIP_LP
+    if (etharp_find_addr(nif, &hop, &hop_mac, &cached_ip) >= 0 && hop_mac != NULL) {
+        etharp_reply_dst(nif, &hop, hop_mac);
+        rc = 0;
+    }
+#endif
+    UNLOCK_TCPIP_CORE();
+    return rc;
 }
 
 #endif // NET_AL_NO_IP

@@ -36,7 +36,7 @@
  * 也不需要知道 host 在同一顆晶片上。
  *
  * 舊樹的 on-chip 路徑不是這樣:指令走 opcode+打包參數,但 ACL/ISO 接收
- * 直接把 RW 結構指標與 Exchange Memory offset 遞過界,host 端自己讀 EM
+ * 直接把 controller 結構指標與 Exchange Memory offset 遞過界,host 端自己讀 EM
  * 再呼叫 `ble_util_buf_rx_free()` —— 緩衝區所有權跨界,controller 無法單獨替換。
  *
  * ## 執行緒模型
@@ -167,6 +167,8 @@ extern volatile bool ipro_ble_ctlr_hcitl_host_is_ready;
 
 /// Number of controller-loop sleeps held off by the HCI activity guard.
 extern volatile uint32_t ipro_ble_ctlr_hcitl_sleep_guard_cnt;
+/// Sleep hold-off after host HCI activity (ms, default 100).
+extern volatile uint32_t ipro_ble_ctlr_hcitl_awake_guard_ms;
 
 /*
  * Host 側 —— 由 Zephyr 的 bt_hci_driver 使用(Phase 3)

@@ -60,7 +60,9 @@
 #include "hal_mtimer.h"          /* mtimer_get_time_us(): 64-bit microseconds */
 #include "drv_glb.h"
 #include "drv_gpio.h"
-#include "compiler/common.h"     /* ATTR_PSRAM_NOINIT_SECTION */
+#include "compiler/common.h"     /* ATTR_PSRAM_BSS_SECTION: the FreeRTOS linker script has no
+                                     * .psram_noinit rule, so that section landed in the image
+                                     * as zeros (20 KB of flash) */
 
 #include "ipronet_priv.h"
 
@@ -101,7 +103,7 @@ static int s_initted = 0;
  * construction; the 6144 cap mirrors the Linux host (cheap insurance). Must be
  * 4-byte aligned for ADMA2 (CMD53 requirement); cache-line(64) aligned in PSRAM
  * like the in-tree SD-card DMA buffers. */
-static ATTR_PSRAM_NOINIT_SECTION __attribute__((aligned(64))) uint8_t s_rx_buf[IPRONET_RX_BUF_SIZE];
+static ATTR_PSRAM_BSS_SECTION __attribute__((aligned(64))) uint8_t s_rx_buf[IPRONET_RX_BUF_SIZE];
 
 /* RX counters — surface via ipronet_diag_rx_stats. */
 static volatile uint32_t s_doorbell_polls    = 0;
@@ -115,6 +117,12 @@ static volatile uint32_t s_rx_bad_type       = 0;
 static volatile uint32_t s_rx_bad_subtype    = 0;
 static volatile uint32_t s_rx_desync         = 0;   /* has_twin / pld_off / len violations */
 static volatile uint32_t s_rx_unaligned_cnt  = 0;   /* doorbell cnt not 512-aligned */
+static volatile uint32_t s_rx_reset_reqs     = 0;   /* doorbell RESET_REQ seen */
+static volatile uint32_t s_rx_bus_lost       = 0;   /* re-attach asked for a dead bus */
+
+/* Doorbell reads failing this long in a row: the card left the bus
+ * (device SDU reset) and only a re-attach brings it back. */
+#define IPRO6S_RX_BUS_LOST_MS     1000U
 static volatile uint16_t s_last_pdu_len      = 0;
 static volatile uint16_t s_last_pdu_subtype  = 0;
 
@@ -143,7 +151,8 @@ static inline void rxp_add(int stage, uint64_t t0, uint64_t t1)
 }
 
 /* TX single-frame buffer: [2B len][body][0x0000 sentinel] padded to 512. */
-static ATTR_PSRAM_NOINIT_SECTION __attribute__((aligned(64))) uint8_t s_tx_buf[IPRO6S_TX_BUF_SIZE];
+static ATTR_PSRAM_BSS_SECTION __attribute__((aligned(64))) uint8_t s_tx_buf[IPRO6S_TX_BUF_SIZE];
+static uint32_t s_bus_hz = 25000000U;   /* last setup() clock */
 
 /* TX counters. */
 static volatile uint32_t s_tx_writes      = 0;   /* CMD53 writes (single + agg)   */
@@ -158,33 +167,21 @@ static volatile uint64_t s_tx_write_us     = 0;
 static volatile uint32_t s_tx_write_max_us = 0;
 
 /* ---- TX aggregation --------------------------------------------------------
- * Pack up to a few DATA frames into ONE CMD53 write, amortising the per-write
- * SDH DATA_COMPLETED latency. Each frame unit = [2B body_len][body], identical
- * to the single-frame layout; the batch ends with a [2B 0x0000] sentinel and is
- * zero-padded to a 512 multiple. The device (trcver_sdio_ipro6.c smid_rx_process)
- * parses frames until the sentinel. All writes go to the fixed Fn1 FIFO address
- * 0 — SMID has no download ports. IPRO6S_AGG_TX_SIZE MUST equal the device
- * SDIO_DNLD_AGG_BUF_SIZE (6144). */
-#define IPRO6S_AGG_TX_SIZE     6144U     /* MUST match device SDIO_DNLD_AGG_BUF_SIZE */
+ * After the ZCOK3 grant, up to nslot DATA frames go into ONE CMD53, one frame
+ * per fixed 2048 B wire stride ([2B len][body][zero tail]); the device lands
+ * each stride in its own zero-copy slot. Before the grant every frame is its
+ * own CMD53. All writes go to the fixed Fn1 FIFO address 0. */
 #define IPRO6S_AGG_FLUSH_MS    2U        /* deferred flush bound for a partial batch */
-#define IPRO6S_AGG_SMALL_FRAME 256U      /* frames < this bypass agg (TCP ACKs) */
-/* Frames/batch cap — runtime tunable (ipronet_diag_set_aggmax) for A/B. It caps
- * both negotiated ZCEN2 slots and the legacy batch; 0 bypasses aggregation. */
+/* Frames/batch cap after the grant (ipronet_diag_set_aggmax); 0 = single. */
 static uint32_t s_tx_agg_max = 8U;
 
-/* ZCEN2 stride packing: one frame per fixed 2048B wire stride, each landing in
- * its own device zero-copy slot via the device's ADMA scatter chain — keeps the
- * zero-copy that ZCEN1 buys while amortising the per-CMD53 cost over nslot
- * frames. Armed only by a "ZCOK2 <nslot> <stride>" grant (IPRO6S_ZC2_*,
- * ipronet_priv.h). */
 #define IPRO6S_TX_AGG_BUF_SIZE (IPRO6S_ZC2_MAX_SLOT * IPRO6S_ZC2_STRIDE)
 
 static volatile uint32_t s_zc2_nslot  = 0;   /* 0/1 = stride packing off */
 static volatile uint32_t s_zc2_stride = 0;
-static volatile uint32_t s_zc2_warmup = 0;   /* first writes stay <= legacy cap */
 static volatile uint32_t s_zc3_uslots = 0;   /* 0 = legacy one-PDU upload wire */
 
-static ATTR_PSRAM_NOINIT_SECTION __attribute__((aligned(64)))
+static ATTR_PSRAM_BSS_SECTION __attribute__((aligned(64)))
     uint8_t s_tx_agg_buf[IPRO6S_TX_AGG_BUF_SIZE];
 static uint32_t   s_tx_agg_off = 0;       /* bytes packed (excl. sentinel) */
 static uint32_t   s_tx_agg_cnt = 0;       /* frames packed */
@@ -237,7 +234,6 @@ typedef struct {
 
 typedef enum {
     IPRO6S_TX_AGG_SINGLE,
-    IPRO6S_TX_AGG_LEGACY,
     IPRO6S_TX_AGG_STRIDE,
 } ipro6s_tx_agg_mode_t;
 
@@ -256,11 +252,9 @@ ipro6s_tx_agg_snapshot(uint32_t configured_max, uint32_t negotiated_slots)
 static inline ipro6s_tx_agg_mode_t
 ipro6s_tx_agg_mode(ipro6s_tx_agg_snapshot_t snapshot)
 {
-    if (snapshot.configured_max == 0)
-        return IPRO6S_TX_AGG_SINGLE;
-    if (snapshot.stride_slots != 0)
+    if (snapshot.configured_max != 0 && snapshot.stride_slots != 0)
         return IPRO6S_TX_AGG_STRIDE;
-    return IPRO6S_TX_AGG_LEGACY;
+    return IPRO6S_TX_AGG_SINGLE;
 }
 
 /* ------------------------------------------------------------------ */
@@ -311,12 +305,13 @@ static void sdh_pinmux_init(void)
 /* GPIO (EVB: GPIO15, SD PWR EN, 0 = rail ON; both come from the       */
 /* config). "Reset" is a power cycle.                                  */
 /*                                                                     */
-/* During the rail-off window ALL six SDH pads are parked as floating */
+/* During the rail-off window CLK/CMD/D1-D3 are parked as floating    */
 /* inputs — the SDH pull-ups would otherwise back-power the dead DUT  */
 /* through its IO ring and the rail never fully discharges.           */
 /* ------------------------------------------------------------------ */
 
 #define IPRO6_STRAP_HOLD_MS    200U             /* strap hold past power-on */
+#define IPRO6_STRAP_PIN        GLB_GPIO_PIN_29  /* SD_D0 */
 
 static int8_t  s_pwr_gpio = -1;
 static uint8_t s_pwr_active_low = 1;
@@ -359,16 +354,18 @@ static void ipro6_sdh_pads_park(void)
         .smtCtrl  = 1,
     };
     static const uint8_t pins[] = {
-        GLB_GPIO_PIN_28, GLB_GPIO_PIN_29, GLB_GPIO_PIN_30,
+        GLB_GPIO_PIN_28, GLB_GPIO_PIN_30,
         GLB_GPIO_PIN_31, GLB_GPIO_PIN_32, GLB_GPIO_PIN_33,
     };
     for (size_t i = 0; i < sizeof(pins) / sizeof(pins[0]); i++) {
         cfg.gpioPin = pins[i];
         GLB_GPIO_Init(&cfg);
     }
+    /* SD_D0 low: the IPRO6S BROM boots from flash at the next power-on */
+    ipro6_gpio_out(IPRO6_STRAP_PIN, 0U);
 }
 
-/* Rail off parks the six SDH pads first (their pull-ups would back-power the
+/* Rail off parks the SDH pads first (their pull-ups would back-power the
  * dead device through its IO ring). Rail on holds 200 ms, then restores the
  * SDH pinmux; that hold is also the window an app-level BROM strap needs. */
 int ipronet_sdio_power(int on)
@@ -624,7 +621,13 @@ int ipronet_sdio_setup(uint32_t bus_hz)
      * doorbell; nearby offsets alias other registers) — never write them. */
     printf("ipro6s: setup complete (4-bit, %u MHz, F1 blk=%u, F1 enabled)\r\n",
            s_host.high_speed ? 50U : 25U, IPRONET_FUNC_BLOCK_SIZE);
+    s_bus_hz = bus_hz;
     return IPRONET_OK;
+}
+
+uint32_t ipronet_sdio_bus_hz(void)
+{
+    return s_bus_hz;
 }
 
 bool ipronet_sdio_is_setup(void)
@@ -676,6 +679,8 @@ int ipronet_sdio_send_pdu(uint16_t msg_type, uint16_t subtype,
     uint32_t blocks = (total + IPRONET_FUNC_BLOCK_SIZE - 1U) / IPRONET_FUNC_BLOCK_SIZE;
     uint32_t padded = blocks * IPRONET_FUNC_BLOCK_SIZE;
 
+    /* s_tx_buf is shared by all senders: fill it under the lock */
+    sdio_claim_host(&s_host);
     /* zeroes the [2B] prefix room, the 0x0000 sentinel, and the pad tail */
     memset(s_tx_buf, 0, padded);
     s_tx_buf[0] = body_len & 0xff;
@@ -691,7 +696,6 @@ int ipronet_sdio_send_pdu(uint16_t msg_type, uint16_t subtype,
     }
     if (payload_len) memcpy(pld, payload, payload_len);
 
-    sdio_claim_host(&s_host);
     /* fixed_addr=true (OP_CODE=0) — the FIFO address must not auto-increment.
      * incrementing-mode leaves SMID never asserting DATA_COMPLETED. */
     uint64_t t_w0 = mtimer_get_time_us();
@@ -762,7 +766,6 @@ static int ipro6s_tx_agg_write_locked(void)
     s_tx_eth_frames += ncnt;
     s_tx_bytes      += padded;
     s_tx_agg_flushes++;
-    if (s_zc2_warmup) s_zc2_warmup--;
     sdio_release_host(&s_host);
     s_tx_agg_off = 0; s_tx_agg_cnt = 0;
     return 0;
@@ -784,7 +787,6 @@ static void ipro6s_tx_agg_accept_grant(uint32_t nslot, uint32_t stride)
         xSemaphoreTake(s_tx_agg_mtx, portMAX_DELAY);
     }
     s_zc2_stride = stride;
-    s_zc2_warmup = 8;
     s_zc2_nslot  = nslot;
     s_tx_agg_max = ipro6s_tx_agg_grant_cap(nslot);
     if (s_tx_agg_mtx != NULL) {
@@ -823,14 +825,12 @@ static int ipro6s_pace_admit(uint16_t len)
     return 1;
 }
 
-/* TX entry for the lwIP netif (ipronet_netif.c). Appends one ethernet frame to
- * the aggregation batch and flushes when the batch is full (by size or count).
- * A partial batch is flushed by rx_task's timeout. Returns 0 (lwIP treats the
- * frame as sent; it is copied into the agg buffer). */
+/* TX entry for the lwIP netif (ipronet_netif.c). After the grant the frame
+ * joins the stride batch, flushed when full or by rx_task's timeout; before
+ * it the frame is written alone. Returns 0 (the frame is copied). */
 int ipronet_sdio_eth_tx(const uint8_t *frame, uint16_t len)
 {
     uint32_t body_len = 4U + 2U + (uint32_t)len;         /* type+msg.len+subtype+payload */
-    uint32_t fsz      = 2U + body_len;                   /* [2B len][body] */
 
     if (!ipro6s_pace_admit(len)) {
         return 0;            /* shed: cheaper here than inside the device MAC */
@@ -842,29 +842,19 @@ int ipronet_sdio_eth_tx(const uint8_t *frame, uint16_t len)
                                      frame, len);
     }
 
-    /* Mode changes and aggregate writes share this lock. A ZCEN request can
-     * therefore drain the old wire format, disable aggregation, and send the
-     * opt-in without an old-mode TX escaping after it. */
+    /* Mode changes and batch writes share this lock, so the ZCEN3 request
+     * drains the batch and goes out with no frame passing it. */
     xSemaphoreTake(s_tx_agg_mtx, portMAX_DELAY);
     ipro6s_tx_agg_snapshot_t tx_agg =
         ipro6s_tx_agg_snapshot(s_tx_agg_max, s_zc2_nslot);
     ipro6s_tx_agg_mode_t tx_mode = ipro6s_tx_agg_mode(tx_agg);
     uint32_t nslot = tx_agg.stride_slots;
 
-    /* ZCEN2 granted: pack at the fixed wire stride instead of back-to-back, so
-     * every frame lands in its own device zero-copy slot. The tail of each
-     * stride is zeroed — that zero length doubles as the walker's sentinel. */
+    /* The zeroed stride tail doubles as the device walker's sentinel. */
     if (tx_mode == IPRO6S_TX_AGG_STRIDE &&
         (2U + body_len + 2U) <= s_zc2_stride) {
         uint32_t stride = s_zc2_stride;
         uint32_t cap    = nslot * stride;
-
-        /* Warm-up: stay within the legacy buffer size until the elements the
-         * device armed before the grant have been consumed (a bigger write
-         * landing on one truncates -> the -110 card-removed cascade). */
-        if (s_zc2_warmup && cap > IPRO6S_AGG_TX_SIZE) {
-            cap = IPRO6S_AGG_TX_SIZE;
-        }
 
         if ((s_tx_agg_cnt + 1U) * stride > cap) {
             ipro6s_tx_agg_write_locked();
@@ -890,61 +880,14 @@ int ipronet_sdio_eth_tx(const uint8_t *frame, uint16_t len)
         return 0;
     }
 
-    /* Fallback to the single-frame path if aggregation isn't up yet, the frame
-     * + sentinel can't fit one (empty) batch buffer (MTU < 2048 so never in
-     * practice), or aggregation is disabled (aggmax 0 = the true
-     * pre-aggregation send_pdu path, for A/B: the agg buffer/mutex/rx_task
-     * timeout-flush are all bypassed since s_tx_agg_cnt stays 0). */
-    if (tx_mode != IPRO6S_TX_AGG_LEGACY ||
-        fsz + 2U > IPRO6S_AGG_TX_SIZE) {
-        xSemaphoreGive(s_tx_agg_mtx);
-        return ipronet_sdio_send_pdu(IPRONET_MSG_TYPE_DATA, IPRONET_MSG_SUBTYPE_STA_TX,
-                                     frame, len);
-    }
-
-    /* Small frames (TCP pure-ACKs ~54B, control) BYPASS the aggregation path
-     * entirely and go straight out via send_pdu — like aggmax=0. Routing an
-     * ACK through the agg buffer instead leaves s_tx_agg_cnt>0 momentarily,
-     * which lets rx_task's timeout hook grab the agg mutex while the flush
-     * holds it across the SDH write → rx_task's RX drain stalls. Flush any
-     * queued bulk batch FIRST to preserve in-order delivery (cnt>0 only in
-     * mixed TX+ACK, never in pure RX). Large DATA frames aggregate. */
-    if (len < IPRO6S_AGG_SMALL_FRAME) {
-        if (s_tx_agg_cnt) ipro6s_tx_agg_write_locked();
-        xSemaphoreGive(s_tx_agg_mtx);
-        return ipronet_sdio_send_pdu(IPRONET_MSG_TYPE_DATA, IPRONET_MSG_SUBTYPE_STA_TX,
-                                     frame, len);
-    }
-
-    /* If this frame won't fit the current batch (reserve +2 for the sentinel),
-     * flush what we have first, then start a fresh batch with this frame. */
-    if (s_tx_agg_off + fsz + 2U > IPRO6S_AGG_TX_SIZE) {
-        ipro6s_tx_agg_write_locked();
-    }
-    uint8_t *d = &s_tx_agg_buf[s_tx_agg_off];
-    d[0] = body_len & 0xff;        d[1] = (body_len >> 8) & 0xff;
-    d[2] = IPRONET_MSG_TYPE_DATA & 0xff;   d[3] = (IPRONET_MSG_TYPE_DATA >> 8) & 0xff;
-    d[4] = body_len & 0xff;        d[5] = (body_len >> 8) & 0xff;
-    d[6] = IPRONET_MSG_SUBTYPE_STA_TX & 0xff;
-    d[7] = (IPRONET_MSG_SUBTYPE_STA_TX >> 8) & 0xff;
-    if (len) memcpy(&d[8], frame, len);
-    if (s_tx_agg_cnt == 0) s_tx_agg_t0 = xTaskGetTickCount();
-    s_tx_agg_off += fsz;
-    s_tx_agg_cnt++;
-
-    if (s_tx_agg_cnt >= tx_agg.configured_max) {
-        ipro6s_tx_agg_write_locked();
-    }
+    if (s_tx_agg_cnt) ipro6s_tx_agg_write_locked();
     xSemaphoreGive(s_tx_agg_mtx);
-    return 0;
+    return ipronet_sdio_send_pdu(IPRONET_MSG_TYPE_DATA, IPRONET_MSG_SUBTYPE_STA_TX,
+                                 frame, len);
 }
 
-/* ZCEN ordering contract (used by ipronet_ctrl_zcen): commit to single-frame TX
- * and drain the pending batch BEFORE telling the device, and keep the same lock
- * across the opt-in so no aggregate selected under the old mode can trail it.
- * The dnld queue is in-order, so once the device processes ZCEN no aggregate
- * may follow it into a 1604B-capped zero-copy slot (arming it under an
- * aggregating host is the documented -110 card-removed cascade). */
+/* Held across the ZCEN3 request (ipronet_ctrl_zcen): drains the batch and
+ * keeps TX single-frame until the grant re-opens stride packing. */
 void ipronet_sdio_tx_single_frame_lock(void)
 {
     if (s_tx_agg_mtx != NULL) xSemaphoreTake(s_tx_agg_mtx, portMAX_DELAY);
@@ -966,8 +909,8 @@ int  ipronet_diag_set_pace(uint32_t kbps)                         { s_tx_pace_kb
 void ipronet_diag_tx_agg_flush(void)                              { ipro6s_tx_agg_flush(); }
 int  ipronet_diag_eth_tx(const uint8_t *f, uint16_t l)            { return ipronet_sdio_eth_tx(f, l); }
 
-/* TX-aggregation batch cap (A/B). 1 flushes every frame; higher values pack up
- * to N frames/CMD53, bounded by the negotiated ZCEN2 slots; 0 bypasses. */
+/* Stride batch cap (A/B): up to N frames per CMD53, bounded by the granted
+ * slots; 0 or 1 writes every frame alone. */
 int ipronet_diag_set_aggmax(uint32_t n)
 {
     if (s_tx_agg_mtx != NULL) {
@@ -1006,6 +949,8 @@ static void rx_task(void *arg)
         sdio_set_wait_demotion(xTaskGetCurrentTaskHandle(), IPRO6S_RX_TASK_PRIO);
     uint64_t last_data_us = 0;
     uint32_t drain_budget = 0;
+    TickType_t fail_t0 = 0;
+    bool fail_run = false, recover_asked = false;
     while (!s_rx_stop) {
         uint64_t t_top = mtimer_get_time_us();
         /* Flush a partial TX aggregation batch that has waited too long so a
@@ -1026,10 +971,33 @@ static void rx_task(void *arg)
             sdio_readb(&s_host, IPRONET_FUNC_DATA, IPRONET_DOORBELL_HI, &hi)
                 != Status_SDIO_Success) {
             sdio_release_host(&s_host);
+            if (!fail_run) {
+                fail_run = true;
+                fail_t0 = xTaskGetTickCount();
+            } else if (!recover_asked &&
+                       (xTaskGetTickCount() - fail_t0) >= pdMS_TO_TICKS(IPRO6S_RX_BUS_LOST_MS)) {
+                recover_asked = true;
+                s_rx_bus_lost++;
+                printf("[rx] doorbell unreadable for %u ms: re-attach\r\n",
+                       (unsigned)IPRO6S_RX_BUS_LOST_MS);
+                ipronet_host_recover_request();
+            }
             vTaskDelay(1);
             continue;
         }
+        fail_run = false;
         uint16_t cnt = (uint16_t)lo | ((uint16_t)hi << 8);
+        if (cnt == IPRONET_DOORBELL_RESET_REQ) {
+            sdio_release_host(&s_host);
+            if (!recover_asked) {
+                recover_asked = true;
+                s_rx_reset_reqs++;
+                printf("[rx] device requests a card reset: re-attach\r\n");
+                ipronet_host_recover_request();
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
         uint64_t t_door = mtimer_get_time_us();
         rxp_add(RXP_DOORBELL, t_claimed, t_door);
 
@@ -1160,7 +1128,7 @@ void ipronet_sdio_teardown(void)
     if (ipronet_sdio_is_setup()) (void)sdio_disable_func(&s_host, IPRONET_FUNC_DATA);
     if (s_tx_agg_mtx != NULL) xSemaphoreTake(s_tx_agg_mtx, portMAX_DELAY);
     s_tx_agg_max = 8U;   /* the compile-time default, restored for the next start */
-    s_zc2_nslot = 0; s_zc2_stride = 0; s_zc2_warmup = 0;
+    s_zc2_nslot = 0; s_zc2_stride = 0;
     s_tx_agg_off = 0; s_tx_agg_cnt = 0;
     if (s_tx_agg_mtx != NULL) xSemaphoreGive(s_tx_agg_mtx);
     s_zc3_uslots = 0;

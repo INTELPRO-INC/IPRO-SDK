@@ -112,4 +112,8 @@ void net_al_ext_sta_reconnect_reset(void);
  * wifi_sta_disconnect() so an explicit disconnect is not undone. One-shot.
  */
 void net_al_ext_sta_reconnect_suppress(void);
+/* Internal bounded generation check. Manager calls while holding its admission
+ * critical section. False after generation exhaustion (until reboot), so stale
+ * retries cannot become valid again by counter wrap. */
+bool net_al_ext_sta_reconnect_valid(uint32_t generation);
 #endif

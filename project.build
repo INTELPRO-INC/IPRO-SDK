@@ -58,7 +58,14 @@ CONFIG_BUILD_ERROR_ON_WARN ?= y
 
 # 工具設定
 ifeq ($(OS),Windows_NT)
-CMAKE := $(IPRO_SDK_BASE)/tools/cmake_win-x86_64/bin/cmake.exe
+# The bundled Windows cmake is in the SDK repo but not in customer packages;
+# fall back to the cmake on PATH there.
+WIN_BUNDLED_CMAKE := $(IPRO_SDK_BASE)/tools/cmake_win-x86_64/bin/cmake.exe
+ifneq ($(wildcard $(WIN_BUNDLED_CMAKE)),)
+CMAKE := $(WIN_BUNDLED_CMAKE)
+else
+CMAKE := cmake
+endif
 else
 # Prefer system cmake; fall back to bundled cmake if system cmake not found
 SYSTEM_CMAKE := $(shell which cmake 2>/dev/null)

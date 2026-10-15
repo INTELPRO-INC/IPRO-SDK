@@ -1,0 +1,33 @@
+# AIC8800 D80-H (AICSemi) external Wi-Fi 5 + BT combo over SDIO
+
+config WIFI_AIC8800
+    bool "Enable AIC8800 D80 Wi-Fi/BT combo over SDIO"
+    default n
+    help
+      External AICSemi AIC8800 D80 Wi-Fi 5 (2.4/5 GHz) + BT combo module
+      driven by IPRO7 as SDIO host (bsp/hal/hal_sdio.c). Links the vendor
+      release archive under components/wireless/wifi_aic8800/aic8800_release,
+      which contains the FullMAC host driver, wpa_supplicant/hostapd,
+      mbedTLS wrappers, the IPRO7 platform layer (SDIO shim, FreeRTOS and
+      lwIP glue) and the SDIO HCI mailbox transport. The Wi-Fi + BT firmware
+      (~430 KB) is embedded in the archive as rodata, so the app needs the
+      2 MB internal flash (CONFIG_IPRO7_FLASH_2M).
+
+      Requires CONFIG_COMPONENTS_LWIP_ENABLE, CONFIG_ETHERNET (lwipopts ABI,
+      not the EMAC), CONFIG_DHCPD (SoftAP) and CONFIG_USE_PSRAM. Only the
+      D80 SDIO variant is provided. Bluetooth is transport only: the host
+      stack is the customer's (see aic_hci_transport.h); no SCO/eSCO/ISO and
+      no A2DP/HFP codec.
+
+config AIC8800_HCI_SMOKE
+    bool "Build the vendor HCI transport smoke test (hci_info)"
+    default n
+    help
+      Compiles the application-side release test from
+      aic8800_release/example/ipro7_aic8800_wifi/hci_release_test.c into the
+      app and registers the `hci_info` shell command: it attaches the HCI
+      transport in AIC_HCI_FLOW_HOST, sends BT Reset plus the version /
+      features / buffer-size / BD_ADDR queries and detaches again.
+
+      Bring-up and acceptance only. It must not run beside an attached host
+      stack, and production images should leave it off.

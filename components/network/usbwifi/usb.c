@@ -29,26 +29,16 @@
 #include <usbd_cdc.h>
 #include <utils_list.h>
 
-#if defined(IPRO6LE)
-#include "ipro6le.h"
-extern void Interrupt_Handler_Register(IRQn_Type irq, void (*interruptFun)(void));
-extern void CPU_Interrupt_Enable(uint32_t irq_num);
-#endif
-
 /********************************************************************************
  *  Imports
  ********************************************************************************/
-#if defined(IPRO6LE)
-extern void USBD_IRQHandler(void);
-#else
 extern void USBD_IRQHandler(int irq, void *arg);
-#endif
 
 /********************************************************************************
  *  Private definations
  ********************************************************************************/
 #define USBD_VID        IPRO_USB_VID
-#define USBD_PID        0x616F
+#define USBD_PID        0x1061
 #define USBD_BCD_DEVICE 0x0100
 #define USBD_MAX_POWER  255
 #define USBD_LANGID_STRING 1033
@@ -317,9 +307,6 @@ int usbwifi_usb_init()
 #if defined(IPRO6)
     /* IPRO6: the CherryUSB device port registers + enables USB_IRQn inside
      * usb_dc_init() (called by usbd_initialize() below); do not double-register. */
-#elif defined(IPRO6LE)
-    Interrupt_Handler_Register(USB_IRQn, USBD_IRQHandler);
-    CPU_Interrupt_Enable(USB_IRQn);
 #else
     bl_irq_register(37, USBD_IRQHandler);
 #endif

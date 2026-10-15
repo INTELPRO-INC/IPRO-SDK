@@ -57,6 +57,10 @@
 #include "lwip/ip_addr.h"
 #include "lwip/ip6_addr.h"
 #include "lwip/netif.h"
+#if LWIP_IPV4 && IP_NAPT
+#include "lwip/ip4_napt.h"
+#include "lwip/lwip_napt.h"
+#endif
 #include "lwip/priv/tcp_priv.h"
 #include "lwip/udp.h"
 #include "lwip/priv/raw_priv.h"
@@ -472,6 +476,9 @@ netif_do_set_ipaddr(struct netif *netif, const ip4_addr_t *ipaddr, ip_addr_t *ol
     ip_addr_copy(*old_addr, *netif_ip_addr4(netif));
 
     LWIP_DEBUGF(NETIF_DEBUG | LWIP_DBG_STATE, ("netif_set_ipaddr: netif address being changed\n"));
+#if IP_NAPT
+    ip_napt_netif_changed(netif);
+#endif
     netif_do_ip_addr_changed(old_addr, &new_addr);
 
     mib2_remove_ip4(netif);
@@ -772,6 +779,10 @@ netif_remove(struct netif *netif)
     return;
   }
 
+#if LWIP_IPV4 && IP_NAPT
+  ip_napt_netif_changed(netif);
+  ip_napt_enable_no(netif->num, 0);
+#endif
   netif_invoke_ext_callback(netif, LWIP_NSC_NETIF_REMOVED, NULL);
 
 #if LWIP_IPV4
@@ -949,6 +960,9 @@ netif_set_down(struct netif *netif)
   LWIP_ERROR("netif_set_down: invalid netif", netif != NULL, return);
 
   if (netif->flags & NETIF_FLAG_UP) {
+#if LWIP_IPV4 && IP_NAPT
+    ip_napt_netif_changed(netif);
+#endif
 #if LWIP_NETIF_EXT_STATUS_CALLBACK
     {
       netif_ext_callback_args_t args;
@@ -1056,6 +1070,9 @@ netif_set_link_down(struct netif *netif)
   LWIP_ERROR("netif_set_link_down: invalid netif", netif != NULL, return);
 
   if (netif->flags & NETIF_FLAG_LINK_UP) {
+#if LWIP_IPV4 && IP_NAPT
+    ip_napt_netif_changed(netif);
+#endif
     netif_clear_flags(netif, NETIF_FLAG_LINK_UP);
     NETIF_LINK_CALLBACK(netif);
 #if LWIP_NETIF_EXT_STATUS_CALLBACK

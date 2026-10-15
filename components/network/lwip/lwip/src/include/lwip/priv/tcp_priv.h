@@ -59,6 +59,15 @@ extern "C" {
 
 /* Functions for interfacing with TCP: */
 
+#if defined(CONFIG_IPRO6) && defined(CONFIG_USE_MACSW) && defined(CONFIG_LWIP_LP) && !IPRO_WIFI_LP_FW && TCP_TIMER_PRECISE_NEEDED && LWIP_TCPIP_CORE_LOCKING && LWIP_NETCONN
+#define TCP_LP_IDLE_CANDIDATE 1
+/* Core-lock required. Candidate is runtime OFF at cold boot. */
+int tcp_timer_lp_recheck(void);
+int tcp_timer_lp_control(int mode);
+void tcp_timer_lp_work_changed(void);
+int tcp_lp_netconn_idle(struct tcp_pcb *pcb);
+#endif
+
 /* Lower layer interface to TCP: */
 void             tcp_init    (void);  /* Initialize this module. */
 void             tcp_tmr     (void);  /* Must be called every
@@ -516,6 +525,9 @@ s16_t tcp_pcbs_sane(void);
 /** External function (implemented in timers.c), called when TCP detects
  * that a timer is needed (i.e. active- or time-wait-pcb found). */
 void tcp_timer_needed(void);
+#if TCP_TIMER_PRECISE_NEEDED && defined(CONFIG_LWIP_LP)
+void tcpip_tcp_timer_recheck(void);   /* ipro lp change: stop the on-demand timer at ACK time */
+#endif
 
 void tcp_netif_ip_addr_changed(const ip_addr_t* old_addr, const ip_addr_t* new_addr);
 

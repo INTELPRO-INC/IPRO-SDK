@@ -15,5 +15,8 @@ else()
 endif()
 
 add_subdirectory(drivers/${SOC_DIR})
+# The SoC library is named after SOC_DIR, whose case follows the file
+# system: apps read the name from here instead of spelling it.
+set_property(GLOBAL PROPERTY SOC_LIB ${SOC_DIR})
 
 # IPRO6 WiFi6 support: phyrf driver now in components/wireless/rf/ipro6_rf

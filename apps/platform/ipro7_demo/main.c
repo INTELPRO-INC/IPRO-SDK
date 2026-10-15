@@ -170,6 +170,16 @@ static void ble_fsm_task(void *arg)
 {
     extern void app_process_fsm(void);
     extern void app_set_fsm_task_handle(TaskHandle_t task_handle);
+
+    /* bt_enable() waits for the controller task, so the BLE bring-up runs
+     * here rather than in main() before the scheduler starts. */
+    printf("[BLE] Initializing BLE demo...\r\n");
+    int ble_ret = ble_demo_init();
+    if (ble_ret != 0) {
+        printf("[BLE] Failed to initialize BLE: %d\r\n", ble_ret);
+        vTaskDelete(NULL);
+        return;
+    }
     
     // Register task handle for event notifications
     app_set_fsm_task_handle(xTaskGetCurrentTaskHandle());
@@ -285,15 +295,9 @@ int main(void)
     /* When CONFIG_AON_WDT_ENABLE is not set, platform_init() already disabled WDT */
 
 #ifdef CONFIG_BLUETOOTH_LE_ENABLE
-    /* Initialize BLE demo */
-    printf("[BLE] Initializing BLE demo...\r\n");
-    int ble_ret = ble_demo_init();
-    if (ble_ret != 0) {
-        printf("[BLE] Failed to initialize BLE: %d\r\n", ble_ret);
-    }
-    
-    /* Create BLE FSM processing task */
-    static StackType_t ble_fsm_task_stack[512];
+    /* Create the BLE task: brings BLE up, then runs the demo FSM. The stack
+     * is sized for bt_enable(), as in ipro_ble_remote. */
+    static StackType_t ble_fsm_task_stack[2048];
     static StaticTask_t ble_fsm_task_tcb;
     
     xTaskCreateStatic(

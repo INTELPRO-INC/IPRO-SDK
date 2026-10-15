@@ -680,7 +680,11 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_idx, u16_t length, u
   u8_t pkt_type = MQTT_CTL_PACKET_TYPE(client->rx_buffer[0]);
   u16_t pkt_id = 0;
 
-  LWIP_ASSERT("client->msg_idx < MQTT_VAR_HEADER_BUFFER_LEN", client->msg_idx < MQTT_VAR_HEADER_BUFFER_LEN);
+  /* msg_idx counts every byte of the message so far (see the "first segment"
+   * test on PUBLISH below), so it legitimately reaches or exceeds
+   * MQTT_VAR_HEADER_BUFFER_LEN for any message longer than the buffer; the
+   * former "msg_idx < MQTT_VAR_HEADER_BUFFER_LEN" assert halted the target on
+   * such a message. The buffer bound is the LWIP_ERROR on length below. */
   LWIP_ASSERT("fixed_hdr_idx <= client->msg_idx", fixed_hdr_idx <= client->msg_idx);
   LWIP_ERROR("buffer length mismatch", fixed_hdr_idx + length <= MQTT_VAR_HEADER_BUFFER_LEN,
              return MQTT_CONNECT_DISCONNECTED);
@@ -763,6 +767,7 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_idx, u16_t length, u
       LWIP_DEBUGF(MQTT_DEBUG_TRACE, ("mqtt_incomming_publish: Received message with QoS %d at topic: %s, payload length %"U32_F"\n",
                                      qos, topic, remaining_length + payload_length));
       if (client->pub_cb != NULL) {
+        client->inpub_retain = (u8_t)(client->rx_buffer[0] & 0x01);
         client->pub_cb(client->inpub_arg, (const char *)topic, remaining_length + payload_length);
       }
       /* Restore byte after topic */
@@ -1454,6 +1459,21 @@ mqtt_disconnect(mqtt_client_t *client)
  * @param client MQTT client
  * @return 1 if connected to server, 0 otherwise
  */
+/**
+ * @ingroup mqtt
+ * RETAIN flag of the incoming PUBLISH currently being delivered: valid only
+ * inside the incoming publish/data callbacks (a retained message is replayed
+ * by the broker on every (re)subscribe, so commands must ignore it).
+ * @param client MQTT client
+ * @return 1 if the message was published with RETAIN, else 0
+ */
+u8_t
+mqtt_client_inpub_retained(const mqtt_client_t *client)
+{
+  LWIP_ASSERT_CORE_LOCKED();
+  return client->inpub_retain;
+}
+
 u8_t
 mqtt_client_is_connected(mqtt_client_t *client)
 {

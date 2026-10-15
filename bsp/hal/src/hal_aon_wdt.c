@@ -21,7 +21,7 @@
 
 /*
  * The HBN AON-WDT driver (HBN_AON_WDT_*) only exists on SoCs that advertise
- * CONFIG_AON_WDT_SUPPORT (ipro7, ipro6le). On SoCs without it (ipro6) these
+ * CONFIG_AON_WDT_SUPPORT (ipro7). On SoCs without it (ipro6) these
  * wrappers stay defined as no-ops so callers — notably platform_common.c's
  * aon_wdt_disable() in the !CONFIG_AON_WDT_ENABLE path — still link.
  */

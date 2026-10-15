@@ -39,21 +39,48 @@
 #define LOG_LEVEL_INF  3
 #define LOG_LEVEL_DBG  4
 
+/* Independent host ceiling; preserve existing behavior when not configured.
+ *
+ * A disabled level keeps its arguments inside `if (0)` rather than dropping
+ * them: the format and its arguments are never evaluated or emitted (the
+ * block is dead code and the string is not referenced), but every variable
+ * that upstream Zephyr only uses in a log call still counts as used, so
+ * -Werror=unused-variable does not fire when a level is compiled out. */
+#ifndef CONFIG_IPRO_BT_HOST_LOG_LEVEL
+#define CONFIG_IPRO_BT_HOST_LOG_LEVEL LOG_LEVEL_DBG
+#endif
+
 #ifndef LOG_TAG
 #define LOG_TAG "BT_HOST"
 #endif
 
 #ifndef LOG_DBG
+#if CONFIG_IPRO_BT_HOST_LOG_LEVEL >= LOG_LEVEL_DBG
 #define LOG_DBG(fmt, ...) IPRO_LOGD(LOG_TAG, fmt, ##__VA_ARGS__)
+#else
+#define LOG_DBG(fmt, ...) do { if (0) { IPRO_LOGD(LOG_TAG, fmt, ##__VA_ARGS__); } } while (0)
+#endif
 #endif
 #ifndef LOG_ERR
+#if CONFIG_IPRO_BT_HOST_LOG_LEVEL >= LOG_LEVEL_ERR
 #define LOG_ERR(fmt, ...) IPRO_LOGE(LOG_TAG, fmt, ##__VA_ARGS__)
+#else
+#define LOG_ERR(fmt, ...) do { if (0) { IPRO_LOGE(LOG_TAG, fmt, ##__VA_ARGS__); } } while (0)
+#endif
 #endif
 #ifndef LOG_WRN
+#if CONFIG_IPRO_BT_HOST_LOG_LEVEL >= LOG_LEVEL_WRN
 #define LOG_WRN(fmt, ...) IPRO_LOGW(LOG_TAG, fmt, ##__VA_ARGS__)
+#else
+#define LOG_WRN(fmt, ...) do { if (0) { IPRO_LOGW(LOG_TAG, fmt, ##__VA_ARGS__); } } while (0)
+#endif
 #endif
 #ifndef LOG_INF
+#if CONFIG_IPRO_BT_HOST_LOG_LEVEL >= LOG_LEVEL_INF
 #define LOG_INF(fmt, ...) IPRO_LOGI(LOG_TAG, fmt, ##__VA_ARGS__)
+#else
+#define LOG_INF(fmt, ...) do { if (0) { IPRO_LOGI(LOG_TAG, fmt, ##__VA_ARGS__); } } while (0)
+#endif
 #endif
 
 #endif /* ZEPHYR_LOGGING_LOG_H_ */

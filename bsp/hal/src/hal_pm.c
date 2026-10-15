@@ -30,8 +30,13 @@
 #include "drv_hbn.h"
 #include "drv_aon.h"
 #include "drv_uart.h"
+#include "drv_romdriver.h"     /* RomDriver_GLB_Power_Off_WIFIPLL & friends */
 #include "hal_pm.h"
 #include "hal_flash.h"
+#if defined(IPRO6)
+#include "hal_lp.h"            /* hal_lp_param: resleep re-arms do_xip_recovery */
+#include "lp_fw.h"             /* LP_FW_XTAL_LEGACY_KNOB_*: A/B crystal-policy revert */
+#endif
 #include "hal_psram.h"
 #include "pds_reg.h"
 #include "hbn_reg.h"
@@ -82,7 +87,22 @@ void pm_pds_rtc_target_override_set(uint64_t target_ticks)
     s_pm_pds_rtc_target_override = target_ticks;
 }
 
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+/* One-shot bounded compare for the PDS WFI (MTIME counts, 0 = park it). */
+static volatile uint64_t s_pm_pds_wfi_fallback;
+
+void pm_pds_wfi_fallback_set(uint64_t counts)
+{
+    s_pm_pds_wfi_fallback = counts;
+}
+
+/* The domain policy (and the retention layout it selects) is compiled for the
+ * BLE controller's connected PDS and for ipro_pm, which also enters PDS from
+ * the idle task (Thread). */
+#if !defined(IPRO6) && (defined(CONFIG_BT_CTLR_IPRO) || defined(CONFIG_IPRO_PM))
+#define HAL_PM_DOMAIN_POLICY 1
+#endif
+
+#if defined(HAL_PM_DOMAIN_POLICY)
 /* Runtime BLE-controller PDS domain sweep mask.  Low 16 bits are test
  * controls; high bits keep this CCI-tuned diagnostic in .data rather than a
  * fragile zeroed BSS location on the live DUT.
@@ -247,16 +267,30 @@ static void ATTR_TCM_SECTION pm_pds_trace_hex(uint32_t v)
  * pdsCtl4 — per-domain reset / gate-clock enables:
  *           CPU, RF controller, Misc peripherals
  *
-     * OCRAM retention: on the IPRO7 DUTs verified for BLE connected-PDS, the
-     *                  practical safe baseline is to leave the platform's RAM
-     *                  retention defaults intact.  Do not apply undocumented
-     *                  RAM-retention clock bits; previous attempts wedged resume.
-     *                  When CONFIG_OCRAM_NORET_SPLIT is explicitly enabled by a
-     *                  BLE application, pm_pds_config_ocram_safe_retention()
-     *                  records and applies the separately validated PDS_RAM1/2
-     *                  words (currently RET1=0, RET2=0xffff, PGEN=0). The lp_fw
-     *                  image therefore lives in retained OCRAM, not WRAM.
-     * ----------------------------------------------------------------------- */
+ * OCRAM retention: on the IPRO7 DUTs verified for BLE connected-PDS, the
+ *                  practical safe baseline is to leave the platform's RAM
+ *                  retention defaults intact.  Do not apply undocumented
+ *                  RAM-retention clock bits; previous attempts wedged resume.
+ *                  When CONFIG_OCRAM_NORET_SPLIT is explicitly enabled by a
+ *                  BLE application, pm_pds_config_ocram_safe_retention()
+ *                  records and applies the separately validated PDS_RAM1/2
+ *                  words (currently RET1=0, RET2=0xffff, PGEN=0). The lp_fw
+ *                  image therefore lives in retained OCRAM, not WRAM.
+ *
+ * IPRO6 OCRAM retention: hardware default retains ALL banks (PDS_RAM3 OCRAM_RET2 =
+ *                  0xFFFFF, 320 KB). No explicit PDS_RAM_Config() call needed —
+ *                  and enabling the PDS_RAM1[31] retention clock WEDGES resume,
+ *                  so it must stay untouched. The lp_fw image lives in OCRAM.
+ *
+ * IPRO6 WRAM retention:  WRAM content survives PDS as well — PDS gates the MAC/RF
+ *                  LOGIC, it does not wipe the memory. Measured 2026-08-08: a
+ *                  canary across the full 160 KB RAM_WIFI span (0x21050400 /
+ *                  0x21060000 / 0x21070000 / 0x21077F00) read back intact after
+ *                  a PDS cycle, 4 of 4. So anything the MAC DMA'd there — the
+ *                  lp_fw RX ring included — outlives the power-down, apart from
+ *                  the small window the BROM wake path overwrites (see
+ *                  LPFW_BROM_SCRATCH_ADDR in lp_fw.h).
+ * ----------------------------------------------------------------------- */
 #if defined(IPRO6)
 static ATTR_DTCM_SECTION PDS_DEFAULT_LV_CFG_Type pdsCfgLevel15 = {
     .pdsCtl = {
@@ -272,18 +306,42 @@ static ATTR_DTCM_SECTION PDS_DEFAULT_LV_CFG_Type pdsCfgLevel15 = {
         .memStby         = 1,
         .glbRstProtect   = 0,
         .isolation       = 1,
-        .waitXtalRdy     = 1,
+        /* 0 (the 08-15 shape, re-qualified as SHIPPING default 2026-08-18):
+         * the wake releases immediately; the stub starts the crystal and runs
+         * on RC32M while it ramps, the blob's PLL bring-up absorbs the
+         * residue. The bl616 pds15.c value (1: sequencer holds the wake until
+         * xtal_rdy, stub runs ready-XTAL40M) was implemented and measured
+         * 2026-08-18 -- it collapses the CPU-visible wake to ~0.66 ms but
+         * LOSES the dtim_base A/B/A (loss 5.36 vs 0.00%, +50..100 uJ/cyc,
+         * fat t_wait tail; suspected untrimmed-capcode ramp jitter, this DUT
+         * has no capcode efuse). Kept selectable via LP_FW_XTAL_SEQRDY_KNOB
+         * (lp_fw.h), applied by pm_pds_xtal_policy_apply() at both entries. */
+        .waitXtalRdy     = 0,
         .pdsPwrOff       = 1,
-        .xtalOff         = 1,
+        .xtalOff         = 1,   /* vendor value; the sequencer owns the crystal */
         .socEnbForceOn   = 1,   /* match IPRO7 (same CPU): gates the AON soc-enable
                                  * flag, not the CPU power-gate (cpuPwrOff/cpuRst in
                                  * pdsCtl4 do that). IPRO7 runs PDS fine with this =1. */
         .pdsRstSocEn     = 1,
         .pdsRC32mOn      = 0,
-        .pdsDcdc11VselEn = 1,
+        /* 0 (2026-08-18 vendor-align directive; was 1, the "DCDC lever"): the
+         * sleep-time dcdc11 vsel is NOT applied, matching pds15.c. Any floor
+         * delta from this rides the 3.3 V path -- invisible to the dual 1.8 V
+         * bench taps; re-price on a 3.3 V-instrumented DUT if it matters. */
+        .pdsDcdc11VselEn = 0,
         .usbpllOff       = 1,
         .aupllOff        = 1,
-        .wifipllOff      = 0,   /* wifipll cannot re-lock after power-off */
+        .wifipllOff      = 0,   /* MUST stay 0 — the HW bit is broken for this
+                                 * path on both parts. bl616 hosal/bl_pds.c: "if
+                                 * set to 1, it is unable to power on wifi pll
+                                 * after wakeup!!!". Re-proven on IPRO6 2026-08-17
+                                 * (R13/R14): first wake corpses at SoC ~9 mA with
+                                 * the clock tree dead (JTAG: TAP alive, DM
+                                 * clockless) before one instruction runs; a
+                                 * pre-WFI root switch to RC32M did not help. The
+                                 * PLL saving is taken in SOFTWARE instead, bl616
+                                 * bl_pds_pre_process style — see the WFI block in
+                                 * pm_pds_enable / pm_pds_resleep. */
         .pdsDcdc11Vsel   = 0x8,
         .pdsCtlRfSel     = 3,
         .pdsUseTbttSlp   = 0,
@@ -431,6 +489,33 @@ static ATTR_DTCM_SECTION PDS_DEFAULT_LV_CFG_Type pdsCfgLevel31 = {
  * Internal helpers
  * ----------------------------------------------------------------------- */
 
+#if defined(IPRO6)
+/* Crystal wake shape: the shipping legacy values, hardcoded 2026-08-31
+ * (the SEQRDY alternative lost its A/B/A -- loss 5.36% vs 0.00% -- and the
+ * 2026-08-26 reprice found no energy separation; xtalOff=0 measured NO-GO
+ * at +~190 uJ/cyc on 2026-08-20). waitXtalRdy=0: the wake releases while
+ * the crystal ramps and the blob's WFI wait absorbs it. socEnbForceOn=1:
+ * clearing it loses beacons through indirect timing damage (2026-08-28
+ * campaign). xtalOff=1: the sequencer owns the crystal (vendor value).
+ * Called at BOTH PDS entries (pm_pds_mode_enter and pm_pds_resleep), both
+ * callers ATTR_TCM_SECTION.
+ *
+ * always_inline is LOAD-BEARING, not a hint -- same rule as lp_fw_dbg_putc()
+ * in lp_fw.h. Plain `static inline` cost a full bench day on 2026-08-20:
+ * GCC emitted an out-of-line copy into XIP .text and the TCM resleep path
+ * called into flash that is not mapped yet; the value written was identical
+ * -- the regression was pure code placement. Verify with
+ * `riscv64-unknown-elf-gcc-nm <elf> | grep pm_pds_xtal_policy_apply`: the
+ * symbol must be ABSENT from both the carrier and the blob. */
+__attribute__((always_inline)) static inline
+void pm_pds_xtal_policy_apply(PDS_DEFAULT_LV_CFG_Type *cfg)
+{
+    cfg->pdsCtl.waitXtalRdy = 0u;
+    cfg->pdsCtl.socEnbForceOn = 1u;
+    cfg->pdsCtl.xtalOff = 1u;
+}
+#endif
+
 /**
  * @brief Wait for UART TX FIFO to drain before entering sleep.
  */
@@ -472,7 +557,7 @@ void *pm_pds_get_level31_cfg(void)
 
 void pm_pds_ble_ctlr_domain_policy_set(uint32_t policy)
 {
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
     pm_pds_ble_ctlr_domain_policy = policy;
 #else
     (void)policy;
@@ -481,14 +566,14 @@ void pm_pds_ble_ctlr_domain_policy_set(uint32_t policy)
 
 uint32_t pm_pds_ble_ctlr_domain_policy_get(void)
 {
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
     return pm_pds_ble_ctlr_domain_policy;
 #else
     return PM_PDS_BLE_CTLR_DOMAIN_POLICY_NONE;
 #endif
 }
 
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO) && defined(CONFIG_OCRAM_NORET_SPLIT)
+#if defined(HAL_PM_DOMAIN_POLICY) && defined(CONFIG_OCRAM_NORET_SPLIT)
 static void ATTR_TCM_SECTION pm_pds_config_ocram_safe_retention(void)
 {
     const uint32_t ret1_mask = PM_PDS_OCRAM_RETAIN1_SAFE_MASK;
@@ -519,7 +604,7 @@ static void ATTR_TCM_SECTION pm_pds_clean_hbn_diag(void)
 #if !defined(IPRO6)
     L1C_DCACHE_CLEAN_RANGE((uintptr_t)pm_pds_hbn_arm_diag,
                            sizeof(pm_pds_hbn_arm_diag));
-#if defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
     L1C_DCACHE_CLEAN_RANGE((uintptr_t)pm_pds_last_ram_words,
                            sizeof(pm_pds_last_ram_words));
 #endif
@@ -553,8 +638,24 @@ void pm_pds_set_misc_keep(bool keep)
 
 void pm_pds_set_dcdc11_vsel(uint8_t vsel, bool enable)
 {
-    /* IPRO7's pdsCfgLevel31 has no DCDC11 select (it uses pdsLdoVselEn), so this
-     * knob is IPRO6-only rather than #if'd per-field. */
+    /* INERT on IPRO6 — but the RAIL is not. Keep the distinction straight.
+     *
+     * The vendored driver misnames the field: pdsCtl[27:23] is
+     * PDS_CR_PDS_LDO11_VOL (pds_reg.h has no DCDC11 field at all). It selects the
+     * voltage of the MAIN LDO11, which pdsCtl[4] PDS_PD_LDO11 = 1 powers down for
+     * the duration of PDS — so this knob has no load to act on and the PDS floor
+     * held 43.7 uA across vsel 0x00–0x0E (2026-08-08).
+     *
+     * The rails that stay up are LDO11_RT/AON, and their LIVE vout is the SW_ copy
+     * in HBN_GLB 0x3008F030 ([27:24] RT, [31:28] AON) — what HBN_Set_Ldo11_*_Vout()
+     * writes. HBN_CTL[22:15] is a SECOND copy that drv_hbn.c applies only inside
+     * the hibernate entry path, so sweeping it proves nothing about PDS. Sweeping
+     * the HBN_GLB copy moves the floor a lot and monotonically: code 10/9/8/7/6 =
+     * 43.7/39.0/34.7/30.9/27.5 uA, ~4.2 uA per 0.05 V, baseline interleaved.
+     * Do NOT lower [19:16] SW_LDO11SOC (the running core's rail): it COSTS
+     * +2.2 uA at code 8 and hangs the part at 6.
+     *
+     * IPRO7's pdsCfgLevel31 has no equivalent field, so this stays IPRO6-only. */
 #if defined(IPRO6)
     pdsCfgLevel15.pdsCtl.pdsDcdc11Vsel   = vsel & 0x1F;
     pdsCfgLevel15.pdsCtl.pdsDcdc11VselEn = enable ? 1 : 0;
@@ -583,7 +684,7 @@ void pm_pds_get_dcdc11_vsel(uint8_t *vsel, uint8_t *enable)
 #endif
 }
 
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
 static void pm_pds_apply_ble_ctlr_domain_override(PDS_DEFAULT_LV_CFG_Type *cfg)
 {
     uint32_t policy = pm_pds_ble_ctlr_domain_policy;
@@ -618,7 +719,8 @@ static void pm_pds_apply_ble_ctlr_domain_override(PDS_DEFAULT_LV_CFG_Type *cfg)
      * SLPINT even though BLE/BZ power, reset and clocks are all configured to
      * remain live.  Keep the BSP default for cold BLE-power-off PDS, but do
      * not assert pds_rst for the explicit retained-controller policy. */
-    if ((policy & PM_PDS_BLE_CTLR_DOMAIN_POLICY_BLE_PWR_OFF) == 0U) {
+    if (((policy & PM_PDS_BLE_CTLR_DOMAIN_POLICY_BLE_PWR_OFF) == 0U) ||
+        ((policy & PM_PDS_BLE_CTLR_DOMAIN_POLICY_NO_SOC_RST) != 0U)) {
         cfg->pdsCtl.pdsRstSocEn = 0;
     }
 
@@ -649,6 +751,10 @@ static void pm_pds_apply_ble_ctlr_domain_override(PDS_DEFAULT_LV_CFG_Type *cfg)
     }
     if ((policy & PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_GLOBAL_PWR) != 0U) {
         cfg->pdsCtl.pdsPwrOff = 0;
+    }
+    if ((policy & PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_ANALOG) != 0U) {
+        cfg->pdsCtl.avdd14Off = 0;
+        cfg->pdsCtl.bgSysOff = 0;
     }
 
     if ((mask & PM_PDS_DIAG_MISC_PWR_OFF) != 0U) {
@@ -686,6 +792,37 @@ static void pm_pds_apply_ble_ctlr_domain_override(PDS_DEFAULT_LV_CFG_Type *cfg)
     }
 }
 #endif
+
+void pm_ldo11_rt_set(uint8_t sel)
+{
+    /* LDO11 RETENTION voltage: HBN_GLB 0x3008F030 [27:24] SW_LDO11_RT_VOUT_SEL
+     * (0.60 + 0.05*code V; silicon default 10 = 1.10 V). The register is
+     * PDS-retained, so one write per cold boot covers every PDS cycle of the
+     * session -- and the raw `lp raw`/`lp sleep` floors too. Measured ladder
+     * (2026-08-08, baseline interleaved): code 10/9/8/7/6 = 43.7/39.0/34.7/
+     * 30.9/27.5 uA PDS floor, ~4.2 uA per 0.05 V. Do NOT touch [19:16]
+     * SW_LDO11SOC here (the running core's rail; LISTENGATE owns it). */
+#if defined(IPRO6)
+    uint32_t v = readl(0x3008F030u);
+    writel((v & ~(0xFu << 24)) | (((uint32_t)sel & 0xFu) << 24), 0x3008F030u);
+#else
+    (void)sel;
+#endif
+}
+
+void pm_ldo11_use_ext_dcdc(void)
+{
+    /* LDO11 SOC [19:16] and RT [27:24] to 1.05 V, then 1.00 V, below the
+     * external 1.1 V so that rail carries the core load. */
+#if defined(IPRO6)
+    AON_Output_Float_DCDC18();
+    HBN_Set_Ldo11_Rt_Vout(9);
+    HBN_Set_Ldo11_Soc_Vout(9);
+    arch_delay_ms(1);
+    HBN_Set_Ldo11_Rt_Vout(8);
+    HBN_Set_Ldo11_Soc_Vout(8);
+#endif
+}
 
 /* Legacy sleep paths force-select RC32K on entry unless an application takes
  * explicit ownership with pm_pds_set_32k_src().  The controller qualification
@@ -754,6 +891,15 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
     PM_PDS_CFG_Type *p = (PM_PDS_CFG_Type *)cfg;
     PDS_DEFAULT_LV_CFG_Type *pPdsCfg = NULL;
     PDS_DEFAULT_LV_CFG_Type pdsCfgEffective;
+#if !defined(IPRO6)
+    /* An aborted power-down returns here: give the caller back its own
+     * interrupt state (hal_lp_enter() enters with MIE=0 and may still be on
+     * its LP stack), not unconditionally enabled interrupts. */
+    unsigned long saved_mie;
+
+    __asm__ volatile("csrr %0, mstatus" : "=r"(saved_mie) :: "memory");
+    saved_mie &= 0x8UL; /* MSTATUS_MIE */
+#endif
 
 #if defined(CONFIG_USE_PSRAM) && !defined(IPRO6)
     /* IPRO6 has no internal PSRAM, and this keep-alive uses registers/fields
@@ -779,6 +925,13 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
     writel(0xfff << 16, PDS_BASE + PDS_PSRAM_IEOE_OFFSET);
     writel(0xfff << 0,  PDS_BASE + PDS_PSRAM_O_OFFSET);
 
+#elif !defined(IPRO6)
+    /* Same write-back without PSRAM: hal_lp_enter() cleans D-cache before it
+     * saves its wake context, the wake path invalidates it, and PDS31 powers
+     * the cache off in between.  Anything written to cacheable OCRAM after
+     * that first clean would otherwise be lost on wake. */
+    L1C_DCACHE_CLEAN();
+    __RWMB();
 #endif
 
     cpu_global_irq_disable();
@@ -808,13 +961,17 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
     memcpy(&pdsCfgEffective, pPdsCfg, sizeof(pdsCfgEffective));
     pPdsCfg = &pdsCfgEffective;
 
+#if defined(IPRO6)
+    pm_pds_xtal_policy_apply(pPdsCfg);
+#endif
+
 #if defined(CONFIG_USE_PSRAM) && !defined(IPRO6)
     /* PSRAM needs AVDD14 and bandgap to stay on for self-refresh. */
     pPdsCfg->pdsCtl.avdd14Off = 0;
     pPdsCfg->pdsCtl.bgSysOff = 0;
 #endif
 
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
     pm_pds_apply_ble_ctlr_domain_override(pPdsCfg);
 #endif
     /* Raw register content about to be written, in case the config struct
@@ -844,24 +1001,41 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
         PM_TRACE_HEX(word);
     }
     pm_pds_hbn_arm_diag[14] =
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
         pm_pds_diag_domain_override;
 #else
         0U;
 #endif
     pm_pds_hbn_arm_diag[29] =
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO)
+#if defined(HAL_PM_DOMAIN_POLICY)
         pm_pds_ble_ctlr_domain_policy;
 #else
         0U;
 #endif
     PM_TRACE_HEX(p->sleepTime);
 
-#if !defined(IPRO6) && defined(CONFIG_BT_CTLR_IPRO) && defined(CONFIG_OCRAM_NORET_SPLIT)
+#if defined(HAL_PM_DOMAIN_POLICY) && defined(CONFIG_OCRAM_NORET_SPLIT)
     if (p->ocramRetetion &&
         ((pm_pds_ble_ctlr_domain_policy &
           PM_PDS_BLE_CTLR_DOMAIN_POLICY_SAFE_OCRAM) != 0U)) {
         pm_pds_config_ocram_safe_retention();
+    }
+#endif
+#if !defined(IPRO6)
+    /* The state the PDS starts from (the core is normally gone inside
+     * PDS_Default_Level_Config(), so nothing after it is recorded): HBN IRQ
+     * status - a wake source already asserted here never makes an edge -,
+     * HBN_CTL, the RTC now (low word, latched) and the compare readback. */
+    {
+        uint32_t lo;
+        uint32_t hi;
+
+        HBN_Get_RTC_Timer_Val(&lo, &hi);
+        pm_pds_hbn_arm_diag[9] = readl(HBN_BASE + HBN_IRQ_STAT_OFFSET);
+        pm_pds_hbn_arm_diag[10] = readl(HBN_BASE + HBN_CTL_OFFSET);
+        pm_pds_hbn_arm_diag[11] = lo;
+        pm_pds_hbn_arm_diag[12] = readl(HBN_BASE + HBN_TIME_L_OFFSET);
+        pm_pds_hbn_arm_diag[13] = readl(PDS_BASE + PDS_INT_OFFSET);
     }
 #endif
     PDS_Default_Level_Config(pPdsCfg, p->sleepTime);
@@ -890,10 +1064,56 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
      * asserts, and the PDS controller never powers down. Pushing the compare
      * to its maximum keeps MTIP clear so WFI actually stalls and PDS engages.
      * The wakeup itself comes from the separate 32 kHz PDS/HBN RTC compare
-     * programmed in pm_pds_mode_enter(); on PDS wake the CPU cold-restarts
-     * and startup re-initializes the tick, so no mtimecmp restore is needed here.
+     * programmed in pm_pds_mode_enter().
+     *
+     * On a SUCCESSFUL power-down the CPU cold-restarts and startup re-arms the
+     * tick, so nothing needs restoring. The hazard is the other case: parking
+     * mtimecmp at its maximum removes the only thing that can wake this core if
+     * PDS does NOT engage, and then the stall is unrecoverable in software --
+     * the CPU sits in WFI with its wake source disabled by the instruction two
+     * lines above it, and only a hardware reset returns. On a board with no
+     * reset pin wired that costs a rail cycle every time.
+     *
+     * A BOUNDED compare keeps both properties: 50 ms is far beyond the
+     * microseconds PDS needs to take the core, so MTIP cannot go pending before
+     * the power-down and cannot spoil it; and if PDS never takes the core, the
+     * timer fires, WFI returns, and the abort becomes visible ('#' below)
+     * instead of fatal.
+     *
+     * Same discipline as the bl_iot_sdk reference sleep hook, which re-enables
+     * the timer interrupt on every path that does not sleep -- generalised here
+     * to the path that cannot re-enable anything because it never returns.
      */
-    SysTimer_SetCompareValue(0xFFFFFFFFFFFFFFFFULL);
+#if defined(IPRO6)
+    {
+        /* Machine timer is 1 MHz on IPRO6 (configSYSTICK_CLOCK_HZ). */
+        const uint64_t PDS_WFI_FALLBACK_TICKS = 50000ULL;
+        uint64_t saved_cmp = SysTimer_GetCompareValue();
+        /* bl616 bl_pds_pre_process discipline: the wifipllOff config bit is
+         * broken (see its comment above), so take the PLL down in SOFTWARE.
+         * Root must leave the PLL first — killing the PLL under a core
+         * running from it stops the CPU dead (lp_fw.c makes the same point).
+         * root = XCLK = RC32M (HBN_GLB[1:0] = 0) is exactly the state
+         * hal_lp_main's first writes establish on every wake anyway. The
+         * WIFIPLL cfg regs sit behind the CCI bridge — CCI AHB clock on
+         * first (idempotent; same as hal_lp_restore_sys_clk). */
+        uint32_t saved_glb = readl(0x3008F030u);
+#else
+    /* IPRO7: the software PLL-off / bounded-fallback sequence above is IPRO6
+     * mask-ROM + HBN specific (RomDriver_GLB_Power_Off_WIFIPLL, HBN_Get_Xtal_Type
+     * do not exist here). Keep the pre-2026-09-12 behaviour: park mtimecmp and
+     * let the PDS sequencer take the core. */
+    {
+        /* A one-shot bounded fallback (pm_pds_wfi_fallback_set()) makes a
+         * power-down that never engages return here instead of stalling;
+         * hal_lp_enter() then reports HAL_LP_ERR_ENTRY_ABORTED. */
+        uint64_t fallback = s_pm_pds_wfi_fallback;
+        uint64_t saved_cmp = SysTimer_GetCompareValue();
+
+        s_pm_pds_wfi_fallback = 0U;
+        SysTimer_SetCompareValue((fallback != 0U) ? (SysTimer_GetLoadValue() + fallback)
+                                                  : 0xFFFFFFFFFFFFFFFFULL);
+#endif
 
 #if PM_PDS_WFI_TRACE
     /* Diagnostic only, default off. Bisects a hang where hal_lp_enter() never
@@ -935,7 +1155,42 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
     }
 #endif
 
-    __WFI();
+#if defined(IPRO6)
+        SysTimer_SetCompareValue(SysTimer_GetLoadValue() + PDS_WFI_FALLBACK_TICKS);
+        writel(saved_glb & ~3u, 0x3008F030u);
+        /* Move the SF clock off the PLL BEFORE killing it. On the session's
+         * FIRST entry SF_CFG0 still carries the cold-boot MUXPLL_80M select;
+         * powering the PLL off under it kills the flash controller's clock
+         * mid-transaction (bl616 is immune only because its pre_process
+         * powers the flash down first). XTAL leg, proper EN-off sequence. */
+        writel(readl(0x30000170u) & ~(1u << 11), 0x30000170u);
+        writel(0x00004000u, 0x30000170u);
+        writel(0x00004800u, 0x30000170u);
+        writel(readl(0x30000580u) | (1u << 4), 0x30000580u);
+        RomDriver_GLB_Power_Off_WIFIPLL();
+#endif
+
+        __WFI();
+
+#if defined(IPRO6)
+        /* Aborted power-down: bring the PLL back with the full mask-ROM
+         * bring-up (the bare Power_On without the off->ref-sel->on->lock
+         * sequence is what "unable to power on after wakeup" is about),
+         * and only then hand the root back to it. */
+        {
+            uint8_t xtalType = GLB_XTAL_NONE;
+
+            HBN_Get_Xtal_Type(&xtalType);
+            RomDriver_GLB_Power_On_XTAL_And_PLL_CLK(xtalType, GLB_PLL_WIFIPLL);
+        }
+        writel(saved_glb, 0x3008F030u);
+#endif
+        /* Reached only when the power-down aborted or the fallback fired (a
+         * real PDS wake resets the core into the HBN stub): the caller's
+         * compare back.  One already in the past just makes MTIP fire at
+         * once, which is exactly the wanted "restart the tick" behaviour. */
+        SysTimer_SetCompareValue(saved_cmp);
+    }
 
 #if PM_PDS_WFI_TRACE
     {
@@ -948,7 +1203,22 @@ void ATTR_TCM_SECTION pm_pds_enable(uint32_t *cfg)
     }
 #endif
 
+#if defined(IPRO6)
+    /* Wake-trace (debug scaffold 2026-08-03): a real PDS wake is a CPU reset
+     * into the HBN stub — execution NEVER resumes here. Seeing '#' therefore
+     * means the power-down aborted / WFI fell through. */
+    {
+        extern void lp_dbg_putc(char c);
+
+        lp_dbg_putc('#');
+    }
+
     cpu_global_irq_enable();
+#else
+    if (saved_mie != 0UL) {
+        cpu_global_irq_enable();
+    }
+#endif
 }
 
 /* -----------------------------------------------------------------------
@@ -1031,6 +1301,27 @@ void pm_pds_gpio_wakeup_clear(void)
 {
     s_pds_gpio_wake_mask = 0U;
     s_pds_gpio_wake_groups = 0U;
+}
+
+void pm_pds_gpio_wakeup_unset(uint8_t pin)
+{
+    PDS_GPIO_GROUP_SET_Type grp;
+    uint64_t group_pins = 0U;
+
+    if (pin > 41U || pm_pds_gpio_group(pin, &grp) != 0) {
+        return;
+    }
+    s_pds_gpio_wake_mask &= ~((uint64_t)1U << pin);
+    for (uint8_t p = 0U; p <= 41U; p++) {
+        PDS_GPIO_GROUP_SET_Type g;
+
+        if ((pm_pds_gpio_group(p, &g) == 0) && (g == grp)) {
+            group_pins |= (uint64_t)1U << p;
+        }
+    }
+    if ((s_pds_gpio_wake_mask & group_pins) == 0U) {
+        s_pds_gpio_wake_groups &= ~(1U << (uint32_t)grp);
+    }
 }
 
 static void pm_pds_gpio_wakeup_arm(void);
@@ -1159,6 +1450,40 @@ static void pm_pds_gpio_wakeup_arm(void)
  *   - Configures RTC compare for timed wakeup (if sleep_time > 0)
  *   - Clears all pending PDS/HBN GPIO and interrupt flags
  */
+#if defined(IPRO6)
+/*
+ * Keep a live 32 kHz for the PDS/HBN AON sequencer WITHOUT stomping a caller's
+ * XTAL32K selection.
+ *
+ * The sequencer is clocked by the 32 kHz: with it dead the PDS state machine
+ * stays frozen in IDLE -- pdsStart never latches, the sleep timer never counts,
+ * the wake compare never fires. But that requirement is "some 32 kHz runs", not
+ * "the RC runs", and the three sleep paths here used to satisfy it by forcing
+ * HBN_32K_Sel(HBN_32K_RC) unconditionally.
+ *
+ * XTAL32K sits in the HBN domain, which PDS does NOT gate off, so once it is
+ * oscillating it clocks the sequencer across every sleep and its ~1 s start-up
+ * is paid once at cold boot. Forcing RC here silently undid a caller's
+ * selection: the crystal stayed powered and unused while the tracker kept
+ * seeing RC32K's +42000 ppm through PDS (measured 2026-08-08 -- err_ppm 42329
+ * after five minutes nominally "on" XTAL32K).
+ *
+ * The caller owns the choice AND the evidence: there is no ready bit for the
+ * crystal, so selecting a dead one here would freeze the sequencer with no wake
+ * source, costing a power cycle to recover. Hence switch to RC only when XTAL
+ * is not already selected, and keep RC32K powered as the fallback either way.
+ */
+static void ATTR_TCM_SECTION pm_32k_keep_alive(void)
+{
+    if ((((*(volatile uint32_t *)(HBN_BASE + HBN_GLB_OFFSET)) & HBN_F32K_SEL_MSK)
+         >> HBN_F32K_SEL_POS) == HBN_32K_XTAL) {
+        return;                     /* crystal already drives it; leave it alone */
+    }
+    HBN_Keep_On_RC32K();
+    HBN_32K_Sel(HBN_32K_RC);
+}
+#endif /* IPRO6 */
+
 void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
 {
 #if !defined(IPRO6)
@@ -1307,16 +1632,13 @@ void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
     cfg.flashCfg = (uint32_t *)&flash_cfg;
 #pragma GCC diagnostic pop
 
-    /* Power on and select the 32 kHz RC oscillator and start the RTC counter.
+    /* Keep a live 32 kHz for the AON sequencer — see pm_32k_keep_alive().
      * The PDS/HBN AON sequencer is clocked by this 32 kHz: with it dead the PDS
      * state machine stays frozen in IDLE — pdsStart never latches into PDS_CTL,
      * the sleep timer never counts, and the wake compare never fires. Must run
      * BEFORE reading the RTC value so the compare delta is taken off a live
      * counter. Mirrors the reference rtc_init (RC32K path). */
-    HBN_Keep_On_RC32K();
-    if (s_32k_force_rc) {
-        HBN_32K_Sel(HBN_32K_RC);
-    }
+    pm_32k_keep_alive();
     HBN_Enable_RTC_Counter();
 
     /* Mask EVERY wakeup source first, then enable only the timed-wake path
@@ -1345,7 +1667,6 @@ void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
         HBN_Get_RTC_Timer_Val(&rtc_low, &rtc_high);
         rtc_now = ((uint64_t)rtc_high << 32) | rtc_low;
         rtc_target = rtc_now + sleep_time;
-
         HBN_Set_RTC_Timer(HBN_RTC_INT_DELAY_32T,
                           rtc_target & 0xFFFFFFFF,
                           (rtc_target >> 32) & 0x1fff, 1);
@@ -1372,6 +1693,31 @@ void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
     HBN_Clear_All_IRQ();
 #endif
 
+#if defined(IPRO6)
+    /* New PDS session: zero the resleep cycle counter (JTAG park probe,
+     * see pm_pds_resleep). Debug scaffold 2026-08-04. */
+    *(volatile uint32_t *)0x2104FFD4u = 0u;
+
+    /* First-arm wake-trace (debug scaffold 2026-08-03, pairs with the
+     * pm_pds_resleep R/x/a/w chars): E + armed sleep_time in RTC ticks,
+     * flushed so the line survives the power-down. Full-FW UART divisor is
+     * live here, so these chars come out clean (unlike the stage-1 set). */
+    {
+        extern void lp_dbg_putc(char c);
+        extern void lp_dbg_puthex(uint32_t val);
+        uint32_t dbg_lo, dbg_hi;
+
+        /* live counter alongside the armed delta: successive entries must
+         * advance ~32.768 ticks/ms — a repeated value = frozen RTC counter,
+         * i.e. a comparator that can never match. */
+        HBN_Get_RTC_Timer_Val(&dbg_lo, &dbg_hi);
+        lp_dbg_putc('E');
+        lp_dbg_puthex(sleep_time);
+        lp_dbg_putc('.');
+        lp_dbg_puthex(dbg_lo);
+    }
+#endif
+
     pm_pds_enable((uint32_t *)&cfg);
 #endif /* !IPRO6 */
 }
@@ -1391,15 +1737,16 @@ void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
  * PDS_Default_Level_Config + mtimecmp-max + WFI, exactly as pm_pds_enable) plus
  * the few extras the wake context needs, which pm_pds_mode_enter does not do:
  *
- *   THE keystone — AON_Power_On_XTAL(): power the crystal back on and WAIT for it
- *   to be ready. The PDS config uses waitXtalRdy=1, so the PDS sequencer stalls
- *   and ABORTS the power-down (~10 us dip on the rail, then the core resumes past
- *   WFI and spins) if XTAL has not settled when we enter — and on the wake path
- *   the Stage-1 hook runs before any full clock bring-up, so XTAL is NOT ready.
- *   Without this the re-sleep never sleeps; with it the power-down completes and
- *   the wake comes up on a clean crystal. The reference lp_fw does the same wait
- *   in its wake entry. (The first sleep runs from full-fw context where XTAL is
- *   already up, so pm_pds_enable does not need it.)
+ *   Crystal policy (2026-08-18): the PDS sequencer owns the 40M crystal
+ *   (xtalOff=1) and the old keystone -- AON_Power_On_XTAL() re-power +
+ *   ready-wait before every re-sleep -- is GONE in both wake shapes. Default
+ *   (waitXtalRdy=0) does not gate the power-down on the crystal at all.
+ *   Under the SEQRDY knob (waitXtalRdy=1, bl616 shape) entry aborts the
+ *   power-down in ~10 us on a not-ready crystal -- but the crystal has been
+ *   up since the sequencer ramped it at this wake, so the check passes on
+ *   its own (bench-verified 2026-08-18, XPOL legs: 60+ resleep cycles, no
+ *   stall). WATCH ITEM: if a seqrdy leg ever stops sleeping ('!' marker,
+ *   cyc frozen), that entry check is the first suspect.
  *
  *   Other wake-context extras, on top of the proven wake-source arming (RC32K +
  *   RTC counter + HBN RTC compare + PDS timer):
@@ -1408,8 +1755,8 @@ void pm_pds_mode_enter(enum pm_pds_sleep_level pds_level, uint32_t sleep_time)
  *     - Re-arm the bootrom fast-wake vector: the bootrom clears the HBN_RSV0
  *       enter-flag after taking the wake, so it must be re-asserted or the next
  *       PDS wake does not re-enter the HBN stub (RSV1, the address, survives).
- *     - ctrlGpioIePuPd if a GPIO wake is pending; flush D-cache (lp_fw bumped its
- *       DTIM counter in retained RAM with the cache on).
+ *     - ctrlGpioIePuPd if a GPIO wake is pending. No D-cache sweep is needed:
+ *       retained LP state is in HBN RAM or accessed through uncached OCRAM.
  *
  * Two reference pds15 steps are deliberately omitted on IPRO6:
  *   - AON_Set_LDO11_SOC_Sstart_Delay() — not present in the IPRO6 std_drv (an
@@ -1439,15 +1786,11 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
      * pdsCfgLevel31 equivalent if a DTIM-style wake-path re-sleep is ever needed. */
     (void)sleep_time;
 #else
-    /* (1) Keystone: power on the crystal and WAIT until it is ready. The PDS
-     * power-down config uses waitXtalRdy=1 (the proven first-sleep behaviour for
-     * a clean wake), so the PDS sequencer stalls/aborts if XTAL is not ready when
-     * we enter — and on the wake path the Stage-1 hook runs before any full clock
-     * bring-up, so XTAL has NOT settled. The reference lp_fw does the same wait in
-     * its wake entry (poll xtal_rdy) before re-sleeping. Without this the re-sleep
-     * power-down aborts in ~10 us (the core resumes after WFI and spins); with it,
-     * the power-down completes and the wake comes up on a clean XTAL. */
-    AON_Power_On_XTAL();
+
+    /* Resleep cycle counter (debug scaffold 2026-08-04, JTAG park probe):
+     * 0x2104FFD4 counts resleeps of the CURRENT PDS session (zeroed by
+     * pm_pds_mode_enter). Pairs with the park selector before WFI below. */
+    (*(volatile uint32_t *)0x2104FFD4u)++;
 
     cpu_global_irq_disable();
 
@@ -1464,11 +1807,17 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
      * latches the sleep and the core never powers down (see pm_pds_mode_enter).
      * Re-doing it every cycle is idempotent and avoids depending on whether a
      * PDS wake leaves the selection intact. */
-    HBN_Keep_On_RC32K();
-    if (s_32k_force_rc) {
-        HBN_32K_Sel(HBN_32K_RC);
-    }
+    pm_32k_keep_alive();
     HBN_Enable_RTC_Counter();
+
+    /* This re-entry powers the flash down exactly like the first sleep did,
+     * but only hal_lp_enter ever set do_xip_recovery and the first wake
+     * consumed it -- so the full-FW resume after ANY resleep cycle skipped
+     * the whole XIP recovery, leaving the flash in DPD/stale-mode roulette
+     * (persistent garbage ifetch at the first flash call on the bad rolls:
+     * the 08-13..17 session deaths, caught at pm_clear_wakeup_callback by
+     * the TCM catcher). Re-arm it on every re-entry. */
+    hal_lp_param->do_xip_recovery = 1;
 
     /* Clear every stale wakeup source first. A leftover wakeup source latched
      * from the wake that brought us here would sit pending in the ECLIC; the
@@ -1501,7 +1850,6 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
         HBN_Get_RTC_Timer_Val(&rtc_low, &rtc_high);
         rtc_now = ((uint64_t)rtc_high << 32) | rtc_low;
         rtc_target = rtc_now + sleep_time;
-
         HBN_Set_RTC_Timer(HBN_RTC_INT_DELAY_32T,
                           rtc_target & 0xFFFFFFFF,
                           (rtc_target >> 32) & 0x1fff, 1);
@@ -1538,12 +1886,9 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
         writel(0x4E424845u, HBN_BASE + HBN_RSV0_OFFSET);   /* HBN_STATUS_ENTER_FLAG */
     }
 
-    /* lp_fw ran with D-cache enabled (hal_lp_main turns it on) and bumped its
-     * DTIM counter in retained RAM; the core is about to power down, so write
-     * dirty lines back and invalidate before WFI — exactly as hal_lp_enter()
-     * does. Without this the counter increment is lost on power-down and the
-     * loop never reaches its wake threshold. */
-    L1C_DCACHE_CLEAN_INVALID();
+    /* No D-cache sweep is needed on the LPFW re-sleep path. Persistent state
+     * is either in uncacheable HBN RAM or accessed through the 0x21 OCRAM
+     * alias. Sweeping the whole cache here only delays every DTIM cycle. */
 
     /* Make WFI actually park the core until PDS power-gates it. cpuWfiMask=1
      * starts the power-down on the pdsStart write (below), but the core still has
@@ -1564,9 +1909,54 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
     ECLIC_SetMth(0xFF);
     SysTimer_SetCompareValue(0xFFFFFFFFFFFFFFFFULL);
 
+    /* Software WIFIPLL power-off, same bl616 discipline as pm_pds_enable's
+     * WFI block (the wifipllOff config bit is broken — see its comment).
+     * The blob may still be rooted on the PLL from its 240M beacon work, so
+     * leave the PLL FIRST (root -> XCLK = XTAL40M crystal; NOT RC32M --
+     * RC32M is gated in the blob wake context, so the old & ~3u
+     * froze the core at 16-22 mA = the awake-flat wedge; A/B
+     * 2026-09-04: RC32M 4/4 vs XTAL40M 0/3), then kill it. No restore path here: a real
+     * power-down re-derives clocks from scratch, and the fall-through below
+     * is already a terminal park. ROM-API only — XIP may be stale. */
+    writel((readl(0x3008F030u) & ~2u) | 1u, 0x3008F030u);
+    /* SF clock off the PLL before killing it — same hazard as pm_pds_enable
+     * (the tier-2 heal can leave SF on MUXPLL_80M mid-session). */
+    writel(readl(0x30000170u) & ~(1u << 11), 0x30000170u);
+    writel(0x00004000u, 0x30000170u);
+    writel(0x00004800u, 0x30000170u);
+    writel(readl(0x30000580u) | (1u << 4), 0x30000580u);
+    RomDriver_GLB_Power_Off_WIFIPLL();
+
     /* Program the PDS hardware (cpuWfiMask=1, same as the first sleep) and issue
      * WFI to park the core while PDS powers it down (the IPRO6 pds15 enter). */
+    pm_pds_xtal_policy_apply(&pdsCfgLevel15);
     PDS_Default_Level_Config(&pdsCfgLevel15, sleep_time);
+
+    /* JTAG park probe (debug scaffold 2026-08-04): `lp mw 0x2104FFD8
+     * 0x504152NN` parks resleep cycle NN of the session HERE — everything is
+     * armed and PDS_Default_Level_Config has run, but with cpuWfiMask=1 the
+     * power-down waits for a WFI that never comes, so the core spins alive
+     * and JTAG can dump the exact armed state a stranding entry would have
+     * taken into PDS. Set the WDT opt-out (0x2104FFF4=0xD15AB1ED) on park
+     * legs or the 2 s wake-path catcher reaps the park. OCRAM words FFD4/FFD8
+     * sit just above the trace-ring buffer (ends 0x2104FFCF). */
+    /* Flag scheme (the cnt-matching selector never engaged — under
+     * investigation): with 0x2104FFD8 == 0xB10BAAAA EVERY resleep parks here
+     * unless the skip token 0x2104FFDC equals the current cycle count. JTAG
+     * walker: halt the spin, dump, write FFDC = cnt, resume — this cycle
+     * enters PDS, the next one parks again. The stranding cycle's armed
+     * state is then the last successful dump. */
+    /* Snapshot what THIS context actually reads from the park flag — the
+     * park has never engaged even with the flag verified in RAM, so record
+     * the observed value for the autopsy (0x2104FFD0, free word between the
+     * trace-ring buffer end and the cycle counter). */
+    *(volatile uint32_t *)0x2104FFD0u = *(volatile uint32_t *)0x2104FFD8u;
+
+    while (*(volatile uint32_t *)0x2104FFD8u == 0xB10BAAAAu &&
+           *(volatile uint32_t *)0x2104FFDCu !=
+               *(volatile uint32_t *)0x2104FFD4u) {
+        __asm__ volatile("nop");
+    }
 
     __WFI();
 
@@ -1625,8 +2015,7 @@ void pm_hbn_mode_enter(enum pm_hbn_sleep_level hbn_level, uint32_t sleep_time)
 
     /* Keep RC32K powered so the HBN RTC counter advances through hibernate; without
      * it the compare never matches and the wake never fires. */
-    HBN_32K_Sel(HBN_32K_RC);
-    HBN_Keep_On_RC32K();
+    pm_32k_keep_alive();
 
     /* arm RTC compare = now + sleep_time (RTC ticks) */
     HBN_Clear_RTC_Counter();

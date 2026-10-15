@@ -273,6 +273,9 @@ epd_bus_mode_t epd_get_bus_mode(void);
  */
 int epd_read_rev(uint8_t *out_rev);
 
+/* Diagnostic: PON, read TSC (0x40, 2 bytes) and FLG (0x71), POF, deep sleep. */
+int epd_read_temperature(uint8_t raw[2], uint8_t *flags);
+
 /* Reset + full register init. Safe to call repeatedly. */
 int epd_init(void);
 

@@ -62,6 +62,7 @@
 #include "lwip/stats.h"
 #include "lwip/snmp.h"
 #include "lwip/dhcp.h"
+#include "lwip/ip4_napt.h"
 
 #include <string.h>
 
@@ -110,6 +111,14 @@ again:
   if (udp_port++ == UDP_LOCAL_PORT_RANGE_END) {
     udp_port = UDP_LOCAL_PORT_RANGE_START;
   }
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  if (ip_napt_port_in_use(IP_PROTO_UDP, udp_port)) {
+    if (++n > (UDP_LOCAL_PORT_RANGE_END - UDP_LOCAL_PORT_RANGE_START)) {
+      return 0;
+    }
+    goto again;
+  }
+#endif
   /* Check all PCBs. */
   for (pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
     if (pcb->local_port == udp_port) {
@@ -331,6 +340,20 @@ udp_input(struct pbuf *p, struct netif *inp)
   }
 
   if (for_us) {
+#if LWIP_IPV6 && LWIP_IPV6_DHCP6 && LWIP_DHCP6_EXTERNAL_CLIENT
+#if !CHECKSUM_CHECK_UDP
+#error "Shared DHCPv6 clients require UDP checksum validation"
+#endif
+    /* Validate the complete UDP datagram before stripping its header. DHCPv6
+     * dispatch must not rely on the generic optional-checksum/offload path. */
+    if (ip_current_is_v6() && dest == 546 &&
+        (src != 547 || ip_current_header_proto() != IP_PROTO_UDP ||
+         udphdr->chksum == 0 || lwip_ntohs(udphdr->len) != p->tot_len ||
+         ip6_chksum_pseudo(p, IP_PROTO_UDP, p->tot_len,
+                          ip6_current_src_addr(), ip6_current_dest_addr()) != 0)) {
+      goto chkerr;
+    }
+#endif
     LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, ("udp_input: calculating checksum\n"));
 #if CHECKSUM_CHECK_UDP
     IF__NETIF_CHECKSUM_ENABLED(inp, NETIF_CHECKSUM_CHECK_UDP) {
@@ -988,6 +1011,12 @@ udp_bind(struct udp_pcb *pcb, const ip_addr_t *ipaddr, u16_t port)
   }
 #endif /* LWIP_IPV6 && LWIP_IPV6_SCOPES */
 
+  /* NAPT owns the external IPv4 port even when SO_REUSEADDR is requested. */
+#if LWIP_IPV4 && IP_FORWARD && IP_NAPT
+  if (port != 0 && !IP_IS_V6(ipaddr) && ip_napt_port_in_use(IP_PROTO_UDP, port)) {
+    return ERR_USE;
+  }
+#endif
   /* no port specified? */
   if (port == 0) {
     port = udp_new_port();

@@ -179,6 +179,9 @@ int UART_SetBaudRate(uint8_t uartId, uint32_t baudRate)
 
 int UART_Init(uint8_t uartId, UART_CFG_Type *uartCfg)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(uartId == UART1_ID ? GLB_AHB_CLOCK_UART1 : GLB_AHB_CLOCK_UART0);
+
     uint32_t tmpValTxCfg = 0;
     uint32_t tmpValRxCfg = 0;
     uint32_t fraction = 0;

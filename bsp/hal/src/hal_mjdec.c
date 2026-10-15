@@ -213,10 +213,6 @@ int mjdec_init(mjdec_config_t *config)
     Interrupt_Handler_Register(JCOMB_IRQn, mjdec_irq_handler);
     CPU_Interrupt_Enable(JCOMB_IRQn);
 #endif  
-#if defined(CONFIG_IPRO6LE) /*HW not support MJDEC?*/
-    //Interrupt_Handler_Register(MJPEG_IRQn, mjdec_irq_handler);
-    //CPU_Interrupt_Enable(MJPEG_IRQn);
-#endif
 #if defined(CONFIG_IPRO7)
     Interrupt_Handler_Register(MJDEC_IRQn, mjdec_irq_handler);
     CPU_Interrupt_Enable(MJDEC_IRQn);

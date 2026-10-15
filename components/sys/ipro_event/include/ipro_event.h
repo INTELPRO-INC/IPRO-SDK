@@ -98,6 +98,12 @@ typedef struct {
     uint32_t task_stack_size;       /**< Task stack size in bytes (default: 2048) */
 } ipro_event_loop_config_t;
 
+#ifdef CONFIG_IPRO_EVENT_DEFAULT_TASK_STACK
+#define IPRO_EVENT_DEFAULT_TASK_STACK CONFIG_IPRO_EVENT_DEFAULT_TASK_STACK
+#else
+#define IPRO_EVENT_DEFAULT_TASK_STACK 2048
+#endif
+
 /**
  * @brief Default event loop configuration initializer
  */
@@ -105,7 +111,7 @@ typedef struct {
     .queue_size = 32,                      \
     .task_name = "ipro_event",             \
     .task_priority = 5,                    \
-    .task_stack_size = 2048,               \
+    .task_stack_size = IPRO_EVENT_DEFAULT_TASK_STACK, \
 }
 
 /*

@@ -21,10 +21,8 @@
  * See sdio_dma_copy.h for the design summary. Strict no-behavior-change when
  * g_sdio_dmacpy_mode == 0.
  *
- * IPRO6-only: modes 1/2 use the ipro6_soc DMA0 (PL081) driver and the OCRAM
- * cached/uncached alias trick, neither of which exist on IPRO6LE. The gate
- * symbol and legacy-equivalent stubs are still provided on IPRO6LE so
- * net_wifi_transceiver.c links unchanged there.
+ * Modes 1/2 use the ipro6_soc DMA0 (PL081) driver and the OCRAM
+ * cached/uncached alias trick.
  */
 
 #include <stdint.h>
@@ -38,8 +36,6 @@ volatile uint32_t g_sdio_dmacpy_mode = 0;
 
 /* Lib/ROM word-copy already used on this inject path (net_wifi_transceiver.c). */
 extern void *arch_memcpy_fast(void *dst, const void *src, uint32_t n);
-
-#ifdef IPRO6
 
 #include "drv_dma.h"
 #include "drv_glb.h"
@@ -413,46 +409,3 @@ void sdio_dmacpy_stats(int reset)
         s_last_wait_loops = 0;
     }
 }
-
-#else /* !IPRO6 : legacy-equivalent stubs so the gate links unchanged */
-
-int sdio_dmacpy_init(void)
-{
-    return -1;
-}
-
-uint32_t sdio_dmacpy_start(void *dst, const void *src, uint32_t len)
-{
-    arch_memcpy_fast(dst, src, len);
-    return 0;
-}
-
-void sdio_dmacpy_finish(void)
-{
-}
-
-void sdio_dmacpy_cached_copy(void *dst, const void *src, uint32_t len)
-{
-    arch_memcpy_fast(dst, src, len);
-}
-
-void sdio_dmacpy_selftest(void)
-{
-}
-
-void sdio_dmacpy_stats(int reset)
-{
-    (void)reset;
-}
-
-void sdio_dmacpy_set_burst(uint32_t b)
-{
-    (void)b;
-}
-
-void sdio_dmacpy_set_width(uint32_t w)
-{
-    (void)w;
-}
-
-#endif /* IPRO6 */

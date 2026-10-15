@@ -67,7 +67,6 @@
 #include "drv_gpio.h"
 #include "compiler/common.h"   /* ATTR_PSRAM_NOINIT_SECTION */
 
-#include "lwip/opt.h"     /* s16_t + TCP_TMR_INTERVAL for the tcprto knob */
 #include "lwip/tcp.h"     /* pcb fields for the tcpstat congestion census */
 #include "lwip/priv/tcp_priv.h" /* tcp_active_pcbs */
 #include "lwip/stats.h"   /* lwip_stats for the silent-drop census */
@@ -321,18 +320,12 @@ static int cmd_ipro6s_mac(int argc, char **argv)
     return 0;
 }
 
-/* Zero-copy opt-in: 1 = single-frame, 2 = TX stride, 3 = TX+RX stride. Confirm
- * the grant on the DEVICE side ("user_ext: ZCEN3 -> ZCOK3 ...") or by
- * tx_pool_drops staying near zero in its `sdio_diag`. */
+/* Re-send ZCEN3; the grant prints as "[zc] stride TX/RX granted". */
 static int cmd_ipro6s_zcen(int argc, char **argv)
 {
-    int gen = (argc >= 2) ? (int)strtoul(argv[1], NULL, 0) : 1;
-    int rc = ipronet_diag_zcen(gen);
-    if (rc == IPRONET_ERR_PARAM) {
-        printf("usage: ipro6s_zcen [1|2|3]\r\n");
-        return rc;
-    }
-    printf("[zc] ZCEN%d sent -> %d (single-frame TX armed)\r\n", gen, rc);
+    (void)argc; (void)argv;
+    int rc = ipronet_diag_zcen();
+    printf("[zc] ZCEN3 sent -> %d\r\n", rc);
     return rc;
 }
 
@@ -485,7 +478,7 @@ static int cmd_ipro6s_devauto(int argc, char **argv)
 }
 
 /* TX-aggregation batch cap (A/B). ipro6s_aggmax 1 flushes every frame; higher
- * values pack up to N frames/CMD53, bounded by the negotiated ZCEN2 slots. */
+ * values pack up to N frames/CMD53, bounded by the granted stride slots. */
 static int cmd_ipro6s_aggmax(int argc, char **argv)
 {
     if (argc >= 2) {
@@ -1169,36 +1162,8 @@ static int cmd_ipro6s_sdh_int(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------ */
-/* lwIP TCP knobs (bench)                                              */
+/* lwIP TCP diagnostics (bench)                                        */
 /* ------------------------------------------------------------------ */
-
-/* Rexmit RTO floor for lwIP's _LP_TCP_OPTIMIZE path, in 50 ms slow-timer ticks
- * (TCP_TMR_INTERVAL is 25 here). The fork pins it at 1 tick and never backs off,
- * which is below this link's RTT jitter (6.7 ms min, 217 ms max measured), so
- * every expiry resends the whole unacked window. Runtime so a leg is a console
- * write instead of a reflash. */
-static int cmd_tcprto(int argc, char **argv)
-{
-    extern s16_t lp_tcp_rexmit_rto_ticks;
-    extern u8_t  lp_tcp_dupack_thresh;
-
-    if (argc >= 2) {
-        int n = atoi(argv[1]);
-        if (n < 1)   n = 1;
-        if (n > 200) n = 200;
-        lp_tcp_rexmit_rto_ticks = (s16_t)n;
-    }
-    if (argc >= 3) {
-        int d = atoi(argv[2]);
-        if (d < 1)  d = 1;
-        if (d > 16) d = 16;
-        lp_tcp_dupack_thresh = (u8_t)d;
-    }
-    printf("tcprto ticks=%d (%d ms) dupack=%d\r\n", (int)lp_tcp_rexmit_rto_ticks,
-           (int)lp_tcp_rexmit_rto_ticks * (2 * TCP_TMR_INTERVAL),
-           (int)lp_tcp_dupack_thresh);
-    return 0;
-}
 
 /* Congestion state of the active TCP connections, read from the sender itself.
  *
@@ -1237,7 +1202,6 @@ static int cmd_tcpstat(int argc, char **argv)
 SHELL_CMD_EXPORT_ALIAS(cmd_ipronet_up,      ipronet_up,      "Customer path: ipronet_start(EVB cfg) [+ ipronet_connect <ssid> <psk>]");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipronet_down,    ipronet_down,    "ipronet_stop()");
 SHELL_CMD_EXPORT_ALIAS(cmd_tcpstat,         tcpstat,         "Congestion state of active TCP pcbs (cwnd/ssthresh/in-flight/rto)");
-SHELL_CMD_EXPORT_ALIAS(cmd_tcprto,          tcprto,          "lwIP _LP_TCP_OPTIMIZE tuning: <rto_slow_ticks 1..200> [dupack_thresh 1..16]");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_init,     ipro6s_init,     "Init SDH pinmux + sdio host");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_enum,     ipro6s_enum,     "Enumerate + check IPRO6S vendor/device");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_setup,    ipro6s_setup,    "4-bit / F1 enable / F1 blk=512; arg 'hs' = SDR50 50 MHz (default 25)");
@@ -1258,7 +1222,7 @@ SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_doorbell,  ipro6s_doorbell,  "One-shot: read t
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_flood_rx,  ipro6s_flood_rx,  "RX ceiling test: drain doorbell for [secs=10], no dispatch, print Mbps");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_tx_ramp,   ipro6s_tx_ramp,   "TX test: send <count> DATA frames of <len> ramp bytes; print Mbps");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_aggmax,    ipro6s_aggmax,    "TX aggregation batch cap: <N> (0=bypass aggregation)");
-SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_zcen,      ipro6s_zcen,      "Zero-copy opt-in: 1=single-frame, 2=TX stride, 3=TX+RX stride");
+SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_zcen,      ipro6s_zcen,      "Re-send the ZCEN3 request (stride TX + stride upload)");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_girq,      ipro6s_girq,      "Data-ready IRQ A/B: <1=on|0=off>, no-arg=stats (level/count/mask)");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_cpu,       ipro6s_cpu,       "Per-task CPU %% over <secs> (run during a test: IDLE ~0%%=CPU-bound)");
 SHELL_CMD_EXPORT_ALIAS(cmd_ipro6s_net_up,    ipro6s_net_up,    "Phase E: bring up iproeth0 lwIP netif (static IP)");

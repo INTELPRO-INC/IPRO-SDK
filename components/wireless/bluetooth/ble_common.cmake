@@ -104,14 +104,6 @@ if(DEFINED PRIV_CONFIG_GEN_BLE)
         set(PRIV_CONFIG_GEN_BLE "link8${SUFFIX_PART}")
         set(VARIANT_MAPPED TRUE)
         message(WARNING "[BLE] Deprecated variant 'm8s1' mapped to 'link8'. Please update your configuration to use the new linkN naming convention.")
-    elseif("${BASE_VARIANT}" STREQUAL "m0s1p")
-        set(PRIV_CONFIG_GEN_BLE "link1_periph_pds${SUFFIX_PART}")
-        set(VARIANT_MAPPED TRUE)
-        message(WARNING "[BLE] Deprecated variant 'm0s1p' (IPRO6LE) mapped to 'link1_periph_pds'. Please update your configuration to use the new linkN naming convention.")
-    elseif("${BASE_VARIANT}" STREQUAL "m1s1p")
-        set(PRIV_CONFIG_GEN_BLE "link1_pds${SUFFIX_PART}")
-        set(VARIANT_MAPPED TRUE)
-        message(WARNING "[BLE] Deprecated variant 'm1s1p' (IPRO6LE) mapped to 'link1_pds'. Please update your configuration to use the new linkN naming convention.")
     endif()
 
     if(VARIANT_MAPPED)
@@ -154,8 +146,6 @@ if(NOT DEFINED CHIP)
         set(CHIP "ipro7")
     elseif(CONFIG_IPRO6)
         set(CHIP "ipro6")
-    elseif(CONFIG_IPRO6LE)
-        set(CHIP "ipro6le")
     else()
         set(CHIP "ipro7")  # Default to IPRO7
     endif()
@@ -187,9 +177,13 @@ message(STATUS "[BLE] Platform: ${CHIP}, Variant: ${PRIV_CONFIG_GEN_BLE}")
 # IPRO7 Platform Variant Configurations
 # ============================================================================
 if("${CHIP}" STREQUAL "ipro7")
-    # Default IPRO7 features
+    # Default IPRO7 features. The on-chip controller is LE-only; BR/EDR on
+    # IPRO7 exists only through an external controller (AIC8800 over the
+    # SDIO mailbox), in which case the app's CONFIG_BT_BREDR stands.
     set(CONFIG_BT 0)
-    set(CONFIG_BT_BREDR 0)
+    if(NOT CONFIG_BT_CTLR_AIC8800_SDIO)
+        set(CONFIG_BT_BREDR 0)
+    endif()
     set(CONFIG_EM_SIZE 32)
     set(CONFIG_BLE_PDS 0)
 # ============================================================================
@@ -199,7 +193,7 @@ if("${CHIP}" STREQUAL "ipro7")
 # 🔴 本檔的 CFG_* 是為 **btblecontroller** 準備的，而且是 public 定義
 # （會傳播到每一個元件），但它在 controller 選擇**之前**就被 include。
 #
-# ipro_ble_controller 自帶一整套 CFG_*（見 ipro_ble_controller/CMakeLists.txt，照抄原廠
+# ipro_ble_controller 自帶一整套 CFG_*（見 ipro_ble_controller/CMakeLists.txt，照抄上游
 # sourcelist.txt / SCompile 的推導），兩套會直接打架。實測衝突：
 #
 #     -DCFG_ACT=5 -DCFG_ACT=7   兩個都下，後者勝 → ACT 不是 ipro_ble_controller 要的值
@@ -490,59 +484,6 @@ if(CONFIG_BTBLECONTROLLER_BT_54)
 endif()
 
 
-# ============================================================================
-# IPRO6LE Platform Variant Configurations (Low Energy variant)
-# ============================================================================
-if("${CHIP}" STREQUAL "ipro6le")
-    # Default IPRO6LE features - optimized for low power
-    set(CONFIG_BT 0)
-    set(CONFIG_BT_BREDR 0)
-    set(CONFIG_EM_SIZE 8)
-    set(CONFIG_BLE_PDS 1)
-    set(CONFIG_ADV_EXTENSION 0)
-    set(CONFIG_CIS 0)
-    set(CONFIG_BIS 0)
-    set(CONFIG_CTE 0)
-    set(CONFIG_LE_PWR_CTRL 0)
-    set(CONFIG_LONG_RANG 0)
-    set(CONFIG_CLK_ACC 0)
-    set(CONFIG_LE_PING 0)
-
-    # ------------------------------------------------------------------
-    # Variant: link1_periph_pds - Peripheral only with PDS
-    # ------------------------------------------------------------------
-    if("${PRIV_CONFIG_GEN_BLE}" STREQUAL "link1_periph_pds")
-        set(CONFIG_BLE_PDS 1)
-        set(CONFIG_BT_CONN 1)
-        set(CONFIG_BLE_TX_BUFF_DATA 2)
-        set(CONFIG_BLE_ACT_MAX 5)
-        set(CONFIG_BT_ALLROLES 0)
-        set(CONFIG_BT_CENTRAL 0)
-        set(CONFIG_BT_PERIPHERAL 1)
-        set(CONFIG_BT_OBSERVER 0)
-        set(CONFIG_BT_BROADCASTER 1)
-        set(CONFIG_DISABLE_BT_HOST_PRIVACY 1)
-        set(CONFIG_DISABLE_BLE_CONTROLLER_TEST_MODE 0)
-    endif()
-
-    # ------------------------------------------------------------------
-    # Variant: link1_pds - All roles with PDS
-    # ------------------------------------------------------------------
-    if("${PRIV_CONFIG_GEN_BLE}" STREQUAL "link1_pds")
-        set(CONFIG_BLE_PDS 1)
-        set(CONFIG_BT_CONN 1)
-        set(CONFIG_BLE_TX_BUFF_DATA 2)
-        set(CONFIG_BLE_ACT_MAX 5)
-        set(CONFIG_BT_ALLROLES 1)
-        set(CONFIG_BT_CENTRAL 1)
-        set(CONFIG_BT_PERIPHERAL 1)
-        set(CONFIG_BT_OBSERVER 1)
-        set(CONFIG_BT_BROADCASTER 1)
-        set(CONFIG_DISABLE_BT_HOST_PRIVACY 1)
-        set(CONFIG_DISABLE_BLE_CONTROLLER_TEST_MODE 0)
-    endif()
-endif()
-
 # IPRO6S does not use the IPRO7 variant table above, but its unified controller
 # still shares this file with the host.  Define the same CFG dispatcher when
 # the platform-specific block did not do so.  Controller-private btblecontroller
@@ -680,9 +621,6 @@ elseif("${CHIP}" STREQUAL "ipro6")
     __ble_ctlr_cfg(-DCFG_IPRO6)
     __component_add_compile_definitions(-DBL616)
     __component_add_compile_definitions(-DBFLB_BLE)
-elseif("${CHIP}" STREQUAL "ipro6le")
-    __component_add_compile_definitions(-DIPRO6LE)
-    __ble_ctlr_cfg(-DCFG_IPRO6LE)
 endif()
 
 # Allow per-app override of TX buffer count (with CONFIG_BLE_FORCE_SOURCE_BUILD)
@@ -749,7 +687,7 @@ endif()
 # 2. On-chip HCI with blestack - internal communication
 #
 # For on-chip HCI: HCI_TL_SUPPORT=1 with HOST_PRESENT=0 uses simplified macros
-# that don't require RivieraWaves host headers (hl_hci.h enum values).
+# that don't require the controller's host-layer headers (hl_hci.h enum values).
 
 if(CONFIG_BLE_HOST_DISABLE)
     # Controller-only mode: Enable HCI Transport Layer for external host
@@ -777,7 +715,7 @@ if(CONFIG_BLE_HOST_DISABLE)
 else()
     # On-chip HCI mode: Enable HCI TL for communication with blestack
     # Use CFG_ONCHIP_HCI instead of CFG_BLE_HOST to avoid including
-    # RivieraWaves host headers (rwhl_config.h, hl_hci.h)
+    # the controller's host-layer headers (rwhl_config.h, hl_hci.h)
     __ble_ctlr_cfg(-DCFG_ONCHIP_HCI)
     __ble_ctlr_cfg(-DCFG_HCITL)
 

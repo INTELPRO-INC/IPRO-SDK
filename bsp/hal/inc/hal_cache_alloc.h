@@ -22,12 +22,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#if defined(CONFIG_IPRO6LE)
-#define HAL_CACHE_LINE_SIZE 32
-#else
 #include <core_feature_cache.h>
 #define HAL_CACHE_LINE_SIZE CCM_CACHELINE_SIZE
-#endif
 
 /*
  * Cache-line aligned heap allocator.

@@ -19,8 +19,8 @@
 #include "usbwifi.h"
 #include <assert.h>
 #include <stdio.h>
-#if defined(IPRO6LE) || defined(IPRO6)
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
+#if defined(IPRO6)
 #include "drv_l1c.h"
 #else
 #include <bl616_l1c.h>
@@ -362,7 +362,7 @@ static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
 
 static void tx_buf_register(struct usbwifi_tx_env_tag *env)
 {
-#if defined(IPRO6LE) || defined(IPRO6)
+#if defined(IPRO6)
 #ifdef LP_APP
     extern uint8_t __LD_CONFIG_EM_SEL;
     volatile uint32_t em_size;

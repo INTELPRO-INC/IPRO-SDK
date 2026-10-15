@@ -551,7 +551,8 @@ static void ota_task(void *param)
                         last_reported_pct = pct;
                     }
 
-                    vTaskDelay(pdMS_TO_TICKS(5));
+                    /* let the link run between sector erases */
+                    vTaskDelay(pdMS_TO_TICKS(10));
                 }
 
                 if (!error) {
@@ -678,7 +679,14 @@ static int ota_switch_partition(void)
         return -1;
     }
 
+#if defined(CONFIG_IPRO7AI_REEF)
+    /* The Reef image runs under boot2 (partition_cfg_2M_remote_ab.toml): the
+     * slot holds an OTA package that boot2 checks and unpacks by its own
+     * header, so the entry length is not used. */
+    pt_entry.len = 0;
+#else
     pt_entry.len = g_ota_ctx.firmware_size;
+#endif
 
     ret = hal_boot2_update_ptable(&pt_entry);
     if (ret != 0) {
@@ -786,10 +794,13 @@ static int ota_handle_start_cmd(const uint8_t *data, uint16_t length)
     g_ota_ctx.backup_partition_addr = backup_addr;
     g_ota_ctx.backup_partition_size = backup_size;
 
+    /* Erase only what the image needs: every 4 KB sector erase stalls the
+     * XIP CPU, and a whole 824 KB slot took the link past its supervision
+     * timeout on the IPRO7AI Reef. */
     ota_task_cmd_t erase_cmd = {
         .cmd = OTA_TASK_CMD_ERASE,
         .addr = backup_addr,
-        .size = backup_size
+        .size = (fw_size + 0xFFFu) & ~0xFFFu
     };
 
     if (xQueueSend(g_ota_cmd_queue, &erase_cmd, 0) != pdTRUE) {

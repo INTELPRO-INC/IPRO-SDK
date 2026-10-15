@@ -34,7 +34,7 @@
  * hung off the component's on_post_enable callback so `sdio_probe` applies them
  * in the right place, plus an `aic_quirks` command to re-apply them alone.
  *
- * Pin assignment (per docs/CODEMAPS/aic8800d80_hw_bringup.md):
+ * Pin assignment (per docs/wifi-companion/aic8800d80_hw_bringup.md):
  *   GPIO28..33 = SDH bus (CMD/CLK/DAT0..3)            [GPIO_FUN_SDC]
  *   GPIO16     = AIC POWER_EN (active high)           [PROPOSED]
  *   GPIO17     = AIC RESET#   (active low)            [PROPOSED]
@@ -67,7 +67,7 @@
 #define AIC_PIN_RESET_N         GLB_GPIO_PIN_17
 #define AIC_PIN_WAKE            GLB_GPIO_PIN_18
 
-/* AIC8800D80 SDIO configuration (from docs/CODEMAPS/aic8800d80_porting.md). */
+/* AIC8800D80 SDIO configuration (from docs/wifi-companion/aic8800d80_porting.md). */
 #define AIC_FUNC_DATA           SDIO_FUNC_1
 #define AIC_FUNC_BLOCK_SIZE     512
 #define AIC_QUIRK_FN0_F2        0xF2U

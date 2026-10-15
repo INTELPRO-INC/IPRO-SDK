@@ -90,6 +90,8 @@ struct mqtt_client_s
   /** Incoming data callback */
   mqtt_incoming_data_cb_t data_cb;
   mqtt_incoming_publish_cb_t pub_cb;
+  /** RETAIN flag of the PUBLISH being delivered (valid inside the callbacks) */
+  u8_t inpub_retain;
   /** Input */
   u32_t msg_idx;
   u8_t rx_buffer[MQTT_VAR_HEADER_BUFFER_LEN];

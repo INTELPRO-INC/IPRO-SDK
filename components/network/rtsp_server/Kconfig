@@ -1,0 +1,79 @@
+menuconfig RTSP_SERVER
+    bool "RTSP Server (MJPEG streaming)"
+    depends on COMPONENTS_LWIP_ENABLE
+    default n
+    help
+      Enable RTSP server for MJPEG/H.264 streaming over lwIP on
+      FreeRTOS (Apache-2.0, see LICENSE-APACHE-2.0.txt).
+
+      Pull-model frame source: producer registers a get_frm_t callback
+      via set_strm_cb(); RTSP session pulls frames at the configured
+      fps. ISP integration (Phase 5) just wires the ISP JPEG-done
+      path into the same callback.
+
+if RTSP_SERVER
+
+config RTSP_LISTEN_PORT
+    int "RTSP listen port"
+    default 8554
+    range 1 65535
+    help
+      TCP port for RTSP control channel. Default 8554 matches the
+      library's DFL_RTSP_PORT. Use 554 only if you also own the
+      privileged-port capability on your network.
+
+config RTSP_DEFAULT_VIDEO_FPS
+    int "Default video fps"
+    default 5
+    range 1 60
+    help
+      Default frame rate for the pull-model source. Phase 4 test
+      source uses this to pace its canned-frame rotation.
+
+config RTSP_TASK_STACK_SIZE
+    int "RTSP listener task stack (bytes)"
+    default 4096
+    range 2048 16384
+    help
+      Stack size for the main RTSP server task (rtsp_srv_thrd).
+      Per-session tasks reuse the same default. Bump to 6144 if
+      stack-overflow assertions fire during long soaks.
+
+config RTSP_TEST_SOURCE
+    bool "Compile Phase 4 canned-frame test source"
+    default y
+    help
+      When enabled, builds rtsp_test_source.c which implements a
+      get_frm_t callback that cycles through canned JPEG frames from
+      apps/platform/ipro7_demo/demo/esp32_at/mjpeg_frames.h (or an
+      embedded fallback 720p JPEG). Turn OFF in Phase 5 when the
+      real ISP callback is wired in.
+
+config RTSP_ISP_SOURCE
+    bool "Compile Phase 5 ISP -> MJPEG real source"
+    depends on MM_SUPPORT && COMPONENTS_SENSOR_ENABLE
+    default y if MM_SUPPORT
+    help
+      When enabled, builds rtsp_isp_source.c which boots the IPRO7
+      sensor + ISP + MJPEG pipeline and serves real-time JPEG frames
+      to the RTSP server through a get_frm_t callback. Mutually
+      exclusive at runtime with RTSP_TEST_SOURCE — install one or
+      the other via the shell (rtsp_isp_src on / rtsp_test_src on).
+
+config RTSP_SHELL
+    bool "Enable dev shell commands (rtsp_*)"
+    default y
+
+config RTSP_AUTOSTART
+    bool "Auto-start RTSP server when host netif has IP"
+    depends on ESP_HOSTED_NETIF
+    default y
+    help
+      Spawn a task during app_main that polls
+      esp_hosted_netif_is_ip_ready() and calls rtsp_init_lib() +
+      rtsp_test_source_install() (if enabled) once the host has a
+      DHCP lease. Requires the user to drive eh_init + eh_connect
+      from the shell; this only automates what happens AFTER IP is
+      up. Turn OFF to drive the full sequence manually.
+
+endif # RTSP_SERVER

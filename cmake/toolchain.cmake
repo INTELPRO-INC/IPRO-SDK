@@ -108,6 +108,6 @@ set(CMAKE_C_FLAGS "${_flags}" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS "${_flags}" CACHE STRING "" FORCE)
 set(CMAKE_ASM_FLAGS "${_flags}" CACHE STRING "" FORCE)
 
-# NOTE: Chip definition (IPRO6LE/IPRO6/IPRO7) is set in base_sdkConfig.cmake
+# NOTE: Chip definition (IPRO6/IPRO7) is set in base_sdkConfig.cmake
 # after config_parse(), using CONFIG_CHIP from .config
 endif()

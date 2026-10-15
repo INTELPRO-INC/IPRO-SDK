@@ -26,6 +26,8 @@ __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_RADAR_KW307_ENABLE radar)
 add_subdirectory(audio)
 endif()
 __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_IMU_MPU6500_ENABLE imu)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_IPRO7AI_EVK_ENABLE board/ipro7ai_evk)
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_IPRO_LLM_ENABLE ipro_llm)
 __component_add_subdirectory_ifdef(CONFIG_UNIT_TEST_FRAMEWORK test)
 
 # Shared utility components

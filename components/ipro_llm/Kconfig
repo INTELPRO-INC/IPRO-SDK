@@ -1,0 +1,37 @@
+menu "IPRO on-device tool-calling model"
+
+config COMPONENTS_IPRO_LLM_ENABLE
+    bool "ipro_llm engine: text request in, tool calls out"
+    default n
+    help
+      Runs the IPRO SAN tool-calling models trained in tools/ipro_llm (XS:
+      d192, 6 layers, CQ2/CQ4 weights, about 1.69 MB) from one blob made by
+      tools/ipro_llm/export/export_blob.py. Portable C11 with no allocation:
+      the app gives it the blob and about 1.5 MB of work memory (PSRAM, so
+      it needs CONFIG_USE_PSRAM=y). Uses float; the IPRO7 FreeRTOS port
+      saves the FPU registers, so other tasks may use float too.
+
+config IPRO_LLM_NPU
+    bool "Run the attention projections on the IPRO7 NPU"
+    depends on COMPONENTS_IPRO_LLM_ENABLE && AI_SUPPORT
+    default n
+    help
+      port/ipro7: q/k/v/gate and out of every layer become int8 1x1
+      convolutions on the NPU, for prompt chunks and one-token decode
+      steps (two models per projection). The blob needs the NPUS section
+      (export_blob.py --npu-calib); the app attaches the accelerator with
+      ipro_llm_npu_init() + ipro_llm_accel_attach(). About 1.2 MB of heap
+      for XS (weights 0.9 MB, activation 256 KB). Needs CONFIG_AI_SUPPORT
+      (the NPU runtime, components/ai).
+
+config IPRO_LLM_PROF_CYCLES
+    bool "Print the float work's cycle buckets after every request (debug)"
+    depends on COMPONENTS_IPRO_LLM_ENABLE
+    default n
+    help
+      Counts mcycle around the attention core (KV write, q/k norm + RoPE,
+      softmax attention, sigmoid gate), the MLP (norms, FWHT, SiLU) and the
+      engram, and prints one LLM_CYCLES line per ipro_llm_run(). Off, the
+      buckets compile to nothing.
+
+endmenu

@@ -28,9 +28,11 @@
 
 #define TAG "PDM_BTN"
 
-#define BTN_POWER_PIN       5U
-#define BTN_VOL_UP_PIN      6U
-#define BTN_VOL_DOWN_PIN    7U
+/* Measured on the Zinwell AI Assistant board (2026-10-11): the V02 schematic labels read Power G5 /
+ * Vol+ G6 / Vol- G7, but the Power key reads G7, Vol+ G5 and Vol- G6 - as `btn` in main.c has it. */
+#define BTN_POWER_PIN       7U
+#define BTN_VOL_UP_PIN      5U
+#define BTN_VOL_DOWN_PIN    6U
 #define BTN_MASK            ((1U << BTN_POWER_PIN) | \
                              (1U << BTN_VOL_UP_PIN) | \
                              (1U << BTN_VOL_DOWN_PIN))
@@ -145,12 +147,12 @@ static void pdm_button_handle(uint32_t pin, bool require_low_after_settle)
          * comes straight back out. Bounded, so a stuck-low pin cannot park the
          * button task here forever.
          */
-        IPRO_LOGI(TAG, "GPIO5 power -> entering PDS31, release the key");
+        IPRO_LOGI(TAG, "GPIO%u power -> entering PDS31, release the key", BTN_POWER_PIN);
         for (int i = 0; i < 200 && gpio_read(pin) == 0; i++) {
             vTaskDelay(pdMS_TO_TICKS(10));
         }
         if (gpio_read(pin) == 0) {
-            IPRO_LOGW(TAG, "GPIO5 still low after 2 s - not sleeping");
+            IPRO_LOGW(TAG, "GPIO%u still low after 2 s - not sleeping", BTN_POWER_PIN);
             break;
         }
         vTaskDelay(pdMS_TO_TICKS(BTN_DEBOUNCE_MS));
@@ -159,11 +161,11 @@ static void pdm_button_handle(uint32_t pin, bool require_low_after_settle)
     }
     case BTN_VOL_UP_PIN:
         pdm_set_gain(pdm_get_gain() + BTN_GAIN_STEP_DB);
-        IPRO_LOGI(TAG, "GPIO6 volume up -> gain %d dB", pdm_get_gain());
+        IPRO_LOGI(TAG, "GPIO%u volume up -> gain %d dB", BTN_VOL_UP_PIN, pdm_get_gain());
         break;
     case BTN_VOL_DOWN_PIN:
         pdm_set_gain(pdm_get_gain() - BTN_GAIN_STEP_DB);
-        IPRO_LOGI(TAG, "GPIO7 volume down -> gain %d dB", pdm_get_gain());
+        IPRO_LOGI(TAG, "GPIO%u volume down -> gain %d dB", BTN_VOL_DOWN_PIN, pdm_get_gain());
         break;
     default:
         break;
@@ -235,6 +237,7 @@ int pdm_buttons_init(void)
         return -1;
     }
 
-    IPRO_LOGI(TAG, "buttons active-low: GPIO5 power, GPIO6 volume up, GPIO7 volume down");
+    IPRO_LOGI(TAG, "buttons active-low: GPIO%u power, GPIO%u volume up, GPIO%u volume down",
+              BTN_POWER_PIN, BTN_VOL_UP_PIN, BTN_VOL_DOWN_PIN);
     return 0;
 }

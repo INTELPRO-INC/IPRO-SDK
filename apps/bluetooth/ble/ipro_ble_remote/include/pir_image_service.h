@@ -45,8 +45,12 @@ extern "C" {
 ///       Measured performance: 101.4 KB/s (811 Kbps) for 56KB image transfer
 #define MAX_IMAGE_CHUNK_SIZE        512
 
-/// Maximum image size (e.g., 64KB for small JPEG)
+/// Maximum image size (e.g., 64KB for small JPEG; the Reef camera's 640x360 frames run 25-40 KB, worst case more)
+#if defined(CONFIG_IPRO7AI_REEF)
+#define IMAGE_MAX_SIZE              (192 * 1024)
+#else
 #define IMAGE_MAX_SIZE              (64 * 1024)
+#endif
 
 /// Simulated image size for demo (when no real camera)
 #define DEMO_IMAGE_SIZE             (8 * 1024)
@@ -268,6 +272,16 @@ int pir_notify_motion(uint8_t conn_id, const pir_status_t *status);
 int pir_simulate_trigger(void);
 
 /**
+ * @brief Report the state of a motion detector other than a PIR pin
+ *        (the Reef camera's frame differencing).
+ *
+ * A rising edge does what a PIR trigger does: status update, notification,
+ * PIR_IMG_EVENT_MOTION_DETECTED and an auto-capture. A falling edge clears
+ * the status and notifies it. Task context.
+ */
+int pir_report_motion(bool motion);
+
+/**
  * @brief Set transfer rate based on BLE connection interval
  * 
  * Adjusts chunk sending interval to match BLE connection parameters
@@ -345,6 +359,24 @@ pir_image_type_t image_get_type(void);
  * @return int Status code (0 on success)
  */
 int image_capture(void);
+
+/**
+ * @brief Capture source for image_capture().
+ *
+ * With a hook set, image_capture() calls it to start a real capture (which
+ * finishes later with image_capture_complete()) instead of handing out the
+ * built-in demo JPEGs. A hook that returns non-zero (no camera) falls back to
+ * the demo images. NULL removes the hook.
+ */
+void image_set_capture_hook(int (*hook)(void));
+
+/**
+ * @brief Finish a hooked capture: copy @p data (a JPEG) in, mark it ready and
+ *        start the transfer if the phone has image notifications on.
+ *        @p data NULL or @p size 0 means the capture failed: the demo image
+ *        is used instead so the phone still gets a picture.
+ */
+int image_capture_complete(const uint8_t *data, uint32_t size);
 
 /**
  * @brief Set image data (for external image source)

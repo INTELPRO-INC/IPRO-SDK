@@ -77,7 +77,10 @@ extern "C" {
 #define LOG_I(fmt, ...) dbg_log_line("I", 35, fmt, ##__VA_ARGS__)
 #define LOG_W(fmt, ...) dbg_log_line("W", 33, fmt, ##__VA_ARGS__)
 #define LOG_E(fmt, ...) dbg_log_line("E", 31, fmt, ##__VA_ARGS__)
+/* Guarded: Zephyr's <zephyr/logging/log.h> defines its own LOG_RAW(). */
+#ifndef LOG_RAW
 #define LOG_RAW(...)    printf(__VA_ARGS__)
+#endif
 
 void platform_init(uint32_t baudrate);
 void platform_print_set(uint8_t disable);

@@ -946,6 +946,46 @@ int sec_ecdsa_deinit(sec_ecdsa_handle_t *handle)
     return 0;
 }
 
+/* Public verification only. The generic add formula requires distinct finite
+ * points; handle equal/opposite points before its U/V denominators collapse.
+ * Coordinates are homogeneous (x=X/Z, y=Y/Z), all in Montgomery form.
+ * Input P1=(2,3,4), P2=(5,6,7); result always P1. */
+static void sec_ecdsa_verify_point_add(uint8_t id)
+{
+    uint8_t z1_zero, z2_zero, u_zero, v_zero;
+    Sec_Eng_PKA_LCMP(&z1_zero, 3, 4, 3, 8); /* Z1 < 1 */
+    Sec_Eng_PKA_LCMP(&z2_zero, 3, 7, 3, 8); /* Z2 < 1 */
+    if (z1_zero) {
+        sec_ecdsa_copy_x2_to_x1(id);
+        return;
+    }
+    if (z2_zero) {
+        return;
+    }
+
+    Sec_Eng_PKA_MMUL(3, 13, 3, 6, 3, 4, 3, 0, 0); /* Y2*Z1 */
+    Sec_Eng_PKA_MMUL(3, 14, 3, 3, 3, 7, 3, 0, 0); /* Y1*Z2 */
+    Sec_Eng_PKA_MMUL(3, 15, 3, 5, 3, 4, 3, 0, 0); /* X2*Z1 */
+    Sec_Eng_PKA_MMUL(3, 16, 3, 2, 3, 7, 3, 0, 0); /* X1*Z2 */
+    Sec_Eng_PKA_MSUB(3, 13, 3, 13, 3, 14, 3, 0, 0);
+    Sec_Eng_PKA_MSUB(3, 15, 3, 15, 3, 16, 3, 0, 1);
+    Sec_Eng_PKA_LCMP(&u_zero, 3, 13, 3, 8);
+    Sec_Eng_PKA_LCMP(&v_zero, 3, 15, 3, 8);
+    if (v_zero) {
+        if (u_zero) {
+            (void)sec_ecdsa_point_double(id); /* 2*P2, result P2 */
+            sec_ecdsa_copy_x2_to_x1(id);
+        } else {
+            /* P + (-P) = infinity; canonical Montgomery (0,1,0). */
+            Sec_Eng_PKA_CREG(3, 2, 8, 0);
+            Sec_Eng_PKA_Write_Data(3, 3, (const uint32_t *)secp256r1_Zeroy, 8, 0);
+            Sec_Eng_PKA_CREG(3, 4, 8, 1);
+        }
+        return;
+    }
+    sec_ecdsa_point_add(id);
+}
+
 /**
  * @brief Shamir's trick: compute u1*G + u2*Q in a single MSB-first loop
  *
@@ -972,8 +1012,9 @@ static int sec_ecdsa_verify_shamir(uint8_t id,
     uint32_t i, j, start;
     uint32_t acc_is_inf = 1;
     uint8_t b1, b2, idx;
+    uint8_t sum_is_inf;
 
-    /* table[0] = G (Montgomery Jacobian) */
+    /* table[0] = G (Montgomery homogeneous coordinates) */
     memcpy(tbl_x[0], secp256r1_Gx, 32);
     memcpy(tbl_y[0], secp256r1_Gy, 32);
     memcpy(tbl_z[0], secp256r1_Zeroy, 32); /* BAR(1) = R mod P */
@@ -990,10 +1031,12 @@ static int sec_ecdsa_verify_shamir(uint8_t id,
     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 5, tbl_x[1], ECP_SECP256R1_SIZE / 4, 0);
     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 6, tbl_y[1], ECP_SECP256R1_SIZE / 4, 0);
     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 7, tbl_z[1], ECP_SECP256R1_SIZE / 4, 0);
-    sec_ecdsa_point_add(id);
+    sec_ecdsa_verify_point_add(id);
     Sec_Eng_PKA_Read_Data(ECP_SECP256R1_REG_TYPE, 2, tbl_x[2], ECP_SECP256R1_SIZE / 4);
     Sec_Eng_PKA_Read_Data(ECP_SECP256R1_REG_TYPE, 3, tbl_y[2], ECP_SECP256R1_SIZE / 4);
     Sec_Eng_PKA_Read_Data(ECP_SECP256R1_REG_TYPE, 4, tbl_z[2], ECP_SECP256R1_SIZE / 4);
+
+    Sec_Eng_PKA_LCMP(&sum_is_inf, 3, 4, 3, 8);
 
     /* Skip leading zero bytes where both u1 and u2 are zero */
     start = 0;
@@ -1014,6 +1057,9 @@ static int sec_ecdsa_verify_shamir(uint8_t id,
 
             if (idx != 0) {
                 idx--; /* 0-indexed: 0=G, 1=Q, 2=G+Q */
+                if (idx == 2 && sum_is_inf) {
+                    continue; /* Adding the identity does not change ACC. */
+                }
                 if (acc_is_inf) {
                     /* First non-zero: load table point as ACC into P2 */
                     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 5, tbl_x[idx], ECP_SECP256R1_SIZE / 4, 0);
@@ -1026,14 +1072,21 @@ static int sec_ecdsa_verify_shamir(uint8_t id,
                     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 5, tbl_x[idx], ECP_SECP256R1_SIZE / 4, 0);
                     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 6, tbl_y[idx], ECP_SECP256R1_SIZE / 4, 0);
                     Sec_Eng_PKA_Write_Data(ECP_SECP256R1_REG_TYPE, 7, tbl_z[idx], ECP_SECP256R1_SIZE / 4, 0);
-                    sec_ecdsa_point_add(id);
+                    sec_ecdsa_verify_point_add(id);
                     /* Move result P1(2,3,4) -> P2(5,6,7) */
                     Sec_Eng_PKA_Move_Data(3, 5, 3, 2, 0);
                     Sec_Eng_PKA_Move_Data(3, 6, 3, 3, 0);
                     Sec_Eng_PKA_Move_Data(3, 7, 3, 4, 1);
+                    uint8_t z_zero;
+                    Sec_Eng_PKA_LCMP(&z_zero, 3, 7, 3, 8);
+                    acc_is_inf = z_zero;
                 }
             }
         }
+    }
+
+    if (acc_is_inf) {
+        return -1; /* ECDSA must reject R=infinity before inversion. */
     }
 
     /* Move final ACC from P2(5,6,7) to P1(2,3,4) */
@@ -1051,7 +1104,8 @@ int sec_ecdsa_verify(sec_ecdsa_handle_t *handle, const uint32_t *hash, uint32_t 
     uint32_t i = 0;
 
     /* Pointer check */
-    if (hash == NULL || handle->publicKeyx == NULL || handle->publicKeyy == NULL || r == NULL || s == NULL) {
+    if (handle == NULL || handle->ecpId != ECP_SECP256R1 || hashLenInWord != 8 ||
+        hash == NULL || handle->publicKeyx == NULL || handle->publicKeyy == NULL || r == NULL || s == NULL) {
         return -1;
     }
 
@@ -1182,7 +1236,9 @@ int sec_ecdsa_verify(sec_ecdsa_handle_t *handle, const uint32_t *hash, uint32_t 
     /* Clear LT register upper half (dirtied by GF2Mont) before point operations */
     Sec_Eng_PKA_CREG(ECP_SECP256R1_LT_REG_TYPE, 7, ECP_SECP256R1_SIZE / 4, 1);
 
-    sec_ecdsa_verify_shamir(handle->ecpId, pka_u1, pka_u2, pub_x_bar, pub_y_bar);
+    if (sec_ecdsa_verify_shamir(handle->ecpId, pka_u1, pka_u2, pub_x_bar, pub_y_bar) != 0) {
+        return -1;
+    }
 
     /* Step6 Get R.x(R=u1G+u2P)*/
     //R.z ^ -1
@@ -1207,6 +1263,9 @@ int sec_ecdsa_verify(sec_ecdsa_handle_t *handle, const uint32_t *hash, uint32_t 
     //PKA_MONT2GF(3, 2,3, 5,3, 6);
     Sec_Eng_PKA_Mont2GF(ECP_SECP256R1_REG_TYPE, 2, ECP_SECP256R1_REG_TYPE, 5, ECP_SECP256R1_REG_TYPE, 6,
                         ECP_SECP256R1_LT_REG_TYPE, ECP_SECP256R1_LT_REG_INDEX, ECP_SECP256R1_REG_TYPE, 0);
+    /* ECDSA compares affine R.x modulo group order N, not field P. */
+    Sec_Eng_PKA_Write_Data(3, 5, (const uint32_t *)secp256r1N, 8, 0);
+    Sec_Eng_PKA_MREM(3, 2, 3, 2, 3, 5, 1);
     Sec_Eng_PKA_Read_Data(ECP_SECP256R1_REG_TYPE, 2, (uint32_t *)pub_x_bar, ECP_SECP256R1_SIZE / 4);
 #ifdef ECDSA_DBG
     printf("R.x=\r\n");

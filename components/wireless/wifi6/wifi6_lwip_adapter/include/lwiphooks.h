@@ -22,6 +22,18 @@
 
 #define LWIP_HOOK_UNKNOWN_ETH_PROTOCOL  net_eth_receive
 
+#ifdef CONFIG_THREAD_WIFI_BORDER_ROUTER
+struct pbuf;
+struct netif;
+struct ip6_addr;
+int br_wifi_ip6_input(struct pbuf *p, struct netif *netif);
+struct netif *br_ip6_route(const struct ip6_addr *source, const struct ip6_addr *destination);
+const struct ip6_addr *br_nd6_gateway(struct netif *netif, const struct ip6_addr *destination);
+#define LWIP_HOOK_IP6_INPUT(p, netif) br_wifi_ip6_input(p, netif)
+#define LWIP_HOOK_IP6_ROUTE(source, destination) br_ip6_route(source, destination)
+#define LWIP_HOOK_ND6_GET_GW(netif, destination) br_nd6_gateway(netif, destination)
+#endif
+
 /**
  ****************************************************************************************
  * @brief LWIP hook to process ethernet packet not supported.

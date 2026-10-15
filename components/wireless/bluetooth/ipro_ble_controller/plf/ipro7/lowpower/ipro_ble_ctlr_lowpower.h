@@ -40,10 +40,13 @@ extern volatile uint32_t ipro_ble_ctlr_lp_32k_fallback;
 extern volatile uint32_t ipro_ble_ctlr_lp_sleep_drift_ppm;
 
 /* Select and qualify the BLE sleep clock before rwip_init().  This value is
- * used only by RW native sleep / platform-PDS elapsed-time handling.  Plain
+ * used only by controller native sleep / platform-PDS elapsed-time handling.  Plain
  * no-sleep operation stays on XTAL32M and uses active-clock drift instead.
- * XTAL32K is preferred; RC32K is calibrated and selected if XTAL32K exceeds
- * 500 ppm or does not oscillate. Returns zero/cap code, or a negative error. */
+ * The board decides (board_get_32k_source(), bsp/board/ipro7/board.c from
+ * BOARD_CLK_32K_SOURCE_MACRO): an RC32K board calibrates RC32K at once; a board
+ * that declares XTAL32K (or nothing) has the crystal qualified first, and RC32K
+ * is calibrated and selected if it exceeds 500 ppm or does not oscillate.
+ * Returns zero/cap code, or a negative error. */
 int ipro_ble_ctlr_lowpower_init(void);
 
 /* Isolated rwip_driver patch entry point. */

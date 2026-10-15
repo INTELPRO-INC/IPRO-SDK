@@ -12,6 +12,7 @@
 
 #include "fhost.h"
 #include "fhost_cntrl.h"
+#include "fhost_scan_result.h"
 #include "fhost_config.h"
 #include "fhost_tx.h"
 #include "fhost_rx.h"
@@ -60,6 +61,26 @@ static rtos_queue queue_ke_msg;
 rtos_task_handle fhost_cntrl_task_handle;
 
 rtos_mutex fhost_cntrl_link_mutex;
+
+/* Only the control task owns these slots; no fhost_vif ABI change required. */
+static uint32_t scan_request_ids[NX_VIRT_DEV_MAX];
+
+__attribute__((weak)) void fhost_scan_request_completed(int vif, uint32_t request_id,
+                                                       uint32_t result, uint32_t count)
+{
+    (void)vif;
+    (void)request_id;
+    (void)result;
+    (void)count;
+}
+
+__attribute__((weak)) void fhost_scan_request_observed(int vif, uint32_t request_id,
+                                                       const struct fhost_scan_observation *entry)
+{
+    (void)vif;
+    (void)request_id;
+    (void)entry;
+}
 
 /// KE message queue size
 #define FHOST_CNTRL_QUEUE_KE_MSG_SIZE 5
@@ -327,7 +348,24 @@ static int find_ie_ds(uint8_t *buffer, int len, uint8_t *result) //bl_rx.c
     return -1;
 }
 
-static void _rx_handle_multiple_bssid_beacon_save(uint32_t ies, uint32_t ies_len,
+static void fhost_cntrl_scan_observed(void *ind, const wifi_mgmr_scan_item_t *item)
+{
+    struct fhost_vif_tag *vif = fhost_from_mac_vif(rxu_mgt_ind_get_inst_nbr(ind));
+    if (!vif || !vif->scanning || item->ssid_len < 0 || item->ssid_len > 32) return;
+    const int index = CO_GET_INDEX(vif, fhost_env.vif);
+    const uint32_t id = scan_request_ids[index];
+    if (!id) return;
+    struct fhost_scan_observation entry = {0};
+    entry.ssid_length = (uint8_t)item->ssid_len;
+    memcpy(entry.ssid, item->ssid, entry.ssid_length);
+    memcpy(entry.bssid, item->bssid, sizeof(entry.bssid));
+    entry.channel = item->channel;
+    entry.rssi = item->rssi;
+    entry.auth = item->auth;
+    fhost_scan_request_observed(index, id, &entry);
+}
+
+static void _rx_handle_multiple_bssid_beacon_save(void *ind, uint32_t ies, uint32_t ies_len,
                                                   wifi_mgmr_scan_item_t* scan_item)
 {
     while (ies_len)
@@ -403,6 +441,7 @@ static void _rx_handle_multiple_bssid_beacon_save(uint32_t ies, uint32_t ies_len
                 scan_item->bssid[5] |= (scan_item->bssid[5] + bssid_index) & (CO_BIT(max_bssid_ind)-1);
                 // Get SSID
                 memcpy(scan_item->ssid, (void *)(ssid_ie_addr + MAC_SSID_SSID_OFT), ssid_len);
+                scan_item->ssid_len = ssid_len;
                 if (ssid_len < 32) {
                     scan_item->ssid[ssid_len] = 0;
                 } else {
@@ -410,6 +449,7 @@ static void _rx_handle_multiple_bssid_beacon_save(uint32_t ies, uint32_t ies_len
                 }
                 // Save Beacon
                 wifi_mgmr_scan_beacon_save(scan_item);
+                fhost_cntrl_scan_observed(ind, scan_item);
             }
         }
         ies_len -= (mbssid_ie_addr - ies) + mbssid_ie_len;
@@ -572,11 +612,12 @@ uint32_t mac_ext_ie_find(uint32_t addr,
 
     // Save reference BSSID
     wifi_mgmr_scan_beacon_save(&scan_item);
+    fhost_cntrl_scan_observed(ind, &scan_item);
 
     /* XXX:  Only handle Nontransmitted BSSID Profile with (Capability + ssid + index)
      * TODO: 1. not support other elements (inlcuding Non‐Inheritance) in Nontransmitted BSSID Profile
      */
-    _rx_handle_multiple_bssid_beacon_save(var_part_addr, var_part_len, &scan_item);
+    _rx_handle_multiple_bssid_beacon_save(ind, var_part_addr, var_part_len, &scan_item);
 }
 
 static void _rx_handle_probersp(void *ind, struct ieee80211_mgmt *mgmt)
@@ -707,6 +748,9 @@ static int fhost_cntrl_ke_msg_scan_cfm(ke_msg_id_t const msgid,
     resp.result_cnt = scanu_start_cfm_get_result_cnt(param);
     resp.fhost_vif_idx = CO_GET_INDEX(fhost_vif, fhost_env.vif);
 
+    const uint32_t request_id = scan_request_ids[resp.fhost_vif_idx];
+    scan_request_ids[resp.fhost_vif_idx] = 0;
+
     if (scanu_start_cfm_get_status(param) == CO_OK)
         resp.status = CFGRWNX_SUCCESS;
     else
@@ -722,10 +766,18 @@ static int fhost_cntrl_ke_msg_scan_cfm(ke_msg_id_t const msgid,
     PLATFORM_HOOK(prevent_sleep, PSM_EVENT_SCAN, 0);
     #endif
 
+    if (request_id != 0) {
+        fhost_scan_request_completed(resp.fhost_vif_idx, request_id,
+            resp.status == CFGRWNX_SUCCESS ? WIFI_SCAN_RESULT_SUCCESS : WIFI_SCAN_RESULT_FAILED,
+            resp.result_cnt);
+    }
+
     if (fhost_vif->is_cntrl_link) {
-        platform_post_event(EV_WIFI, CODE_WIFI_ON_SCAN_DONE, 0);
+        platform_post_event(EV_WIFI, CODE_WIFI_ON_SCAN_DONE,
+                            resp.status == CFGRWNX_SUCCESS ? WIFI_SCAN_RESULT_SUCCESS : WIFI_SCAN_RESULT_FAILED);
     } else {
-        platform_post_event(EV_WIFI, CODE_WIFI_ON_SCAN_DONE_CONNECTING, 0);
+        platform_post_event(EV_WIFI, CODE_WIFI_ON_SCAN_DONE_CONNECTING,
+                            resp.status == CFGRWNX_SUCCESS ? WIFI_SCAN_RESULT_SUCCESS : WIFI_SCAN_RESULT_FAILED);
     }
 
     return 0;
@@ -814,6 +866,93 @@ static void fhost_cntrl_connect_ind_dump(enum fhost_status_space space,
 }
 
 
+#ifdef CONFIG_WIFI_HT40_ENABLE
+/// Time during which an AP that failed at 40 MHz is joined at 20 MHz
+#define FHOST_BW20_HOLD_MS  (3600 * 1000)
+
+/// 40 MHz connect fallback: the AP that failed and the current link
+static struct
+{
+    /// AP whose 40 MHz connection failed, and when (rtos_now)
+    struct mac_addr bssid;
+    uint32_t fail_ms;
+    bool valid;
+    /// One reconnect to that AP at 20 MHz is pending
+    bool retry;
+    /// Current link: its AP, associated, joined at >= 40 MHz, joined by
+    /// the fallback, control port open
+    struct mac_addr cur_bssid;
+    bool linked;
+    bool wide;
+    bool narrow;
+    bool port_open;
+} fhost_bw20;
+#endif
+
+/**
+ ****************************************************************************************
+ * @brief 40 MHz fallback connection flags for @p bssid.
+ *
+ * @param[in] bssid AP to connect to
+ * @return DISABLE_40MHZ within the AP's 20 MHz hold time, else 0
+ ****************************************************************************************
+ */
+static uint32_t fhost_bw20_connect_flags(const uint8_t *bssid)
+{
+#ifdef CONFIG_WIFI_HT40_ENABLE
+    if (fhost_bw20.valid && ((rtos_now(false) - fhost_bw20.fail_ms) >= FHOST_BW20_HOLD_MS))
+        fhost_bw20.valid = false;
+
+    fhost_bw20.narrow = fhost_bw20.valid && MAC_ADDR_CMP(&fhost_bw20.bssid, bssid);
+    if (fhost_bw20.narrow)
+        fhost_printf("[BW20] connect %02x:%02x:%02x:%02x:%02x:%02x at 20 MHz\n",
+                     bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+    return fhost_bw20.narrow ? DISABLE_40MHZ : 0;
+#else
+    return 0;
+#endif
+}
+
+void fhost_bw20_eapol_tx_fail(void)
+{
+#ifdef CONFIG_WIFI_HT40_ENABLE
+    if (fhost_bw20.port_open)
+        return;
+
+    if (fhost_bw20.narrow)
+    {
+        if (fhost_bw20.valid)
+            fhost_printf("[BW20] EAPOL TX failed at 20 MHz too, next connect at 40 MHz\n");
+        fhost_bw20.valid = false;
+        fhost_bw20.retry = false;
+        return;
+    }
+
+    if (!fhost_bw20.wide || fhost_bw20.retry)
+        return;
+
+    fhost_bw20.bssid = fhost_bw20.cur_bssid;
+    fhost_bw20.fail_ms = rtos_now(false);
+    fhost_bw20.valid = true;
+    fhost_bw20.retry = true;
+    fhost_printf("[BW20] EAPOL TX failed at 40 MHz, reconnecting at 20 MHz\n");
+    if (!fhost_bw20.linked)
+        net_al_ext_sta_reconnect_arm();
+#endif
+}
+
+bool fhost_bw20_retry_take(void)
+{
+#ifdef CONFIG_WIFI_HT40_ENABLE
+    if (fhost_bw20.retry)
+    {
+        fhost_bw20.retry = false;
+        return true;
+    }
+#endif
+    return false;
+}
+
 /**
  ****************************************************************************************
  * @brief Process SM_CONNECT_IND message
@@ -859,6 +998,13 @@ static int fhost_cntrl_ke_msg_connect_ind(ke_msg_id_t const msgid,
         fhost_tx_sta_add(fhost_vif->ap_id, 0);
 
         net_if_up_cb(fhost_vif->net_if);
+
+        #ifdef CONFIG_WIFI_HT40_ENABLE
+        MAC_ADDR_CPY(&fhost_bw20.cur_bssid, sm_connect_ind_getp_bssid(param));
+        fhost_bw20.linked = true;
+        fhost_bw20.wide = (sm_connect_ind_get_chan(param).type >= PHY_CHNL_BW_40);
+        fhost_bw20.port_open = false;
+        #endif
     }
 
     if (sm_connect_ind_get_status_code(param)) {
@@ -988,6 +1134,10 @@ static int fhost_cntrl_ke_msg_disconnection_ind(ke_msg_id_t const msgid,
     #endif
 
     net_al_ext_dhcp_disconnect();
+
+    #ifdef CONFIG_WIFI_HT40_ENABLE
+    fhost_bw20.linked = false;
+    #endif
 
 #ifdef BL_RA_EN
     extern uint8_t conn_flag;
@@ -1960,6 +2110,21 @@ static void fhost_cntrl_cfgrwnx_scan(void *msg)
     resp.hdr.len = sizeof(resp);
     resp.status = CFGRWNX_SUCCESS;
 
+    if (cmd->use_inline_ssid) {
+        if (cmd->ssid_cnt != 1) {
+            resp.status = CFGRWNX_INVALID_PARAM;
+            goto send_resp;
+        }
+        /* Descriptor lives in the caller-owned command, not a local variable. */
+        cmd->ssids = &cmd->inline_ssid;
+    }
+
+    if (!req)
+    {
+        resp.status = CFGRWNX_ERROR;
+        goto send_resp;
+    }
+
     if (!mac_vif || mac_vif_get_type(mac_vif) == VIF_UNKNOWN)
     {
         resp.status = CFGRWNX_INVALID_VIF;
@@ -2087,12 +2252,19 @@ static void fhost_cntrl_cfgrwnx_scan(void *msg)
     fhost_vif->scan_sock = cmd->sock;
     fhost_vif->scanning = true;
     fhost_vif->is_cntrl_link = cmd->is_cntrl_link;
+    scan_request_ids[cmd->fhost_vif_idx] = cmd->request_id;
 
     #ifdef CFG_IPRO_WIFI_PS_ENABLE
     PLATFORM_HOOK(prevent_sleep, PSM_EVENT_SCAN, 1);
     #endif
 
     if (macif_kmsg_push(SCANU_START_REQ, TASK_SCANU, req, scanu_start_req_len())) {
+        /* No request was accepted, so no completion event will release this
+         * reservation. Do not permanently reject subsequent scan attempts. */
+        fhost_vif->scanning = false;
+        fhost_vif->scan_sock = -1;
+        fhost_vif->is_cntrl_link = false;
+        scan_request_ids[cmd->fhost_vif_idx] = 0;
         #ifdef CFG_IPRO_WIFI_PS_ENABLE
         PLATFORM_HOOK(prevent_sleep, PSM_EVENT_SCAN, 0);
         #endif
@@ -2142,7 +2314,8 @@ static void fhost_cntrl_cfgrwnx_connect(void *msg)
     sm_connect_req_set_ssid(req, ssid);
     MAC_ADDR_CPY(sm_connect_req_getp_bssid(req), cmd->bssid);
     sm_connect_req_set_chan(req, cmd->chan);
-    sm_connect_req_set_flags(req, cmd->flags|wifi_mgmr_sta_connect_params_get());
+    sm_connect_req_set_flags(req, cmd->flags | wifi_mgmr_sta_connect_params_get() |
+                                  fhost_bw20_connect_flags(cmd->bssid));
     sm_connect_req_set_ctrl_port_ethertype(req, cmd->ctrl_port_ethertype);
     sm_connect_req_set_ie_len(req, cmd->ie_len);
     sm_connect_req_set_listen_interval(req, fhost_params.listen_itv);
@@ -2265,7 +2438,13 @@ static void fhost_cntrl_cfgrwnx_ctrl_port(void *msg)
 
     fhost_cntrl_ke_msg_wait(ME_SET_CONTROL_PORT_CFM, cfm, me_set_control_port_cfm_len());
     if(mac_vif && mac_vif_get_type(mac_vif) == VIF_STA && me_set_control_port_cfm_get_control_port_open(cfm))
+    {
+        #ifdef CONFIG_WIFI_HT40_ENABLE
+        fhost_bw20.port_open = true;
+        fhost_bw20.retry = false;
+        #endif
         fhost_cntrl_connect_ind_dump(FHOST_STATUS_WLAN_FW, WLAN_FW_SUCCESSFUL, 0);
+    }
     resp.status = CFGRWNX_SUCCESS;
 
   send_resp:
@@ -3604,6 +3783,8 @@ static void fhost_cntrl_cfgrwnx_msg_process(struct fhost_msg *msg)
 static void fhost_cntrl_vif_init(int fhost_vif_idx, struct mac_addr *base_mac_addr)
 {
     struct fhost_vif_tag *fhost_vif =  &fhost_env.vif[fhost_vif_idx];
+
+    scan_request_ids[fhost_vif_idx] = 0;
 
     fhost_vif->mac_addr = *base_mac_addr;
     fhost_vif->scan_sock = -1;

@@ -35,7 +35,9 @@
 #include <task.h>
 #include <semphr.h>
 
-#include "compiler/common.h"     /* ATTR_PSRAM_NOINIT_SECTION */
+#include "compiler/common.h"     /* ATTR_PSRAM_BSS_SECTION: the FreeRTOS linker script has no
+                                     * .psram_noinit rule, so that section landed in the image
+                                     * as zeros (20 KB of flash) */
 #include "ipronet_priv.h"
 
 static ipronet_callbacks_t s_cb;              /* zeroed = no callbacks */
@@ -45,7 +47,7 @@ static ipronet_callbacks_t s_cb;              /* zeroed = no callbacks */
  * records; that is more than the rx_task stack can hold, so it lives in PSRAM
  * like the transport buffers. Only the RX task touches it. */
 #define IPRONET_SCAN_MAX_APS  45U
-static ATTR_PSRAM_NOINIT_SECTION ipronet_ap_t s_scan_aps[IPRONET_SCAN_MAX_APS];
+static ATTR_PSRAM_BSS_SECTION ipronet_ap_t s_scan_aps[IPRONET_SCAN_MAX_APS];
 static uint16_t       s_ipronet_msg_id = 0;
 static volatile int   s_link_up        = 0;
 
@@ -60,6 +62,17 @@ static uint8_t s_ap_mac[6];
 static volatile uint16_t s_last_ack_cmd    = 0xFFFFU;
 static volatile uint16_t s_last_ack_status = 0xFFFFU;
 static ipronet_ip_info_t s_ip;                /* last IP_UPDATE_IND */
+
+/* One outstanding ipronet_ctrl_request(); rx_task completes it. */
+static SemaphoreHandle_t s_req_mtx     = NULL;
+static SemaphoreHandle_t s_req_done    = NULL;
+static volatile uint8_t  s_req_waiting = 0;
+static volatile uint16_t s_req_msg_id  = 0;
+static uint8_t          *s_req_rsp     = NULL;
+static uint16_t          s_req_rsp_cap = 0;
+static uint16_t          s_req_rsp_len = 0;
+static ATTR_PSRAM_BSS_SECTION uint8_t
+    s_req_buf[sizeof(ipronet_ctrl_hdr_t) + IPRONET_CTRL_REQ_MAX];
 
 void ipronet_ctrl_set_callbacks(const ipronet_callbacks_t *cb)
 {
@@ -246,6 +259,24 @@ void ipronet_ctrl_handle(const uint8_t *pld, uint16_t len)
 {
     const ipronet_ctrl_hdr_t *h = (const ipronet_ctrl_hdr_t *)pld;
 
+    if (s_req_waiting && (h->flags & IPRONET_FLAG_ACK) &&
+        h->msg_id_replying == s_req_msg_id) {
+        int done = 0;
+
+        taskENTER_CRITICAL();
+        if (s_req_waiting) {
+            s_req_rsp_len = (len < s_req_rsp_cap) ? len : s_req_rsp_cap;
+            memcpy(s_req_rsp, pld, s_req_rsp_len);
+            s_req_waiting = 0;
+            done = 1;
+        }
+        taskEXIT_CRITICAL();
+        if (done) {
+            xSemaphoreGive(s_req_done);
+        }
+        return;
+    }
+
     switch (h->cmd) {
     case IPRONET_CMD_STA_CONNECTED_IND:
         s_link_up = 1;
@@ -315,11 +346,8 @@ void ipronet_ctrl_handle(const uint8_t *pld, uint16_t len)
         break;
 
     case IPRONET_CMD_USER_EXT: {
-        /* Reply to our ZCEN opt-in: a granting device answers "ZCOK<n>" (n =
-         * armed slot count); a pre-zc FW echoes its own template string, which
-         * just means the copy path stays. Printed, not acted on: ZCEN1 needs
-         * no host-side wire change beyond the single-frame commit already made
-         * when the opt-in was sent. */
+        /* Reply to our ZCEN3 request: "ZCOK3 <nslot> <stride> <uslots>"
+         * opens stride TX and the stride upload walker. */
         const char *p = (const char *)pld + sizeof(ipronet_ctrl_hdr_t);
         int plen = (int)len - (int)sizeof(ipronet_ctrl_hdr_t);
         char rsp[32];   /* the console printf has no %.*s — NUL-terminate here */
@@ -357,27 +385,8 @@ void ipronet_ctrl_handle(const uint8_t *pld, uint16_t len)
                 printf("[zc] stride RX refused (uslots=%lu) - legacy wire\r\n",
                        uslots);
             }
-        } else if (plen >= 6 && memcmp(rsp, "ZCOK2 ", 6) == 0) {
-            /* "ZCOK2 <nslot> <stride>" — arm the stride packer. Publish every
-             * negotiated field before restoring the cap: the cap is what opens
-             * aggregation after ipronet_ctrl_zcen() forced it to zero. */
-            unsigned long nslot = strtoul(rsp + 6, &endp, 10);
-            unsigned long stride = (endp != NULL) ? strtoul(endp, NULL, 10) : 0;
-
-            if (nslot >= 2 && nslot <= IPRO6S_ZC2_MAX_SLOT &&
-                stride == IPRO6S_ZC2_STRIDE) {
-                ipronet_sdio_tx_agg_accept_grant((uint32_t)nslot,
-                                                 (uint32_t)stride);
-                printf("[zc] stride TX granted: nslot=%lu stride=%lu\r\n",
-                       nslot, stride);
-            } else {
-                printf("[zc] stride refused (nslot=%lu stride=%lu) - single frame\r\n",
-                       nslot, stride);
-            }
-        } else if (plen >= 4 && memcmp(rsp, "ZCOK", 4) == 0) {
-            printf("[zc] device granted zero-copy: %s\r\n", rsp);
         } else {
-            printf("[zc] no grant (device replied '%s') - copy path stays\r\n", rsp);
+            printf("[zc] no grant (device replied '%s') - single-frame TX\r\n", rsp);
         }
         break;
     }
@@ -430,28 +439,16 @@ int ipronet_ctrl_get_mac(void)
     return s_mac_learned ? IPRONET_OK : IPRONET_ERR_NO_MAC;
 }
 
-/* Zero-copy opt-in, the contract the linux host runs by default (ipro_iotnet
- * ipro_sdio_eth.c, module param zc=1). Without it the device cannot arm its
- * zero-copy dnld slots, so every uplink frame takes the copy/bounce path
- * through g_txpbuf_payload_normal — a pool cut 24 -> 6 in cc19374b2 precisely
- * BECAUSE the zc slots were meant to carry the traffic.
- *
- * ZCEN1 = plain zero-copy, ZCEN2 adds host->device stride packing, and ZCEN3
- * adds device->host stride packing. All start single-frame; each stride
- * direction opens only after the corresponding device grant. Ordering is part
- * of the contract (ipronet_sdio_tx_single_frame_lock): commit to single-frame
- * TX and drain the pending batch BEFORE telling the device. The device answers
- * "ZCOK<n>" via USER_EXT; a pre-zc FW answers with its template string and we
- * simply stay on the copy path. */
-int ipronet_ctrl_zcen(int gen)
+/* Request ZCEN3. TX stays single-frame until the device's ZCOK3 grant
+ * (the TX lock is held so no batched frame can follow the request). */
+int ipronet_ctrl_zcen(void)
 {
     if (!ipronet_sdio_is_setup()) return IPRONET_ERR_STATE;
-    if (gen < 1 || gen > 3) return IPRONET_ERR_PARAM;
     uint8_t msg[sizeof(ipronet_ctrl_hdr_t) + 6] = {0};
     ipronet_ctrl_hdr_t *h = (ipronet_ctrl_hdr_t *)msg;
     h->cmd = IPRONET_CMD_USER_EXT;
-    memcpy(msg + sizeof(*h), (gen == 3) ? "ZCEN3" : (gen == 2) ? "ZCEN2" : "ZCEN1", 6);
-    ipronet_sdio_tx_single_frame_lock();      /* drain the batch, commit to single-frame TX */
+    memcpy(msg + sizeof(*h), "ZCEN3", 6);
+    ipronet_sdio_tx_single_frame_lock();
     int rc = ipronet_sdio_send_pdu(IPRONET_MSG_TYPE_CMD, 0, msg, sizeof(msg));
     ipronet_sdio_tx_single_frame_unlock();
     return rc;
@@ -463,13 +460,71 @@ int ipronet_ctrl_link_status(void)
     return ipronet_ctrl_send(IPRONET_CMD_STA_GET_LINK_STATUS, 0, NULL, 0);
 }
 
+int ipronet_ctrl_request(uint16_t cmd, const void *body, uint16_t len,
+                         void *rsp, uint16_t *rsp_len, uint32_t timeout_ms)
+{
+    ipronet_ctrl_hdr_t *h = (ipronet_ctrl_hdr_t *)s_req_buf;
+    int rc;
+
+    if (len > IPRONET_CTRL_REQ_MAX || rsp == NULL || rsp_len == NULL) {
+        return IPRONET_ERR_PARAM;
+    }
+    if (!ipronet_sdio_is_setup()) {
+        return IPRONET_ERR_STATE;
+    }
+    if (s_req_mtx == NULL) {
+        s_req_mtx  = xSemaphoreCreateMutex();
+        s_req_done = xSemaphoreCreateBinary();
+        if (s_req_mtx == NULL || s_req_done == NULL) {
+            return IPRONET_ERR_NOMEM;
+        }
+    }
+    xSemaphoreTake(s_req_mtx, portMAX_DELAY);
+    memset(h, 0, sizeof(*h));
+    h->cmd    = cmd;
+    h->msg_id = ++s_ipronet_msg_id;
+    if (len != 0) {
+        memcpy(s_req_buf + sizeof(*h), body, len);
+    }
+    s_req_rsp     = rsp;
+    s_req_rsp_cap = *rsp_len;
+    s_req_rsp_len = 0;
+    (void)xSemaphoreTake(s_req_done, 0);
+    s_req_msg_id  = h->msg_id;
+    s_req_waiting = 1;
+    rc = ipronet_sdio_send_pdu(IPRONET_MSG_TYPE_CMD, 0, s_req_buf,
+                               (uint16_t)(sizeof(*h) + len));
+    if (rc == IPRONET_OK &&
+        xSemaphoreTake(s_req_done, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+        rc = IPRONET_ERR_OTA_TIMEOUT;
+    }
+    taskENTER_CRITICAL();
+    s_req_waiting = 0;
+    taskEXIT_CRITICAL();
+    if (rc == IPRONET_OK) {
+        *rsp_len = s_req_rsp_len;
+    }
+    xSemaphoreGive(s_req_mtx);
+    return rc;
+}
+
+bool ipronet_ctrl_get_creds(char ssid[33], char psk[65])
+{
+    if (s_reconn_user_down || s_reconn_ssid[0] == '\0') {
+        return false;
+    }
+    memcpy(ssid, s_reconn_ssid, sizeof(s_reconn_ssid));
+    memcpy(psk, s_reconn_psk, sizeof(s_reconn_psk));
+    return true;
+}
+
 bool ipronet_ctrl_mac_learned(void)       { return s_mac_learned != 0; }
 const uint8_t *ipronet_ctrl_sta_mac(void) { return s_sta_mac; }
 const uint8_t *ipronet_ctrl_ap_mac(void)  { return s_ap_mac; }
 int ipronet_diag_send_hello(void)  { return ipronet_ctrl_send_hello(); }
 void ipronet_diag_set_callbacks(const ipronet_callbacks_t *cb) { ipronet_ctrl_set_callbacks(cb); }
 int ipronet_diag_get_mac(void)     { return ipronet_ctrl_get_mac(); }
-int ipronet_diag_zcen(int gen)     { return ipronet_ctrl_zcen(gen); }
+int ipronet_diag_zcen(void)        { return ipronet_ctrl_zcen(); }
 int ipronet_diag_link_status(void) { return ipronet_ctrl_link_status(); }
 int ipronet_diag_ap_mac(uint8_t mac[6])
 {
@@ -479,7 +534,7 @@ int ipronet_diag_ap_mac(uint8_t mac[6])
 
 /* ---- public station API ------------------------------------------------- */
 
-int ipronet_connect(const char *ssid, const char *psk)
+int ipronet_ctrl_sta_connect(const char *ssid, const char *psk)
 {
     if (!ipronet_is_ready()) return IPRONET_ERR_STATE;
     if (!ssid || !psk || strlen(ssid) == 0 || strlen(ssid) > 32 || strlen(psk) > 64)
@@ -489,16 +544,29 @@ int ipronet_connect(const char *ssid, const char *psk)
     return ipro6s_sta_connect_send(ssid, psk);
 }
 
-int ipronet_disconnect(void)
+int ipronet_connect(const char *ssid, const char *psk)
+{
+    if (ipronet_host_busy()) return IPRONET_ERR_STATE;
+    return ipronet_ctrl_sta_connect(ssid, psk);
+}
+
+int ipronet_ctrl_sta_disconnect(void)
 {
     if (!ipronet_is_ready()) return IPRONET_ERR_STATE;
     s_reconn_user_down = 1;              /* deliberate: stay down */
     return ipronet_ctrl_send(IPRONET_CMD_STA_DISCONNECT, 0, NULL, 0);
 }
 
+int ipronet_disconnect(void)
+{
+    if (ipronet_host_busy()) return IPRONET_ERR_STATE;
+    return ipronet_ctrl_sta_disconnect();
+}
+
 /* Start a scan, then request the results (delivered via on_scan_result). */
 int ipronet_scan(void)
 {
+    if (ipronet_host_busy()) return IPRONET_ERR_STATE;
     if (!ipronet_is_ready()) return IPRONET_ERR_STATE;
     int rc = ipronet_ctrl_send(IPRONET_CMD_SCAN, 0, NULL, 0);
     if (rc != IPRONET_OK) return rc;

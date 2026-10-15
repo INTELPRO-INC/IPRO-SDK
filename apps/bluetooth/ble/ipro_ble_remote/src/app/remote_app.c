@@ -17,6 +17,9 @@
 #endif
 #include "ipro_log.h"
 #include "hal_gpio.h"
+#if defined(CONFIG_IPRO7AI_REEF)
+#include "remote_reef.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -33,9 +36,14 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
-#include <ble_lib_api.h>
 #include <hci_driver_ipro_ble_ctlr.h>
 #include <ipro_ble_controller.h>
+#if defined(CONFIG_IPRO_PM)
+#include "ipro_pm.h"
+#endif
+#if defined(CONFIG_IPRO_PM_BLE)
+#include "ipro_pm_ble.h"
+#endif
 
 #define LOG_TAG "REMOTE_APP"
 
@@ -44,13 +52,16 @@
  ****************************************************************************************
  */
 
+/* EVB pins; on the IPRO7AI Reef the LED and keys go through remote_reef.c */
 #define LED_GPIO_PIN            28
 #define BUTTON_GPIO_PIN         32
 #define BUTTON_POLL_INTERVAL_MS 50
 #define BUTTON_DEBOUNCE_MS      50
 #define BUTTON_LONG_PRESS_MS    1000
 
+#if !defined(CONFIG_IPRO7AI_REEF)
 static TaskHandle_t g_button_task_handle = NULL;
+#endif
 
 /*
  * ADVERTISING DATA
@@ -79,6 +90,8 @@ static const struct bt_data sd[] = {
 
 static remote_app_context_t g_app_ctx = {0};
 static TimerHandle_t g_env_timer = NULL;
+static TimerHandle_t g_adv_restart_timer = NULL;
+static void adv_restart_timer_cb(TimerHandle_t timer);
 static bool g_pir_service_enabled = false;
 static struct bt_conn *g_conn = NULL;
 
@@ -131,6 +144,14 @@ static void pir_img_event_callback(const pir_img_event_data_t *event, void *user
             IPRO_LOGI(LOG_TAG, "[IMG] Transfer aborted");
             break;
 
+#if defined(CONFIG_IPRO7AI_REEF)
+        case PIR_IMG_EVENT_NOTIFY_ENABLED:
+        case PIR_IMG_EVENT_NOTIFY_DISABLED:
+            /* camera motion detection runs while the phone listens for it */
+            remote_reef_pir_notify(event->event == PIR_IMG_EVENT_NOTIFY_ENABLED);
+            break;
+#endif
+
         default:
             break;
     }
@@ -143,6 +164,13 @@ static void pir_img_event_callback(const pir_img_event_data_t *event, void *user
 
 /* Flag to indicate env notify is pending (set by timer, processed by task) */
 static volatile bool g_env_notify_pending = false;
+/* Task that runs remote_app_process_env_notify(); woken instead of polling */
+static TaskHandle_t g_worker_task = NULL;
+
+void remote_app_bind_worker(TaskHandle_t task)
+{
+    g_worker_task = task;
+}
 
 static void env_timer_callback(TimerHandle_t xTimer)
 {
@@ -154,6 +182,9 @@ static void env_timer_callback(TimerHandle_t xTimer)
 
     /* Just set flag - actual notification will be sent from BLE task context */
     g_env_notify_pending = true;
+    if (g_worker_task != NULL) {
+        xTaskNotifyGive(g_worker_task);
+    }
 }
 
 /* This function should be called from BLE task context (e.g., in event loop) */
@@ -168,6 +199,11 @@ void remote_app_process_env_notify(void)
         return;
     }
 
+#if defined(CONFIG_IPRO7AI_REEF)
+    /* On-chip temperature sensor; the board has no humidity sensor */
+    g_app_ctx.sim_temperature = remote_reef_temperature();
+    g_app_ctx.sim_humidity = 0;
+#else
     /* Simulate sensor data variation */
     g_app_ctx.sim_temperature += (rand() % 21) - 10;  /* -10 to +10 */
     if (g_app_ctx.sim_temperature < 1500) g_app_ctx.sim_temperature = 1500;  /* Min 15C */
@@ -176,6 +212,7 @@ void remote_app_process_env_notify(void)
     g_app_ctx.sim_humidity += (rand() % 5) - 2;  /* -2 to +2 */
     if (g_app_ctx.sim_humidity < 20) g_app_ctx.sim_humidity = 20;
     if (g_app_ctx.sim_humidity > 90) g_app_ctx.sim_humidity = 90;
+#endif
 
     /* Send notification */
     env_data_t env = {
@@ -189,9 +226,51 @@ void remote_app_process_env_notify(void)
 }
 
 /*
- * BUTTON POLLING TASK
+ * BUTTON POLLING TASK (EVB; the Reef keys go through remote_reef.c)
  ****************************************************************************************
  */
+
+#if !defined(CONFIG_IPRO7AI_REEF)
+#if defined(CONFIG_IPRO_PM)
+/* Low-power profile: the button edge wakes the task, which polls only while
+ * the button is held (release / long press), so an idle remote leaves the
+ * scheduler idle and the connection can use PDS. */
+static void button_edge_isr(uint32_t pin)
+{
+    BaseType_t woken = pdFALSE;
+
+    (void)pin;
+    if (g_button_task_handle != NULL) {
+        vTaskNotifyGiveFromISR(g_button_task_handle, &woken);
+        portYIELD_FROM_ISR(woken);
+    }
+}
+
+/* The edge IRQ is not a PDS wake source (GPIO32 is outside hal_lp's wake
+ * range), so after every PDS the task re-samples the level: a press held
+ * across the sleep is reported within one connection interval. */
+static int button_pm_suspend(void *ctx)
+{
+    (void)ctx;
+    return 0;
+}
+
+static void button_pm_resume_late(void *ctx)
+{
+    (void)ctx;
+    if (g_button_task_handle != NULL) {
+        xTaskNotifyGive(g_button_task_handle);
+    }
+}
+
+static const ipro_pm_device_t s_button_pm_dev = {
+    .name = "button",
+    .suspend = button_pm_suspend,
+    .resume_early = NULL,
+    .resume_late = button_pm_resume_late,
+    .ctx = NULL,
+};
+#endif
 
 static void button_poll_task(void *pvParameters)
 {
@@ -204,6 +283,11 @@ static void button_poll_task(void *pvParameters)
     printf("[BTN] Task started GPIO%d\r\n", BUTTON_GPIO_PIN);
 
     for (;;) {
+#if defined(CONFIG_IPRO_PM)
+        if (last_state == 1) {
+            (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        }
+#endif
         int current_state = gpio_read(BUTTON_GPIO_PIN);
 
         /* Detect press (falling edge) */
@@ -245,6 +329,7 @@ static void button_poll_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(BUTTON_POLL_INTERVAL_MS));
     }
 }
+#endif /* !CONFIG_IPRO7AI_REEF */
 
 /*
  * GPIO INITIALIZATION
@@ -253,14 +338,29 @@ static void button_poll_task(void *pvParameters)
 
 static void gpio_hw_init(void)
 {
+#if defined(CONFIG_IPRO7AI_REEF)
+    if (remote_reef_init() != 0) {
+        IPRO_LOGE(LOG_TAG, "[REEF] Board init failed");
+    }
+#else
     /* LED: output push-pull with pull-up (active high) */
     gpio_set_mode(LED_GPIO_PIN, GPIO_OUTPUT_PP_MODE);
     gpio_write(LED_GPIO_PIN, 0);  /* LED off initially */
     IPRO_LOGI(LOG_TAG, "[GPIO] LED initialized (GPIO%d)", LED_GPIO_PIN);
 
+#if defined(CONFIG_IPRO_PM)
+    /* Button: pull-up, active low, falling edge wakes the button task */
+    gpio_set_mode(BUTTON_GPIO_PIN, GPIO_ASYNC_FALLING_TRIGER_INT_MODE);
+    gpio_attach_irq(BUTTON_GPIO_PIN, button_edge_isr);
+    gpio_irq_enable(BUTTON_GPIO_PIN, 1U);
+    (void)ipro_pm_device_register(&s_button_pm_dev);
+    IPRO_LOGI(LOG_TAG, "[GPIO] Button initialized (GPIO%d, edge IRQ)", BUTTON_GPIO_PIN);
+#else
     /* Button: input with pull-up (active low) */
     gpio_set_mode(BUTTON_GPIO_PIN, GPIO_INPUT_PD_MODE);
     IPRO_LOGI(LOG_TAG, "[GPIO] Button initialized (GPIO%d)", BUTTON_GPIO_PIN);
+#endif
+#endif /* CONFIG_IPRO7AI_REEF */
 }
 
 /*
@@ -273,6 +373,14 @@ static void service_event_callback(const remote_event_data_t *event, void *user_
     (void)user_data;
 
     switch (event->event) {
+#if defined(CONFIG_IPRO7AI_REEF)
+        case REMOTE_EVENT_LED_STATE_CHANGED:
+        case REMOTE_EVENT_LED_BRIGHT_CHANGED:
+        case REMOTE_EVENT_LED_MODE_CHANGED:
+            /* the event carries the whole state: colour LED, real dimming and blink */
+            remote_reef_led(&event->data.led);
+            break;
+#else
         case REMOTE_EVENT_LED_STATE_CHANGED:
             IPRO_LOGI(LOG_TAG, "[LED] %s (GPIO%d)", event->data.led.on ? "ON" : "OFF", LED_GPIO_PIN);
             gpio_write(LED_GPIO_PIN, event->data.led.on ? 1 : 0);
@@ -287,6 +395,7 @@ static void service_event_callback(const remote_event_data_t *event, void *user_
         case REMOTE_EVENT_LED_MODE_CHANGED:
             IPRO_LOGI(LOG_TAG, "[LED] Mode: %d", event->data.led.mode);
             break;
+#endif
 
         case REMOTE_EVENT_BTN_NOTIFY_ENABLED:
             /* Button notifications enabled */
@@ -400,7 +509,7 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
         .interval_min = 6,    /* 7.5ms */
         .interval_max = 6,    /* 7.5ms */
         .latency = 0,
-        .timeout = 100,       /* 1s */
+        .timeout = 400,       /* 4 s: OTA flash erases stall the XIP CPU */
     };
     bt_conn_le_param_update(conn, &ci_param);
 
@@ -451,6 +560,10 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
         g_conn = NULL;
     }
 
+#if defined(CONFIG_IPRO7AI_REEF)
+    remote_reef_connection(false);
+#endif
+
     /* Clear app state */
     g_app_ctx.state = REMOTE_STATE_READY;
     g_app_ctx.connected = false;
@@ -461,9 +574,25 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
         xTimerStop(g_env_timer, 0);
     }
 
-    /* Auto-restart advertising */
-    vTaskDelay(pdMS_TO_TICKS(500));
-    remote_app_start_advertising();
+    /* Auto-restart advertising from the timer task: this callback runs in
+     * the host thread, which must not block, and the link's resources are
+     * released only after every disconnected callback has returned. */
+    if (g_adv_restart_timer != NULL) {
+        (void)xTimerChangePeriod(g_adv_restart_timer, pdMS_TO_TICKS(500), 0);
+    } else {
+        remote_app_start_advertising();
+    }
+}
+
+static void adv_restart_timer_cb(TimerHandle_t timer)
+{
+    if (g_app_ctx.connected) {
+        return;
+    }
+    if (remote_app_start_advertising() != 0) {
+        /* e.g. -ENOMEM while the old link is still being torn down */
+        (void)xTimerChangePeriod(timer, pdMS_TO_TICKS(1000), 0);
+    }
 }
 
 static void le_param_updated_cb(struct bt_conn *conn, uint16_t interval,
@@ -563,6 +692,10 @@ static void bt_ready_cb(int err)
 
     IPRO_LOGI(LOG_TAG, "[BLE] Initialized");
     g_app_ctx.state = REMOTE_STATE_READY;
+
+    /* HCI init is complete: the controller may now sleep between events
+     * (until this call an HCI ring notify must find it awake) */
+    ipro_ble_ctlr_hcitl_host_ready();
 
     /* Set device name */
     bt_set_name(DEVICE_NAME);
@@ -665,10 +798,12 @@ int remote_app_init(void)
 
     /* Create environment notification timer (1 second interval) */
     g_env_timer = xTimerCreate("env_timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, env_timer_callback);
+    g_adv_restart_timer = xTimerCreate("adv_restart", pdMS_TO_TICKS(500), pdFALSE, NULL, adv_restart_timer_cb);
     if (g_env_timer == NULL) {
         IPRO_LOGE(LOG_TAG, "Failed to create env timer");
     }
 
+#if !defined(CONFIG_IPRO7AI_REEF)
     /* Create button polling task (1024 words = 8KB on RV64) */
     BaseType_t ret = xTaskCreate(
         button_poll_task,
@@ -681,10 +816,16 @@ int remote_app_init(void)
     if (ret != pdPASS) {
         IPRO_LOGE(LOG_TAG, "Failed to create button polling task");
     }
+#endif
 
     /* Initialize BLE controller (must be done first) */
     IPRO_LOGI(LOG_TAG, "Initializing BLE controller...");
+#if defined(CONFIG_IPRO_PM_BLE)
+    /* same controller, with the board's PDS policy and connection tracking */
+    err = ipro_pm_ble_controller_init(configMAX_PRIORITIES - 1);
+#else
     err = ipro_ble_ctlr_controller_init(configMAX_PRIORITIES - 1);
+#endif
     if (err) {
         IPRO_LOGE(LOG_TAG, "controller init failed: %d", err);
         g_app_ctx.state = REMOTE_STATE_ERROR;
@@ -853,8 +994,12 @@ int remote_app_set_led(bool on, uint8_t brightness)
     state.brightness = brightness;
     remote_set_led_state(&state);
 
+#if defined(CONFIG_IPRO7AI_REEF)
+    remote_reef_led(&state);
+#else
     /* Control actual GPIO (PWM not implemented, use threshold) */
     gpio_write(LED_GPIO_PIN, (on && brightness > 0) ? 1 : 0);
+#endif
 
     IPRO_LOGI(LOG_TAG, "[LED] Set: %s, brightness=%d%% (GPIO%d)", on ? "ON" : "OFF", brightness, LED_GPIO_PIN);
     return 0;

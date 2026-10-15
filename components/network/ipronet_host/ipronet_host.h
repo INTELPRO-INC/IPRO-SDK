@@ -72,6 +72,12 @@ extern "C" {
 #define IPRONET_ERR_NO_MAC     -5   /* GET_MAC reply did not arrive within 1 s */
 #define IPRONET_ERR_IO         -6   /* CMD53 write failed */
 #define IPRONET_ERR_PARAM      -7
+#define IPRONET_ERR_OTA_PKG     -8   /* OTA: bad package header */
+#define IPRONET_ERR_OTA_DEVICE  -9   /* OTA: device refused */
+#define IPRONET_ERR_OTA_TIMEOUT -10  /* OTA: no device reply */
+#define IPRONET_ERR_OTA_REBOOT  -11  /* OTA: device not back */
+#define IPRONET_ERR_OTA_SOURCE  -12  /* OTA: package reader failed */
+#define IPRONET_ERR_OTA_APPLY   -13  /* OTA: boot2 did not install */
 
 /* ---- auth modes in scan records (wire values, do not renumber) ---------- */
 #define IPRONET_AUTH_UNKNOWN            0
@@ -123,7 +129,8 @@ typedef struct {
 void ipronet_config_default(ipronet_config_t *cfg);
 
 /* ---- lifecycle ---------------------------------------------------------- */
-/* Synchronous bring-up (~1.5 s, ~3.5 s with a power-cycle):
+/* Synchronous bring-up (~1.5 s; with a power-cycle enumerate is retried up to
+ * 8 s while the device boots):
  *   [power-cycle the device if cfg->pwr_en_gpio >= 0] -> SDH init -> enumerate
  *   -> 4-bit / bus_hz / F1 block 512 -> RX task -> HELLO -> GET_MAC -> zero-copy
  *   opt-in -> iproeth0 up with the device STA MAC.

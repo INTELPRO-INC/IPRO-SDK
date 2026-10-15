@@ -103,7 +103,7 @@ Then the link is a normal netif — `iperf -c <server>` to measure it.
 | bring-up stages | `ipro6s_init`, `ipro6s_enum`, `ipro6s_setup [hs]`, `ipro6s_rx_start`, `ipro6s_send_hello`, `ipro6s_get_mac`, `ipro6s_mac`, `ipro6s_net_up`, `ipro6s_probe` |
 | control plane | `ipro6s_connect`, `ipro6s_disconnect`, `ipro6s_scan`, `ipro6s_link_status`, `ipro6s_reconn [0\|1]` |
 | counters | `ipro6s_tx_stats`, `ipro6s_rx_stats`, `tcpstat` |
-| knobs (A/B) | `ipro6s_aggmax <N>`, `ipro6s_zcen <1\|2\|3>`, `ipro6s_pace [kbps]`, `ipro6s_girq <0\|1>`, `tcprto <ticks> [dupack]` |
+| knobs (A/B) | `ipro6s_aggmax <N>`, `ipro6s_zcen`, `ipro6s_pace [kbps]`, `ipro6s_girq <0\|1>` |
 | ceiling tests | `ipro6s_flood_rx [secs]` (with the device `smid_flood`), `ipro6s_tx_ramp <count> <len>`, `ipro6s_cpu [secs]` |
 | raw SDH probes | `ipro6s_doorbell`, `ipro6s_cccr`, `ipro6s_func1`, `ipro6s_readb`, `ipro6s_writeb`, `ipro6s_cmd53_*`, `ipro6s_irq_on`, `ipro6s_irq_wait`, `ipro6s_sdh_int`, `ipro6s_peek`, `ipro6s_poke` |
 

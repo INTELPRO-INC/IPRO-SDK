@@ -2,8 +2,8 @@
  * @file ble_init.h
  * @brief BLE Stack Initialization API (Zephyr blestack)
  *
- * Provides clean initialization interface for LE Audio application.
- * Replaces RivieraWaves Component Framework with standard Zephyr API.
+ * Provides clean initialization interface for LE Audio application,
+ * on the standard Zephyr API.
  *
  * Copyright (C) IPRO SDK 2026
  */
@@ -18,8 +18,8 @@
  * @brief Initialize BLE controller and Zephyr host stack
  * 
  * This function:
- * 1. Initializes BLE controller (ble_controller_init)
- * 2. Initializes HCI driver (hci_driver_init)
+ * 1. Initializes BLE controller (ipro_ble_ctlr_controller_init)
+ * 2. Initializes HCI driver (hci_driver_ipro_ble_ctlr_init)
  * 3. Enables Zephyr bluetooth stack (bt_enable)
  * 
  * @return 0 on success, negative error code otherwise

@@ -69,6 +69,28 @@ if FREERTOS
 
 menu "FreeRTOS Configuration"
 
+config FREERTOS_IDLE_TASK_STACK_WORDS
+    int "Static idle task stack override (0 uses port default)"
+    depends on IPRO7 || IPRO6
+    range 0 4096
+    default 0
+    help
+      Stack size in 32-bit words for the shared static idle-task hook.
+      Zero preserves configMINIMAL_STACK_SIZE. Nonzero values must be at
+      least 128 words. Audit idle hooks, task cleanup and interrupt stack
+      switching, then measure high-water marks before reducing the size.
+      Other tasks using configMINIMAL_STACK_SIZE are not changed.
+
+config FREERTOS_TIMER_TASK_STACK_WORDS
+    int "Timer service task stack (32-bit words)"
+    depends on IPRO7 || IPRO6
+    range 1 65535
+    default 4096
+    help
+      Preserve 4096 words unless the application's linked timer callbacks and
+      interrupt stack usage have been audited and measured under load.
+      This does not change the separate Matter event-loop task stack.
+
 config COMPONENTS_FREERTOS_POSIX_ENABLE
     bool "Enable FreeRTOS POSIX Compatibility Layer"
     default n
@@ -99,12 +121,8 @@ source "components/os/ipro_osal/Kconfig"
 endif
 
 #
-# Zephyr-specific Options
+# Zephyr: the SDK builds as a Zephyr module (zephyr/module.yml at the repo
+# root). Zephyr applications are configured with Zephyr's own Kconfig, not
+# this one; CONFIG_ZEPHYR here only exists so the RTOS choice is complete.
 #
-if ZEPHYR
-
-source "components/os/zephyr/Kconfig"
-
-endif  # ZEPHYR
-
 endmenu

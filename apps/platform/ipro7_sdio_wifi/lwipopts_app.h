@@ -30,31 +30,6 @@
 #include "stdbool.h"
 #include "sys/time.h"
 
-/* Low-latency TCP loss recovery for the SDIO WiFi bridge. The link has a small
- * RTT (~9 ms) but ~2% baseline packet loss (WiFi). Stock lwIP recovers each loss
- * via a coarse RTO (clamped "min wake time >= 1s" in tcp_slowtmr, and it halves
- * cwnd on every rexmit) — with a small cwnd, <3 dup-acks are produced so fast-
- * retransmit never engages, so TCP TX collapses to ~0.3 Mbps while UDP TX is
- * 16 Mbps on the SAME egress (proving the bottleneck is the TCP feedback loop,
- * not the device). This fork's _LP_TCP_OPTIMIZE: rexmit RTO = 1 slow-tick (no
- * 1s clamp) AND does NOT cut cwnd/ssthresh on rexmit, so TCP rides through the
- * random loss. Needs TCP_MAXRTX/TCP_SYNMAXRTX <= 48 (defaults 12/6, ok). */
-#define _LP_TCP_OPTIMIZE        1
-
-/* The fork also armed fast retransmit on the FIRST dup-ACK, on the premise that
- * this path never reorders so a dup-ACK can only mean loss. Measurement says
- * otherwise: the 1-tick RTO fires below the link's RTT jitter (6.7 ms min,
- * 217 ms max) and resends the whole unacked window, so most dup-ACKs report a
- * DUPLICATE rather than a gap. Each one then halved cwnd, and the two fed each
- * other — 1610 retransmissions against 2 genuinely lost segments, cwnd pinned at
- * its 2 MSS floor (median 1 MSS in flight against a 64 KB window), 50% of the
- * run stalled. Back to the RFC 5681 value. LAB02, 4 alternating pairs, no
- * overlap: 2.23 -> 5.34 Mbps; UDP on the same egress does 11.4, so the amplifier
- * was the gap, not the device. Raising the RTO floor instead (tcprto 6) is a
- * NULL on its own — it slows the source but leaves the amplifier armed. Both
- * are runtime-tunable for A/B via the `tcprto` console command. */
-#define LP_TCP_DUPACK_THRESH    3
-
 /**
  * SYS_LIGHTWEIGHT_PROT==1: if you want inter-task protection for certain
  * critical regions during buffer allocation, deallocation and memory

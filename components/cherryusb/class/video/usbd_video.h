@@ -18,6 +18,12 @@ struct usbd_interface *usbd_video_init_intf(struct usbd_interface *intf,
                                             uint32_t dwMaxVideoFrameSize,
                                             uint32_t dwMaxPayloadTransferSize);
 
+/* One MJPEG format with num_frames frame descriptors (default 1): the probe /
+ * commit SET_CUR then keeps the frame index the host picked. */
+void usbd_video_set_num_frames(uint8_t num_frames);
+/* bFrameIndex of the last COMMIT (1-based). */
+uint8_t usbd_video_get_frame_index(void);
+
 void usbd_video_open(uint8_t intf);
 void usbd_video_close(uint8_t intf);
 uint32_t usbd_video_mjpeg_payload_fill(uint8_t *input, uint32_t input_len, uint8_t *output, uint32_t *out_len);

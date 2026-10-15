@@ -8,6 +8,10 @@ __component_add_include_dirs(include)
 # Resampler is always built (small, used by output backends and app code)
 __component_add_sources(src/audio_resampler.c)
 __component_add_sources(src/audio_pcm_ring.c)
+# Clock-drift resampler + FIFO level controller (integer, used by the
+# intercom and the EVK audio clock bench)
+__component_add_sources(src/audio_asrc.c)
+__component_add_sources(src/audio_asrc_coef.c)
 
 # Speaker correction is a property of the board's speaker, not of the output
 # framework: apps with their own DAC driver (the LE Audio headset) use it too,

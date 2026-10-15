@@ -54,9 +54,9 @@
 /* The three buttons, all pulled up through 20k and shorted to ground when
  * pressed - hence a LOW-level trigger. ASYNC, not SYNC: the SYNC variants are
  * clocked, and PDS stops that clock. */
-#define SLEEP_WAKE_PIN_POWER    5U
-#define SLEEP_WAKE_PIN_VOL_UP   6U
-#define SLEEP_WAKE_PIN_VOL_DOWN 7U
+#define SLEEP_WAKE_PIN_POWER    7U      /* measured; the schematic labels say G5 (pdm_buttons.c) */
+#define SLEEP_WAKE_PIN_VOL_UP   5U
+#define SLEEP_WAKE_PIN_VOL_DOWN 6U
 
 static void pdm_sleep_console_restore(void)
 {

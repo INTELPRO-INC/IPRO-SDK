@@ -315,6 +315,14 @@ StackType_t* pxPortInitialiseStack(StackType_t* pxTopOfStack, TaskFunction_t pxC
 
     /* Offset added to account for the way the MCU uses the stack on entry/exit
     of interrupts, and to ensure alignment. */
+#if defined(__riscv_flen) && (__riscv_flen == 32)
+    /* f0-f31, fcsr and a pad word (GCC/portasm.S portFPURegNum), above mstatus. Zeroed: the
+    first switch to the task loads them, and fcsr = 0 is round-to-nearest with no flags. */
+    pxTopOfStack -= 34;
+    for (int i = 0; i < 34; i++) {
+        pxTopOfStack[i] = 0;
+    }
+#endif
     pxTopOfStack--;
     *pxTopOfStack = portINITIAL_MSTATUS;    /* MSTATUS */
 
@@ -527,8 +535,31 @@ void vPortAssert(int32_t x)
 /*-----------------------------------------------------------*/
 
 
+#if defined(CONFIG_HAL_LP_WAKE_MARKER)
+/* bench: BLE low-power wake trace (weak, absent without the controller) */
+extern void ipro_ble_ctlr_wake_trace(uint32_t stage, uint32_t data) __attribute__((weak));
+extern volatile uint32_t ipro_ble_ctlr_wake_trace_armed __attribute__((weak));
+extern uint32_t _sp[];
+/* bench: true when sp lies on the ISR stack */
+#define PORT_BENCH_ON_ISR_STACK(sp) (((sp) <= (uint32_t)_sp) && ((sp) > ((uint32_t)_sp - 0x800U)))
+#endif
+
 void xPortTaskSwitch(void)
 {
+#if defined(CONFIG_HAL_LP_WAKE_MARKER)
+    if (ipro_ble_ctlr_wake_trace != NULL) {
+        uint32_t sp;
+
+        __asm__ volatile("mv %0, sp" : "=r"(sp));
+
+        if (PORT_BENCH_ON_ISR_STACK(sp)) {
+            /* context switch running on the ISR stack: freeze the trace */
+            ipro_ble_ctlr_wake_trace(0x0077U, (uint32_t)__RV_CSR_READ(CSR_MSCRATCH));
+            ipro_ble_ctlr_wake_trace(0x0078U, (uint32_t)__RV_CSR_READ(CSR_MEPC));
+            ipro_ble_ctlr_wake_trace_armed = 0U;
+        }
+    }
+#endif
     portDISABLE_INTERRUPTS();
     /* Clear Software IRQ, A MUST */
     SysTimer_ClearSWIRQ();
@@ -736,6 +767,23 @@ void vPortUpdateStackProtection(void) {}
 
 void xPortSysTickHandler(void)
 {
+#if defined(CONFIG_HAL_LP_WAKE_MARKER)
+    if (ipro_ble_ctlr_wake_trace != NULL) {
+        uint32_t task_sp = (uint32_t)__RV_CSR_READ(CSR_MSCRATCH);
+
+        extern volatile uint32_t ipro_ble_ctlr_wake_trace_verbose __attribute__((weak));
+
+        if ((&ipro_ble_ctlr_wake_trace_verbose != NULL) && (ipro_ble_ctlr_wake_trace_verbose != 0U)) {
+            ipro_ble_ctlr_wake_trace(0x007fU, (uint32_t)xTaskGetTickCountFromISR());
+        }
+        if (PORT_BENCH_ON_ISR_STACK(task_sp)) {
+            /* the interrupted task was on the ISR stack: freeze the trace */
+            ipro_ble_ctlr_wake_trace(0x007aU, task_sp);
+            ipro_ble_ctlr_wake_trace(0x007eU, (uint32_t)__RV_CSR_READ(CSR_MEPC));
+            ipro_ble_ctlr_wake_trace_armed = 0U;
+        }
+    }
+#endif
     /* The SysTick runs at the lowest interrupt priority, so when this interrupt
     executes all interrupts must be unmasked.  There is therefore no need to
     save and then restore the interrupt mask value as its value is already
@@ -832,7 +880,11 @@ __attribute__((weak)) TickType_t xPortApplicationCorrectElapsedTicks(
 __attribute__((weak)) void vPortSuppressTicksAndSleep(TickType_t xExpectedIdleTime)
 {
     uint32_t ulReloadValue, ulCompleteTickPeriods, ulCompletedSysTickDecrements;
-    volatile TickType_t xModifiableIdleTime, XLastLoadValue;
+    volatile TickType_t xModifiableIdleTime;
+    /* MTIME is 64-bit and, kept continuous across PDS, passes 2^32 counts
+    after ~18 min at 4 MHz: a 32-bit copy made every later early wake look
+    like the timer's (full window credited, compare not re-armed). */
+    volatile uint64_t XLastLoadValue;
 
     FREERTOS_PORT_DEBUG("Enter TickLess %d\n", (uint32_t)xExpectedIdleTime);
 
@@ -853,11 +905,13 @@ __attribute__((weak)) void vPortSuppressTicksAndSleep(TickType_t xExpectedIdleTi
         xExpectedIdleTime = xMaximumPossibleSuppressedTicks;
     }
 
-    /* Stop the SysTick momentarily.  The time the SysTick is stopped for
-    is accounted for as best it can be, but using the tickless mode will
-    inevitably result in some tiny drift of the time maintained by the
-    kernel with respect to calendar time. */
-    SysTimer_Stop();
+    /* The SysTimer (MTIME) keeps running: unlike a Cortex-M SysTick it is
+    the platform's wall clock (OpenThread's microsecond time, CSL timing,
+    the power manager's sleep-clock calibration), and stopping it for the
+    tens of microseconds of this setup on every tickless entry made that
+    clock lose time (~2600 ppm over the short awake spans between PDS
+    cycles).  SysTick_Reload() programs the compare relative to the running
+    counter, so nothing below needs it stopped. */
 
     /* Calculate the reload value required to wait xExpectedIdleTime
     tick periods.  -1 is used because this code will execute part way
@@ -963,12 +1017,7 @@ __attribute__((weak)) void vPortSuppressTicksAndSleep(TickType_t xExpectedIdleTi
             Work out how long the sleep lasted rounded to complete tick
             periods (not the ulReload value which accounted for part
             ticks). */
-            xModifiableIdleTime = SysTimer_GetLoadValue();
-            if (xModifiableIdleTime > XLastLoadValue) {
-                ulCompletedSysTickDecrements = (xModifiableIdleTime - XLastLoadValue);
-            } else {
-                ulCompletedSysTickDecrements = (xModifiableIdleTime + portMAX_BIT_NUMBER - XLastLoadValue);
-            }
+            ulCompletedSysTickDecrements = (uint32_t)(SysTimer_GetLoadValue() - XLastLoadValue);
 
             /* How many complete tick periods passed while the processor
             was waiting? */

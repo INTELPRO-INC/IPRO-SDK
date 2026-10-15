@@ -133,7 +133,13 @@ static StaticSemaphore_t s_sig_buf;
 static SemaphoreHandle_t s_tx_done;     /* IN-completion signal */
 static StaticSemaphore_t s_tx_done_buf;
 
-static StackType_t  s_stack[1024];
+/* The drain task only copies ring bytes and starts IN transfers; an app whose
+ * heap is tight (the stack is static .bss carved from the heap region) can
+ * shrink it with -DUSB_CONSOLE_TASK_STACK_WORDS=... */
+#ifndef USB_CONSOLE_TASK_STACK_WORDS
+#define USB_CONSOLE_TASK_STACK_WORDS 1024
+#endif
+static StackType_t  s_stack[USB_CONSOLE_TASK_STACK_WORDS];
 static StaticTask_t s_tcb;
 
 /* ---- ring primitives ---- */

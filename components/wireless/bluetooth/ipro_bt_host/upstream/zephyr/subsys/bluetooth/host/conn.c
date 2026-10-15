@@ -1503,7 +1503,7 @@ void bt_conn_unref(struct bt_conn *conn)
 {
 	atomic_val_t old;
 	bool deallocated;
-	uint16_t conn_handle;
+	__maybe_unused uint16_t conn_handle; /* Debug log may be compiled out. */
 	/* Used only if CONFIG_ASSERT and CONFIG_BT_CONN_TX. */
 	__maybe_unused bool conn_tx_is_pending;
 

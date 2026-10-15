@@ -126,8 +126,8 @@ typedef struct {
 /* ========================================================================= */
 #define IPRO6_SDIO3_IRQ_EVENT_DNLD_CPL          (0)  /* download complete;  data = &trans_desc */
 #define IPRO6_SDIO3_IRQ_EVENT_UPLD_CPL          (1)  /* upload   complete;  data = &trans_desc */
-#define IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET        (2)  /* CMD0/CMD52 soft reset; data = NULL */
-#define IPRO6_SDIO3_IRQ_EVENT_FUNC1_RESET       (3)  /* Function1 reset; data = NULL */
+#define IPRO6_SDIO3_IRQ_EVENT_SOFT_RESET        (2)  /* CMD0/CMD52 soft reset; data = uint8_t *upld dropped */
+#define IPRO6_SDIO3_IRQ_EVENT_FUNC1_RESET       (3)  /* Function1 reset; data = uint8_t *upld dropped */
 #define IPRO6_SDIO3_IRQ_EVENT_FUNC2_RESET       (4)  /* Function2 reset; data = NULL */
 #define IPRO6_SDIO3_IRQ_EVENT_SIG1V8_SWITCH     (5)  /* CMD11 1.8V clk-stop; data = NULL */
 #define IPRO6_SDIO3_IRQ_EVENT_ERR_CRC           (6)  /* CRC/end-bit error; data = &trans_desc */
@@ -226,6 +226,10 @@ typedef struct {
     uint16_t slot_cap;      /* data bytes stored at slot[k] per stride */
     uint16_t pad_off;       /* pad sink = slot[k] - pad_off */
     void    *slot[IPRO6_SDIO3_SG_MAX];
+    /* pad_src set: stride k is len[k] bytes of slot[k], then
+     * pad_src for the rest (pad_src holds >= stride bytes) */
+    const void *pad_src;
+    uint16_t len[IPRO6_SDIO3_SG_MAX];
 } ipro6_sdio3_sg_desc_t;
 
 /* ADMA2 hardware descriptor. MUST be exactly 8 bytes (asserted in the .c). */
@@ -235,9 +239,9 @@ typedef struct {
     uint32_t address;       /* offset 4: data address */
 } ipro6_sdio3_adma_hw_desc_s;
 
-/* IRQ event callback: arg = registered opaque, event = IPRO6_SDIO3_IRQ_EVENT_*,
- * data = ipro6_sdio3_trans_desc_t* for the CPL / ABORT / ERR_CRC events,
- * NULL otherwise. */
+/* IRQ event callback: event = IPRO6_SDIO3_IRQ_EVENT_*; data = the
+ * trans_desc for CPL/ABORT/ERR_CRC, uint8_t* upld transfers dropped
+ * for SOFT/FUNC1_RESET, NULL otherwise. */
 typedef void (*ipro6_sdio3_irq_cb_t)(void *arg, int event, void *data);
 
 /* NOTE: struct ipro6_sdio3_queue_ctrl_s stays defined in the .c (private). */
@@ -266,12 +270,25 @@ int ipro6_sdio3_feature_control(ipro6_smid_dev_t *dev, int cmd, uintptr_t arg);
 
 int ipro6_sdio3_irq_attach(ipro6_smid_dev_t *dev, ipro6_sdio3_irq_cb_t irq_event_cb, void *arg);
 
-/* Re-sync the transport to the post-init empty-queue state after a host reset
- * (soft / function reset): stop DMA, clear the upld doorbell, and reset the dnld/
- * upld queue in/out pointers (driver + custom-reg). The reset ISR calls this; the
- * transport layer then re-seeds + re-arms the RX buffer pool (smid_software_reset).
- * Without it a reset left the upld queue desynced -> host reads phantom garbage. */
-void ipro6_sdio3_reset_resync(ipro6_smid_dev_t *dev);
+/* Host soft/function reset: stop the DMA, clear the doorbells, empty
+ * the upld queues; posted dnld buffers stay. Called by the reset ISR.
+ * Returns the number of upld transfers dropped. */
+uint8_t ipro6_sdio3_reset_resync(ipro6_smid_dev_t *dev);
+
+/* Read-count doorbell value that asks the host for a card reset (CCCR
+ * RES): the DMA engine is stopped and only a controller reset restarts
+ * it. Real counts never exceed 16 bits minus one. */
+#define IPRO6_SDIO3_DOORBELL_RESET_REQ  (0xFFFFu)
+
+/* Empty the dnld queues; the caller reclaims the posted buffers. */
+void ipro6_sdio3_dnld_queue_reset(ipro6_smid_dev_t *dev);
+
+/* Current transfer-state machine value (IPRO6_SDIO3_TRAN_STA_*). Read-only; the
+ * transport-wedge watchdog uses it to spot a data phase that never completes. */
+uint8_t ipro6_sdio3_tran_sta(void);
+
+/* TEST HOOK: 1 = wedge the next transfer (see ipro6_sdio3.c). Default off. */
+extern volatile uint32_t ipro6_sdio3_dbg_stall;
 
 /* dnld length-decode diagnostic; read-only, for stats. Counts WRITE_START
  * decodes whose Argument-derived byte count was out of range (clamped). */

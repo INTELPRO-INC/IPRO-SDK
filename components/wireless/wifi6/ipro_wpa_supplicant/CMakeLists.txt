@@ -35,11 +35,28 @@ __component_add_sources(src/crypto/aes-omac1.c)
 __component_add_sources(src/crypto/random.c)
 __component_add_sources(src/crypto/tls_none.c)
 __component_add_sources(wpa_supplicant/sme.c)
+if(IPRO_SDK_UNDER_ZEPHYR)
+# Zephyr's mbedTLS 4 has no public bignum/ECP/DES API any more: use the
+# supplicant's own SHA/AES/MD5 implementations (WPA2-PSK; no SAE / WPA3 yet).
+__component_add_sources(src/crypto/crypto_internal.c)
+__component_add_sources(src/crypto/crypto_internal-cipher.c)
+__component_add_sources(src/crypto/sha1-internal.c)
+__component_add_sources(src/crypto/sha256-internal.c)
+__component_add_sources(src/crypto/md5-internal.c)
+__component_add_sources(src/crypto/aes-internal.c)
+__component_add_sources(src/crypto/aes-internal-enc.c)
+__component_add_sources(src/crypto/aes-internal-dec.c)
+__component_add_sources(src/crypto/sha1.c)
+__component_add_sources(src/crypto/sha256.c)
+__component_add_sources(src/crypto/md5.c)
+__component_add_compile_definitions(-DCONFIG_NO_WPA3 -DCONFIG_CRYPTO_INTERNAL)
+else()
 __component_add_sources(src/common/sae.c)
 __component_add_sources(src/common/dragonfly.c)
 __component_add_sources_ifdef(CONFIG_COMPONENTS_MBEDTLS_ENABLE src/crypto/crypto_mbedtls.c)
 __component_add_sources_ifdef(CONFIG_COMPONENTS_MBEDTLS_ENABLE src/crypto/crypto_mbedtls_misc.c)
 __component_add_sources(src/crypto/dh_groups.c)
+endif()
 __component_add_sources(src/l2_packet/l2_packet_rwnx.c)
 __component_add_sources(src/rsn_supp/wpa.c)
 __component_add_sources(src/rsn_supp/wpa_ie.c)
@@ -111,7 +128,9 @@ __component_add_compile_definitions(-DCONFIG_IPRO_MBEDTLS)
 #__component_add_compile_definitions(-DCONFIG_WPA_LOG_LEVEL=MSG_EXCESSIVE)
 #MSG_EXCESSIVE, MSG_MSGDUMP, MSG_DEBUG, MSG_INFO, MSG_WARNING, MSG_ERROR
 
-if(CONFIG_MBEDTLS_AES_USE_HW
+if(IPRO_SDK_UNDER_ZEPHYR)
+    __component_add_compile_definitions(-DWPA_SUPPLICANT_USE_NORMAL_STACK)
+elseif(CONFIG_MBEDTLS_AES_USE_HW
    AND CONFIG_MBEDTLS_BIGNUM_USE_HW
    AND CONFIG_MBEDTLS_ECC_USE_HW
    AND CONFIG_MBEDTLS_SHA1_USE_HW

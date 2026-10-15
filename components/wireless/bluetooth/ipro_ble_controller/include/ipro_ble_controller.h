@@ -7,7 +7,7 @@
  *
  * Applications should include this header instead of reaching into a platform
  * directory directly.  IPRO6S currently keeps the btdm_sdk compatibility API
- * while its RW v13.0.18 controller is migrated into this package; IPRO7
+ * while its controller backend is migrated into this package; IPRO7
  * exports the byte-stream HCI and low-power controller API.
  */
 #if defined(CONFIG_BTDM_ENABLE) || defined(CONFIG_IPRO6)

@@ -4,3 +4,23 @@ config COMPONENTS_SENSOR_ENABLE
     help
       Enable the sensor subsystem to support various hardware sensors.
       This may include temperature, humidity, motion, or custom sensors.
+
+config SENSOR_OV5640
+    bool "OmniVision OV5640 DVP driver (YUV422, 1280x720 binned)"
+    depends on COMPONENTS_SENSOR_ENABLE
+    default n
+    help
+      SCCB 0x3C, 16-bit registers. Runs the 5 MP array 2x-binned through a
+      16:9 window to 1280x720 YUV422 (YUYV) with the sensor's own AEC/AGC/AWB;
+      the ISP firmware's imgproc 3A is not needed. Register tables ported from
+      esp32-camera. Used by the IPRO7AI Reef FLEX-24 camera connector.
+
+config SENSOR_OV2640
+    bool "OmniVision OV2640 DVP driver (YUV422, 1280x720 from UXGA)"
+    depends on COMPONENTS_SENSOR_ENABLE
+    default n
+    help
+      SCCB 0x30, banked 8-bit registers. UXGA base mode cropped to a 1600x900
+      window and DSP-scaled to 1280x720 YUV422 with on-sensor 3A. Build with
+      -DOV2640_DEFAULT_VGA for the 640x480 SVGA-base path instead.
+

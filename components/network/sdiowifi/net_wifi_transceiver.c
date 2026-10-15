@@ -101,7 +101,7 @@ extern volatile uint32_t g_zcprobe_lo, g_zcprobe_hi;    /* net_al.c bypass */
 
 /* DEBUG 2026-07-24 Phase-Z v1 zero-copy TX inject (gate g_sdio_zerocopy in
  * trcver_sdio_ipro6.c). The SMID dnld slot itself becomes the TX pbuf: the
- * frame already sits at slot+452 (= PBUF_LINK_ENCAPSULATION_HLEN, arm-offset
+ * frame already sits at slot + PBUF_LINK_ENCAPSULATION_HLEN (arm-offset
  * trick), so pbuf_alloced_custom() over the slot base lands payload exactly
  * on the received frame — no pool alloc, no memcpy, ram_wifi/SHRAM native.
  * Slot ownership: claim (worker) -> fhost/TX -> cfm -> zc_slot_free (WiFi
@@ -150,7 +150,7 @@ volatile uint16_t sdio_recv_unknown_last_type = 0;
  * before its queue_tx loop, so claim/copy (worker) pipelines with
  * inject+push+cfm (WiFi task) and the lock is uncontended by construction.
  * Poke g_sdio_inject_wifitask=1 to enable (default off for A/B). */
-#define INJ_RING_SZ 64u               /* power of 2, > total pool (41: 9 + 32) */
+#define INJ_RING_SZ 64u               /* power of 2, > total pool (33: 1 + 32) */
 static struct { struct pbuf *p; uint8_t is_sta; } inj_ring[INJ_RING_SZ];
 static volatile uint32_t inj_head;    /* producer: smid_worker */
 static volatile uint32_t inj_tail;    /* consumer: WiFi task   */
@@ -277,7 +277,7 @@ static void handle_sta_ap_to_wifi_tx(sdiowifi_mgmr_t *sdm, const uint8_t *frame,
         return;
     }
 
-    /* IPRO6LE: pbuf_take's MEMCPY routes to byte-loop libc memcpy, costing
+    /* pbuf_take's MEMCPY routes to byte-loop libc memcpy, costing
      * ~160us / 1520B (D34 in tx_profile). Source/dest both in ram_wifi
      * (non-cached cross-bus 0x23xxxxxx). Swap in arch_memcpy_fast which
      * uses 4-byte aligned word copies. Single-pbuf only -- the TX pool

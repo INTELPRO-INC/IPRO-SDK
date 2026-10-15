@@ -308,6 +308,18 @@ void board_init(void) {
 
 int board_get_debug_uart_index(void) { return UART0_INDEX; }
 
+/* The 32 kHz source this board declares (BOARD_CLK_32K_SOURCE_MACRO): HBN_32K_RC (0) or HBN_32K_XTAL
+ * (1); -1 when the board config does not say (FPGA). The BLE controller is prebuilt for every board
+ * and asks here at run time instead of probing for a crystal (ipro_ble_ctlr_lowpower_init). */
+int board_get_32k_source(void)
+{
+#if defined(BOARD_CLK_32K_SOURCE_MACRO)
+    return (int)BOARD_CLK_32K_SOURCE_MACRO;
+#else
+    return -1;
+#endif
+}
+
 /* Used for boot2 iap */
 void system_mtimer_clock_init(void) {
     mtimer_clear_time();

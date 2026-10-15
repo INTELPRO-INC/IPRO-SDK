@@ -18,6 +18,7 @@
 
 #include <drv_dvp2axi.h>
 #include <dvp2axi_reg.h>
+#include "drv_glb.h"
 
 #define IS_MULTIPULE_OF_8(x)    (((x) & 0x7) == 0)
 
@@ -35,6 +36,9 @@ static const uint32_t DVP2AXI_BASE_ADDR_SET[] =
 
 void DVP2AXI_Init(DVP2AXI_PORT_E port, DVP2AXI_INIT_CFG_S* init)
 {
+    /* The module clock is gated at board init; take ownership of it here. */
+    GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_MM_MISC);
+
     uint32_t DVP2AXIx = DVP2AXI_BASE_ADDR_SET[port];
     uint32_t tmpVal;
     uint32_t bytesPerLine;

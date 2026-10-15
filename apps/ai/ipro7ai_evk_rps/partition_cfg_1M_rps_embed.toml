@@ -1,0 +1,39 @@
+# 1 MiB flash layout for ipro7ai_evk_rps with CONFIG_RPS_EMBED_MODEL: the
+# model is linked into the firmware, so there is no mfg partition and FW takes
+# everything between the tables (0x3000) and factory (0xFF000) - 1008 KB.
+# Firmware + rps_v3.inm is ~485 KB.
+#
+# flash.sh picks this table when .config has CONFIG_RPS_EMBED_MODEL=y. It
+# overwrites the person-detect app's mfg model at 0x53000; that app's
+# ./flash.sh --full writes its own table and model back.
+
+[pt_table]
+#partition table is 4K in size
+address0 = 0x1000
+address1 = 0x2000
+
+[[pt_entry]]
+type = 0
+name = "FW"
+device = 0
+address0 = 0x3000
+size0 = 0xFC000
+address1 = 0
+size1 = 0
+# compressed image must set len,normal image can left it to 0
+len = 0
+activeindex = 0
+age = 0
+
+[[pt_entry]]
+type = 5
+name = "factory"
+device = 0
+address0 = 0xFF000
+size0 = 0x1000
+address1 = 0
+size1 = 0
+# compressed image must set len,normal image can left it to 0
+len = 0
+activeindex = 0
+age = 0

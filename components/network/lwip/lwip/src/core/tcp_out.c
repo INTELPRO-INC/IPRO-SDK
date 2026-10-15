@@ -102,6 +102,11 @@
 #include LWIP_HOOK_FILENAME
 #endif
 
+/* Called on every RTO and fast retransmission of a segment */
+#ifndef TCP_REXMIT_NOTIFY
+#define TCP_REXMIT_NOTIFY(pcb)
+#endif
+
 /* Allow to add custom TCP header options by defining this hook */
 #ifdef LWIP_HOOK_TCP_OUT_TCPOPT_LENGTH
 #define LWIP_TCP_OPT_LENGTH_SEGMENT(flags, pcb) LWIP_HOOK_TCP_OUT_TCPOPT_LENGTH(pcb, LWIP_TCP_OPT_LENGTH(flags))
@@ -1736,6 +1741,7 @@ tcp_rexmit_rto_commit(struct tcp_pcb *pcb)
   if (pcb->nrtx < 0xFF) {
     ++pcb->nrtx;
   }
+  TCP_REXMIT_NOTIFY(pcb);
   /* Do the actual retransmission */
   tcp_output(pcb);
 }
@@ -1837,6 +1843,7 @@ tcp_rexmit_fast(struct tcp_pcb *pcb)
                  (u16_t)pcb->dupacks, pcb->lastack,
                  lwip_ntohl(pcb->unacked->tcphdr->seqno)));
     if (tcp_rexmit(pcb) == ERR_OK) {
+      TCP_REXMIT_NOTIFY(pcb);
       /* Set ssthresh to half of the minimum of the current
        * cwnd and the advertised window */
       pcb->ssthresh = LWIP_MIN(pcb->cwnd, pcb->snd_wnd) / 2;

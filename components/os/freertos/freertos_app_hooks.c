@@ -46,6 +46,10 @@
 #include "hal_uart.h"
 #endif
 
+#ifdef CONFIG_IPRO_PM
+#include "ipro_pm.h"
+#endif
+
 /* -----------------------------------------------------------------------
  * Heap configuration from linker symbols
  * -----------------------------------------------------------------------*/
@@ -127,9 +131,26 @@ void ipro_setup_heap(void)
 /* -----------------------------------------------------------------------
  * Platform init sequence
  * -----------------------------------------------------------------------*/
+#if defined(CONFIG_IPRO7) && defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+extern int AON_Set_Xtal_CapCode(uint8_t capIn, uint8_t capOut);
+extern uint8_t AON_Get_Xtal_CapCode(void);
+
+/* Board-calibrated RF crystal trim (see Kconfig IPRO7_XTAL_CAPCODE). */
+static void ipro_xtal_capcode_init(void)
+{
+    uint8_t before = AON_Get_Xtal_CapCode();
+
+    AON_Set_Xtal_CapCode(CONFIG_IPRO7_XTAL_CAPCODE, CONFIG_IPRO7_XTAL_CAPCODE);
+    printf("[XTAL] capcode %u -> %u\r\n", before, (unsigned)CONFIG_IPRO7_XTAL_CAPCODE);
+}
+#endif
+
 void ipro_platform_init(void)
 {
     platform_init(0);
+#if defined(CONFIG_IPRO7) && defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+    ipro_xtal_capcode_init();
+#endif
     ipro_setup_heap();
     hal_boot2_init();
 
@@ -145,6 +166,10 @@ void ipro_platform_init(void)
 
 #ifdef CONFIG_SHELL
     shell_init_with_task(UART0_INDEX);
+#endif
+
+#ifdef CONFIG_IPRO_PM
+    (void)ipro_pm_init();
 #endif
 }
 
@@ -230,18 +255,18 @@ void __attribute__((weak)) vApplicationStackOverflowHook(TaskHandle_t xTask, cha
 }
 
 volatile size_t g_last_malloc_failed_size = 0;
+void * volatile g_last_malloc_failed_caller = NULL;
 
 void __attribute__((weak)) vApplicationMallocFailedHook(void)
 {
-    /* Keep only the immediate caller.  Walking above the current frame with
-     * __builtin_return_address(1) is target/optimization dependent on RISC-V
-     * and GCC warns correctly; an OOM hook must be deterministic. */
-    void *ra = __builtin_return_address(0);
-    printf("[!] Malloc failed, requested: %u, free: %u, min_ever: %u, caller: %p\r\n",
+    /* heap_5 records its immediate caller without walking older frames. */
+    const char *task = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING
+                           ? pcTaskGetName(NULL) : "<startup/suspended>";
+    printf("[!] Malloc failed, requested: %u, free: %u, min_ever: %u, caller: %p, task: %s\r\n",
            (unsigned)g_last_malloc_failed_size,
            (unsigned)xPortGetFreeHeapSize(),
            (unsigned)xPortGetMinimumEverFreeHeapSize(),
-           ra);
+           g_last_malloc_failed_caller, task);
     if (g_last_malloc_failed_size == 0) {
         /* malloc(0) is not a real OOM — skip hang, just warn */
         printf("[!] WARNING: pvPortMalloc(0) called — not a real OOM, continuing\r\n");
@@ -263,9 +288,18 @@ void __attribute__((weak)) vApplicationIdleHook(void)
  * the retained banks, the resumed frame is garbage. Hoisted to
  * file-scope because function-static + section attribute didn't
  * reliably place into .ocram_bss in some GCC versions. */
+#if defined(CONFIG_FREERTOS_IDLE_TASK_STACK_WORDS) && CONFIG_FREERTOS_IDLE_TASK_STACK_WORDS != 0
+#if CONFIG_FREERTOS_IDLE_TASK_STACK_WORDS < 128 || CONFIG_FREERTOS_IDLE_TASK_STACK_WORDS > 4096
+#error "Static idle task stack override must be 128..4096 words, or 0 for the port default"
+#endif
+#define IPRO_IDLE_TASK_STACK_WORDS CONFIG_FREERTOS_IDLE_TASK_STACK_WORDS
+#else
+#define IPRO_IDLE_TASK_STACK_WORDS configMINIMAL_STACK_SIZE
+#endif
+
 static __attribute__((section(".ocram_bss"))) StaticTask_t g_idle_tcb;
 static __attribute__((section(".ocram_bss")))
-    StackType_t g_idle_stack[configMINIMAL_STACK_SIZE];
+    StackType_t g_idle_stack[IPRO_IDLE_TASK_STACK_WORDS];
 static __attribute__((section(".ocram_bss"))) StaticTask_t g_timer_tcb;
 static __attribute__((section(".ocram_bss")))
     StackType_t g_timer_stack[configTIMER_TASK_STACK_DEPTH];
@@ -277,7 +311,7 @@ void __attribute__((weak)) vApplicationGetIdleTaskMemory(
 {
     *ppxIdleTaskTCBBuffer = &g_idle_tcb;
     *ppxIdleTaskStackBuffer = g_idle_stack;
-    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+    *pulIdleTaskStackSize = IPRO_IDLE_TASK_STACK_WORDS;
 }
 
 void __attribute__((weak)) vApplicationGetTimerTaskMemory(

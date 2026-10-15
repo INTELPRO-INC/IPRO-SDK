@@ -52,7 +52,6 @@
 #endif
 
 // BLE controller initialization
-#include "ble_lib_api.h"
 #include <ipro_ble_ctlr_arch.h>   /* ipro_ble_ctlr_controller_init() */
 #include "hal_wdt.h"
 #include "throughput_app.h"

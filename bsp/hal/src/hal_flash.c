@@ -316,16 +316,43 @@ int ATTR_TCM_SECTION flash_read(uint32_t addr, uint8_t *data, uint32_t len)
 
 int ATTR_TCM_SECTION flash_write(uint32_t addr, uint8_t *data, uint32_t len)
 {
-    uint8_t aesEnable;
-    int ret = ERROR;
+    /* Flash/PSRAM pointers cease to be usable while the serial-flash mapping
+     * changes. A task stack may also be in PSRAM, so stage in explicit OCRAM.
+     * The single-core IRQ critical section serializes this shared buffer. */
+    static ATTR_OCRAM_SECTION uint32_t staging[256 / sizeof(uint32_t)];
 
-    cpu_global_irq_disable();
-    XIP_SFlash_Opt_Enter(&aesEnable);
-    ret = XIP_SFlash_Write_Need_Lock(&g_flash_cfg, addr, data, len, 0, 0);
-    XIP_SFlash_Opt_Exit(aesEnable);
-    cpu_global_irq_enable();
+    if (len == 0) {
+        return SUCCESS;
+    }
+    if (data == NULL || len - 1 > UINT32_MAX - addr) {
+        return ERROR;
+    }
 
-    return ret;
+    while (len != 0) {
+        uint32_t chunk = len < sizeof(staging) ? len : sizeof(staging);
+        uint32_t flags = __irq_save();
+        uint8_t aesEnable;
+        int ret;
+
+        /* Copy before entering the XIP operation for every chunk. */
+        memcpy(staging, data, chunk);
+        XIP_SFlash_Opt_Enter(&aesEnable);
+        ret = XIP_SFlash_Write_Need_Lock(&g_flash_cfg, addr, (uint8_t *)staging, chunk, 0, 0);
+        XIP_SFlash_Opt_Exit(aesEnable);
+
+        /* Persisted fabric/Wi-Fi secrets must not remain in shared scratch. */
+        for (uint32_t i = 0; i < sizeof(staging) / sizeof(staging[0]); ++i) {
+            ((volatile uint32_t *)staging)[i] = 0;
+        }
+        __irq_restore(flags);
+        if (ret != SUCCESS) {
+            return ret;
+        }
+        addr += chunk;
+        data += chunk;
+        len -= chunk;
+    }
+    return SUCCESS;
 }
 
 int ATTR_TCM_SECTION flash_erase(uint32_t startaddr, uint32_t len)

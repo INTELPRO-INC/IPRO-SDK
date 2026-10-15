@@ -32,9 +32,7 @@ uint64_t ATTR_TCM_SECTION mtimer_get_time_ms()
 
 uint64_t ATTR_TCM_SECTION mtimer_get_time_us()
 {
-#if defined(CONFIG_IPRO6LE)
-    return CPU_Get_MTimer_Counter();
-#elif defined(CONFIG_IPRO7)
+#if defined(CONFIG_IPRO7)
     return SysTimer_GetLoadValue() >> 2;
 #elif defined(CONFIG_IPRO6)
     return SysTimer_GetLoadValue();

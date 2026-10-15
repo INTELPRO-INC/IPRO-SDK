@@ -53,7 +53,7 @@ set(PSRAM_SIZE   "8M")
 # 1. AI=y, MM=y, EM_SIZE=0:
 #     OCRAM: 0x11010000, 64KB  (banks 0-3, ends exactly at the NPU sram4
 #            remap base 0x11020000 — same layout as ipro7_uvc_cam's .ld)
-#     em_tcm_ret: 0x1102C000, 16KB (tcmcode split)
+#     em_tcm_ret: 32KB default, ends at 0x11030000 (tcmcode split)
 # 2. AI=y, MM=y, EM_SIZE>0:
 #     OCRAM: 0x11010000, 48KB
 #     ocram_noret: 0x11020000, 64KB-EM_SIZE
@@ -81,14 +81,17 @@ if(CONFIG_AI_SUPPORT AND CONFIG_MM_SUPPORT)
             set(ENABLE_OCRAM_NORET OFF)
             message(STATUS "AI+MM (EM=0): OCRAM=64KB, em_tcm_ret=DISABLED (TCM merged into OCRAM)")
         else()
-            # 0x1102C000..0x11030000 is 16 KB, which is not enough for every
-            # AI+MM demo: ipro7_demo's .tcmcode alone is 19 KB and overflowed
-            # by 2.6 KB. The region runs to the end of OCRAM at 0x11050000,
-            # and the NPU's sram4 remap sits above that, so extending it here
-            # takes space nothing else in this layout can reach - OCRAM proper
-            # is capped at banks 0-3 regardless.
-            set(EM_TCM_RET_ORIGIN "0x1102C000")
+            # With cr_iproai_en set (startup, AI on) the CPU sees OCRAM only
+            # up to 0x11030000: em_tcm_ret ends there and grows downward,
+            # at most to the end of OCRAM proper at 0x11020000.
             sdk_ifndef(CONFIG_EM_TCM_RET_SIZE_KB 32)
+            if(CONFIG_EM_TCM_RET_SIZE_KB GREATER 64)
+                message(FATAL_ERROR "em_tcm_ret ${CONFIG_EM_TCM_RET_SIZE_KB}KB "
+                    "starts below 0x11020000; AI+MM allows at most 64KB")
+            endif()
+            math(EXPR EM_TCM_RET_ORIGIN
+                "0x11030000 - ${CONFIG_EM_TCM_RET_SIZE_KB} * 1024"
+                OUTPUT_FORMAT HEXADECIMAL)
             set(EM_TCM_RET_SIZE "${CONFIG_EM_TCM_RET_SIZE_KB}K")
             set(ENABLE_EM_TCM_RET ON)
             set(ENABLE_OCRAM_NORET OFF)
@@ -226,3 +229,64 @@ endif()
 # RAM MODE: 16KB allocated from OCRAM
 # set(ENABLE_NVDS  ON)
 # set(NVDS_SIZE    "16K")
+
+# Objects run from OCRAM under CONFIG_IPRO7_BLE_HOTCODE: the per-packet path
+# through the controller, the Zephyr host and the FreeRTOS kernel.
+#
+# Executed from flash, one 251-octet packet cost the sender about 1.8 ms of
+# CPU time in I-cache misses, more than the 1.39 ms the packet spends on air
+# at 2M, so bulk throughput topped out near 0.9 Mbps whatever the connection
+# interval. From OCRAM the same path leaves the CPU half idle and 2M reaches
+# 1.3 Mbps (ipro_throughput_test on two IPRO7AI Reef boards, 2026-10-07).
+#
+# About 88 KB of OCRAM (.tcmcode grows to ~101 KB with the existing TCM code).
+# Two objects that look hot stay in flash:
+#   port.c.o   - portasm.S reaches xPortTaskSwitch with jal (+/-1 MB)
+#   memcpy     - early_section_copy() uses it to fill .tcmcode itself
+set(IPRO7_BLE_HOTCODE_OBJECTS
+    "*libipro_ble_controller_ipro7_*.a:lld_con.c.o"
+    "*libipro_ble_controller_ipro7_*.a:lld.c.o"
+    "*libipro_ble_controller_ipro7_*.a:llc.c.o"
+    "*libipro_ble_controller_ipro7_*.a:llc_hci.c.o"
+    "*libipro_ble_controller_ipro7_*.a:hci.c.o"
+    "*libipro_ble_controller_ipro7_*.a:hci_tl.c.o"
+    "*libipro_ble_controller_ipro7_*.a:h4tl.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ipro_ble_ctlr_hcitl.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ble_util_buf.c.o"
+    "*libipro_ble_controller_ipro7_*.a:sch_arb.c.o"
+    "*libipro_ble_controller_ipro7_*.a:sch_prog.c.o"
+    "*libipro_ble_controller_ipro7_*.a:rwip.c.o"
+    "*libipro_ble_controller_ipro7_*.a:rwip_driver.c.o"
+    "*libipro_ble_controller_ipro7_*.a:rwble.c.o"
+    "*libipro_ble_controller_ipro7_*.a:arch_main.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke_event.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke_mem.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke_msg.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke_queue.c.o"
+    "*libipro_ble_controller_ipro7_*.a:ke_task.c.o"
+    "*libipro_ble_controller_ipro7_*.a:co_list.c.o"
+    "*libipro_bt_host.a:hci_core.c.o"
+    "*libipro_bt_host.a:hci_ipro.c.o"
+    "*libipro_bt_host.a:conn.c.o"
+    "*libipro_bt_host.a:l2cap.c.o"
+    "*libipro_bt_host.a:att.c.o"
+    "*libipro_bt_host.a:buf.c.o"
+    "*libipro_bt_host.a:kernel.c.o"
+    "*libfreertos.a:tasks.c.o"
+    "*libfreertos.a:queue.c.o"
+    "*libfreertos.a:list.c.o"
+)
+
+# Run from PSRAM under CONFIG_IPRO7_WIFI_HOST_HOTCODE (~115 KB). libc
+# memcpy/memset stay in flash: Boot2_Param_Save() runs them before
+# early_section_copy() fills .text_psram.
+set(IPRO7_WIFI_HOST_HOTCODE_OBJECTS
+    "*libipronet_host.a:*"
+    "*liblwip.a:*"
+    "*libfreertos.a:*"
+    "*libipro_osal.a:*"
+    "*libesp.a:*"
+    "*libsoc_common.a:drv_sdh.c.o"
+    "*libhal.a:hal_sdio.c.o"
+)

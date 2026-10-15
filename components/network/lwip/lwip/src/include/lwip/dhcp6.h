@@ -82,6 +82,21 @@ err_t dhcp6_enable_stateful(struct netif *netif);
 err_t dhcp6_enable_stateless(struct netif *netif);
 void dhcp6_disable(struct netif *netif);
 
+#if LWIP_DHCP6_EXTERNAL_CLIENT
+/**
+ * Optional single external DHCPv6 client sharing UDP 546 with stateless DHCPv6.
+ * All calls and callbacks run with the lwIP core locked. The RX pbuf is borrowed:
+ * return nonzero only for messages belonging to the external client. No freeing,
+ * retention, blocking, or calls into a foreign protocol owner from the callback.
+ */
+typedef int (*dhcp6_external_recv_fn)(void *context, struct netif *netif, struct pbuf *p,
+                                     const ip_addr_t *source, u16_t port);
+err_t dhcp6_external_attach(dhcp6_external_recv_fn receive, void *context);
+void dhcp6_external_detach(dhcp6_external_recv_fn receive, void *context);
+/** Borrow pbuf; sends from interface's valid link-local address, UDP 546 to 547. */
+err_t dhcp6_external_send(struct netif *netif, struct pbuf *p, const ip6_addr_t *destination);
+#endif
+
 void dhcp6_tmr(void);
 
 void dhcp6_nd6_ra_trigger(struct netif *netif, u8_t managed_addr_config, u8_t other_config);
