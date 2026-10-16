@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO6S EVB (the board the ipro6s_* SDK apps build for, CONFIG_EVB):
+ * everything but the flash layout, shared by the BootROM-direct board and
+ * the boot2 variant.
+ */
+
+#include <intelpro/ipro6s.dtsi>
+#include "ipro6s_evb-pinctrl.dtsi"
+
+/ {
+	model = "INTELPRO IPRO6S EVB";
+	compatible = "intelpro,ipro6s-evb";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash-controller = &flashctrl;
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,entropy = &trng;
+	};
+
+	aliases {
+		led0 = &sw_gpio16;
+		watchdog0 = &wdt0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		/* Free header pad (reads back through the pad on the bench:
+		 * GPIO0/1/2/16/20/22/27/30 do for both pulls and both output levels). */
+		sw_gpio16: led_0 {
+			gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
+			label = "GPIO16 output";
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <2000000>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-names = "default";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&timer0 {
+	status = "okay";
+};
+
+&counter0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&trng {
+	status = "okay";
+};

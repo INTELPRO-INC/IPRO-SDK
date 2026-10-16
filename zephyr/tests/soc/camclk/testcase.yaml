@@ -1,0 +1,18 @@
+common:
+  platform_allow:
+    - ipro7_evb
+    - ipro7ai_evk
+  integration_platforms:
+    - ipro7_evb
+  tags:
+    - soc
+    - ipro
+    - camera
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "PROBE DONE"
+tests:
+  soc.ipro.camclk:
+    build_only: false

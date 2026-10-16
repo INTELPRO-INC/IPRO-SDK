@@ -1,0 +1,27 @@
+/ {
+	chosen {
+		zephyr,bt-hci = &bt_hci;
+	};
+};
+
+&bt_hci {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};
+/* Bench smoke on the EVB (no speaker): a spare pad stands in for the
+ * class-D enable so the sample builds and the BLE side can be exercised. */
+/ {
+	leds {
+		compatible = "gpio-leds";
+		spk_enable: spk_enable {
+			gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};

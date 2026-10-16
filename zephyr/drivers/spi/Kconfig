@@ -1,0 +1,20 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SPI_IPRO
+	bool "IPRO7 SPI driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_SPI_ENABLED
+	depends on SPI
+	select IPRO_HAL
+	select SPI_ASYNC if SPI_RTIO
+	select PINCTRL
+	help
+	  Zephyr SPI master over the SDK HAL (hal_spi.c / drv_spi.c). Polled
+	  full-duplex transfers; software chip select through cs-gpios or the
+	  controller's own SS pad.
+
+config SPI_IPRO_DMA_MIN_BYTES
+	int "Transmit-only chunks at least this long go by DMA (node with dmas)"
+	depends on SPI_IPRO && DMA
+	default 64

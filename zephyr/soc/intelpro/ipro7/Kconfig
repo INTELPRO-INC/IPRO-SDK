@@ -1,0 +1,118 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_IPRO7
+	select RISCV
+	select RISCV_PRIVILEGED
+	select RISCV_ISA_RV32I
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+	select RISCV_ISA_EXT_F
+	select RISCV_ISA_EXT_C
+	select RISCV_ISA_EXT_ZICSR
+	select RISCV_ISA_EXT_ZIFENCEI
+	select RISCV_ISA_EXT_ZBA
+	select RISCV_ISA_EXT_ZBB
+	select RISCV_ISA_EXT_ZBC
+	select RISCV_ISA_EXT_ZBS
+	select CPU_HAS_FPU
+	select RISCV_HAS_CLIC
+	select RISCV_SOC_CONTEXT_SAVE
+	select RISCV_SOC_HAS_GP_RELATIVE_ADDRESSING
+	select RISCV_SOC_INTERRUPT_INIT
+	select INCLUDE_RESET_VECTOR
+	select XIP
+	select HAS_FLASH_LOAD_OFFSET
+	select SOC_PREP_HOOK
+	select SOC_EARLY_INIT_HOOK
+	select DYNAMIC_INTERRUPTS
+	select IPRO_HAL
+	select INTC_IPRO_ECLIC
+	select IPRO_SYSTIMER
+
+if SOC_SERIES_IPRO7
+
+config IPRO7_IDLE_NO_WFI
+	bool "Busy-wait in the idle thread instead of WFI (diagnostic)"
+	select ARCH_HAS_CUSTOM_CPU_IDLE
+	select ARCH_HAS_CUSTOM_CPU_ATOMIC_IDLE
+	help
+	  Replace the RISC-V "wfi" in arch_cpu_idle()/arch_cpu_atomic_idle()
+	  with an interrupt-enabled spin. Costs power; only for isolating
+	  resets or hangs that coincide with the core going idle.
+
+config IPRO7_NPU
+	bool "NPU (IPRO7AI) support"
+	select IPRO_HAL_USE_PSRAM
+	help
+	  Build for the IPRO7AI variant. Enables the NPU power domain bit at
+	  reset and requires PSRAM for activation buffers (mirrors the SDK's
+	  CONFIG_AI_SUPPORT semantics).
+
+config IPRO7_EM_SIZE_KB
+	int "BLE Exchange Memory carved from the top of OCRAM (KB)"
+	default 0
+	range 0 64
+	help
+	  Size of the Exchange Memory the BLE controller takes from the top of
+	  the 256 KB OCRAM. Must match what the board's SRAM node exposes to
+	  Zephyr (CONFIG_SRAM_SIZE = 256 - EM) and the BLE controller variant
+	  (bt54_iso2 archives need 32 KB). 0 when Bluetooth is not used.
+
+config IPRO7_CLOCK_BOOST_AT_RESET
+	bool "Switch to PLL 192 MHz before the .data copy"
+	default y
+	help
+	  Run the SDK's XIP-resident clock_boost_init() from soc_prep_hook so
+	  the LMA->VMA copy and everything after it runs at HCLK 192 MHz
+	  instead of the boot ROM's XCLK. Mirrors bsp/drivers/ipro7_soc's
+	  startup_ipro7.S.
+
+config IPRO7_DCDC14_VOUT_SEL
+	hex "DCDC14 output code for the VDD14 rail"
+	default 0x1b
+	help
+	  AON DCDC14 vout_sel written at boot (board.c: 0x0B = 1.4 V,
+	  0x0F = 1.5 V, 0x1B = 1.8 V default).
+
+config IPRO7_LDO14_VOUT_SEL
+	hex "LDO14 vout_sel while LDO14 is retired"
+	default 0x7
+	help
+	  Lower codes reduce residual divider leakage once the DCDC owns the
+	  rail (board.c uses 0x7 with the 1.8 V DCDC target).
+
+config IPRO7_DCACHE
+	bool "Enable the L1 data cache"
+	default y
+	help
+	  Enable the Nuclei L1 D-cache at early init (same as the SDK unless
+	  it is built with CONFIG_DCACHE_DISABLE). DMA buffers must then be
+	  flushed/invalidated or placed in the non-cacheable alias.
+
+config SOC_IPRO7_XTAL_CAPCODE
+	int "RF crystal capcode trim (0 = no trim, RF init loads 85)"
+	range 0 255
+	default 0
+	help
+	  Load-capacitance trim of the 32 MHz RF crystal (AON XTAL capcode
+	  in/out). The crystal sets the 2.4 GHz carrier and also clocks the
+	  mtimer, so this trims the BLE / 802.15.4 frequency error and the
+	  kernel clock rate together. Same trim as the FreeRTOS SDK's
+	  IPRO7_XTAL_CAPCODE, which is what the shared RF code reads (mirrored
+	  in Kconfig.hal).
+
+	  A non-zero value is written by soc_early_init_hook() and boot prints
+	  "[XTAL] capcode <boot> -> <value>". Every RF init (the BLE
+	  controller's HCI reset, 802.15.4 radio init and reset) loads it
+	  again. With 0 the boot value stays until the first RF init, which
+	  then loads the ROM default 85.
+
+	  Board-class values (mtimer against NTP): the IPRO7AI Reef runs
+	  +12..+16 ppm fast at 85 and +0.2..+4.7 ppm at 95. Zephyr has no Reef
+	  board; on a Reef (which runs ipro7_evb images) set
+	  CONFIG_SOC_IPRO7_XTAL_CAPCODE=95. The bench IPRO7 EVBs are +57..68
+	  ppm at 85 and reach 0 ppm near 155..172. Production units still
+	  need a per-unit eFuse trim.
+
+endif # SOC_SERIES_IPRO7

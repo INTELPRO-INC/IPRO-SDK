@@ -18,6 +18,17 @@ if (DEFINED CONFIG_IPRO7AI_REEF AND CONFIG_IPRO7AI_REEF)
     set(BOARD_TYPE "evb")
 endif()
 
+# Board RF crystal trim (Kconfig IPRO7_XTAL_CAPCODE). The SDK reads .config
+# as is, so Kconfig's "default 95 if IPRO7AI_REEF" never reaches C: supply it
+# here when the app's config leaves the symbol out. An explicit value in the
+# config wins (0 = keep the boot value). Reef, mtimer against NTP: capcode 95
+# +0.2 / +2.4 / +4.7 ppm (2026-10-07 / 10-15 / 10-16); the RF init default 85
+# +11.6 / +14.3 / +16.3 ppm.
+if (DEFINED CONFIG_IPRO7AI_REEF AND CONFIG_IPRO7AI_REEF AND NOT DEFINED CONFIG_IPRO7_XTAL_CAPCODE)
+    __component_add_compile_options(-DCONFIG_IPRO7_XTAL_CAPCODE=95)
+    message(STATUS "[board] IPRO7AI Reef: CONFIG_IPRO7_XTAL_CAPCODE=95 (board default)")
+endif()
+
 target_sources(app PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/board.c")
 
 # Linker script generation

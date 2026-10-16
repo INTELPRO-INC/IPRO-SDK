@@ -1,0 +1,32 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 DMA controller (DMA0 @0x30082000): 8 channels, linked-list
+  descriptors, memory<->memory and memory<->peripheral with 32 request
+  lines. Driven through the SDK HAL (hal_dma.c: dma_setConfig /
+  dma_channel_attach / dma_reload / dma_channel_start).
+
+  Consumer cells: <channel slot> where channel is 0-7 and slot the
+  IPRO7_DMA_REQ_* request line from <zephyr/dt-bindings/dma/ipro7-dma.h>.
+
+compatible: "intelpro,ipro-dma"
+
+include: dma-controller.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  "#dma-cells":
+    const: 2
+
+dma-cells:
+  - channel
+  - slot

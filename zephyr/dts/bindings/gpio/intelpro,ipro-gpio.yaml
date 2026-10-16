@@ -1,0 +1,35 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 GPIO port. The SoC has 42 pads controlled through the GLB block.
+  Zephyr ports are 32 bits wide, so the pads are split in two controller
+  nodes: gpio0 (pads 0-31) and gpio1 (pads 32-41). Both share the single
+  GPIO_INT0 interrupt line. Pin configuration, level access and interrupt
+  control go through the SDK HAL/LL (hal_gpio.c / drv_gpio.c).
+
+compatible: "intelpro,ipro-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  pin-offset:
+    type: int
+    required: true
+    description: Pad number of bit 0 of this port (0 or 32).
+
+  ngpios:
+    required: true
+
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags

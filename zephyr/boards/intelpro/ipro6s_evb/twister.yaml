@@ -1,0 +1,47 @@
+variants:
+  ipro6s_evb/ipro6s:
+    type: mcu
+    arch: riscv
+    vendor: intelpro
+    ram: 320
+    flash: 1984
+    toolchain:
+      - cross-compile
+    supported:
+      - counter
+      - dma
+      - entropy
+      - flash
+      - gpio
+      - i2c
+      - pwm
+      - spi
+      - uart
+      - watchdog
+    testing:
+      ignore_tags:
+        - net
+        - bluetooth
+  ipro6s_evb/ipro6s/boot2:
+    type: mcu
+    arch: riscv
+    vendor: intelpro
+    ram: 320
+    flash: 2048
+    toolchain:
+      - cross-compile
+    supported:
+      - counter
+      - dma
+      - entropy
+      - flash
+      - gpio
+      - i2c
+      - pwm
+      - spi
+      - uart
+      - watchdog
+    testing:
+      ignore_tags:
+        - net
+        - bluetooth

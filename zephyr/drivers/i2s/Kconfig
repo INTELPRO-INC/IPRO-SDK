@@ -1,0 +1,21 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config I2S_IPRO
+	bool "IPRO7 I2S driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_I2S_ENABLED
+	depends on I2S
+	select IPRO_HAL
+	select DMA
+	select PINCTRL
+	help
+	  Zephyr I2S over the IPRO7 I2S block (SDK HAL hal_i2s.c): master or
+	  slave, I2S / left / right justified / PCM A / PCM B, 8-32 bit words,
+	  1-4 channels, TX and RX streamed by DMA from the application's memory
+	  slab. Not yet verified on hardware.
+
+config I2S_IPRO_QUEUE_LEN
+	int "Blocks queued per direction"
+	depends on I2S_IPRO
+	default 4

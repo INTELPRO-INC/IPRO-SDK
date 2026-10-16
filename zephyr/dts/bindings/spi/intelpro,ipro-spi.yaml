@@ -1,0 +1,43 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 SPI controller (SPI0 @0x3000D000 function 4, SPI1 @0x3001E000
+  function 26). Master mode, 8/16/24/32-bit frames, CPOL/CPHA, 4-entry FIFOs.
+  Driven through the SDK HAL (hal_spi.c: spi_setConfig/spi_init/
+  spi_transmit_receive over drv_spi.c).
+
+  Pads are muxed in groups of four (pad % 4: 0 MOSI, 1 MISO, 2 SS, 3 SCLK,
+  MOSI/MISO swapped when swap-mosi-miso is set - the EVB default).
+
+compatible: "intelpro,ipro-spi"
+
+include: [spi-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  swap-mosi-miso:
+    type: boolean
+    description: Swap the MOSI and MISO pad functions (GLB_Swap_SPI_0_MOSI_With_MISO).
+
+  deglitch-count:
+    type: int
+    default: 0
+    description: Input de-glitch filter length in SPI clocks (0 = off).
+
+  dmas:
+    description: |
+      Optional TX DMA channel: <&dma0 channel IPRO7_DMA_REQ_SPIn_TX>. Transmit-only
+      transfers of CONFIG_SPI_IPRO_DMA_MIN_BYTES or more (display frames) then run
+      by DMA instead of the polled FIFO path.
+
+  dma-names:
+    description: '"tx".'

@@ -461,9 +461,11 @@ menu "Controller Configuration"
         depends on BT_CTLR_IPRO && IPRO7
         default 16
         help
-          Radio timing restored into the rebuilt BLE core; 16 / RXPATHDLY0 7 /
-          RXPWRUP0 88 are the validated IPRO7 values (the code falls back to
-          the register reset values when the symbols are absent).
+          Override for the radio timing restored into the rebuilt BLE core
+          (the PDS verifiers set 16 / RXPATHDLY0 7 / RXPWRUP0 88). When the
+          symbols are absent the restore keeps the cold-init values from
+          rf_program_radio() (RXWINSZDEF 16, RXPATHDLY0 9, RXPWRUP0 88);
+          prebuilt archives are built that way.
 
     config IPRO_BLE_PDS_RXPATHDLY0
         int "BLE RXPATHDLY0 used after a PDS restore"

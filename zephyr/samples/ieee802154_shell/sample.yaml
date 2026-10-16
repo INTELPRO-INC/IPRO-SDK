@@ -1,0 +1,10 @@
+sample:
+  name: IPRO7 IEEE 802.15.4 shell
+  description: Zephyr net + ieee802154 shell over the IPRO7 M154 radio
+tests:
+  sample.ipro.ieee802154_shell:
+    platform_allow: ipro7_evb
+    integration_platforms:
+      - ipro7_evb
+    tags: ipro ieee802154
+    build_only: true

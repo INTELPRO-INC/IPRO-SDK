@@ -62,4 +62,5 @@ __component_add_sources(${IPRO_BLE_CTLR_SRC_FINAL})
 __component_add_include_dirs(${IPRO_BLE_CTLR_PUBLIC_INC})
 __component_add_private_include_dirs(${IPRO_BLE_CTLR_PRIVATE_INC})
 __component_add_private_compile_definitions(${IPRO_BLE_CTLR_DEFS})
+__component_add_private_compile_options(${IPRO_BLE_CTLR_COMPILE_OPTIONS})
 

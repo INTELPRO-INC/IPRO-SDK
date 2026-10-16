@@ -1,0 +1,21 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 true random number generator inside the security engine
+  (SEC_ENG @0x30080000). Exposed as a Zephyr entropy device through the SDK
+  HAL (hal_sec_trng.c / drv_sec_eng.c).
+
+compatible: "intelpro,ipro-trng"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true

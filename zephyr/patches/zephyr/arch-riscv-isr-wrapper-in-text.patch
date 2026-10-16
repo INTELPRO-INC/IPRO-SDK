@@ -1,0 +1,31 @@
+arch: riscv: optionally put _isr_wrapper in .text
+
+_isr_wrapper lives in .exception.entry, which the linker script keeps in
+XIP flash and which zephyr_code_relocate() cannot move (it only handles
+.text/.rodata/.data/.bss input sections). With a CLIC every interrupt and,
+with RISCV_ALWAYS_SWITCH_THROUGH_ECALL, every context switch runs it; on
+IPRO6S (XIP flash, ~7 traps per received Wi-Fi MPDU) its I-cache misses
+cost several microseconds per trap. With CONFIG_RISCV_ISR_WRAPPER_IN_TEXT
+(defined by the SoC/module that relocates it together with the hooks it
+calls) it goes to .text, where it stays in flash unless relocated. vector.S
+takes its address for mtvec, so it is kept by --gc-sections, and the
+.balign below still gives mtvec its alignment. Without the option nothing
+changes, so a patched tree still builds code that does not know about it.
+
+Carried by the IPRO SDK through zephyr/patches.yml (west patch apply).
+
+--- a/arch/riscv/core/isr.S
++++ b/arch/riscv/core/isr.S
+@@ -134,7 +134,11 @@
+ /*
+  * Handler called upon each exception/interrupt/fault
+  */
+-SECTION_FUNC(exception.entry, _isr_wrapper)
++#ifdef CONFIG_RISCV_ISR_WRAPPER_IN_TEXT
++SECTION_FUNC(TEXT, _isr_wrapper)
++#else
++SECTION_FUNC(exception.entry, _isr_wrapper)
++#endif
+ 
+ /* Provide requested alignment, which depends e.g. on MTVEC format */
+ .balign CONFIG_RISCV_TRAP_HANDLER_ALIGNMENT

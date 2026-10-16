@@ -1,0 +1,23 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config ADC_IPRO
+	bool "IPRO7 GPADC driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_ADC_ENABLED
+	depends on ADC
+	select IPRO_HAL
+	help
+	  Zephyr ADC over the IPRO7 GPADC (SDK LL drv_adc.c): 12/14/16-bit
+	  single-ended conversions on the 12 analog pads and the internal
+	  channels (DAC outputs, temperature sensor, Vref, VBAT/2, GND).
+
+config ADC_IPRO_DISCARD_ROUNDS
+	int "Conversion rounds to discard after a start"
+	depends on ADC_IPRO
+	default 2
+	range 0 8
+	help
+	  The GPADC's first conversions after a start carry the previous input;
+	  the driver runs the scan list continuously and drops this many rounds
+	  before taking the samples it returns.

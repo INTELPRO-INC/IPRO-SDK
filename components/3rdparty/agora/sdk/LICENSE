@@ -1,0 +1,24 @@
+Agora RTC SDK for IPRO7
+=======================
+
+  lib/riscv64/libagora-rtc-sdk.a
+  include/agora_rtc_api.h
+
+Copyright (C) 2020 Agora IO. All rights reserved.
+
+INTELPRO redistributes these files in the IPRO SDK with the written
+permission of Agora (October 2026). Use of the Agora RTC SDK, and of the
+Agora service it connects to, is subject to the Agora Terms of Service:
+
+  https://www.agora.io/en/terms-of-service/
+
+Agora has also agreed that the IPRO SDK ships the IPRO7 port of AOSL
+(components/3rdparty/agora/port) for customers to develop applications,
+and that customers may use AOSL, with that port and this RTC SDK, on
+devices they ship to end users. In all other respects AOSL and the port
+are under the AOSL license (components/3rdparty/agora/port/LICENSE).
+
+The files above are as delivered by Agora (SHA-256):
+
+  63cb2b8833cca769db39ffe1edaa1f6ff49ed94eac22c57c751cae9546a0dafc  lib/riscv64/libagora-rtc-sdk.a
+  8fe885bcfd4b67c637a72a51433823f93cc3aee6769ec6fe487c83c7b694f6d4  include/agora_rtc_api.h

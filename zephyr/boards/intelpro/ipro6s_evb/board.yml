@@ -1,0 +1,8 @@
+board:
+  name: ipro6s_evb
+  full_name: IPRO6S Evaluation Board
+  vendor: intelpro
+  socs:
+    - name: ipro6s
+      variants:
+        - name: boot2

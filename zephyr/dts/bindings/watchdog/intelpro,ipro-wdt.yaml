@@ -1,0 +1,23 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 watchdog (WDT0 inside the TIMER block @0x30010000). 16-bit counter
+  clocked from the 32 kHz clock / 32 (1 kHz, set by the clock-control
+  driver) -> 1 ms resolution, up to 65.535 s. Fires a reset, or the
+  TIMER0_WDT interrupt when interrupt mode is used. Driven through the SDK
+  HAL (hal_wdt.c).
+
+compatible: "intelpro,ipro-wdt"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true

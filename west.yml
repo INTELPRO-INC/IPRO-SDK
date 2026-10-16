@@ -1,0 +1,44 @@
+# West manifest for the IPRO SDK Zephyr integration.
+#
+# The SDK is the manifest repository (Zephyr "T2" topology): the workspace
+# lives beside it and pulls the pinned Zephyr tree plus the few upstream
+# modules the IPRO port consumes. The SDK itself is picked up as a Zephyr
+# module through zephyr/module.yml (boards, SoC, DTS bindings and drivers).
+#
+#   mkdir ipro-ws && cd ipro-ws
+#   west init -l <path-to-ipro_sdk>      # or: west init -m <ipro_sdk.git>
+#   west update
+#   west patch apply                     # the SDK's Zephyr patches, zephyr/patches.yml
+#
+# tools/zephyr/bootstrap.sh automates this into <ipro_sdk>/zephyr-workspace.
+
+manifest:
+  version: "1.0"
+
+  defaults:
+    remote: zephyrproject-rtos
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.4.0
+      import:
+        # Only the modules the IPRO Zephyr port actually links against.
+        # Everything else in Zephyr's own west.yml is skipped to keep the
+        # workspace small (no ARM HALs, no host tools we do not use).
+        name-allowlist:
+          - mbedtls            # TLS / PSA crypto backend (BT SMP, OpenThread DTLS)
+          - tf-psa-crypto      # PSA crypto core required by mbedtls 4.x
+          - openthread         # Thread stack for the IEEE 802.15.4 radio
+          - picolibc           # optional C library
+          - segger             # RTT console (optional)
+          - mcuboot            # MCUboot bootloader (sysbuild image slots)
+          - liblc3             # LC3 codec for the LE Audio (BAP/CAP) samples
+          - zcbor              # CBOR for MCUmgr (SMP over BLE: the ble_ota sample)
+
+  self:
+    path: ipro_sdk

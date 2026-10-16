@@ -1,0 +1,10 @@
+/* Enable the radio and make it the default 802.15.4 device (OpenThread). */
+/ {
+	chosen {
+		zephyr,ieee802154 = &ieee802154;
+	};
+};
+
+&ieee802154 {
+	status = "okay";
+};

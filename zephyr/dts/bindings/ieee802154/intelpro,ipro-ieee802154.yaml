@@ -1,0 +1,36 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 IEEE 802.15.4 radio (M154 MAC @0x3C000000 + shared 2.4 GHz RF).
+  Driven through the SDK unified radio driver
+  (components/wireless/ieee802154: ieee802154.c over the lmac154 lower MAC)
+  and the IPRO7 RF component. Hardware auto-ACK, frame filtering, CSMA-CA,
+  frame-pending table, energy detection, CCA and hardware timestamps.
+
+compatible: "intelpro,ipro-ieee802154"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  interrupt-names:
+    required: true
+
+  clocks:
+    required: true
+
+  tx-power:
+    type: int
+    default: 0
+    description: Initial TX power in dBm (-20 .. 20).
+
+  cca-threshold:
+    type: int
+    default: -75
+    description: CCA energy threshold in dBm.

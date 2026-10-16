@@ -1,0 +1,16 @@
+sample:
+  name: IPRO7AI EVK demo (LCD, microphone, speaker, camera)
+tests:
+  sample.ipro.evk_demo:
+    platform_allow:
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7ai_evk
+    tags:
+      - ipro
+      - evk
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "evk demo ready"

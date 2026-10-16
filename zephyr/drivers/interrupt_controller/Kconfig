@@ -1,0 +1,28 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config INTC_IPRO_ECLIC
+	bool "IPRO7 Nuclei ECLIC (run-time located)"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_ECLIC_ENABLED
+	select RISCV_SOC_HAS_CUSTOM_IRQ_HANDLING
+	help
+	  Enhanced Core Local Interrupt Controller of the Nuclei N300 core in
+	  the IPRO7. Unlike Zephyr's generic CLIC driver the register base is
+	  not a device-tree constant: the SoC only publishes it through the
+	  MIRGB_INFO CSR at run time (IREGION + 0x20000), exactly as the
+	  vendor SDK and boot ROM discover it.
+
+if INTC_IPRO_ECLIC
+
+config INTC_IPRO_ECLIC_NLBITS
+	int "Interrupt level bits (0 = use every clicintctl bit as level)"
+	range 0 8
+	default 0
+	help
+	  Number of clicintctl bits that encode the interrupt level (the rest
+	  encode priority within a level). 0 keeps the SDK behaviour, where
+	  every implemented bit is a level bit (CLICINTCTLBITS from
+	  clicinfo, 3 on the IPRO7 -> 8 preemption levels).
+
+endif # INTC_IPRO_ECLIC

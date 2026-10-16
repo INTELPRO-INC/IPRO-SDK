@@ -1,0 +1,29 @@
+#include <zephyr/dt-bindings/dma/ipro7-dma.h>
+#include <zephyr/dt-bindings/pinctrl/ipro7-pinctrl.h>
+
+&pinctrl {
+	i2s0_default: i2s0_default {
+		group1 {
+			/* Header pins in I2S function (bench choice, no codec attached) */
+			pinmux = <IPRO7_PINMUX(24, IPRO7_FUN_I2S)>, <IPRO7_PINMUX(25, IPRO7_FUN_I2S)>,
+				 <IPRO7_PINMUX(26, IPRO7_FUN_I2S)>, <IPRO7_PINMUX(27, IPRO7_FUN_I2S)>;
+			bias-pull-up;
+		};
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&i2s0 {
+	status = "okay";
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-names = "default";
+	dmas = <&dma0 4 IPRO7_DMA_REQ_I2S_TX>, <&dma0 5 IPRO7_DMA_REQ_I2S_RX>;
+	dma-names = "tx", "rx";
+};
+
+&pdm0 {
+	status = "okay";
+};

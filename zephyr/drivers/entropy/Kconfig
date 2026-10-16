@@ -1,0 +1,12 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config ENTROPY_IPRO_TRNG
+	bool "IPRO7 TRNG entropy driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_TRNG_ENABLED
+	depends on ENTROPY_GENERATOR
+	select ENTROPY_HAS_DRIVER
+	select IPRO_HAL
+	help
+	  Zephyr entropy over the SDK security-engine TRNG (hal_sec_trng.c).

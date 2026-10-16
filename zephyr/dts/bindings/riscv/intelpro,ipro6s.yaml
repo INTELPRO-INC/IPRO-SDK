@@ -1,0 +1,8 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: INTELPRO IPRO6S SoC (Nuclei N300 RV32IMAFC + Zb* + ECLIC)
+
+compatible: "intelpro,ipro6s"
+
+include: [base.yaml]

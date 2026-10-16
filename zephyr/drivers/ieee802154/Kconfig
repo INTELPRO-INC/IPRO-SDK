@@ -1,0 +1,121 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config IEEE802154_IPRO
+	bool "IPRO7 IEEE 802.15.4 radio driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_IEEE802154_ENABLED
+	depends on IEEE802154
+	select IPRO_HAL
+	select IPRO_WIRELESS_IEEE802154
+	select IPRO_WIRELESS_RF
+	help
+	  Zephyr ieee802154_radio_api over the SDK unified 802.15.4 driver
+	  (ieee802154.c / lmac154) and the IPRO7 RF front-end.
+
+if IEEE802154_IPRO
+
+config IEEE802154_IPRO_XTAL_CAPCODE
+	int "RF crystal capcode (deprecated, use SOC_IPRO7_XTAL_CAPCODE)"
+	range 0 255
+	default 0
+	help
+	  Deprecated: the crystal trim is chip-wide (it also sets the BLE
+	  carrier and the kernel clock), so it moved to the SoC option
+	  SOC_IPRO7_XTAL_CAPCODE. A non-zero value here still overrides that
+	  option everywhere (boot, BLE and 802.15.4 RF init); 0 defers to it.
+	  Calibrate with `ipro154 xtal <code>` and `ipro154 cfo` against a
+	  reference radio.
+
+config IEEE802154_IPRO_RX_STACK_SIZE
+	int "RX thread stack size"
+	default 1024
+	help
+	  Frames are copied out of the radio ISR into a small ring and handed
+	  to the network stack from this thread.
+
+config IEEE802154_IPRO_RX_QUEUE_DEPTH
+	int "RX frame queue depth"
+	default 4
+
+config IEEE802154_IPRO_INIT_PRIO
+	int "Driver init priority"
+	default 80
+
+config IEEE802154_IPRO_CSL_ACCURACY
+	int "Clock accuracy for delayed operations (ppm)"
+	range 0 255
+	default 255
+	help
+	  Accuracy of the timebase used for timed TX/RX, reported to OpenThread
+	  as the CSL clock accuracy (Parent Response to Thread 1.2+ children).
+	  The IPRO7 32 MHz crystal has not been characterised on this port, so
+	  the default is the worst case (255 ppm = unknown); lower it once the
+	  drift has been measured.
+
+config IEEE802154_IPRO_TX_SEC
+	bool "Secure transmitted frames in the driver (CCM*) and inject the CSL IE"
+	default y
+	help
+	  Advertise IEEE802154_HW_TX_SEC: the stack hands secured frames over
+	  unencrypted with the MAC keys and frame counter, the driver runs
+	  CCM* right before transmission and fills the CSL IE phase/period.
+	  Required for a CSL receiver (SSED) on OpenThread; a router or
+	  plain SED works either way.
+
+endif # IEEE802154_IPRO
+
+config IEEE802154_IPRO_CSMA_RETRIES
+	int "Extra CSMA-CA rounds before reporting a busy channel"
+	depends on IEEE802154_IPRO
+	default 2
+	range 0 8
+	help
+	  When the MAC's CSMA-CA (up to max backoffs) ends with CHANNEL_BUSY, the
+	  driver re-runs the whole CSMA transmit this many more times, with a
+	  1-4 ms random gap, before returning -EBUSY to the stack.
+
+config IEEE802154_IPRO_FRAME_TRACE
+	bool "HAL frame trace (ipro154 trace shell command)"
+	depends on IEEE802154_IPRO
+	help
+	  Keep a ring of the frames the radio receives and transmits (after
+	  security, including its own Enh-ACKs and the ACKs it receives) with
+	  the HAL's microsecond SFD timestamps, dumped by `ipro154 trace dump`
+	  and turned into a pcap on the host - protocol verification without
+	  a sniffer. Recording starts with `ipro154 trace on`.
+
+config IEEE802154_IPRO_FRAME_TRACE_DEPTH
+	int "Frame trace ring depth (records)"
+	default 96
+	depends on IEEE802154_IPRO_FRAME_TRACE
+
+config IEEE802154_IPRO_FRAME_TRACE_AT_BOOT
+	bool "Frame trace records from boot"
+	depends on IEEE802154_IPRO_FRAME_TRACE
+	help
+	  Start recording at boot, so the frames sent right after a reset are
+	  in the ring when the host turns streaming back on.
+
+config IEEE802154_IPRO_OT_CSL_PERIOD_US
+	int "OpenThread CSL period applied at boot (us, 0 = none)"
+	default 0
+	depends on NET_L2_OPENTHREAD && OPENTHREAD_CSL_RECEIVER
+	help
+	  OpenThread keeps the CSL period in RAM only: after a reset an SSED
+	  comes back as a plain SED while its parent still sends to it by CSL,
+	  and Thread 1.4.1 4.6.4 wants it to re-establish CSL synchronization.
+	  A non-zero value (a multiple of 160 us) is set once OpenThread is up,
+	  like THREAD_CSL_PERIOD_US of the FreeRTOS ipro_thread_ftd_cli.
+
+config IEEE802154_IPRO_OT_CSL_TIMEOUT_S
+	int "OpenThread CSL synchronized timeout applied at boot (s, 0 = default)"
+	default 0
+	depends on IEEE802154_IPRO_OT_CSL_PERIOD_US != 0
+
+config IEEE802154_IPRO_FRAME_DUMP
+	bool "Hexdump every transmitted and received PSDU (bench)"
+	depends on IEEE802154_IPRO
+	help
+	  Air-level debugging without a sniffer. Very chatty; use deferred
+	  logging (LOG_MODE_IMMEDIATE faults from the TX path).

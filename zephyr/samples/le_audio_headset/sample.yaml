@@ -1,0 +1,13 @@
+sample:
+  name: LE Audio unicast headset (CAP acceptor, LC3 -> GPDAC speaker) on the IPRO7AI EVK
+tests:
+  sample.ipro.le_audio_headset:
+    platform_allow:
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7ai_evk
+    tags:
+      - ipro
+      - bluetooth
+      - leaudio
+    build_only: true

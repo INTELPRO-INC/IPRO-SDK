@@ -1,0 +1,276 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * INTELPRO IPRO7AI EVK: IPRO7AI QFN49 module with in-package flash and
+ * 8 MB PSRAM on the IPRO7AI_MODULE_SUB_0812A carrier (2.4" ST7789P3 LCD,
+ * SC101IOT camera, PDM mic, class-D speaker, micro-SD, Li-ion charger).
+ * Pin map: bsp/board/ipro7/IPRO7AI_EVK.md.
+ */
+
+/dts-v1/;
+
+#include <intelpro/ipro7.dtsi>
+#include "ipro7ai_evk-pinctrl.dtsi"
+#include <zephyr/dt-bindings/dma/ipro7-dma.h>
+
+/ {
+	model = "INTELPRO IPRO7AI EVK";
+	compatible = "intelpro,ipro7ai-evk";
+
+	chosen {
+		zephyr,sram = &sram0;
+		/* flash0 is the physical part; the controller's "ranges" maps it
+		 * onto the XIP window boot2 opens (FW partition -> 0x13000000), so
+		 * the linker takes ROM from the chosen code partition. */
+		zephyr,flash = &flash0;
+		zephyr,flash-controller = &flashctrl;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,entropy = &trng;
+		zephyr,display = &st7789;
+	};
+
+	aliases {
+		led0 = &lcd_backlight;
+		watchdog0 = &wdt0;
+		spi-flash0 = &flash0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		/* LCD backlight enable (GPIO12, active high) doubles as the
+		 * visible "LED" for blinky-style samples. */
+		lcd_backlight: led_0 {
+			gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
+			label = "LCD backlight";
+		};
+		spk_enable: led_1 {
+			gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;
+			label = "Speaker amplifier enable";
+		};
+		sd_power: led_2 {
+			gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+			label = "SD card power";
+		};
+		/* SC101IOT reset, active low, level-shifted by Q3 (no PWDN pin).
+		 * board.c releases it with MCLK running so the sensor answers on
+		 * SCCB (CONFIG_BOARD_IPRO7AI_EVK_CAMERA_POWER). */
+		cam_reset: led_3 {
+			gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;   /* GPIO35 */
+			label = "Camera reset";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		sd_detect: sd_detect {
+			gpios = <&gpio1 2 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;   /* GPIO34 */
+			label = "SD card detect";
+		};
+	};
+
+	mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi0>;
+		dc-gpios = <&gpio0 17 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* HEM LCM-T2D4BP-084, ST7789P3, 240x320 */
+		st7789: st7789v@0 {
+			compatible = "sitronix,st7789v";
+			reg = <0>;
+			/* The SDK demo drives this panel at 16 MHz (polled SPI). */
+			mipi-max-frequency = <16000000>;
+			/* Landscape, rotated 90 degrees counter-clockwise from the
+			 * panel's native portrait: MADCTL MV|MY (the SDK demo's
+			 * default "dir 3"); use 0x60 (MV|MX) for the other way round. */
+			width = <320>;
+			height = <240>;
+			x-offset = <0>;
+			y-offset = <0>;
+			vcom = <0x19>;
+			gctrl = <0x35>;
+			vrhs = <0x12>;
+			/* No vdvs: the ST7789P3 has no C4h (VDVS) command; the driver
+			 * only sends it when the property is present. Values follow the
+			 * SDK's "tuned" sequence (apps/platform/ipro7ai_evk_demo). */
+			mdac = <0xA0>;
+			gamma = <0x01>;
+			colmod = <0x05>;
+			lcm = <0x2c>;
+			porch-param = [0c 0c 00 33 33];
+			cmd2en-param = [5a 69 02 01];
+			pwctrl1-param = [a4 a1];
+			pvgam-param = [D0 04 0D 11 13 2B 3F 54 4C 18 0D 0B 1F 23];
+			nvgam-param = [D0 04 0C 11 13 2C 3F 44 51 2F 1F 1F 20 23];
+			ram-param = [00 F0];
+			rgb-param = [CD 08 14];
+			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+			status = "okay";
+		};
+	};
+};
+
+&psram0 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <2000000>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-names = "default";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+/* LCD: SCLK 15 / MOSI 16, CS on GPIO10 (software). The EVB-style pin swap
+ * is not used on this board (MOSI is the MOSI position of pad group 4). */
+&spi0 {
+	status = "okay";
+	pinctrl-0 = <&spi0_lcd>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>;
+	/* LCD frames by DMA (channel 2; 0 = AUADC HAL, 1 = GPDAC stream). */
+	dmas = <&dma0 2 IPRO7_DMA_REQ_SPI0_TX>;
+	dma-names = "tx";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+/* Camera SCCB: SC101IOT, 7-bit address 0x68 (ID 0xf7/0xf8 = 0xda/0x4a) */
+&i2c0 {
+	status = "okay";
+	pinctrl-0 = <&i2c0_cam>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	/* GPIO36/37 = gpio1 pins 4/5: stuck-bus guard + recovery (the driver
+	 * samples them as GPIO inputs; an AF pad reads 0 through GLB). */
+	scl-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+};
+
+&timer0 {
+	status = "okay";
+};
+
+&counter0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&trng {
+	status = "okay";
+};
+
+&rtc0 {
+	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};
+
+/* Infineon IM69D129 PDM microphone on the AON pads GPIO18 (CLK) / 19 (DATA),
+ * SELECT grounded = left slot. The AUADC HAL muxes the pads itself. */
+&pdm0 {
+	clk-pin = <18>;
+	data-pin = <19>;
+	channel = "left";
+};
+
+&flashctrl {
+	/* Real IPRO7AI EVK (W25Q80, 1 MB, checked 2026-09-21): the newer boot2
+	 * layout, partition_cfg_1M_boot2.toml. The IntelProCube tool writes a
+	 * 4 KB image header at the start of the "FW" partition (0x12000) and
+	 * the firmware from 0x13000; boot2 maps that at 0x13000000. So physical
+	 * 0x13000 <-> 0x13000000. */
+	ranges = <0x0 0x12fed000 DT_SIZE_M(1)>;
+};
+
+&flash0 {
+	/* W25Q80 (JEDEC EF4014): 1 MB. Layout = partition_cfg_1M_boot2.toml:
+	 * boot2 64 KB, two partition-table copies at 0x10000/0x11000, "FW"
+	 * 0x12000 .. 0xda000 (800 KB), PSM (= "storage" here) 0xda000. */
+	reg = <0x0 DT_SIZE_M(1)>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot2_partition: partition@0 {
+			label = "boot2";
+			reg = <0x00000000 0x10000>;
+			read-only;
+		};
+		pt_partition: partition@10000 {
+			label = "pt";
+			reg = <0x00010000 0x2000>;
+			read-only;
+		};
+		/* boot2's "FW" region (0x12000 .. 0xda000): 4 KB tool header, then
+		 * the firmware at 0x13000 = XIP 0x13000000. With MCUboot: a 96 KB
+		 * bootloader there, a 348 KB primary and a 344 KB secondary slot
+		 * (the flash tool's FW image must end 16 B short of the region, so
+		 * the last slot stops one sector early). Without MCUboot an
+		 * application links at 0x13000 and may span the region
+		 * (FLASH_LOAD_OFFSET/SIZE in Kconfig.defconfig). */
+		fwhdr_partition: partition@12000 {
+			label = "fw-header";
+			reg = <0x00012000 0x1000>;
+			read-only;
+		};
+		boot_partition: partition@13000 {
+			label = "mcuboot";
+			reg = <0x00013000 0x18000>;
+		};
+		slot0_partition: partition@2b000 {
+			label = "image-0";
+			reg = <0x0002b000 0x57000>;
+		};
+		slot1_partition: partition@82000 {
+			label = "image-1";
+			reg = <0x00082000 0x56000>;
+		};
+		storage_partition: partition@da000 {
+			label = "storage";
+			reg = <0x000da000 DT_SIZE_K(128)>;
+		};
+		backup_partition: partition@fa000 {
+			label = "backup";
+			reg = <0x000fa000 DT_SIZE_K(4)>;
+		};
+		media_partition: partition@fb000 {
+			label = "media";
+			reg = <0x000fb000 DT_SIZE_K(16)>;
+		};
+		factory_partition: partition@ff000 {
+			label = "factory";
+			reg = <0x000ff000 DT_SIZE_K(4)>;
+		};
+	};
+};

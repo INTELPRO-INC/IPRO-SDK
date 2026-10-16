@@ -1,0 +1,20 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO HBN RTC as a Zephyr counter: free-running 40-bit counter on the
+  32 kHz low-power clock (runs through PDS/HBN sleep), one alarm through
+  the HBN_OUT0 interrupt. Presented as a 32-bit counter (low word).
+
+compatible: "intelpro,ipro-rtc"
+
+include: base.yaml
+
+properties:
+  interrupts:
+    required: true
+
+  clock-frequency:
+    type: int
+    default: 32768
+    description: Nominal low-power clock rate in Hz (RC32K trimmed or XTAL32K).

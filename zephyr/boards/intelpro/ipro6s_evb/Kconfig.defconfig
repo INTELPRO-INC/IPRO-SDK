@@ -1,0 +1,46 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_IPRO6S_EVB
+
+# XIP window: flash offset 0 (BootROM-direct) or flash offset 0x13000 (boot2
+# layout, see the flashctrl "ranges" in the variant's DTS) is 0x13000000.
+config FLASH_BASE_ADDRESS
+	default 0x12fed000 if BOARD_IPRO6S_EVB_IPRO6S_BOOT2
+	default 0x13000000
+
+# BootROM-direct layout (partition_cfg_fw_direct.toml): the image sits at
+# flash offset 0 and must stay inside the 0x1F0000-byte FW slot.
+config FLASH_SIZE
+	default 1984 if !BOARD_IPRO6S_EVB_IPRO6S_BOOT2
+
+# boot2 layout (partition_cfg_4M_boot2.toml): firmware at flash 0x13000,
+# inside the 0x12000..0x210000 FW region (4 KB tool header first).
+config FLASH_SIZE
+	default 2048 if BOARD_IPRO6S_EVB_IPRO6S_BOOT2
+
+config FLASH_LOAD_OFFSET
+	default 0x13000 if BOARD_IPRO6S_EVB_IPRO6S_BOOT2 && !USE_DT_CODE_PARTITION
+
+config FLASH_LOAD_SIZE
+	default 0x1e5000 if BOARD_IPRO6S_EVB_IPRO6S_BOOT2 && !USE_DT_CODE_PARTITION
+
+# Every IPRO firmware carries the console shell by default, like the
+# FreeRTOS SDK: the bench/flash tooling relies on "reboot_dl" to enter the
+# BootROM download mode over the console. Applications that must not have
+# it (bootloaders, size-critical images) set CONFIG_SHELL=n.
+config SHELL
+	default y
+
+config SHELL_BACKEND_SERIAL
+	default y if SHELL
+
+# With the shell on, an application that enables LOG gets the shell log
+# backend as its only backend, and LOG_PRINTK (default y) then routes printk
+# through it too: everything printed before the shell thread runs (driver
+# init, the boot banner, an application's first lines) is silently dropped.
+# Keep printk on the console directly.
+config LOG_PRINTK
+	default n
+
+endif # BOARD_IPRO6S_EVB

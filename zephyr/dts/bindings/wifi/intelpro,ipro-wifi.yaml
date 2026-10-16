@@ -1,0 +1,8 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: IPRO6S on-chip Wi-Fi 6 MAC/PHY (SDK macsw + fhost stack)
+
+compatible: "intelpro,ipro-wifi"
+
+include: base.yaml

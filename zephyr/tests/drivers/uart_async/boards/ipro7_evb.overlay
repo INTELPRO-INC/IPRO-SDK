@@ -1,0 +1,11 @@
+/* Async API on the console UART: TX/RX DMA on channels 6/7. */
+#include <zephyr/dt-bindings/dma/ipro7-dma.h>
+
+&dma0 {
+	status = "okay";
+};
+
+&uart0 {
+	dmas = <&dma0 6 IPRO7_DMA_REQ_UART0_TX>, <&dma0 7 IPRO7_DMA_REQ_UART0_RX>;
+	dma-names = "tx", "rx";
+};

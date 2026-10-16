@@ -1,0 +1,37 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 I2C controller (I2C0 @0x3000E000 function 6, I2C1 @0x30019000
+  function 25). Controller mode only, standard/fast mode. The hardware
+  transaction model is <address> [sub-address 0-2 bytes] <data...>, so a
+  Zephyr write+restart+read pair with a 1- or 2-byte write is executed as one
+  hardware transaction; longer sequences are split at message boundaries.
+  Pads are muxed in pairs (even pad SCL, odd pad SDA).
+
+compatible: "intelpro,ipro-i2c"
+
+include: [i2c-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  scl-gpios:
+    type: phandle-array
+    description: |
+      SCL pad as a GPIO (same pad as the pinctrl entry). With sda-gpios it
+      enables the stuck-bus check before every transfer (-EBUSY while either
+      line is held low; the controller hangs the APB otherwise) and
+      i2c_recover_bus(). The pad's input buffer stays on under the I2C mux,
+      so the level is readable without re-muxing.
+
+  sda-gpios:
+    type: phandle-array
+    description: SDA pad as a GPIO, see scl-gpios.

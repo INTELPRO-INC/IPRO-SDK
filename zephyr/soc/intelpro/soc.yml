@@ -1,0 +1,10 @@
+family:
+- name: intelpro
+  series:
+  - name: ipro7
+    socs:
+    - name: ipro7
+  - name: ipro6s
+    socs:
+    - name: ipro6s
+vendor: intelpro

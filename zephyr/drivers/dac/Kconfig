@@ -1,0 +1,45 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config DAC_IPRO
+	bool "IPRO7 GPDAC driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_DAC_ENABLED
+	depends on DAC
+	select IPRO_HAL
+	help
+	  Zephyr DAC over the IPRO7 GPDAC (SDK LL drv_dac.c): two 10-bit
+	  register-sourced channels, A on GPIO23 and B on GPIO22.
+
+config DAC_IPRO_STREAM
+	bool "GPDAC DMA streaming (ipro_dac_stream.h)"
+	depends on DAC_IPRO && DMA
+	help
+	  Continuous mono PCM playback through GPDAC channel A fed by DMA, the
+	  SDK components/audio path, as a small vendor API (Zephyr's DAC API
+	  has no streaming).
+
+if DAC_IPRO_STREAM
+
+config DAC_IPRO_STREAM_MAX_SEG_SAMPLES
+	int "Maximum samples per DMA segment"
+	default 1024
+
+config DAC_IPRO_STREAM_THREAD_PRIO
+	int "Refill thread priority"
+	default 3
+	help
+	  The segment producer runs on its own thread so an application load
+	  (Bluetooth host, codec) cannot starve it; keep it above them.
+
+config DAC_IPRO_STREAM_THREAD_STACK
+	int "Refill thread stack (bytes)"
+	default 2048
+
+config DAC_IPRO_STREAM_DMA_REQ
+	int "DMA peripheral request id of the GPDAC"
+	default 13
+	help
+	  IPRO7_DMA_REQ_DAC0 from dt-bindings/dma/ipro7-dma.h.
+
+endif

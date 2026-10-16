@@ -1,0 +1,26 @@
+# Changes the IPRO SDK carries on top of the pinned Zephyr (west.yml).
+# tools/zephyr/bootstrap.sh applies them after `west update`; by hand:
+# `west patch apply` from zephyr-workspace/ (see `west patch --help`).
+# Paths are relative to zephyr/patches/.
+patches:
+  - path: zephyr/net-tcp-ack-every-second-full-segment.patch
+    sha256sum: 0aec6c27c71bc944467d50a90280cc275009427d15756e63af3a1048a3119910
+    module: zephyr
+    author: Rex Huang
+    email: rexhuang@intelpro.tw
+    date: 2026-09-29
+    upstreamable: true
+    comments: >
+      TCP download over IPRO6S Wi-Fi: ACK every second full segment and a
+      40 ms delayed-ACK timer instead of a fixed 100 ms
+      (docs/zephyr/known_issues.md, 2026-09-29).
+  - path: zephyr/arch-riscv-isr-wrapper-in-text.patch
+    sha256sum: cb7e60c22419b262f8394b0adf16ca60545c03d94c09a74dc2effafed6947e30
+    module: zephyr
+    author: Rex Huang
+    email: rexhuang@intelpro.tw
+    date: 2026-09-30
+    upstreamable: true
+    comments: >
+      Lets zephyr/cmake/ipro_wifi_hot.cmake move the RISC-V trap entry to
+      RAM on IPRO6S (every interrupt and context switch runs it).

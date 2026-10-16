@@ -1,0 +1,330 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+#
+# The SDK HAL (bsp/hal + bsp/drivers/<soc>/std_drv) is compiled unchanged
+# by Zephyr. Its sources test the SDK's own CONFIG_* symbols; the ones
+# that matter are mirrored here with the same names so <zephyr/autoconf.h>
+# satisfies <generated/autoconf.h>.
+
+config IPRO_HAL
+	bool "Compile the IPRO SDK HAL"
+	depends on SOC_FAMILY_INTELPRO
+	help
+	  Build bsp/hal, the std_drv register layer and bsp/common as a
+	  Zephyr library. Every ipro_* Zephyr driver depends on it.
+
+if IPRO_HAL
+
+config IPRO7
+	bool
+	default y if SOC_SERIES_IPRO7
+	help
+	  Mirror of the SDK's CONFIG_IPRO7 chip selector.
+
+config IPRO6
+	bool
+	default y if SOC_SERIES_IPRO6S
+	help
+	  Mirror of the SDK's CONFIG_IPRO6 chip selector (IPRO6S is the IPRO6
+	  die; bsp/drivers/ipro6_soc).
+
+config ZEPHYR
+	bool
+	default y
+	help
+	  Mirror of the SDK's RTOS choice (components/os/Kconfig) so HAL
+	  sources that test CONFIG_ZEPHYR see it.
+
+config LINK_FLASH
+	bool
+	default y if XIP
+	help
+	  Mirror of the SDK's CONFIG_LINK_FLASH: the image executes from
+	  XIP flash (always the case for Zephyr on IPRO7).
+
+config IPRO_HAL_USE_PSRAM
+	bool "PSRAM present (mirror of CONFIG_USE_PSRAM)"
+	help
+	  The board carries the 8 MB PSRAM. Enables the PSRAM HAL, the early
+	  DQS calibration hand-off and the ATTR_PSRAM_* placement.
+
+config USE_PSRAM
+	bool
+	default IPRO_HAL_USE_PSRAM
+
+config EM_SIZE
+	int
+	default IPRO6S_EM_SIZE_KB if SOC_SERIES_IPRO6S
+	default IPRO7_EM_SIZE_KB
+	help
+	  Mirror of the SDK's CONFIG_EM_SIZE (BLE Exchange Memory, KB).
+
+config AON_WDT_SUPPORT
+	bool
+	default y if SOC_SERIES_IPRO7
+	help
+	  The IPRO7 std_drv ships the HBN AON watchdog API (the SDK sets
+	  this from bsp/drivers/ipro7_soc/CMakeLists.txt).
+
+config IPRO_FLASH_CFG_FROM_BOOTROM
+	bool "Take the flash configuration from the boot2 hand-off"
+	default y if SOC_SERIES_IPRO7
+	help
+	  Mirror of the SDK's CONFIG_FLASH_CFG_FROM_BOOTROM: flash_init() copies
+	  the SPI flash configuration boot2 passed in OCRAM (Boot2_Param_Save in
+	  soc_prep_hook) instead of re-detecting the part with XIP paused. The
+	  detection path hangs on the EVK under Zephyr (hal_boot2_init never
+	  returns), so keep this on for boot2-loaded images.
+
+config PLATFORM_UART_BAUDRATE
+	int
+	default 2000000
+	help
+	  Mirror of the SDK's console baud rate symbol (referenced by
+	  bsp/common). The Zephyr console speed comes from the device tree.
+
+config IPRO_HAL_IRQ_PRIO
+	int "ECLIC level for ISRs registered by the SDK HAL"
+	range 0 7
+	default 1
+	help
+	  Interrupt level used when HAL code calls Interrupt_Handler_Register()
+	  (routed through zephyr/hal_glue/ipro_irq_glue.c). The SDK uses
+	  level 1 for every peripheral; keep it below the levels given to
+	  the radio ISRs in the device tree.
+
+config IPRO_HAL_SDK_LOG
+	bool "Route SDK IPRO_LOG* output to the Zephyr console"
+	default y
+	help
+	  Provide ipro_log_write() & friends on top of printk so HAL files
+	  that use components/utils/ipro_log.h link without the SDK logger.
+
+config IPRO_WIRELESS_RF
+	bool
+	help
+	  Compile components/wireless/rf/ipro7_rf (2.4 GHz PHY/RF front-end
+	  control shared by BLE and 802.15.4).
+
+config IPRO_WIRELESS_IEEE802154
+	bool
+	select IPRO_WIRELESS_RF
+	help
+	  Compile components/wireless/ieee802154 (unified 802.15.4 driver +
+	  lmac154 lower MAC) for the Zephyr radio adapter.
+
+config IPRO7_XTAL_CAPCODE
+	int
+	depends on SOC_SERIES_IPRO7
+	default IEEE802154_IPRO_XTAL_CAPCODE if IEEE802154_IPRO && IEEE802154_IPRO_XTAL_CAPCODE != 0
+	default SOC_IPRO7_XTAL_CAPCODE
+	help
+	  Mirror of the SDK's CONFIG_IPRO7_XTAL_CAPCODE: the RF init
+	  (ipro7_rf_private.c rf_update_or) and the 802.15.4 HAL write it after
+	  every RF init, soc.c at boot. Set SOC_IPRO7_XTAL_CAPCODE; the
+	  deprecated IEEE802154_IPRO_XTAL_CAPCODE still wins when non-zero.
+
+config IPRO_HAL_PLATFORM_UTILS
+	bool
+	default y
+	help
+	  bsp/common/platform_utils (misc.c, ring buffer) needed by std_drv.
+
+config IPRO_CAMERA
+	bool "Camera / ISP pipeline (hal_isp, DVP sensors)"
+	depends on SOC_SERIES_IPRO7 && I2C && IPRO_HAL_USE_PSRAM
+	select DYNAMIC_INTERRUPTS
+	help
+	  Build the SDK's ISP HAL and MM-domain LL plus the components/sensor
+	  registry (SC101IOT) so an application can run the DVP camera into
+	  PSRAM frame buffers (see samples/evk_demo cam.c). The ISP firmware's
+	  3A is not included yet.
+
+config IPRO_WIFI
+	bool "Wi-Fi 6 stack (macsw + fhost + wpa_supplicant) - IPRO6S"
+	depends on SOC_SERIES_IPRO6S && NETWORKING
+	select DYNAMIC_THREAD
+	select DYNAMIC_THREAD_ALLOC
+	select THREAD_CUSTOM_DATA
+	select THREAD_NAME
+	select DYNAMIC_INTERRUPTS
+	help
+	  Build the SDK's Wi-Fi 6 MAC software (components/wireless/macsw),
+	  the fully-hosted layer and Wi-Fi manager (wifi6/ipro_fhost), the
+	  wpa_supplicant, the IPRO6 RF/PHY driver and the coexistence
+	  arbiter in place, on a Zephyr implementation of the SDK's RTOS
+	  abstraction (hal_glue/ipro_wifi_rtos_al.c). The Zephyr network
+	  driver on top is drivers/wifi/ipro (CONFIG_WIFI_IPRO).
+
+config RISCV_ISR_WRAPPER_IN_TEXT
+	bool
+	default y if IPRO_WIFI_HOT_CODE
+	help
+	  Consumed by the SDK's Zephyr patch arch-riscv-isr-wrapper-in-text
+	  (zephyr/patches.yml): puts _isr_wrapper in .text so that
+	  zephyr/cmake/ipro_wifi_hot.cmake can move the trap path to RAM
+	  together with the SoC hooks it calls.
+
+config IPRO_WIFI_HT40
+	bool "Allow 40 MHz (HT40) association"
+	depends on IPRO_WIFI
+	help
+	  Boot default of the fully-hosted layer's 40 MHz permission flag
+	  (CFG_HT40, as CONFIG_WIFI_HT40_ENABLE on FreeRTOS). Off, the station
+	  always associates at 20 MHz; on, the AP and the modem capability
+	  decide the width.
+
+config IPRO_WIFI_FW_STACK_SIZE
+	int "Stack of the MAC firmware thread (wifi_main)"
+	depends on IPRO_WIFI
+	default 6144
+
+config IPRO_WIFI_TX_HEAP_SIZE
+	int "WRAM heap for Wi-Fi TX buffers (bytes)"
+	depends on IPRO_WIFI
+	default 24576
+	help
+	  Frames handed to the MAC are read by DMA from the shared Wi-Fi RAM;
+	  every TX buffer (452 bytes of descriptor headroom + the frame) comes
+	  from this heap, placed in WRAM by the linker.
+
+config IPRO_WIFI_TX_WAIT_MS
+	int "How long a sender waits for a Wi-Fi TX buffer (ms)"
+	depends on IPRO_WIFI
+	default 100
+	help
+	  When the WRAM TX heap is full (frames not yet confirmed by the MAC)
+	  the driver blocks the sending thread up to this long instead of
+	  dropping the frame; 0 drops immediately.
+
+config IPRO_WIFI_TX_BURST
+	int "Frames released to the sender at once when the TX window reopens"
+	depends on IPRO_WIFI
+	default 8
+	help
+	  The sender is held while the WRAM TX window is full and released
+	  when this many slots are free again, so refills arrive at the MAC in
+	  bursts it can build A-MPDUs from instead of one frame per
+	  confirmation.
+
+config IPRO_WIFI_HOT_CODE
+	bool "Run the Wi-Fi per-packet path from OCRAM"
+	depends on IPRO_WIFI && SOC_SERIES_IPRO6S
+	select CODE_DATA_RELOCATION
+	help
+	  Places the per-packet code (socket to MAC push/confirm, the MAC ISR
+	  and the kernel primitives they use) in OCRAM instead of XIP flash;
+	  it is larger than the instruction cache and otherwise runs at
+	  flash-miss speed. Costs ~60 KB of RAM.
+
+config IPRO_WIFI_CFM_WATCHDOG_MS
+	int "MAC reset after this long without a TX confirmation (ms)"
+	depends on IPRO_WIFI
+	default 1500
+	help
+	  500 ms fired falsely on a congested channel (ARP/ICMP replies waiting
+	  behind the AP's traffic) and the resets themselves dropped the link.
+
+config IPRO_WIFI_TX_PROFILE
+	bool "Per-frame CPU accounting of the driver TX path (wifi_ipro txsplit)"
+	depends on IPRO_WIFI && THREAD_RUNTIME_STATS
+	help
+	  Costs a few thread-runtime-stats reads per frame; bench only.
+
+config IPRO_WIFI_TX_ZERO_COPY
+	bool "Hand TX payloads to the MAC DMA in place (no copy into WRAM)"
+	depends on IPRO_WIFI
+	help
+	  Only the Ethernet header is copied into the WRAM TX buffer; the payload
+	  stays in the Zephyr net_buf (cleaned from the D-cache, addressed
+	  through the uncached alias) and the packet is held until the MAC
+	  confirms it. Experimental: it only engages on single-fragment packets
+	  (Zephyr normally builds [eth][ip/udp][payload] as three net_bufs) and
+	  hung the MAC when it did. Off by default.
+
+config IPRO_WIFI_HOT_CODE_O2
+	bool "Build the RAM-resident MAC/fhost hot path at the image's -O2"
+	depends on IPRO_WIFI_HOT_CODE && SPEED_OPTIMIZATIONS
+	help
+	  The SDK libraries are otherwise pinned to -Os (the level they were
+	  validated at). Bench option.
+
+config IPRO_WIFI_TX_CSUM_OFFLOAD
+	bool "Skip the UDP checksum on TX (IPv4 header checksum done by the driver)"
+	depends on IPRO_WIFI && NET_IPV4
+	select NET_CHECKSUM_OFFLOAD_SUPPORTED
+	default y
+	help
+	  The UDP checksum is optional in IPv4; Zephyr is told the interface
+	  offloads it (and the IPv4 header checksum, which the driver fills in),
+	  which saves a pass over every datagram. TCP checksums are unaffected.
+
+config IPRO_WIFI_FHOST_RX_BUF_CNT
+	int "MAC RX buffers in WRAM (fhost)"
+	depends on IPRO_WIFI
+	default 26
+	help
+	  Each holds one received MPDU (~1.6 KB of WRAM). The SDK default is
+	  BA sessions x reorder window + 2. Fewer leaves WRAM for the TX heap.
+
+config IPRO_WIFI_RXL_BUF1_BYTES
+	int "MAC RX buffer 1 (bytes of WRAM)"
+	depends on IPRO_WIFI
+	default 20480
+	range 20480 28672
+	help
+	  The ring the MAC writes received MPDUs and their descriptors into
+	  before the firmware copies them out; 20480 is what the FreeRTOS
+	  standalone station uses. Use 20480, 24576 or 28672: in 4 KB steps
+	  every static MAC TX descriptor after the ring keeps its offset
+	  modulo 4 KB, which the TX DMA boundary faults were validated
+	  against, while 16384 and 32768 put RX buffer 2 (0x3fe0 past the
+	  ring's end) across a 16 KB boundary, which the linker script
+	  refuses. The ring itself then contains a 16 KB boundary, as it does
+	  on FreeRTOS.
+
+config IPRO_WIFI_REORD_BUF
+	int "Block Ack reorder window (MPDUs)"
+	depends on IPRO_WIFI
+	default 12
+	range 8 16
+	help
+	  CFG_REORD_BUF of the MAC software: how many MPDUs of one Block Ack
+	  session are held for reordering. The FreeRTOS standalone station
+	  uses 16. A hole pins up to this many fhost RX buffers
+	  (IPRO_WIFI_FHOST_RX_BUF_CNT), so keep that comfortably above it.
+
+config IPRO_WIFI_STA_PS
+	bool "Stay in 802.11 power save after associating"
+	depends on IPRO_WIFI
+	help
+	  The MAC associates in power save. Off, the driver leaves it as soon
+	  as the link is up (downlink latency 5-30 ms instead of 50-400 ms).
+
+config IPRO_WIFI_RX_PKT_WAIT_MS
+	int "Wait for a net_pkt on receive (ms, 0 = drop at once)"
+	depends on IPRO_WIFI
+	default 5
+	help
+	  Received A-MPDUs arrive as bursts larger than the RX packet pool;
+	  waiting lets the stack drain instead of dropping the tail of every
+	  burst. The MAC RX buffers hold the frames meanwhile.
+
+config IPRO_WIFI_STACK_EXTRA
+	int "Bytes added to every Wi-Fi task stack"
+	depends on IPRO_WIFI
+	default 1024
+	help
+	  The SDK sizes its task stacks for FreeRTOS; Zephyr thread frames and
+	  logging need a little more.
+
+config HEAP_MEM_POOL_ADD_SIZE_IPRO_WIFI
+	int "Kernel heap added for the Wi-Fi task stacks (bytes)"
+	depends on IPRO_WIFI
+	default 49152
+	help
+	  Added to the kernel heap: the Wi-Fi tasks (Control, TX, RX, WPA,
+	  CONNECT, wifi_mgmr, ...) get their stacks from it through
+	  k_thread_stack_alloc().
+
+endif # IPRO_HAL

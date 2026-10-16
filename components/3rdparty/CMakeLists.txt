@@ -1,3 +1,4 @@
+__component_add_subdirectory_ifdef(CONFIG_COMPONENTS_AGORA_ENABLE agora)
 __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_OPUS_ENABLE opus)
 __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_XZ_ENABLE xz)
 __component_add_subdirectory_ifdef(CONFIG_COMPONENTS_ZMODEM_ENABLE zmodem)

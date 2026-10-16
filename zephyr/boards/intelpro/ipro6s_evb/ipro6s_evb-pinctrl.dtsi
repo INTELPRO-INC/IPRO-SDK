@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/ipro6s-pinctrl.h>
+
+&pinctrl {
+	/* Console UART: GPIO28 TX, GPIO29 RX (bsp/board/ipro6/board.c),
+	 * signal slots 4/5 via GLB_UART_Fun_Sel_Swap. */
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <IPRO6S_PINMUX_UART(28, UART0_TXD)>,
+				 <IPRO6S_PINMUX_UART(29, UART0_RXD)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* Thread RCP link of the border-router app: UART1 on GPIO23/24. */
+	uart1_rcp: uart1_rcp {
+		group1 {
+			pinmux = <IPRO6S_PINMUX_UART(23, UART1_TXD)>,
+				 <IPRO6S_PINMUX_UART(24, UART1_RXD)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+};

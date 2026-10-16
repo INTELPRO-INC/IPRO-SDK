@@ -1,0 +1,41 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 UART. Two instances (UART0 @0x3000B000, UART1 @0x3000C000), 16-byte
+  TX/RX FIFOs, RX timeout interrupt, RTS/CTS. Driven through the SDK LL
+  layer (bsp/drivers/ipro7_soc/std_drv/drv_uart.c).
+
+  Pin routing is two-level on this SoC: the pad is put in UART alternate
+  function and the UART "signal slot" (pin % 12) is mapped to UART0/UART1
+  TXD/RXD/RTS/CTS through GLB_UART_Fun_Sel. Both are described by the
+  pinctrl pinmux entries (IPRO7_PINMUX_UART).
+
+compatible: "intelpro,ipro-uart"
+
+include: [uart-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  rx-timeout-bits:
+    type: int
+    default: 100
+    description: |
+      RX timeout in bit periods before the RTO interrupt fires when the
+      FIFO holds fewer bytes than the threshold (SDK default 100).
+
+  dmas:
+    description: |
+      TX and RX DMA channels for the async API: <&dma0 channel
+      IPRO7_DMA_REQ_UARTn_TX>, <&dma0 channel IPRO7_DMA_REQ_UARTn_RX>.
+
+  dma-names:
+    description: '"tx", "rx" in the order of dmas.'

@@ -202,8 +202,39 @@ static void board_em_init(void) {
 #endif
 }
 
+/* The RF crystal trim every RF init loads (see ipro7_rf.h). Defined by the
+ * board, not the RF library, so a prebuilt RF library uses this app's
+ * CONFIG_IPRO7_XTAL_CAPCODE; 0 = none. */
+uint8_t ipro7_rf_xtal_capcode(void);
+uint8_t ipro7_rf_xtal_capcode(void) {
+#if defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+    return CONFIG_IPRO7_XTAL_CAPCODE;
+#else
+    return 0;
+#endif
+}
+
+#if defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+/* Capcode IN before the first trim, for the boot log; -1 until board_init(). */
+static int16_t board_xtal_capcode_boot = -1;
+
+/* Board-calibrated RF crystal trim (Kconfig IPRO7_XTAL_CAPCODE, 0 = keep the
+ * boot value). Applied here rather than in ipro_platform_init() so apps that
+ * call platform_init() directly get it too; every RF init re-applies it
+ * (ipro7_rf_private.c), as do the 802.15.4 HAL and the OpenThread port. */
+static void board_xtal_capcode_init(void) {
+    if (board_xtal_capcode_boot < 0) {
+        board_xtal_capcode_boot = AON_Get_Xtal_CapCode();
+    }
+    AON_Set_Xtal_CapCode(CONFIG_IPRO7_XTAL_CAPCODE, CONFIG_IPRO7_XTAL_CAPCODE);
+}
+#endif
+
 void plt_show_cg_info(void) {
     MSG("Build:%s,%s\r\n", __TIME__, __DATE__);
+#if defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+    MSG("[XTAL] capcode %d -> %u\r\n", board_xtal_capcode_boot, (unsigned)CONFIG_IPRO7_XTAL_CAPCODE);
+#endif
 #if 0
     MSG("#####################################################\r\n");
     MSG("root clock:%luM\r\n", Clock_System_Clock_Get(DRV_SYSTEM_CLOCK_ROOT) / 1000000); /*root clock before f_div*/
@@ -304,6 +335,9 @@ void board_init(void) {
     board_em_init();
     board_clock_init();
     board_pin_mux_init();
+#if defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
+    board_xtal_capcode_init();
+#endif
 }
 
 int board_get_debug_uart_index(void) { return UART0_INDEX; }

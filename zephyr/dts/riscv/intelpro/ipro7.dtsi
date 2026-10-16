@@ -1,0 +1,384 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * INTELPRO IPRO7 SoC. Addresses and interrupt numbers come from
+ * bsp/drivers/ipro7_soc/regs/ipro7.h (IRQ = IRQ_NUM_BASE(19) + line);
+ * nothing here is invented. Nodes for peripherals that do not have a Zephyr
+ * driver yet are still described (status "disabled") so the memory map is
+ * complete.
+ */
+
+#include <mem.h>
+#include <freq.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/clock/ipro7-clock.h>
+#include <zephyr/dt-bindings/pinctrl/ipro7-pinctrl.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "intelpro,ipro7";
+
+	chosen {
+		zephyr,flash-controller = &flashctrl;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* Nuclei systimer: XCLK/16 = 2 MHz sampled on both edges. */
+		timebase-frequency = <DT_FREQ_M(4)>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "nuclei,n300", "riscv";
+			reg = <0>;
+			clock-frequency = <DT_FREQ_M(192)>;
+			riscv,isa-base = "rv32i";
+			riscv,isa-extensions = "i", "m", "a", "f", "c", "zicsr", "zifencei",
+					       "zba", "zbb", "zbc", "zbs";
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			status = "okay";
+
+			eclic: interrupt-controller {
+				compatible = "intelpro,ipro-eclic";
+				#address-cells = <0>;
+				#interrupt-cells = <2>;
+				interrupt-controller;
+			};
+		};
+	};
+
+	/* Nuclei private systimer (mtime/mtimecmp), located at run time. */
+	systimer: systimer {
+		compatible = "intelpro,ipro-systimer";
+		interrupts-extended = <&eclic 7 0>;
+	};
+
+	/* 256 KB OCRAM; the BLE Exchange Memory (CONFIG_IPRO7_EM_SIZE_KB) is
+	 * carved from the top by the board file when Bluetooth is used. */
+	sram0: memory@11010000 {
+		compatible = "mmio-sram";
+		reg = <0x11010000 DT_SIZE_K(256)>;
+	};
+
+	/* 8 MB PSRAM, present on the IPRO7AI EVK family; boards enable it. */
+	psram0: memory@1e000000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x1e000000 DT_SIZE_M(8)>;
+		zephyr,memory-region = "PSRAM";
+		status = "disabled";
+	};
+
+	/* 4 KB always-on RAM retained through HBN/PDS sleep. */
+	hbnram: memory@20090000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x20090000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "HBNRAM";
+		status = "disabled";
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		interrupt-parent = <&eclic>;
+		ranges;
+
+		/* GLB block (0x30000000): clock/reset control in the first 0x100
+		 * bytes, pad configuration (GPIO_CFGCTL0..) from 0x100, GPIO level /
+		 * interrupt registers from 0x180. The nodes below carve it up by
+		 * function so every driver has its own unit address. */
+		glbclk: clock-controller@30000000 {
+			compatible = "intelpro,ipro-glb-clock";
+			reg = <0x30000000 0x100>;
+			#clock-cells = <1>;
+			status = "okay";
+		};
+
+		pinctrl: pin-controller@30000100 {
+			compatible = "intelpro,ipro-pinctrl";
+			reg = <0x30000100 0x80>;
+			status = "okay";
+		};
+
+		gpio0: gpio@30000180 {
+			compatible = "intelpro,ipro-gpio";
+			reg = <0x30000180 0x40>;
+			interrupts = <63 1>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <32>;
+			pin-offset = <0>;
+			status = "disabled";
+		};
+
+		gpio1: gpio@30000184 {
+			compatible = "intelpro,ipro-gpio";
+			reg = <0x30000184 0x40>;
+			interrupts = <63 1>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <10>;
+			pin-offset = <32>;
+			status = "disabled";
+		};
+
+		/* The flash node is the PHYSICAL part (offset 0 = start of the
+		 * chip, what hal_flash.c addresses and what fixed-partitions are
+		 * relative to). The firmware runs through the XIP window boot2 maps
+		 * at 0x13000000 = the start of the "FW" partition; a board states
+		 * that with "ranges" on this controller (<0x0 0x13000000-FW_OFFSET
+		 * size>) so the chosen zephyr,flash / zephyr,code-partition give
+		 * the linker the right ROM base (CONFIG_FLASH_LOAD_OFFSET, or the
+		 * code partition with MCUboot). */
+		flashctrl: flash-controller@30081000 {
+			compatible = "intelpro,ipro-flash-controller";
+			reg = <0x30081000 0x1000>;
+			interrupts = <42 1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+
+			flash0: flash@0 {
+				compatible = "soc-nv-flash";
+				reg = <0x0 DT_SIZE_M(1)>;
+				erase-block-size = <4096>;
+				write-block-size = <1>;
+			};
+		};
+
+		uart0: serial@3000b000 {
+			compatible = "intelpro,ipro-uart";
+			reg = <0x3000b000 0x1000>;
+			interrupts = <48 1>;
+			clocks = <&glbclk IPRO7_CLK_UART0>;
+			status = "disabled";
+		};
+
+		uart1: serial@3000c000 {
+			compatible = "intelpro,ipro-uart";
+			reg = <0x3000c000 0x1000>;
+			interrupts = <49 1>;
+			clocks = <&glbclk IPRO7_CLK_UART1>;
+			status = "disabled";
+		};
+
+		spi0: spi@3000d000 {
+			compatible = "intelpro,ipro-spi";
+			reg = <0x3000d000 0x1000>;
+			interrupts = <46 1>;
+			clocks = <&glbclk IPRO7_CLK_SPI0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		spi1: spi@3001e000 {
+			compatible = "intelpro,ipro-spi";
+			reg = <0x3001e000 0x1000>;
+			interrupts = <73 1>;
+			clocks = <&glbclk IPRO7_CLK_SPI1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c0: i2c@3000e000 {
+			compatible = "intelpro,ipro-i2c";
+			reg = <0x3000e000 0x1000>;
+			interrupts = <51 1>;
+			clocks = <&glbclk IPRO7_CLK_I2C0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@30019000 {
+			compatible = "intelpro,ipro-i2c";
+			reg = <0x30019000 0x1000>;
+			interrupts = <82 1>;
+			clocks = <&glbclk IPRO7_CLK_I2C1>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		pwm0: pwm@3000f000 {
+			compatible = "intelpro,ipro-pwm";
+			reg = <0x3000f000 0x1000>;
+			interrupts = <53 1>;
+			clocks = <&glbclk IPRO7_CLK_PWM>;
+			#pwm-cells = <3>;
+			/* XCLK 32 MHz / 32 = 1 MHz counter: 1 us resolution, 65 ms max period */
+			clock-source = "xclk";
+			clock-divider = <32>;
+			status = "disabled";
+		};
+
+		timer0: timer@30010000 {
+			compatible = "intelpro,ipro-timer";
+			reg = <0x30010000 0x100>;
+			interrupts = <55 1>, <56 1>;
+			interrupt-names = "ch0", "ch1";
+			clocks = <&glbclk IPRO7_CLK_TIMER>;
+			status = "disabled";
+
+			counter0: counter0 {
+				compatible = "intelpro,ipro-counter";
+				channel = <0>;
+				status = "disabled";
+			};
+
+			counter1: counter1 {
+				compatible = "intelpro,ipro-counter";
+				channel = <1>;
+				status = "disabled";
+			};
+		};
+
+		/* WDT0 registers are interleaved in the TIMER block (WMER @0x64,
+		 * WVR @0x6C, WCR @0x98, WFAR/WSAR @0x9C/0xA0). */
+		wdt0: watchdog@30010064 {
+			compatible = "intelpro,ipro-wdt";
+			reg = <0x30010064 0x40>;
+			interrupts = <57 1>;
+			clocks = <&glbclk IPRO7_CLK_TIMER>;
+			status = "disabled";
+		};
+
+		dma0: dma@30082000 {
+			compatible = "intelpro,ipro-dma";
+			reg = <0x30082000 0x1000>;
+			interrupts = <34 1>;
+			clocks = <&glbclk IPRO7_CLK_DMA0>;
+			#dma-cells = <2>;
+			dma-channels = <8>;
+			dma-requests = <32>;
+			status = "disabled";
+		};
+
+		trng: rng@30080000 {
+			compatible = "intelpro,ipro-trng";
+			reg = <0x30080000 0x1000>;
+			interrupts = <31 1>;
+			clocks = <&glbclk IPRO7_CLK_SEC_ENG>;
+			status = "disabled";
+		};
+
+		adc0: adc@30004000 {
+			compatible = "intelpro,ipro-adc";
+			reg = <0x30004000 0x1000>;
+			interrupts = <44 1>;
+			#io-channel-cells = <1>;
+			vref-mv = <3200>;
+			clock-divider = <7>;
+			status = "disabled";
+		};
+
+		dac0: dac@30004100 {
+			compatible = "intelpro,ipro-dac";
+			reg = <0x30004100 0x100>;
+			#io-channel-cells = <1>;
+			clock-divider = <62>;
+			status = "disabled";
+		};
+
+		i2s0: i2s@30017000 {
+			compatible = "intelpro,ipro-i2s";
+			reg = <0x30017000 0x1000>;
+			interrupts = <59 1>;
+			clocks = <&glbclk IPRO7_CLK_I2S>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		/* PDM microphone input of the AUADC block (pins are HAL indices) */
+		pdm0: pdm {
+			compatible = "intelpro,ipro-pdm";
+			clk-pin = <0>;
+			data-pin = <1>;
+			status = "disabled";
+		};
+
+		usb: usb@30084000 {
+			compatible = "intelpro,ipro-usb";
+			reg = <0x30084000 0x1000>;
+			interrupts = <47 1>;
+			clocks = <&glbclk IPRO7_CLK_USB>;
+			status = "disabled";
+		};
+
+		emac: ethernet@30083000 {
+			compatible = "intelpro,ipro-emac";
+			reg = <0x30083000 0x1000>;
+			interrupts = <64 1>;
+			clocks = <&glbclk IPRO7_CLK_EMAC>;
+			status = "disabled";
+		};
+
+		sdh: sdhc@30085000 {
+			compatible = "intelpro,ipro-sdh";
+			reg = <0x30085000 0x1000>;
+			interrupts = <54 1>;
+			clocks = <&glbclk IPRO7_CLK_SDH>;
+			status = "disabled";
+		};
+
+		ieee802154: ieee802154@3c000000 {
+			compatible = "intelpro,ipro-ieee802154";
+			reg = <0x3c000000 0x10000>;
+			interrupts = <67 3>, <66 3>, <68 3>;
+			interrupt-names = "mac", "enh-ack", "aes";
+			clocks = <&glbclk IPRO7_CLK_M154>;
+			status = "disabled";
+		};
+
+		/* BLE controller (RivieraWaves-derived, prebuilt in
+		 * components/wireless/bluetooth/ipro_ble_controller). */
+		bt_hci: bt_hci@30002000 {
+			compatible = "intelpro,ipro-bt-hci";
+			reg = <0x30002000 0x2000>;
+			interrupts = <75 3>, <74 3>;
+			interrupt-names = "ble", "bz-phy";
+			clocks = <&glbclk IPRO7_CLK_BLE>;
+			status = "disabled";
+		};
+
+		pds: power-controller@3008e000 {
+			compatible = "intelpro,ipro-pds";
+			reg = <0x3008e000 0x1000>;
+			interrupts = <69 1>;
+			status = "disabled";
+		};
+
+		hbn: hbn@3008f000 {
+			compatible = "intelpro,ipro-hbn";
+			reg = <0x3008f000 0x1000>;
+			interrupts = <70 1>, <71 1>;
+			interrupt-names = "out0", "out1";
+			status = "disabled";
+
+			/* 40-bit 32 kHz RTC counter, one compare -> HBN_OUT0 */
+			rtc0: rtc {
+				compatible = "intelpro,ipro-rtc";
+				interrupts = <70 1>;
+				clock-frequency = <32768>;
+				status = "disabled";
+			};
+		};
+
+		efuse: efuse@30008000 {
+			compatible = "intelpro,ipro-efuse";
+			reg = <0x30008000 0x1000>;
+			interrupts = <45 1>;
+			status = "disabled";
+		};
+	};
+};

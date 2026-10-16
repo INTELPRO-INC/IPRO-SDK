@@ -1,0 +1,9 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+mainmenu "IPRO7AI EVK demo"
+
+config EVK_DEMO_CAMERA
+	bool "Camera preview (SC101IOT -> ISP -> LCD)"
+	default n
+
+source "Kconfig.zephyr"

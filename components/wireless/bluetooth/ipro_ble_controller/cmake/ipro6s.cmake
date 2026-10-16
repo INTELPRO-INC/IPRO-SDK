@@ -168,14 +168,24 @@ if(CONFIG_BTDM_EM_SIZE_16K)
 endif()
 
 # Preserve the controller's pre-migration __FILE__ strings.  RivieraWaves
-# assertions compile absolute source paths into the image; without these maps a
+# assertions compile source paths into the image; without these maps a
 # packaging-only directory move adds roughly 2 KB of path text to flash and
 # makes binary comparison with the known IPRO6S baseline unnecessarily noisy.
+#
+# The targets are relative on purpose.  Mapping to ${CMAKE_SOURCE_DIR}/... put
+# the builder's checkout path into every prebuilt, so the same sources rebuilt
+# in another checkout changed over half the archive members, and a customer
+# SDK carried the build machine's home directory.
+#
+# GCC applies the LAST matching map, so the SDK-root catch-all comes first: it
+# makes everything the btdm maps do not cover (hcitl/, include/, tests/, SDK
+# headers, the build directory as DWARF comp_dir) relative to the SDK root.
 __component_add_private_compile_options(
-    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_UPSTREAM}=${CMAKE_SOURCE_DIR}/components/wireless/btdm
-    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_PLF}=${CMAKE_SOURCE_DIR}/components/wireless/btdm/plf/ipro6
-    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_PORT}=${CMAKE_SOURCE_DIR}/components/wireless/btdm/btdm_port
-    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_COMPAT}=${CMAKE_SOURCE_DIR}/components/wireless/btdm/api)
+    -ffile-prefix-map=${CMAKE_SOURCE_DIR}/=
+    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_UPSTREAM}=components/wireless/btdm
+    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_PLF}=components/wireless/btdm/plf/ipro6
+    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_PORT}=components/wireless/btdm/btdm_port
+    -ffile-prefix-map=${IPRO_BLE_CTLR_IPRO6S_COMPAT}=components/wireless/btdm/api)
 
 # ============================================================================
 # Public Include Directories

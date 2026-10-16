@@ -1,0 +1,61 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig WIFI_IPRO
+	bool "IPRO6S Wi-Fi 6 station driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_WIFI_ENABLED
+	depends on WIFI && NET_L2_ETHERNET
+	select IPRO_WIFI
+	select WIFI_USE_NATIVE_NETWORKING
+	help
+	  Zephyr network interface over the SDK Wi-Fi 6 stack: scan, connect,
+	  disconnect and status through the wifi_mgmt API, Ethernet frames
+	  through the fhost. STA only for now.
+
+if WIFI_IPRO
+
+config WIFI_IPRO_INIT_PRIORITY
+	int "Interface init priority"
+	default 80
+
+config WIFI_IPRO_SHELL_BENCH
+	bool "wifi_ipro cpubench micro-benchmark"
+	help
+	  The flash vs RAM code-fetch micro-benchmark (wifi_ipro cpubench). It
+	  keeps about 5 KB of code and buffers in RAM, so it is off unless a
+	  bench build asks for it.
+
+config WIFI_IPRO_TCP_TRACE
+	bool "TCP timing trace at the driver (wifi_ipro tcptrace)"
+	help
+	  Records every IPv4/TCP frame crossing the driver (time, direction,
+	  seq, ack, length, flags) into a RAM ring. The first received data
+	  segment below the highest sequence seen (a retransmission or a
+	  reordered frame) freezes the ring a little later, so the dump shows
+	  the ACK timing around it. `wifi_ipro tcptrace arm`, run the load,
+	  then `wifi_ipro tcptrace`. Bench only: the rings take about 3 KB of
+	  RAM, more than samples/wifi_sta has left; build it with
+	  -DCONFIG_NET_TCP_MAX_SEND_WINDOW_SIZE=16384 -DCONFIG_NET_BUF_TX_COUNT=18.
+
+config WIFI_IPRO_TCP_TRACE_ENTRIES
+	int "TCP trace ring entries (20 bytes each)"
+	depends on WIFI_IPRO_TCP_TRACE
+	default 96
+
+config WIFI_IPRO_TCP_TRACE_POST
+	int "Entries kept after the trigger"
+	depends on WIFI_IPRO_TCP_TRACE
+	default 32
+
+config WIFI_IPRO_TCP_TRACE_MAC_ENTRIES
+	int "MAC reorder-check trace entries (12 bytes each)"
+	depends on WIFI_IPRO_TCP_TRACE
+	default 96
+	help
+	  Every data MPDU of a Block Ack session as the MAC's reorder check
+	  saw it (SN, offset from the window start, verdict), on the same
+	  clock as the TCP ring, so the dump shows whether a late TCP segment
+	  also came late on the air (a later SN) or was reordered on board.
+
+endif

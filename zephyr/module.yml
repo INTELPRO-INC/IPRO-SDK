@@ -1,0 +1,16 @@
+# IPRO SDK as a Zephyr module (Zephyr v4.4, hardware model v2).
+#
+# Everything Zephyr needs lives under <sdk>/zephyr/: SoC + board definitions,
+# device-tree bindings, and the driver adapters that sit on top of the SDK
+# HAL in <sdk>/bsp. The HAL itself is compiled from its original location by
+# zephyr/CMakeLists.txt; it is never copied.
+name: ipro_sdk
+build:
+  cmake: zephyr
+  kconfig: zephyr/Kconfig
+  settings:
+    board_root: zephyr
+    soc_root: zephyr
+    dts_root: zephyr
+runners:
+  - file: zephyr/scripts/runners/ipro.py

@@ -1,0 +1,27 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 I2S. TX and RX each need a DMA channel: dmas = <&dma0 ch
+  IPRO7_DMA_REQ_I2S_TX>, <&dma0 ch IPRO7_DMA_REQ_I2S_RX>; dma-names = "tx",
+  "rx". Pads through pinctrl (IPRO7_FUN_I2S).
+
+compatible: "intelpro,ipro-i2s"
+
+include: [i2s-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  dmas:
+    required: true
+
+  dma-names:
+    required: true

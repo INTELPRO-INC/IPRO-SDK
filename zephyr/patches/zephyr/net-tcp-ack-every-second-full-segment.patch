@@ -1,0 +1,64 @@
+net: tcp: acknowledge every second full segment, 40 ms delayed ACK
+
+Zephyr v4.4.0 delays the ACK of in-order data by a fixed 100 ms unless
+PSH is set, and otherwise only acknowledges once the application has
+read half the receive window. RFC 5681 (4.2) asks for an ACK at least
+for every second full-sized segment, and 100 ms is at macOS's minimum
+RTO: a peer whose congestion window is below half our window waits the
+whole 100 ms per flight.
+
+Acknowledge as soon as two MSS are unacknowledged, and cut the delayed
+ACK timer to 40 ms (what the SDK's lwIP uses on FreeRTOS,
+LWIP_TCP_FAST_INTERVAL_MS=40). On IPRO6S Wi-Fi (samples/wifi_sta, 24 KB
+receive window) this raised TCP download from 4.2-5.0 to 5.6-6.5 Mbps.
+
+Carried by the IPRO SDK through zephyr/patches.yml (west patch apply);
+upstreamable, ideally with the delay as a Kconfig option.
+
+--- a/subsys/net/ip/tcp.c
++++ b/subsys/net/ip/tcp.c
+@@ -33,7 +33,7 @@
+ #define LAST_ACK_TIMEOUT_MS tcp_max_timeout_ms
+ #define LAST_ACK_TIMEOUT K_MSEC(LAST_ACK_TIMEOUT_MS)
+ #define FIN_TIMEOUT K_MSEC(tcp_max_timeout_ms)
+-#define ACK_DELAY K_MSEC(100)
++#define ACK_DELAY K_MSEC(40)
+ #define ZWP_MAX_DELAY_MS 120000
+ #define DUPLICATE_ACK_RETRANSMIT_TRHESHOLD 3
+ 
+@@ -1616,6 +1616,7 @@
+ 
+ 	if (flags & ACK) {
+ 		conn->recv_win_sent = conn->recv_win;
++		conn->rx_unacked = 0;
+ 	}
+ 
+ 	if (is_destination_local(pkt)) {
+@@ -2832,6 +2833,7 @@
+ 
+ 	net_stats_update_tcp_seg_recv(conn->iface);
+ 	conn_ack(conn, *len);
++	conn->rx_unacked = MIN((uint32_t)conn->rx_unacked + *len, UINT16_MAX);
+ 
+ 	/* In case FIN was received, don't send ACK just yet, FIN,ACK will be
+ 	 * sent instead.
+@@ -2843,7 +2845,8 @@
+ 	/* Delay ACK response in case of small window or missing PSH,
+ 	 * as described in RFC 813.
+ 	 */
+-	if (tcp_short_window(conn) || !psh) {
++	if (tcp_short_window(conn) ||
++	    (!psh && conn->rx_unacked < 2 * conn_mss(conn))) {
+ 		k_work_schedule_for_queue(&tcp_work_q, &conn->ack_timer,
+ 					  ACK_DELAY);
+ 	} else {
+--- a/subsys/net/ip/tcp_private.h
++++ b/subsys/net/ip/tcp_private.h
+@@ -327,6 +327,7 @@
+ 	uint32_t keep_cur;
+ #endif /* CONFIG_NET_TCP_KEEPALIVE */
+ 	uint16_t recv_win_sent;
++	uint16_t rx_unacked; /* bytes received since the last ACK went out */
+ 	uint16_t recv_win_max;
+ 	uint16_t recv_win;
+ 	uint16_t send_win_max;

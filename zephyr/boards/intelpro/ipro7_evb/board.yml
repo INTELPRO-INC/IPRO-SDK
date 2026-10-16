@@ -1,0 +1,6 @@
+board:
+  name: ipro7_evb
+  full_name: IPRO7 Evaluation Board
+  vendor: intelpro
+  socs:
+    - name: ipro7

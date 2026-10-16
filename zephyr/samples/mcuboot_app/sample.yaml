@@ -1,0 +1,18 @@
+sample:
+  name: IPRO7 application booted by MCUboot
+tests:
+  sample.ipro.mcuboot_app:
+    sysbuild: true
+    platform_allow:
+      - ipro7_evb
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7_evb
+    tags:
+      - ipro
+      - mcuboot
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "booted by MCUboot"

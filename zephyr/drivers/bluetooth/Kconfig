@@ -1,0 +1,93 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config BT_IPRO_HCI
+	bool "IPRO7 BLE controller HCI driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_BT_HCI_ENABLED
+	depends on BT_HCI
+	select IPRO_HAL
+	select IPRO_WIRELESS_RF
+	select IPRO_BT_CTLR_PREBUILT
+	help
+	  Zephyr bt_hci_driver_api over the prebuilt IPRO7 BLE controller.
+	  The controller keeps its RivieraWaves platform layer and talks H4
+	  through the in-memory hcitl transport; this driver is the Zephyr
+	  counterpart of components/wireless/bluetooth/ipro_bt_host/port/hci_ipro.c.
+
+if BT_IPRO_HCI
+
+config BT_IPRO_HCI_RX_STACK_SIZE
+	int "HCI RX thread stack size"
+	default 2048
+
+config BT_IPRO_HCI_RX_PRIO
+	int "HCI RX thread priority (cooperative)"
+	default 6
+
+config BT_IPRO_CTLR_TASK_PRIO
+	int "BLE controller thread priority (cooperative)"
+	default 2
+	help
+	  Priority of the controller's scheduling thread (the FreeRTOS task of
+	  the SDK, mapped onto a Zephyr thread by the compatibility shim).
+
+config BT_IPRO_CTLR_LIB
+	string "Controller archive variant"
+	default "link1_periph"
+	help
+	  link1_periph, link1, link2 or link4 - must match CONFIG_BT_MAX_CONN.
+
+config BT_IPRO_CTLR_FEATURE
+	string "Controller feature profile"
+	default "bt52"
+	help
+	  bt52, or bt54_iso2 (ISO/LE Audio, needs IPRO7_EM_SIZE_KB >= 32).
+
+config BT_IPRO_CTLR_CFG_DBG
+	bool "Use the debug (CFG_DBG) controller archive"
+
+config BT_IPRO_CTLR_SOURCE_BUILD
+	bool "Build the BLE controller from source instead of linking the archive"
+	help
+	  Compile the controller (RivieraWaves core + IPRO7 platform layer +
+	  IPRO patches, the same description the SDK and the prebuilt archives
+	  use: components/wireless/bluetooth/ipro_ble_controller/cmake/
+	  ipro7_build.cmake) into this image. Needs the controller sources and
+	  `patch` on the build host; a release SDK without them uses the
+	  archive selected by BT_IPRO_CTLR_LIB / _FEATURE / _CFG_DBG.
+
+config BT_IPRO_CTLR_STALL_DIAG
+	bool "Print controller thread / BLE ISR liveness statistics"
+	help
+	  Every BT_IPRO_CTLR_STALL_DIAG_PERIOD_MS print the number of BLE ISR
+	  wake-ups and controller-loop iterations, the longest gap between two
+	  of each, and the age of the last one. Diagnostic for link losses.
+
+config BT_IPRO_CTLR_STALL_DIAG_PERIOD_MS
+	int "Liveness statistics period (ms)"
+	depends on BT_IPRO_CTLR_STALL_DIAG
+	default 2000
+
+# Zephyr's default preferred supervision timeout (420 ms) is 14 connection
+# events at the 30 ms interval a phone settles on; on the bench that lost the
+# link with reason 0x08 in 2 of 5 short holds, while 4 s held 14 minutes
+# without a drop (see docs/zephyr/reports/20260920_ipro7_evb_first_power_on.md).
+# The FreeRTOS reference apps negotiate 1 s. Keep the interval defaults.
+config BT_PERIPHERAL_PREF_TIMEOUT
+	default 400 if BT_PERIPHERAL
+
+endif # BT_IPRO_HCI
+
+config IPRO_BT_CTLR_PREBUILT
+	bool
+	help
+	  Link the prebuilt IPRO BLE controller archive and its FreeRTOS
+	  compatibility shim.
+
+# LE Extended Advertising Reports (2 + 1 + 24 + AD data bytes) travel in the
+# discardable event pool; the host's default of 58 bytes only fits ~31 bytes
+# of AD data and hci_ipro drops anything larger (a BAP broadcast source's
+# AD, name + broadcast name + BASE, is ~55 bytes: the sink never saw it).
+config BT_BUF_EVT_DISCARDABLE_SIZE
+	default 255 if BT_EXT_ADV && BT_IPRO_HCI

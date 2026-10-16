@@ -1,0 +1,55 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_IPRO7
+
+config KERNEL_ENTRY
+	default "__ipro7_start"
+
+# Nuclei private systimer: XCLK (32 MHz) / 16 = 2 MHz RTC clock sampled on
+# both edges -> mtime counts at 4 MHz (SOC_TIMER_FREQ in bsp/.../ipro7.h).
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 4000000
+
+config SYS_CLOCK_TICKS_PER_SEC
+	default 1000
+
+# 19 core-local interrupts + 64 external lines (IRQn_LAST in ipro7.h).
+config NUM_IRQS
+	default 83
+
+# mcause exception code field is 12 bits on Nuclei cores.
+config RISCV_MCAUSE_EXCEPTION_MASK
+	default 0xFFF
+
+# ECLIC non-vectored mode: mtvec.base must be 64-byte aligned.
+config RISCV_TRAP_HANDLER_ALIGNMENT
+	default 64
+
+config ARCH_SW_ISR_TABLE_ALIGN
+	default 64
+
+# The BLE controller's Exchange Memory is carved from the TOP of OCRAM
+# (GLB_Set_EM_Sel in soc.c); shrink what the kernel may use accordingly.
+config SRAM_SIZE
+	default 240 if IPRO7_EM_SIZE_KB = 16
+	default 224 if IPRO7_EM_SIZE_KB = 32
+	default 208 if IPRO7_EM_SIZE_KB = 48
+	default 192 if IPRO7_EM_SIZE_KB = 64
+
+config MAIN_STACK_SIZE
+	default 4096
+
+config IDLE_STACK_SIZE
+	default 1024
+
+config ISR_STACK_SIZE
+	default 4096
+
+config FPU
+	default y
+
+config PINCTRL
+	default y
+
+endif # SOC_SERIES_IPRO7

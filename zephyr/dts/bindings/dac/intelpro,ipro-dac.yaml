@@ -1,0 +1,23 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 GPDAC: two 10-bit channels, A (channel 0) on GPIO23 and B (channel 1)
+  on GPIO22 (mux the pad to IPRO7_FUN_ANALOG for an external output); the
+  outputs are also readable on ADC channels 12/13.
+
+compatible: "intelpro,ipro-dac"
+
+include: [dac-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  clock-divider:
+    type: int
+    default: 62
+    description: GPDAC clock = 32 MHz XCLK / (clock-divider + 1).
+
+  "#io-channel-cells":
+    const: 1
+
+io-channel-cells:
+  - output

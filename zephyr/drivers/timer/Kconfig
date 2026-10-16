@@ -1,0 +1,16 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config IPRO_SYSTIMER
+	bool "IPRO7 Nuclei system timer (run-time located)"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_SYSTIMER_ENABLED
+	select TICKLESS_CAPABLE
+	select SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	help
+	  Kernel tick/timeout source on the 64-bit mtime/mtimecmp pair of the
+	  Nuclei private system timer (IREGION + 0x30000). The base is
+	  discovered at run time like the ECLIC; otherwise this is the
+	  riscv_machine_timer algorithm. The counter runs at 4 MHz
+	  (SYS_CLOCK_HW_CYCLES_PER_SEC) after soc_early_init_hook() programs
+	  GLB_Set_MTimer_CLK().

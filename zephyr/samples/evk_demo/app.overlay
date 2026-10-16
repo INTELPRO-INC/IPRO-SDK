@@ -1,0 +1,14 @@
+/* IPRO7AI EVK demo: DMA for the DAC stream, PDM microphone, DAC pad. */
+#include <zephyr/dt-bindings/dma/ipro7-dma.h>
+
+&dma0 {
+	status = "okay";
+};
+
+&pdm0 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};

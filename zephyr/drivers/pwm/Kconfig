@@ -1,0 +1,13 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config PWM_IPRO
+	bool "IPRO7 PWM driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_PWM_ENABLED
+	depends on PWM
+	select IPRO_HAL
+	select PINCTRL
+	help
+	  Zephyr PWM over the SDK LL (drv_pwm.c): shared 16-bit period per
+	  block, four channels with independent thresholds and polarity.

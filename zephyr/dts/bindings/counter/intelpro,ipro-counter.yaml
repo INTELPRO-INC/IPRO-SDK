@@ -1,0 +1,18 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  One channel of the IPRO7 TIMER block as a Zephyr counter: 32-bit,
+  counting up, two alarm channels (comparators 0/1) and comparator 2 as
+  the top value. Driven through the SDK LL (drv_timer.c).
+
+compatible: "intelpro,ipro-counter"
+
+include: base.yaml
+
+properties:
+  channel:
+    type: int
+    required: true
+    enum: [0, 1]
+    description: TIMER channel (0 or 1).

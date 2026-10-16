@@ -1,0 +1,14 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config CLOCK_CONTROL_IPRO
+	bool "IPRO7 GLB peripheral clock gate controller"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_GLB_CLOCK_ENABLED
+	depends on CLOCK_CONTROL
+	select IPRO_HAL
+	help
+	  Zephyr clock_control API over the SDK's GLB_PER_Clock_UnGate/Gate
+	  (AHB clock gates) and Clock_Peripheral_Clock_Get (functional clock
+	  rates). Every ipro_* driver turns its clock on through this driver
+	  instead of touching GLB itself.

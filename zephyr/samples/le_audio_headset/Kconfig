@@ -1,0 +1,14 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Bluetooth: LE Audio unicast headset (IPRO7)"
+
+config HEADSET_DEVICE_NAME
+	string "Advertised device name"
+	default "IPRO-LE-Audio"
+
+config HEADSET_SINK_LOCATION
+	int "PACS sink audio location bitmask (1 = front left, 2 = front right)"
+	default 1
+
+source "Kconfig.zephyr"

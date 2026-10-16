@@ -36,7 +36,8 @@ set -euo pipefail
 
 # --- Defaults ---
 SDK_BASE="$(cd "$(dirname "$0")" && pwd)"
-SERIAL_PORT="/dev/cu.usbserial-2120"
+# -p, else $IPRO_SERIAL_PORT, else the only USB serial port present (require_port).
+SERIAL_PORT="${IPRO_SERIAL_PORT:-}"
 TIMEOUT=30
 WAIT_PATTERN=""
 JOBS=""
@@ -90,7 +91,7 @@ Actions (combinable, executed in order):
   test       Build + flash + monitor with auto test pattern
 
 Options:
-  -p, --port PORT      Serial port (default: /dev/cu.usbserial-2120)
+  -p, --port PORT      Serial port (default: \$IPRO_SERIAL_PORT, else the only USB serial port)
   -t, --timeout SEC    Monitor/test timeout (default: 30)
   -w, --wait-for PAT   Wait-for pattern (regex) for monitor
   -d, --defconfig FILE Use alternate defconfig (builds in build_<name>/)
@@ -361,6 +362,7 @@ action_flash() {
         return 1
     fi
 
+    require_port || return 1
     if [ -f "$SERIAL_MONITOR" ]; then
         info "Entering download mode..."
         python3 "$SERIAL_MONITOR" "$SERIAL_PORT" --send reboot_dl --timeout 2 2>/dev/null || true
@@ -387,7 +389,27 @@ action_flash() {
     fi
 }
 
-# tools/serial_monitor.py is an internal tool; customer SDK packages do not carry it.
+# Fills SERIAL_PORT when neither -p nor IPRO_SERIAL_PORT named one: the only
+# USB serial port present (same rule as tools/zephyr/common.sh).
+require_port() {
+    [ -n "$SERIAL_PORT" ] && return 0
+    local ports=() p
+    for p in /dev/cu.usbmodem* /dev/cu.usbserial* /dev/ttyACM* /dev/ttyUSB*; do
+        [ -e "$p" ] && ports+=("$p")
+    done
+    if [ "${#ports[@]}" -eq 1 ]; then
+        SERIAL_PORT="${ports[0]}"
+        return 0
+    fi
+    if [ "${#ports[@]}" -eq 0 ]; then
+        fail "No serial port found: pass -p PORT or set IPRO_SERIAL_PORT"
+    else
+        fail "Several serial ports, pass -p PORT or set IPRO_SERIAL_PORT: ${ports[*]}"
+    fi
+    return 1
+}
+
+# tools/serial_monitor.py ships with the SDK; keep a hint for trees without it.
 require_serial_monitor() {
     [ -f "$SERIAL_MONITOR" ] && return 0
     fail "Serial monitor not found: $SERIAL_MONITOR"
@@ -398,6 +420,7 @@ require_serial_monitor() {
 action_monitor() {
     local project_dir="$1"
     require_serial_monitor || return 1
+    require_port || return 1
     info "Opening serial monitor on ${BOLD}$SERIAL_PORT${RESET}..."
 
     local mon_args=("$SERIAL_PORT" "--timeout" "$TIMEOUT" "--send" "reboot")
@@ -435,6 +458,7 @@ action_test() {
 
     # test = build + flash + monitor with test pattern
     require_serial_monitor || return 1
+    require_port || return 1
     action_build "$project_dir"
     action_flash "$project_dir"
 

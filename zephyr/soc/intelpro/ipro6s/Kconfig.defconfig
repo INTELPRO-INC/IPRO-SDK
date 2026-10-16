@@ -1,0 +1,45 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_IPRO6S
+
+config KERNEL_ENTRY
+	default "__ipro6s_start"
+
+# Nuclei private systimer: XCLK / mtime_toggle_cnt = 1 MHz
+# (SOC_TIMER_FREQ in bsp/drivers/ipro6_soc/regs/ipro6.h, hal_mtimer.c).
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 1000000
+
+config SYS_CLOCK_TICKS_PER_SEC
+	default 1000
+
+# 19 core-local interrupts + 64 external lines (IRQn_LAST in ipro6.h).
+config NUM_IRQS
+	default 83
+
+config RISCV_MCAUSE_EXCEPTION_MASK
+	default 0xFFF
+
+config RISCV_TRAP_HANDLER_ALIGNMENT
+	default 64
+
+config ARCH_SW_ISR_TABLE_ALIGN
+	default 64
+
+config MAIN_STACK_SIZE
+	default 4096
+
+config IDLE_STACK_SIZE
+	default 1024
+
+config ISR_STACK_SIZE
+	default 4096
+
+config FPU
+	default y
+
+config PINCTRL
+	default y
+
+endif # SOC_SERIES_IPRO6S

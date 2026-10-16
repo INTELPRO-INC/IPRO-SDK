@@ -1,0 +1,35 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_IPRO7_EVB
+
+# Without MCUboot (USE_DT_CODE_PARTITION=n) an application is what boot2
+# loads: it links right after the tool's 4 KB header in the "FW" partition
+# (physical 0x4000, XIP 0x13000000) and may use the rest of the region.
+# With MCUboot the chosen zephyr,code-partition (slot0) takes over.
+config FLASH_LOAD_OFFSET
+	default 0x4000 if !USE_DT_CODE_PARTITION
+
+config FLASH_LOAD_SIZE
+	default 0x126000 if !USE_DT_CODE_PARTITION
+
+
+# Every IPRO firmware carries the console shell by default, like the
+# FreeRTOS SDK: the bench/flash tooling relies on "reboot_dl" to enter the
+# BootROM download mode over the console. Applications that must not have
+# it (bootloaders, size-critical images) set CONFIG_SHELL=n.
+config SHELL
+	default y
+
+config SHELL_BACKEND_SERIAL
+	default y if SHELL
+
+# With the shell on, an application that enables LOG gets the shell log
+# backend as its only backend, and LOG_PRINTK (default y) then routes printk
+# through it too: everything printed before the shell thread runs (driver
+# init, the boot banner, an application's first lines) is silently dropped.
+# Keep printk on the console directly.
+config LOG_PRINTK
+	default n
+
+endif # BOARD_IPRO7_EVB

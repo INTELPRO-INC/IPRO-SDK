@@ -1,0 +1,15 @@
+common:
+  platform_allow:
+    - ipro7_evb
+    - ipro7ai_evk
+  integration_platforms:
+    - ipro7_evb
+  tags:
+    - drivers
+    - ipro
+    - uart
+    - dma
+  harness: ztest
+tests:
+  drivers.ipro.uart_async:
+    build_only: false

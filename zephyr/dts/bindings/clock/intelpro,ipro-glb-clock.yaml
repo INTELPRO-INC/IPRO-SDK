@@ -1,0 +1,25 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 GLB peripheral clock gate / reset controller. Consumers reference a
+  clock with one cell: the GLB_AHB_CLOCK_* identifier from
+  <zephyr/dt-bindings/clock/ipro7-clock.h>.
+
+  Enabling a clock ungates the AHB clock (GLB_PER_Clock_UnGate); the rate
+  query resolves through the SDK clock tree (Clock_Peripheral_Clock_Get)
+  for the peripherals that have a dedicated functional clock.
+
+compatible: "intelpro,ipro-glb-clock"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  "#clock-cells":
+    const: 1
+
+clock-cells:
+  - id

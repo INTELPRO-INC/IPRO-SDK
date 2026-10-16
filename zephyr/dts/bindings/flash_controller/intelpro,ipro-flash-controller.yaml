@@ -1,0 +1,19 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 serial flash controller (SF_CTRL @0x30081000) with its XIP window.
+  Read/write/erase go through the SDK HAL (hal_flash.c -> XIP_SFlash_*
+  helpers, executed from OCRAM with interrupts masked and XIP paused).
+  The child flash node describes the PHYSICAL flash; the running image sees
+  the active firmware partition through the XIP window at 0x13000000
+  (boot2 programs the remap), which is why the linker takes its base from
+  CONFIG_FLASH_BASE_ADDRESS instead of the flash node.
+
+compatible: "intelpro,ipro-flash-controller"
+
+include: [flash-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true

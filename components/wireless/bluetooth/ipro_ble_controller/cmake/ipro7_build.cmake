@@ -34,6 +34,8 @@
 #                                                    ${CMAKE_CURRENT_BINARY_DIR}/patched)
 #   IPRO_BLE_CTLR_PUBLIC_INC / _PRIVATE_INC          include directories
 #   IPRO_BLE_CTLR_DEFS                               private compile definitions
+#   IPRO_BLE_CTLR_COMPILE_OPTIONS                    private compile options (path maps,
+#                                                    source build only)
 # The caller creates the library, attaches these and decides warning policy
 # (upstream/ is read-only vendor code and is built without -Werror).
 
@@ -1414,6 +1416,28 @@ endif()
 # ---------------------------------------------------------------------------
 # Upstream rwip_init() calls rf_init(); the IPRO7 RF driver provides it under its own name.
 list(APPEND IPRO_BLE_CTLR_DEFS rf_init=ipro_ble_ctlr_rf_init)
+
+# ---------------------------------------------------------------------------
+# Source paths in the objects are relative to the SDK root
+#
+# CFG_DBG assertions compile __BASE_FILE__ into the image.  Without these maps
+# every CFG_DBG prebuilt carried the builder's absolute checkout path (and its
+# template app's build directory, for the patched copies), so the same sources
+# rebuilt in another checkout changed the archive, and a customer SDK carried
+# the build machine's home directory.
+#
+# GCC applies the LAST matching map, so the SDK-root catch-all comes first.
+# The patched copies live in the caller's binary directory (an app's build/
+# in the SDK, anywhere for Zephyr); they get one fixed name next to the
+# controller instead of the upstream file they were copied from, because their
+# line numbers are the patched file's.
+# ---------------------------------------------------------------------------
+get_filename_component(_ipro_ble_ctlr_sdk_root ${IPRO_BLE_CTLR_ROOT}/../../../.. ABSOLUTE)
+file(RELATIVE_PATH _ipro_ble_ctlr_rel ${_ipro_ble_ctlr_sdk_root} ${IPRO_BLE_CTLR_ROOT})
+set(IPRO_BLE_CTLR_COMPILE_OPTIONS
+    -ffile-prefix-map=${_ipro_ble_ctlr_sdk_root}/=
+    -ffile-prefix-map=${IPRO_BLE_CTLR_PATCHED_DIR}/=${_ipro_ble_ctlr_rel}/ipro_ble_ctlr_patched/)
+
 message(STATUS "[ipro_ble_controller] IPRO BLE controller source build: upstream + plf/ipro7 + IPRO patches")
 message(STATUS "[ipro_ble_controller]   LIB=${IPRO_BLE_CTLR_LIBRARY_NAME} FEATURE=${IPRO_BLE_CTLR_FEATURE} BT=${IPRO_BLE_CTLR_BT} ACT=${IPRO_BLE_CTLR_ACT} CON=${IPRO_BLE_CTLR_CON} ISO_CON=${IPRO_BLE_CTLR_ISO_CON}")
 list(LENGTH IPRO_BLE_CTLR_SRC_FINAL _n)

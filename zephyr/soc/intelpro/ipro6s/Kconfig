@@ -1,0 +1,58 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_IPRO6S
+	select RISCV
+	select RISCV_PRIVILEGED
+	select RISCV_ISA_RV32I
+	select RISCV_ISA_EXT_M
+	select RISCV_ISA_EXT_A
+	select RISCV_ISA_EXT_F
+	select RISCV_ISA_EXT_C
+	select RISCV_ISA_EXT_ZICSR
+	select RISCV_ISA_EXT_ZIFENCEI
+	select RISCV_ISA_EXT_ZBA
+	select RISCV_ISA_EXT_ZBB
+	select RISCV_ISA_EXT_ZBC
+	select RISCV_ISA_EXT_ZBS
+	select CPU_HAS_FPU
+	select RISCV_HAS_CLIC
+	select RISCV_SOC_CONTEXT_SAVE
+	select RISCV_SOC_HAS_GP_RELATIVE_ADDRESSING
+	select RISCV_SOC_INTERRUPT_INIT
+	select INCLUDE_RESET_VECTOR
+	select XIP
+	select SOC_PREP_HOOK
+	select SOC_EARLY_INIT_HOOK
+	select DYNAMIC_INTERRUPTS
+	select IPRO_HAL
+	select INTC_IPRO_ECLIC
+	select IPRO_SYSTIMER
+
+if SOC_SERIES_IPRO6S
+
+config IPRO6S_EM_SIZE_KB
+	int "BLE Exchange Memory carved from the top of WRAM (KB)"
+	default 0
+	range 0 64
+	help
+	  On IPRO6S the BLE controller's Exchange Memory comes out of the
+	  160 KB WRAM (GLB_SRAM_CFG3[3:0], one bit per 16 KB from the top),
+	  not out of OCRAM. 0 when Bluetooth is not used.
+
+config IPRO6S_MCU_CLOCK_FALLBACK
+	bool "Program the 240/80 MHz clock tree if the bootheader did not"
+	default y
+	help
+	  The IPRO6 bootheader normally leaves MCU 240 MHz / PBCLK 80 MHz.
+	  Re-tune only when the tree is not already there (RAM/debug boots),
+	  exactly like bsp/board/ipro6/board.c.
+
+config IPRO6S_DCACHE
+	bool "Enable the L1 data cache"
+	default y
+	help
+	  Turn on the D-cache in soc_early_init_hook(). DMA buffers are kept
+	  coherent by the DMA glue; XIP flash routines run from OCRAM.
+
+endif # SOC_SERIES_IPRO6S

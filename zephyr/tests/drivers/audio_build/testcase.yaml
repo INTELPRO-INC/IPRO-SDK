@@ -1,0 +1,16 @@
+common:
+  platform_allow:
+    - ipro7_evb
+    - ipro7ai_evk
+  integration_platforms:
+    - ipro7_evb
+  tags:
+    - drivers
+    - ipro
+    - i2s
+    - dmic
+  harness: ztest
+tests:
+  drivers.ipro.audio_build:
+    # No codec / microphone on the bench: API-level checks only.
+    build_only: false

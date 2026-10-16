@@ -1,0 +1,15 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config DMA_IPRO
+	bool "IPRO7 DMA driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_DMA_ENABLED
+	depends on DMA
+	select IPRO_HAL
+	help
+	  Zephyr DMA API over the SDK HAL (hal_dma.c). Single-block and
+	  cyclic transfers, memory-to-memory and peripheral requests,
+	  completion/error callbacks. The HAL builds its LLI chain with
+	  malloc(): keep COMMON_LIBC_MALLOC_ARENA_SIZE large enough for
+	  (transfer_size / 4064) * 16 bytes per active channel.

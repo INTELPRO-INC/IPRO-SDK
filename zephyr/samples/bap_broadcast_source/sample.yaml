@@ -1,0 +1,14 @@
+sample:
+  name: BAP broadcast source (LC3 sine) on the IPRO7 ISO controller
+tests:
+  sample.ipro.bap_broadcast_source:
+    platform_allow:
+      - ipro7_evb
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7_evb
+    tags:
+      - ipro
+      - bluetooth
+      - leaudio
+    build_only: true

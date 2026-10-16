@@ -131,26 +131,10 @@ void ipro_setup_heap(void)
 /* -----------------------------------------------------------------------
  * Platform init sequence
  * -----------------------------------------------------------------------*/
-#if defined(CONFIG_IPRO7) && defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
-extern int AON_Set_Xtal_CapCode(uint8_t capIn, uint8_t capOut);
-extern uint8_t AON_Get_Xtal_CapCode(void);
-
-/* Board-calibrated RF crystal trim (see Kconfig IPRO7_XTAL_CAPCODE). */
-static void ipro_xtal_capcode_init(void)
-{
-    uint8_t before = AON_Get_Xtal_CapCode();
-
-    AON_Set_Xtal_CapCode(CONFIG_IPRO7_XTAL_CAPCODE, CONFIG_IPRO7_XTAL_CAPCODE);
-    printf("[XTAL] capcode %u -> %u\r\n", before, (unsigned)CONFIG_IPRO7_XTAL_CAPCODE);
-}
-#endif
-
 void ipro_platform_init(void)
 {
+    /* IPRO7: board_init() inside applies CONFIG_IPRO7_XTAL_CAPCODE */
     platform_init(0);
-#if defined(CONFIG_IPRO7) && defined(CONFIG_IPRO7_XTAL_CAPCODE) && (CONFIG_IPRO7_XTAL_CAPCODE > 0)
-    ipro_xtal_capcode_init();
-#endif
     ipro_setup_heap();
     hal_boot2_init();
 

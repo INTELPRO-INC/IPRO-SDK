@@ -77,4 +77,11 @@ void rf_trigger_full_calibration(void);
 void rf_set_tx_bypass(uint8_t en);
 uint8_t rf_get_rf_state(void);
 
+/* Board RF crystal trim that every RF init loads into the AON XTAL capcode
+ * (IN and OUT); 0 = none, and the RF init loads the ROM default 85. The RF
+ * library's weak default returns 0. The board provides the app's value
+ * (bsp/board/ipro7/board.c, or soc.c under Zephyr: CONFIG_IPRO7_XTAL_CAPCODE),
+ * so a prebuilt RF library follows the image it is linked into. */
+uint8_t ipro7_rf_xtal_capcode(void);
+
 #endif

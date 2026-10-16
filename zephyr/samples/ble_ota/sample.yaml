@@ -1,0 +1,15 @@
+sample:
+  name: BLE OTA (MCUboot + MCUmgr SMP over Bluetooth LE) on IPRO7
+tests:
+  sample.ipro.ble_ota:
+    sysbuild: true
+    platform_allow:
+      - ipro7_evb
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7_evb
+    tags:
+      - ipro
+      - bluetooth
+      - mcuboot
+    build_only: true

@@ -1,0 +1,13 @@
+sample:
+  name: BAP broadcast sink (LC3 -> GPDAC speaker) on the IPRO7AI EVK
+tests:
+  sample.ipro.bap_broadcast_sink:
+    platform_allow:
+      - ipro7ai_evk
+    integration_platforms:
+      - ipro7ai_evk
+    tags:
+      - ipro
+      - bluetooth
+      - leaudio
+    build_only: true

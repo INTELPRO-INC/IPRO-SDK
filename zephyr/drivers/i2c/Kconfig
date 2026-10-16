@@ -1,0 +1,25 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config I2C_IPRO
+	bool "IPRO7 I2C driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_I2C_ENABLED
+	depends on I2C
+	select IPRO_HAL
+	select PINCTRL
+	help
+	  Zephyr I2C controller over the SDK LL (drv_i2c.c). Polled
+	  transactions with NACK detection; the hal_i2c.c wrapper is not used
+	  because it hard-codes 400 kHz and cannot express restarts.
+
+if I2C_IPRO
+
+config I2C_IPRO_TIMEOUT_US
+	int "Per-byte transfer timeout (microseconds)"
+	default 5000
+	help
+	  Longest wait for one FIFO slot / one transfer end before the
+	  transaction is aborted with -ETIMEDOUT (bus stuck, clock stretching).
+
+endif # I2C_IPRO

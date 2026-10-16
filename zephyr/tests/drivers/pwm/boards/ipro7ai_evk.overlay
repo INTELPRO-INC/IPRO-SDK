@@ -1,0 +1,41 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO7AI EVK wiring for the smoke test. SPI0 (LCD bus, SCLK 15 / MOSI 16)
+ * and I2C0 (camera SCCB, SCL 36 / SDA 37) come from the board DTS; there is
+ * no MISO pad on the LCD bus so the SPI test prints "no loopback jumper"
+ * and only checks the transfer completes. The I2C scan should find the
+ * SC101IOT sensor (0x30) when the camera FPC is fitted. PWM drives the
+ * spare header pad GPIO13 (13 % 5 = channel 3).
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+&pinctrl {
+	pwm0_default: pwm0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(13, IPRO7_FUN_PWM)>;
+			bias-disable;
+		};
+	};
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-names = "default";
+};
+
+/ {
+	aliases {
+		pwm-led0 = &pwm_led0;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led0: pwm_led_0 {
+			pwms = <&pwm0 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+	};
+};

@@ -1,0 +1,13 @@
+common:
+  platform_allow:
+    - ipro7ai_evk
+  integration_platforms:
+    - ipro7ai_evk
+  tags:
+    - soc
+    - ipro
+    - psram
+  harness: ztest
+tests:
+  soc.ipro.psram:
+    build_only: false

@@ -1,0 +1,10 @@
+sample:
+  name: IPRO7 peripheral smoke test
+  description: Touches every ipro_* driver (GPIO, UART IRQ, SPI, I2C, PWM, flash, DMA, counter, watchdog, TRNG)
+tests:
+  sample.ipro.periph_smoke:
+    platform_allow: ipro7_evb
+    integration_platforms:
+      - ipro7_evb
+    tags: ipro drivers
+    build_only: true

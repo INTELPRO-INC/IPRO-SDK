@@ -1,0 +1,166 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * INTELPRO IPRO7 EVB: IPRO7 with 2 MB on-chip flash (W25Q16), no PSRAM, 32 MHz
+ * crystal, console on UART0 (GPIO20/21), micro-SD on GPIO28-33.
+ */
+
+/dts-v1/;
+
+#include <intelpro/ipro7.dtsi>
+#include "ipro7_evb-pinctrl.dtsi"
+
+/ {
+	model = "INTELPRO IPRO7 EVB";
+	compatible = "intelpro,ipro7-evb";
+
+	chosen {
+		zephyr,sram = &sram0;
+		/* flash0 is the physical part; the controller's "ranges" maps it
+		 * onto the XIP window boot2 opens (FW partition -> 0x13000000), so
+		 * the linker takes ROM from the chosen code partition. */
+		zephyr,flash = &flash0;
+		zephyr,flash-controller = &flashctrl;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,entropy = &trng;
+	};
+
+	aliases {
+		led0 = &sw_gpio15;
+		watchdog0 = &wdt0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		/* GPIO15 is the EVB's software-controlled output ("SD PWR EN /
+		 * SW GPIO Output" in the SDK board file, driven low at boot). It
+		 * is the pad the blinky sample toggles; there is no dedicated
+		 * user LED on the EVB, probe TP/GPIO15. */
+		sw_gpio15: led_0 {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "GPIO15 output";
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <2000000>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-names = "default";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&timer0 {
+	status = "okay";
+};
+
+&counter0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&trng {
+	status = "okay";
+};
+
+&rtc0 {
+	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};
+
+&flashctrl {
+	/* The IntelProCube tool writes a 4 KB boot2 image header at the start
+	 * of the "FW" partition (0x3000) and the firmware itself from 0x4000;
+	 * boot2 maps that at 0x13000000. So physical 0x4000 <-> 0x13000000. */
+	ranges = <0x0 0x12ffc000 DT_SIZE_M(2)>;
+};
+
+&flash0 {
+	/* W25Q16 (JEDEC EF4015, 2 MB) on the EVB. Layout = the IntelProCube
+	 * partition_cfg_2M.toml table that boot2 hands over: "FW" is mapped to
+	 * the 0x13000000 XIP window, "PSM" is the SDK's settings area and is
+	 * what Zephyr NVS/settings samples use as storage. A 1 MB EVB uses
+	 * partition_cfg_1M (FW 0x3000+0xd7000, PSM at 0xda000) via an overlay. */
+	reg = <0x0 DT_SIZE_M(2)>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot2_partition: partition@0 {
+			label = "boot2";
+			reg = <0x00000000 0x3000>;
+			read-only;
+		};
+		/* boot2's "FW" region (0x3000 .. 0x12a000): 4 KB tool header, then
+		 * the firmware at 0x4000 = XIP 0x13000000. With MCUboot: a 96 KB
+		 * bootloader there, a 540 KB primary and a 536 KB secondary slot
+		 * (the flash tool's FW image must end 16 B short of the region, so
+		 * the last slot stops one sector early). Without MCUboot an
+		 * application links at 0x4000 and may span the region
+		 * (FLASH_LOAD_OFFSET/SIZE in Kconfig.defconfig). */
+		fwhdr_partition: partition@3000 {
+			label = "fw-header";
+			reg = <0x00003000 0x1000>;
+			read-only;
+		};
+		boot_partition: partition@4000 {
+			label = "mcuboot";
+			reg = <0x00004000 0x18000>;
+		};
+		slot0_partition: partition@1c000 {
+			label = "image-0";
+			reg = <0x0001c000 0x87000>;
+		};
+		slot1_partition: partition@a3000 {
+			label = "image-1";
+			reg = <0x000a3000 0x86000>;
+		};
+		mfg_partition: partition@12a000 {
+			label = "mfg";
+			reg = <0x0012a000 0xce000>;
+		};
+		storage_partition: partition@1f8000 {
+			label = "storage";
+			reg = <0x001f8000 DT_SIZE_K(8)>;
+		};
+		backup_partition: partition@1fa000 {
+			label = "backup";
+			reg = <0x001fa000 DT_SIZE_K(4)>;
+		};
+		media_partition: partition@1fb000 {
+			label = "media";
+			reg = <0x001fb000 DT_SIZE_K(16)>;
+		};
+		factory_partition: partition@1ff000 {
+			label = "factory";
+			reg = <0x001ff000 DT_SIZE_K(4)>;
+		};
+	};
+};

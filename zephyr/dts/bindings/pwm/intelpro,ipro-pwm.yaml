@@ -1,0 +1,46 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 PWM block (@0x3000F000, pad function 8, channel = pad % 5). One
+  16-bit period and clock divider shared by four channels, each with its own
+  low/high thresholds and polarity. Driven through the SDK LL (drv_pwm.c).
+
+  Because the period is shared, every channel of the block must be requested
+  with the same period; the driver refuses a conflicting period on a second
+  channel while the first is active.
+
+  pwm cells: <channel period flags>.
+
+compatible: "intelpro,ipro-pwm"
+
+include: [pwm-controller.yaml, pinctrl-device.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+
+  "#pwm-cells":
+    const: 3
+
+  clock-source:
+    type: string
+    default: "xclk"
+    enum: ["xclk", "bclk", "32k"]
+    description: PWM counter clock (XCLK 32 MHz, BCLK 96 MHz, or the 32 kHz clock).
+
+  clock-divider:
+    type: int
+    default: 1
+    description: Counter clock divider (1-65535) applied to clock-source.
+
+pwm-cells:
+  - channel
+  - period
+  - flags

@@ -1,0 +1,15 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Nuclei private system timer (mtime/mtimecmp) of the IPRO7, used as the
+  Zephyr system clock. Located at run time (IREGION + 0x30000) like the
+  ECLIC; counts at /cpus timebase-frequency.
+
+compatible: "intelpro,ipro-systimer"
+
+include: base.yaml
+
+properties:
+  interrupts-extended:
+    required: true

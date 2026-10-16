@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO7 EVB pin assignments, taken from the SDK's authoritative board file
+ * bsp/board/ipro7/ipro7_evb_board_config.h (BOARD_PINMUX_TABLE). Only pads
+ * that file muxes are described; SPI/I2C/PWM header pins are not fixed on
+ * this board and are chosen per application (see the sample board overlays).
+ */
+
+#include <zephyr/dt-bindings/pinctrl/ipro7-pinctrl.h>
+
+&pinctrl {
+	/* Debug console (also the ROM download UART): GPIO20 = UART0 TXD,
+	 * GPIO21 = UART0 RXD. Signal slots 8/9 (pad % 12). */
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX_UART(20, UART0_TXD)>,
+				 <IPRO7_PINMUX_UART(21, UART0_RXD)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* JTAG on GPIO0/1/2/11 (function 14) */
+	jtag_default: jtag_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(0, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(1, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(2, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(11, IPRO7_FUN_MCU_JTAG)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* micro-SD slot on the SDH controller, GPIO28-33 (function 27) */
+	sdh_default: sdh_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(28, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(29, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(31, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(32, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(33, IPRO7_FUN_SDC)>;
+			bias-pull-up;
+			input-schmitt-enable;
+			drive-strength = <2>;
+		};
+		group2 {
+			pinmux = <IPRO7_PINMUX(30, IPRO7_FUN_SDC)>;
+			bias-disable;
+			input-schmitt-enable;
+			drive-strength = <2>;
+		};
+	};
+};

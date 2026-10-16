@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Bench wiring for the smoke test on the IPRO7 EVB. SPI0/I2C0/PWM header
+ * pins are not fixed by the board, so this overlay picks free pad groups
+ * (silicon rule: SPI pads in groups of 4, I2C in pairs, PWM ch = pad % 5).
+ * Jumper GPIO16 <-> GPIO17 for the SPI loopback.
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+&pinctrl {
+	spi0_default: spi0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(16, IPRO7_FUN_SPI0)>,	/* MOSI (MISO if swapped) */
+				 <IPRO7_PINMUX(17, IPRO7_FUN_SPI0)>,	/* MISO (MOSI if swapped) */
+				 <IPRO7_PINMUX(18, IPRO7_FUN_SPI0)>,	/* SS   */
+				 <IPRO7_PINMUX(19, IPRO7_FUN_SPI0)>;	/* SCLK */
+			bias-pull-up;
+			input-schmitt-enable;
+			drive-strength = <1>;
+		};
+	};
+
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(12, IPRO7_FUN_I2C0)>,	/* SCL (even pad) */
+				 <IPRO7_PINMUX(13, IPRO7_FUN_I2C0)>;	/* SDA (odd pad)  */
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	pwm0_default: pwm0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(10, IPRO7_FUN_PWM)>;	/* channel 10 % 5 = 0 */
+			bias-disable;
+		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-0 = <&spi0_default>;
+	pinctrl-names = "default";
+	swap-mosi-miso;
+};
+
+&i2c0 {
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-names = "default";
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-names = "default";
+};
+
+/ {
+	aliases {
+		pwm-led0 = &pwm_led0;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led0: pwm_led_0 {
+			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+	};
+};

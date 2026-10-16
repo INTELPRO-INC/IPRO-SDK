@@ -6,3 +6,5 @@
 *.pyo
 .DS_Store
 Thumbs.db
+# Zephyr workspace made by tools/zephyr/bootstrap.sh
+zephyr-workspace/

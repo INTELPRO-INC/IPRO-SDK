@@ -1,0 +1,35 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config COUNTER_IPRO
+	bool "IPRO7 TIMER counter driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_COUNTER_ENABLED
+	depends on COUNTER
+	select IPRO_HAL
+	help
+	  Zephyr counter over the IPRO7 TIMER block (SDK LL drv_timer.c):
+	  32-bit channels, two alarms per channel, settable top value.
+
+config COUNTER_IPRO_RTC
+	bool "IPRO HBN RTC counter driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_RTC_ENABLED
+	depends on COUNTER
+	select IPRO_HAL
+	select COUNTER_SUPPORTS_64BITS_TICKS
+	select COUNTER_64BITS_TICKS
+	help
+	  Zephyr counter over the HBN RTC: free-running 40-bit 32 kHz counter
+	  that keeps running through PDS/HBN sleep, one alarm on HBN_OUT0.
+
+config COUNTER_IPRO_RTC_MEASURE_MS
+	int "Measure the RTC clock against the crystal at init (ms, 0 = skip)"
+	depends on COUNTER_IPRO_RTC
+	default 20
+	range 0 200
+	help
+	  The RC32K is only eFuse-trimmed (several percent off). Count RTC ticks
+	  for this long against the 32 MHz-derived cycle counter at driver init
+	  and report the measured rate as the counter frequency (20 ms gives
+	  about 0.15 % resolution). 0 keeps the nominal clock-frequency.

@@ -1,0 +1,77 @@
+/**
+ * @file ili9341_spi.h
+ * @brief ILI9341 SPI LCD driver (240x320, RGB565)
+ *
+ * Copyright (c) 2021 IntelPro team
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+
+#ifndef _ILI9341_SPI_H_
+#define _ILI9341_SPI_H_
+
+#include "hal_gpio.h"
+
+#define ILI9341_SPI_CS_PIN          GLB_GPIO_PIN_10
+#define ILI9341_SPI_DC_PIN          GLB_GPIO_PIN_17
+#define ILI9341_SPI_SCLK_PIN        GLB_GPIO_PIN_15
+#define ILI9341_SPI_MOSI_PIN        GLB_GPIO_PIN_16
+#define ILI9341_SPI_RST_PIN         GLB_GPIO_PIN_14
+#define ILI9341_SPI_BL_PIN          GLB_GPIO_PIN_12
+
+#define ILI9341_SPI_CS_HIGH gpio_write(ILI9341_SPI_CS_PIN, 1)
+#define ILI9341_SPI_CS_LOW  gpio_write(ILI9341_SPI_CS_PIN, 0)
+#define ILI9341_SPI_DC_HIGH gpio_write(ILI9341_SPI_DC_PIN, 1)
+#define ILI9341_SPI_DC_LOW  gpio_write(ILI9341_SPI_DC_PIN, 0)
+#define ILI9341_SPI_RST_HIGH gpio_write(ILI9341_SPI_RST_PIN, 1)
+#define ILI9341_SPI_RST_LOW  gpio_write(ILI9341_SPI_RST_PIN, 0)
+#define ILI9341_SPI_BL_HIGH  gpio_write(ILI9341_SPI_BL_PIN, 1)
+#define ILI9341_SPI_BL_LOW   gpio_write(ILI9341_SPI_BL_PIN, 0)
+
+/* ILI9341 LCD width */
+#define ILI9341_SPI_W 240
+/* ILI9341 LCD height */
+#define ILI9341_SPI_H 320
+
+/* The offset of the area can be displayed */
+#define ILI9341_SPI_OFFSET_X 0
+#define ILI9341_SPI_OFFSET_Y 0
+
+/* RGB565: 16-bit color depth */
+#define ILI9341_SPI_COLOR_DEPTH 16
+
+typedef struct {
+    uint8_t cmd; /* 0xFF : delay(databytes)ms */
+    const char *data;
+    uint8_t databytes; /* Num of data in data; or delay time */
+} ili9341_spi_init_cmd_t;
+
+typedef uint16_t ili9341_spi_color_t;
+
+int ili9341_spi_init(void);
+void ili9341_spi_async_callback_register(void (*callback)(void));
+int ili9341_spi_set_dir(uint8_t dir, uint8_t mir_flag);
+void ili9341_spi_set_draw_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+void ili9341_spi_draw_point(uint16_t x, uint16_t y, ili9341_spi_color_t color);
+void ili9341_spi_draw_area(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ili9341_spi_color_t color);
+void ili9341_spi_draw_area_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ili9341_spi_color_t color);
+void ili9341_spi_draw_picture_polling(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ili9341_spi_color_t *picture);
+void ili9341_spi_draw_picture_nonblocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ili9341_spi_color_t *picture);
+void ili9341_spi_draw_picture_blocking(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ili9341_spi_color_t *picture);
+int ili9341_spi_draw_is_busy(void);
+
+#endif

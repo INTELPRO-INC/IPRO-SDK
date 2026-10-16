@@ -1,0 +1,6 @@
+board:
+  name: ipro7ai_evk
+  full_name: IPRO7AI EVK (IPRO7AI_MODULE_SUB_0812A)
+  vendor: intelpro
+  socs:
+    - name: ipro7

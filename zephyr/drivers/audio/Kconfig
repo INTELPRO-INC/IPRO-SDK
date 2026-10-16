@@ -1,0 +1,36 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config AUDIO_DMIC_IPRO
+	bool "IPRO7 PDM microphone (AUADC) driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_PDM_ENABLED
+	depends on AUDIO_DMIC
+	select IPRO_HAL
+	select DMA
+	help
+	  Zephyr DMIC over the IPRO7 AUADC PDM input (SDK HAL hal_auadc.c):
+	  one 16-bit channel at 8/16/32/48 kHz nominal, frames delivered by DMA
+	  into the application's memory slab. Not yet verified on hardware.
+
+config DMIC_IPRO_MAX_BLOCK_SIZE
+	int "Largest PCM block (bytes) a stream may ask for"
+	depends on AUDIO_DMIC_IPRO
+	default 2048
+	range 2 8190
+	help
+	  Sizes the static, cache-aligned DMA ping-pong pair (2 x this).
+
+config DMIC_IPRO_DIGITAL_GAIN_DB
+	int "AUADC digital gain (dB, -95..18)"
+	depends on AUDIO_DMIC_IPRO
+	default 18
+	range -95 18
+	help
+	  Applied after each configure. 18 dB is the hardware maximum and what
+	  the SDK's microphone apps use; the PDM path is quiet without it.
+
+config DMIC_IPRO_QUEUE_LEN
+	int "Captured blocks queued for dmic_read()"
+	depends on AUDIO_DMIC_IPRO
+	default 4

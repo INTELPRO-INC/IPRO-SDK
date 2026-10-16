@@ -1,0 +1,12 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config HWINFO_IPRO
+	bool "IPRO7 hwinfo (eFuse chip id, reset cause)"
+	default y
+	depends on HWINFO
+	depends on SOC_SERIES_IPRO7
+	select IPRO_HAL
+	help
+	  Device id from the 8-byte eFuse chip id; reset cause from the SDK's
+	  boot-time detection (power-on, watchdog, software, exception, PDS wake).

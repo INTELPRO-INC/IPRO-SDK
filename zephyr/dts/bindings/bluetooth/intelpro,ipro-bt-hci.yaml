@@ -1,0 +1,34 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 BLE controller (RivieraWaves-derived, shipped as a prebuilt archive in
+  components/wireless/bluetooth/ipro_ble_controller/lib) exposed to the Zephyr
+  Bluetooth host as an HCI driver. The H4 byte stream flows through the
+  controller's in-memory HCI transport (hcitl); no UART is involved.
+
+  Register base is the BLE core block (BZ_PHY/BLE @0x30002000); interrupts
+  are the BLE and BZ_PHY lines.
+
+compatible: "intelpro,ipro-bt-hci"
+
+include: [bt-hci.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  interrupt-names:
+    required: true
+
+  clocks:
+    required: true
+
+  bt-hci-name:
+    default: "IPRO7 BLE controller"
+
+  bt-hci-bus:
+    default: "virtual"

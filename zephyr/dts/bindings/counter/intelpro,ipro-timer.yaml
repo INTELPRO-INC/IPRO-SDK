@@ -1,0 +1,22 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 general-purpose timer block (TIMER0 @0x30010000): two 32-bit
+  channels, each with three comparators, preload (auto-reload) or free-run
+  counting, clocked from XTAL/32 = 1 MHz by the clock-control driver. Child
+  nodes (intelpro,ipro-counter) expose each channel as a Zephyr counter.
+
+compatible: "intelpro,ipro-timer"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true

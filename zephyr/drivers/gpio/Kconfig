@@ -1,0 +1,14 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config GPIO_IPRO
+	bool "IPRO7 GPIO driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_GPIO_ENABLED
+	depends on GPIO
+	select IPRO_HAL
+	help
+	  GPIO over the SDK LL (drv_gpio.c / drv_glb.c): GLB_GPIO_Init for
+	  pin configuration, GLB_GPIO_Write/Read/Toggle for levels and the
+	  GLB per-pin interrupt block for edge/level callbacks on the shared
+	  GPIO_INT0 line.

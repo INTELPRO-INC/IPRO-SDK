@@ -1,0 +1,5 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_IPRO7AI_EVK
+	select SOC_IPRO7

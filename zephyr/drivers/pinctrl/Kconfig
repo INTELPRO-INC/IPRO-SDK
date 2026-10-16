@@ -1,0 +1,12 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config PINCTRL_IPRO
+	bool "IPRO7 pin controller"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_PINCTRL_ENABLED
+	depends on PINCTRL
+	select IPRO_HAL
+	help
+	  pinctrl over the SDK's GLB_GPIO_Init() (pad function, mode, pull,
+	  drive, Schmitt) plus GLB_UART_Fun_Sel() for the UART signal slots.

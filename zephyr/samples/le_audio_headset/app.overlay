@@ -1,0 +1,17 @@
+/ {
+	chosen {
+		zephyr,bt-hci = &bt_hci;
+	};
+};
+
+&bt_hci {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};

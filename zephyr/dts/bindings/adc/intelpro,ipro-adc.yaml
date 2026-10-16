@@ -1,0 +1,36 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 GPADC. Channel ids: 0-11 analog pads (GPIO8, 15, 17, 11, 12, 14, 7,
+  9, 18, 19, 20, 21 in that order; mux the pad to IPRO7_FUN_ANALOG), 12/13
+  DAC A/B output, 14/15 temperature sensor, 16 Vref, 17 DC test, 18 VBAT/2,
+  19-22 SenVP3..0, 23 GND. Single-ended, PGA gain 1, internal reference.
+
+compatible: "intelpro,ipro-adc"
+
+include: [adc-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  interrupts:
+    required: true
+
+  vref-mv:
+    type: int
+    default: 3200
+    enum: [2000, 3200]
+    description: Internal reference (full-scale) in millivolts.
+
+  clock-divider:
+    type: int
+    default: 7
+    description: |
+      ADC clock divider from the 32 MHz XCLK (ADC_CLK_Type index: 0 = /1,
+      1 = /4, 2 = /8, 3 = /12, 4 = /16, 5 = /20, 6 = /24, 7 = /32). The
+      default /32 gives 1 MHz, the rate the SDK's own ADC tests use.
+
+  "#io-channel-cells":
+    const: 1
+
+io-channel-cells:
+  - input

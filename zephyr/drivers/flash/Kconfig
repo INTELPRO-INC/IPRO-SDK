@@ -1,0 +1,16 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_FLASH_IPRO
+	bool "IPRO7 flash driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_FLASH_CONTROLLER_ENABLED
+	depends on FLASH
+	select FLASH_HAS_DRIVER_ENABLED
+	select FLASH_HAS_PAGE_LAYOUT
+	select FLASH_HAS_EXPLICIT_ERASE
+	select IPRO_HAL
+	help
+	  Zephyr flash API over the SDK HAL (hal_flash.c): byte-granular
+	  reads/writes, 4 KB sector erase, XIP-safe (the HAL runs the
+	  programming sequence from OCRAM with interrupts off).

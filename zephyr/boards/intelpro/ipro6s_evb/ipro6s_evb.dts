@@ -1,0 +1,38 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO6S EVB, BootROM-direct flash layout (2 MB, image at flash 0).
+ */
+
+/dts-v1/;
+#include "ipro6s_evb-common.dtsi"
+
+&flash0 {
+	/* 2 MB, BootROM-direct layout = the border-router app's partition.toml
+	 * (partition_cfg_fw_direct.toml + a PSM area): FW at 0, table at
+	 * 0x1FE000/0x1FF000. "storage" is the PSM area. */
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x00000000 0x1f0000>;
+		};
+		factory_partition: partition@1f0000 {
+			label = "factory";
+			reg = <0x001f0000 DT_SIZE_K(32)>;
+		};
+		storage_partition: partition@1f8000 {
+			label = "storage";
+			reg = <0x001f8000 DT_SIZE_K(24)>;
+		};
+		pt_partition: partition@1fe000 {
+			label = "partition-table";
+			reg = <0x001fe000 DT_SIZE_K(8)>;
+			read-only;
+		};
+	};
+};

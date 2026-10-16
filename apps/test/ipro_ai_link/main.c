@@ -21,8 +21,7 @@
  * 這支是**交付給客戶**的韌體：燒一次，之後換模型、換測試資料、跑推論、
  * 取回結果全部從 IPRO AI Studio 下指令，不必重燒。
  *
- * 與另外兩支測試 app 的分工：
- *   ipro_npu_opverify   逐算子正確性，模型與 golden 都燒在 flash 裡
+ * 與 ipro_ai_bench 的分工：
  *   ipro_ai_bench       整模型效能，輸入用板上 PRNG 生
  *   這一支              **模型與輸入都從卡片來**，輸出原樣送回主機比對
  *
@@ -39,7 +38,7 @@
  *    走 EVFS —— 同一張卡兩套命名空間，混用會 f_open 失敗而訊息指不到原因。
  *
  * 輸出框架都是機器可讀的前綴（AIINFO / AIRUN / AIOUT / AIDET），
- * 主機端 ipro_ai_core/device.py 直接剖析。
+ * 由 IPRO AI Studio 主機端直接剖析。
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -614,7 +613,7 @@ static int cmd_ai_out(int argc, char *argv[])
     L1C_DCACHE_INVALID_RANGE((uintptr_t)out, cap);
 
     /* 位元組原樣送出。⚠ 板上與主機模擬都把輸出存成 **XOR 0x80** 的形式，
-     * 主機端解碼時要一致（ipro_ai_core/simulate.py 有記載）。 */
+     * 主機端解碼時要一致（IPRO AI Studio 的模擬結果也以此格式儲存）。 */
     printf("AIOUT bytes=%lu h=%d w=%d c=%d pitch=%d patch=%lu\r\n",
            (unsigned long)cap, lout->out_h, lout->out_w, lout->out_c, pitch,
            (unsigned long)patch);

@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO7AI EVK pin assignments. Source: bsp/board/ipro7/ipro7ai_evk_board_config.h
+ * and bsp/board/ipro7/IPRO7AI_EVK.md (schematic IPRO7AI_MODULE_SUB_0812A).
+ */
+
+#include <zephyr/dt-bindings/pinctrl/ipro7-pinctrl.h>
+
+&pinctrl {
+	/* Console / ROM download UART: GPIO20 TX, GPIO21 RX */
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX_UART(20, UART0_TXD)>,
+				 <IPRO7_PINMUX_UART(21, UART0_RXD)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* JTAG: TMS 24, TDI 25, TCK 26, TDO 11 */
+	jtag_default: jtag_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(24, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(25, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(26, IPRO7_FUN_MCU_JTAG)>,
+				 <IPRO7_PINMUX(11, IPRO7_FUN_MCU_JTAG)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* ST7789P3 LCD, 4-wire SPI on SPI0: SCLK GPIO15, MOSI GPIO16.
+	 * CS (10), D/C (17), RST (14), backlight (12) are plain GPIOs. */
+	spi0_lcd: spi0_lcd {
+		group1 {
+			pinmux = <IPRO7_PINMUX(15, IPRO7_FUN_SPI0)>,
+				 <IPRO7_PINMUX(16, IPRO7_FUN_SPI0)>;
+			bias-disable;
+			input-schmitt-enable;
+			drive-strength = <1>;
+		};
+	};
+
+	/* SC101IOT camera SCCB on I2C0: SCL GPIO36, SDA GPIO37 */
+	i2c0_cam: i2c0_cam {
+		group1 {
+			pinmux = <IPRO7_PINMUX(36, IPRO7_FUN_I2C0)>,
+				 <IPRO7_PINMUX(37, IPRO7_FUN_I2C0)>;
+			bias-pull-up;
+			input-schmitt-enable;
+		};
+	};
+
+	/* micro-SD on the SDH controller: D1 28, D0 29, CLK 30, CMD 31, D3 32, D2 33 */
+	sdh_default: sdh_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(28, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(29, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(31, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(32, IPRO7_FUN_SDC)>,
+				 <IPRO7_PINMUX(33, IPRO7_FUN_SDC)>;
+			bias-pull-up;
+			input-schmitt-enable;
+			drive-strength = <2>;
+		};
+		group2 {
+			pinmux = <IPRO7_PINMUX(30, IPRO7_FUN_SDC)>;
+			bias-disable;
+			input-schmitt-enable;
+			drive-strength = <2>;
+		};
+	};
+
+	/* Infineon IM69D129 PDM microphone: CLK GPIO18, DAT GPIO19 (AON pads) */
+	pdm_default: pdm_default {
+		group1 {
+			pinmux = <IPRO7_PINMUX(18, IPRO7_FUN_PDM)>,
+				 <IPRO7_PINMUX(19, IPRO7_FUN_PDM)>;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+};

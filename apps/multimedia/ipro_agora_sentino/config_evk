@@ -1,0 +1,121 @@
+# IPRO7AI EVK + AIC8800 D80-H Wi-Fi (make BOARD=evk)
+# Hardware Platform Configuration
+CONFIG_AGENT_MONK=y
+CONFIG_IPRO7=y
+CONFIG_CHIP="IPRO7"
+CONFIG_CPU_ID="intelpro_ipro7"
+CONFIG_CROSS_COMPILE="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
+CONFIG_IPRO7AI_EVK=y
+CONFIG_BOARD="IPRO7AI_EVK"
+# CONFIG_FPGA is not set
+
+CONFIG_IPRO7_FLASH_2M=y
+# CONFIG_FLASH_CFG_FROM_BOOTROM=y
+
+# Memory Configuration
+CONFIG_USE_PSRAM=y
+CONFIG_LINK_FLASH=y
+# CONFIG_ENABLE_NVDS is not set
+
+# RTOS Configuration
+CONFIG_FREERTOS_SUPPORT=y
+CONFIG_COMPONENTS_FREERTOS_ENABLE=y
+CONFIG_FREERTOS=y
+# CONFIG_ZEPHYR is not set
+# CONFIG_NO_RTOS is not set
+
+# POSIX / OSAL
+CONFIG_COMPONENTS_FREERTOS_POSIX_ENABLE=y
+CONFIG_IPRO_OSAL=y
+
+# Network Configuration
+CONFIG_COMPONENTS_LWIP_ENABLE=y
+CONFIG_LWIP=y
+CONFIG_LWIP_SUPPORT=y
+CONFIG_LWIP_SOCKET=y
+CONFIG_LWIP_POSIX_SOCKETS_IO_NAMES=y
+CONFIG_LWIP_ALTCP=y
+
+# Network: AIC8800 D80-H Wi-Fi over SDIO (components/wireless/wifi_aic8800).
+# CONFIG_ETHERNET selects the CFG_ETHERNET_ENABLE lwipopts branch the prebuilt
+# archive was compiled against (it is not the EMAC). Internal 2 MB flash; GPIO28-33
+# stay on the SDH - the module sits on the micro-SD slot (supply via GPIO27).
+CONFIG_ETHERNET=y
+CONFIG_DHCPD=y
+CONFIG_WIFI_AIC8800=y
+CONFIG_NETWORK_USE_WIFI_AIC=y
+# Default STA credentials; `wifi_set <ssid> <psk>` on the shell stores others in EasyFlash.
+# Wi-Fi comes from the phone app over BLE or the `wifi_set` shell command; no credentials in git
+CONFIG_WIFI_STA_SSID=""
+CONFIG_WIFI_STA_PSK=""
+# CONFIG_LTE_MODEM is not set
+# CONFIG_AT_CLIENT is not set
+
+# BLE provisioning on the AIC8800's own controller: the mailbox BT firmware is
+# BLE-only (LMP features say "BR/EDR Not Supported"), which is exactly what
+# provisioning needs, and it saves linking the on-chip controller plus its
+# 32 KiB of Exchange Memory. Wi-Fi and BLE then share one chip; aic_start must
+# run before bt_enable() because it loads the BT patch tables.
+CONFIG_BLUETOOTH_LE_ENABLE=y
+CONFIG_BT_HOST_IPRO_V44=y
+CONFIG_BT_CTLR_AIC8800_SDIO=y
+CONFIG_BT_CONN=1
+# CONFIG_BT_CENTRAL is not set
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_BROADCASTER=y
+CONFIG_BT_L2CAP_TX_BUF_COUNT=6
+CONFIG_BT_CONN_TX_MAX=6
+CONFIG_BT_DEVICE_NAME="RY"
+# Provisioning is an unauthenticated GATT service (the phone just writes the
+# characteristic), so turn the Security Manager off through the SDK's own
+# knob: ble_common.cmake force-enables CONFIG_BT_SMP unless this is set, and
+# smp.c + keys.c + ECC cost flash this image does not have.
+CONFIG_DISABLE_BT_SMP=y
+# CONFIG_BT_GATT_CLIENT is not set
+# CONFIG_BT_STACK_CLI is not set
+# CONFIG_BT_DIS_SERVER is not set
+# CONFIG_BT_DEBUG is not set
+
+# LCD: the EVK panel is an ST7789P3 (components/board/ipro7ai_evk), not the ILI9341
+# the app drives on the EVB. Off until app_lcd.c gets the EVK panel.
+# CONFIG_APP_LCD_ENABLE is not set
+# CONFIG_COMPONENTS_LVGL_ENABLE is not set
+
+# Persistent Storage (for bind state)
+CONFIG_PARTITION=y
+CONFIG_EASYFLASH4=y
+
+# Agora SDK
+CONFIG_AOSL_ENABLE=y
+CONFIG_COMPONENTS_AGORA_ENABLE=y
+
+# Opus codec (used for manual encode/decode with Agora AUDIO_CODEC_DISABLED)
+CONFIG_COMPONENTS_OPUS_ENABLE=y
+
+# mbedTLS — minimal TLS 1.2 client for HTTPS API calls
+CONFIG_COMPONENTS_MBEDTLS_ENABLE=y
+
+# System Services
+CONFIG_SHELL=y
+CONFIG_IPRO_EVENT=y
+CONFIG_COMPONENTS_SOFTCRC_ENABLE=y
+CONFIG_COMPONENTS_UTILITY_API_ENABLE=y
+CONFIG_COMPONENTS_NEW_LIBC_ENABLE=y
+
+# Logging
+CONFIG_IPRO_LOG_ENABLE=y
+# Level 3 (info): level 4 adds every debug string in the tree (tens of KB of
+# .rodata) and this image is close to the 2 MB partition ceiling.
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_COLORS=y
+CONFIG_LOG_TIMESTAMP=y
+CONFIG_LOG_THREAD_ID=y
+CONFIG_LOG_BUFFER_SIZE=512
+CONFIG_PRINTF_ENABLE=y
+CONFIG_CONSOLE_ENABLE=y
+
+# Platform UART
+CONFIG_PLATFORM_UART_BAUDRATE=921600
+
+# USB CDC ACM disabled (not needed for this app)
+# CONFIG_COMPONENTS_CHERRYUSB_ENABLE is not set

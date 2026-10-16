@@ -1,0 +1,14 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config IPRO_SHELL_CMDS
+	bool "IPRO board shell commands (reboot, reboot_dl, ipro info)"
+	default y
+	depends on SHELL && SOC_FAMILY_INTELPRO
+	select REBOOT
+	select HWINFO
+	help
+	  The commands the FreeRTOS SDK shell provides on every firmware, so
+	  the flash tooling can enter download mode over the console
+	  ("reboot_dl") and a board can be reset ("reboot") without a cable
+	  or the BOOT pin.

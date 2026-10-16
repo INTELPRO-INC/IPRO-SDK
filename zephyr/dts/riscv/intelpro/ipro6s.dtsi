@@ -1,0 +1,307 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO6S (IPRO6 die): Nuclei N300-class RV32IMAFC + ECLIC, 320 KB OCRAM,
+ * 160 KB WRAM (BLE Exchange Memory is carved from its top), no PSRAM.
+ * Register bases and IRQ lines (IRQ_NUM_BASE 19 + offset) from
+ * bsp/drivers/ipro6_soc/regs/ipro6.h. The peripherals reuse the IPRO7
+ * drivers (chip-neutral "intelpro,ipro-*" compatibles).
+ */
+
+#include <mem.h>
+#include <freq.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/clock/ipro6s-clock.h>
+#include <zephyr/dt-bindings/pinctrl/ipro6s-pinctrl.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "intelpro,ipro6s";
+
+	chosen {
+		zephyr,flash-controller = &flashctrl;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* XCLK / mtime_toggle_cnt = 1 MHz (hal_mtimer.c) */
+		timebase-frequency = <DT_FREQ_M(1)>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "nuclei,n300", "riscv";
+			reg = <0>;
+			clock-frequency = <DT_FREQ_M(240)>;
+			riscv,isa-base = "rv32i";
+			riscv,isa-extensions = "i", "m", "a", "f", "c", "zicsr", "zifencei",
+					       "zba", "zbb", "zbc", "zbs";
+			i-cache-line-size = <32>;
+			d-cache-line-size = <32>;
+			status = "okay";
+
+			eclic: interrupt-controller {
+				compatible = "intelpro,ipro-eclic";
+				#address-cells = <0>;
+				#interrupt-cells = <2>;
+				interrupt-controller;
+			};
+		};
+	};
+
+	systimer: systimer {
+		compatible = "intelpro,ipro-systimer";
+		interrupts-extended = <&eclic 7 0>;
+	};
+
+	sram0: memory@11000000 {
+		compatible = "mmio-sram";
+		reg = <0x11000000 DT_SIZE_K(320)>;
+	};
+
+	/* 160 KB Wi-Fi RAM, used through its non-cacheable alias (the MAC HW
+	 * shares descriptors and buffers with the CPU there; 0x11050000 is
+	 * the cached view). Enabled by the Wi-Fi stack. */
+	wram: memory@21050000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x21050000 DT_SIZE_K(160)>;
+		zephyr,memory-region = "WRAM";
+		status = "disabled";
+	};
+
+	hbnram: memory@20090000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x20090000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "HBNRAM";
+		status = "disabled";
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		interrupt-parent = <&eclic>;
+		ranges;
+
+		glbclk: clock-controller@30000000 {
+			compatible = "intelpro,ipro-glb-clock";
+			reg = <0x30000000 0x100>;
+			#clock-cells = <1>;
+			status = "okay";
+		};
+
+		pinctrl: pin-controller@300008c4 {
+			compatible = "intelpro,ipro-pinctrl";
+			reg = <0x300008c4 0x8c>;
+			status = "okay";
+		};
+
+		gpio0: gpio@30000ac4 {
+			compatible = "intelpro,ipro-gpio";
+			reg = <0x30000ac4 0x40>;
+			interrupts = <63 1>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <32>;
+			pin-offset = <0>;
+			status = "disabled";
+		};
+
+		gpio1: gpio@30000ac8 {
+			compatible = "intelpro,ipro-gpio";
+			reg = <0x30000ac8 0x40>;
+			interrupts = <63 1>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <3>;
+			pin-offset = <32>;
+			status = "disabled";
+		};
+
+		wifi0: wifi {
+			compatible = "intelpro,ipro-wifi";
+			status = "disabled";
+		};
+
+		flashctrl: flash-controller@30082000 {
+			compatible = "intelpro,ipro-flash-controller";
+			reg = <0x30082000 0x1000>;
+			interrupts = <33 1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "okay";
+
+			flash0: flash@0 {
+				compatible = "soc-nv-flash";
+				reg = <0x0 DT_SIZE_M(2)>;
+				erase-block-size = <4096>;
+				write-block-size = <1>;
+			};
+		};
+
+		uart0: serial@3000a000 {
+			compatible = "intelpro,ipro-uart";
+			reg = <0x3000a000 0x1000>;
+			interrupts = <47 1>;
+			clocks = <&glbclk IPRO6S_CLK_UART0>;
+			status = "disabled";
+		};
+
+		uart1: serial@3000b000 {
+			compatible = "intelpro,ipro-uart";
+			reg = <0x3000b000 0x1000>;
+			interrupts = <48 1>;
+			clocks = <&glbclk IPRO6S_CLK_UART1>;
+			status = "disabled";
+		};
+
+		spi0: spi@3000d000 {
+			compatible = "intelpro,ipro-spi";
+			reg = <0x3000d000 0x1000>;
+			interrupts = <46 1>;
+			clocks = <&glbclk IPRO6S_CLK_SPI0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c0: i2c@3000e000 {
+			compatible = "intelpro,ipro-i2c";
+			reg = <0x3000e000 0x1000>;
+			interrupts = <51 1>;
+			clocks = <&glbclk IPRO6S_CLK_I2C0>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@3000f000 {
+			compatible = "intelpro,ipro-i2c";
+			reg = <0x3000f000 0x1000>;
+			interrupts = <58 1>;
+			clocks = <&glbclk IPRO6S_CLK_I2C1>;
+			clock-frequency = <I2C_BITRATE_STANDARD>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		pwm0: pwm@30010000 {
+			compatible = "intelpro,ipro-pwm";
+			reg = <0x30010000 0x1000>;
+			interrupts = <52 1>;
+			clocks = <&glbclk IPRO6S_CLK_PWM>;
+			#pwm-cells = <3>;
+			clock-source = "xclk";
+			clock-divider = <40>;
+			status = "disabled";
+		};
+
+		timer0: timer@30011000 {
+			compatible = "intelpro,ipro-timer";
+			reg = <0x30011000 0x100>;
+			interrupts = <55 1>, <56 1>;
+			interrupt-names = "ch0", "ch1";
+			clocks = <&glbclk IPRO6S_CLK_TIMER>;
+			status = "disabled";
+
+			counter0: counter0 {
+				compatible = "intelpro,ipro-counter";
+				channel = <0>;
+				status = "disabled";
+			};
+
+			counter1: counter1 {
+				compatible = "intelpro,ipro-counter";
+				channel = <1>;
+				status = "disabled";
+			};
+		};
+
+		wdt0: watchdog@30011064 {
+			compatible = "intelpro,ipro-wdt";
+			reg = <0x30011064 0x40>;
+			interrupts = <57 1>;
+			clocks = <&glbclk IPRO6S_CLK_TIMER>;
+			status = "disabled";
+		};
+
+		dma0: dma@30081000 {
+			compatible = "intelpro,ipro-dma";
+			reg = <0x30081000 0x1000>;
+			interrupts = <34 1>;
+			clocks = <&glbclk IPRO6S_CLK_DMA0>;
+			#dma-cells = <2>;
+			dma-channels = <8>;
+			dma-requests = <32>;
+			status = "disabled";
+		};
+
+		trng: rng@30080000 {
+			compatible = "intelpro,ipro-trng";
+			reg = <0x30080000 0x1000>;
+			interrupts = <29 1>;
+			clocks = <&glbclk IPRO6S_CLK_SEC>;
+			status = "disabled";
+		};
+
+		i2s0: i2s@30013000 {
+			compatible = "intelpro,ipro-i2s";
+			reg = <0x30013000 0x1000>;
+			interrupts = <59 1>;
+			clocks = <&glbclk IPRO6S_CLK_I2S>;
+			status = "disabled";
+		};
+
+		usb: usb@30085000 {
+			compatible = "intelpro,ipro-usb";
+			reg = <0x30085000 0x1000>;
+			interrupts = <40 1>;
+			clocks = <&glbclk IPRO6S_CLK_USB>;
+			status = "disabled";
+		};
+
+		emac: ethernet@30083000 {
+			compatible = "intelpro,ipro-emac";
+			reg = <0x30083000 0x1000>;
+			interrupts = <43 1>;
+			clocks = <&glbclk IPRO6S_CLK_EMAC>;
+			status = "disabled";
+		};
+
+		bt_hci: bt_hci@38000000 {
+			compatible = "intelpro,ipro-bt-hci";
+			reg = <0x38000000 0x2000>;
+			interrupts = <75 3>, <74 3>;
+			interrupt-names = "ble", "bz-phy";
+			clocks = <&glbclk IPRO6S_CLK_BLE>;
+			status = "disabled";
+		};
+
+		pds: power-controller@3008e000 {
+			compatible = "intelpro,ipro-pds";
+			reg = <0x3008e000 0x1000>;
+			interrupts = <69 1>;
+			status = "disabled";
+		};
+
+		hbn: hbn@3008f000 {
+			compatible = "intelpro,ipro-hbn";
+			reg = <0x3008f000 0x1000>;
+			interrupts = <70 1>, <71 1>;
+			interrupt-names = "out0", "out1";
+			status = "disabled";
+		};
+
+		efuse: efuse@3000c000 {
+			compatible = "intelpro,ipro-efuse";
+			reg = <0x3000c000 0x1000>;
+			interrupts = <45 1>;
+			status = "disabled";
+		};
+	};
+};

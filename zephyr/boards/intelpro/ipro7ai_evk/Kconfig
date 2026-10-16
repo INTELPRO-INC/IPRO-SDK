@@ -1,0 +1,36 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_IPRO7AI_EVK
+
+config BOARD_IPRO7AI_EVK_LCD_BACKLIGHT
+	bool "Switch the LCD backlight (GPIO12) on at boot"
+	default y if DISPLAY
+	depends on GPIO
+	help
+	  The HEM LCM-T2D4BP-084 backlight is a plain enable on GPIO12 that
+	  no display driver touches; without it the ST7789P3 is driven but the
+	  panel stays dark.
+
+config BOARD_IPRO7AI_EVK_CAMERA_POWER
+	bool "Bring the SC101IOT out of reset with MCLK at boot"
+	default y if I2C
+	depends on GPIO
+	help
+	  Route 24 MHz (PLL48M / 2) to the sensor's MCLK on GPIO41 and pulse
+	  its reset on GPIO35 the way apps/platform/ipro7ai_evk_demo does, so
+	  the sensor answers on SCCB (I2C0, 7-bit 0x34). Needs VDDIO1 wired:
+	  J6 pin 3 to pin 7 (2.8 V, the only option on V1 boards).
+
+config BOARD_IPRO7AI_EVK_TRACE
+	bool "Print each board init step (bring-up aid)"
+
+config BOARD_IPRO7AI_EVK_CAMERA_NO_MCLK_PINMUX
+	bool "Bring-up aid: skip the GPIO41 CAM_MISC pinmux"
+	depends on BOARD_IPRO7AI_EVK_CAMERA_POWER
+
+config BOARD_IPRO7AI_EVK_CAMERA_NO_MCLK_CLOCK
+	bool "Bring-up aid: skip the CAM reference clock enable"
+	depends on BOARD_IPRO7AI_EVK_CAMERA_POWER
+
+endif # BOARD_IPRO7AI_EVK

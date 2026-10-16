@@ -1,0 +1,12 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config WDT_IPRO
+	bool "IPRO7 watchdog driver"
+	default y
+	depends on DT_HAS_INTELPRO_IPRO_WDT_ENABLED
+	depends on WATCHDOG
+	select IPRO_HAL
+	help
+	  Zephyr watchdog over the SDK HAL (hal_wdt.c): 1 ms resolution,
+	  reset or interrupt (callback) on timeout.

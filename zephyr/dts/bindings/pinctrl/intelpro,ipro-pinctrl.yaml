@@ -1,0 +1,59 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  IPRO7 pin controller (GLB GPIO_CFGCTL registers).
+
+  Each child of the pinctrl node is a state; each grandchild is a group
+  of pins sharing the same electrical configuration:
+
+    &pinctrl {
+        uart0_default: uart0_default {
+            group1 {
+                pinmux = <IPRO7_PINMUX_UART(20, UART0_TXD)>,
+                         <IPRO7_PINMUX_UART(21, UART0_RXD)>;
+                bias-pull-up;
+                input-schmitt-enable;
+            };
+        };
+    };
+
+  pinmux entries are built with the IPRO7_PINMUX* macros from
+  <zephyr/dt-bindings/pinctrl/ipro7-pinctrl.h>: pad number, GLB function
+  (GPIO_FUN_*), and for UART pads the signal function routed to the pad's
+  slot (pad % 12).
+
+compatible: "intelpro,ipro-pinctrl"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+child-binding:
+  description: IPRO7 pin controller state
+  child-binding:
+    description: IPRO7 pin group
+    include:
+      - name: pincfg-node.yaml
+        property-allowlist:
+          - bias-disable
+          - bias-pull-up
+          - bias-pull-down
+          - drive-strength
+          - input-schmitt-enable
+          - input-enable
+          - output-enable
+          - output-high
+          - output-low
+    properties:
+      pinmux:
+        required: true
+        type: array
+        description: IPRO7_PINMUX() encoded pad/function pairs.
+      drive-strength:
+        type: int
+        default: 0
+        enum: [0, 1, 2, 3]
+        description: GLB pad drive strength code (0 = weakest, 3 = strongest).

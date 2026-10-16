@@ -1,0 +1,61 @@
+/*
+ * Copyright (c) 2026 INTELPRO
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * IPRO6S EVB with the IPRO6 boot2 (v0.5.3): the IntelProCube
+ * "partition_cfg_4M_boot2" layout (boot2 64 KB, two partition-table copies
+ * at 0x10000/0x11000, "FW" from 0x12000 with the tool's 4 KB header first,
+ * so the firmware sits at 0x13000 = XIP 0x13000000). The bench board's part
+ * is a 2 MB W25Q16 although the table is the 4 MB one: only what fits in
+ * 2 MB is described here, with a "storage" area carved from the top of the
+ * FW region for settings/NVS.
+ */
+
+/dts-v1/;
+#include "ipro6s_evb-common.dtsi"
+
+/ {
+	model = "INTELPRO IPRO6S EVB (boot2, 4 MB)";
+};
+
+&flashctrl {
+	/* physical 0x13000 <-> XIP 0x13000000 */
+	ranges = <0x0 0x12fed000 DT_SIZE_M(2)>;
+};
+
+&flash0 {
+	reg = <0x0 DT_SIZE_M(2)>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot2_partition: partition@0 {
+			label = "boot2";
+			reg = <0x00000000 0x10000>;
+			read-only;
+		};
+		pt_partition: partition@10000 {
+			label = "pt";
+			reg = <0x00010000 0x2000>;
+			read-only;
+		};
+		fwhdr_partition: partition@12000 {
+			label = "fw-header";
+			reg = <0x00012000 0x1000>;
+			read-only;
+		};
+		/* boot2's FW region minus the header: an application links at
+		 * 0x13000 and may span it (FLASH_LOAD_OFFSET/SIZE in
+		 * Kconfig.defconfig). */
+		slot0_partition: partition@13000 {
+			label = "image-0";
+			reg = <0x00013000 0x1e5000>;
+		};
+		storage_partition: partition@1f8000 {
+			label = "storage";
+			reg = <0x001f8000 DT_SIZE_K(32)>;
+		};
+	};
+};

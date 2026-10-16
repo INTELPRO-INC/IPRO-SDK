@@ -1,0 +1,22 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_IPRO7
+	bool
+	select SOC_FAMILY_INTELPRO
+	help
+	  INTELPRO IPRO7 series: Nuclei N300-class RV32IMAFC core with ECLIC,
+	  256 KB OCRAM, XIP flash at 0x13000000, optional 8 MB PSRAM, BLE 5.4
+	  and IEEE 802.15.4 radios.
+
+config SOC_SERIES
+	default "ipro7" if SOC_SERIES_IPRO7
+
+config SOC_IPRO7
+	bool
+	select SOC_SERIES_IPRO7
+	help
+	  IPRO7 / IPRO7AI (same die; the AI variant enables the NPU).
+
+config SOC
+	default "ipro7" if SOC_IPRO7

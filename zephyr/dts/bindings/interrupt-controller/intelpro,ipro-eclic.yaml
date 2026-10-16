@@ -1,0 +1,26 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Nuclei ECLIC of the INTELPRO IPRO7. The controller has no "reg": its base
+  address (IREGION + 0x20000) is read from the MIRGB_INFO CSR at boot by the
+  SoC code, which is also how the vendor SDK and boot ROM find it.
+
+  Interrupt specifier cells: <irq priority>. irq is the ECLIC line number
+  (0-18 core local, 19+ external, see bsp/drivers/ipro7_soc/regs/ipro7.h);
+  priority is the ECLIC level (higher preempts lower).
+
+compatible: "intelpro,ipro-eclic"
+
+include: [interrupt-controller.yaml, base.yaml]
+
+properties:
+  "#interrupt-cells":
+    const: 2
+
+  "#address-cells":
+    const: 0
+
+interrupt-cells:
+  - irq
+  - priority

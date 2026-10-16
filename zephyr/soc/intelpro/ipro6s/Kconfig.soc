@@ -1,0 +1,22 @@
+# Copyright (c) 2026 INTELPRO
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_SERIES_IPRO6S
+	bool
+	select SOC_FAMILY_INTELPRO
+	help
+	  INTELPRO IPRO6S (the IPRO6 die): the same Nuclei N300-class RV32IMAFC
+	  core and ECLIC as IPRO7, 320 KB OCRAM + 160 KB WRAM, no PSRAM, XIP
+	  flash at 0x13000000, Wi-Fi 6 + BLE + IEEE 802.15.4 radios.
+
+config SOC_SERIES
+	default "ipro6s" if SOC_SERIES_IPRO6S
+
+config SOC_IPRO6S
+	bool
+	select SOC_SERIES_IPRO6S
+	help
+	  IPRO6S. The SDK builds it as CONFIG_IPRO6 / bsp/drivers/ipro6_soc.
+
+config SOC
+	default "ipro6s" if SOC_IPRO6S

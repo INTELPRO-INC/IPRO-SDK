@@ -1,0 +1,14 @@
+common:
+  platform_allow:
+    - ipro7_evb
+    - ipro7ai_evk
+  integration_platforms:
+    - ipro7_evb
+  tags:
+    - drivers
+    - ipro
+    - pwm
+  harness: ztest
+tests:
+  drivers.ipro.pwm:
+    build_only: false

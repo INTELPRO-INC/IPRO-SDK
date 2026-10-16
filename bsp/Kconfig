@@ -54,6 +54,7 @@ config IPRO7_XTAL_CAPCODE
     int "IPRO7 RF crystal capcode override (0 = keep the boot value)"
     depends on IPRO7
     range 0 255
+    default 95 if IPRO7AI_REEF
     default 0
     help
       Load-capacitance trim of the RF crystal (AON XTAL capcode in/out),
@@ -63,7 +64,13 @@ config IPRO7_XTAL_CAPCODE
       the 802.15.4 +-40 ppm tolerance, so other vendors' radios receive
       them poorly. Set a board-calibrated value here (measure with the
       `radio_xtal` and `radio_cfo` shell commands against a reference);
-      0 leaves the crystal as boot configured it.
+      0 leaves the crystal as boot configured it until the first RF init,
+      which then loads the ROM default 85.
+
+      A non-zero value is applied by board_init(), i.e. by platform_init()
+      in every app, and boot prints "[XTAL] capcode <boot> -> <value>".
+      Each RF init (BLE, 802.15.4, PDS RF restore) loads it again. It is a
+      board-class value: production units still need a per-unit eFuse trim.
 
 config CHIP
     string
