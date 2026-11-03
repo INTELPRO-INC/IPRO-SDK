@@ -1,4 +1,4 @@
-# 套件管理中心與動態線上安裝（3.4.0）
+# 套件管理中心與動態線上安裝
 
 ## 管理位置
 
@@ -7,17 +7,17 @@
 | 公開套件清單／版本歷史 | [GitHub packages/index.json](https://github.com/INTELPRO-INC/IPRO-SDK/blob/main/packages/index.json) |
 | SDK、toolchain、工具包等 ZIP | 同一倉庫的 GitHub Releases |
 | 管理頁 | 本機啟動 `Start-Package-Manager.ps1`，只監聽 `127.0.0.1` |
-| 支援動態版本的客戶安裝程式 | [Online Setup 3.4.0](https://github.com/INTELPRO-INC/IPRO-SDK/releases/tag/online-installer-v3.4.0) |
+| 支援動態版本的客戶安裝程式 | [IPRO SDK Online Setup（最新版）](https://github.com/INTELPRO-INC/ipro-sdk-releases/releases/latest)，目前為 3.6.0 |
 
 GitHub 保存檔案與正式清單，本機管理頁負責準備、審閱、發布及設定穩定版。管理者使用自己的 GitHub CLI 登入，需具備該倉庫寫入權限；客戶端一律使用公開 HTTPS，不需登入或 Token。不要把管理頁暴露到網際網路。
 
-在 `C:\Work\IRPO\ipro-sdk-extension` 開啟 PowerShell：
+在套件管理中心原始碼（ipro-sdk-extension）的根目錄開啟 PowerShell：
 
 ```powershell
 node scripts/package-manager.mjs serve --open
 ```
 
-也可執行根目錄的 `Start-Package-Manager.ps1`。終端機會顯示本次的本機網址；按 Ctrl+C 停止。需要 Node.js（此機驗證版本 24.11.1）與已登入的 GitHub CLI。若 GH 不在 `C:\Program Files\GitHub CLI\gh.exe`，用 `IPRO_GH_PATH` 指定完整執行檔路徑。管理工具也以獨立原始碼 ZIP 附在 3.4.0 Release，解壓後可使用相同啟動方式。
+也可執行根目錄的 `Start-Package-Manager.ps1`。終端機會顯示本次的本機網址；按 Ctrl+C 停止。需要 Node.js（驗證版本 24.11.1）與已登入的 GitHub CLI。若 GH 不在 `C:\Program Files\GitHub CLI\gh.exe`，用 `IPRO_GH_PATH` 指定完整執行檔路徑。管理工具也以獨立原始碼 ZIP 附在 3.4.0 Release，解壓後可使用相同啟動方式。
 
 ## 發布單一套件
 
@@ -38,7 +38,7 @@ node scripts/package-manager.mjs serve --open
 
 新版 EXE 每次啟動安裝流程會讀取 GitHub 清單，版本選擇頁提供：
 
-- `latest (stable / compatible)`：使用穩定版；完整模式依套件宣告調整依賴為相容版本。
+- `latest (<版本>)`：使用穩定版，選單直接顯示對應的版本（3.4.0 顯示為 `latest (stable / compatible)`）；完整模式依套件宣告調整依賴為相容版本。
 - 指定版本：選擇清單保留的某個版本，不跟隨 stable。
 
 相容依賴採用精確版本陣列。例如 SDK 已驗證支援兩種工具鏈：
@@ -63,9 +63,9 @@ node scripts/package-manager.mjs serve --open
 
 ## 客戶安裝與單獨更新
 
-**3.3.0 EXE 仍固定版本，客戶需先換成 3.4.0 一次。**
+**3.3.0 EXE 仍固定版本，客戶需先換成 3.4.0 以上的線上安裝程式一次（目前最新為 3.6.0）。**
 
-3.4.0 提供 Full、SDK、toolchain、build tools、IntelProCube、OpenOCD、Extension 七種模式。所有模式都安裝至新目錄；依舊保留下載快取與舊版目錄。User settings／PATH 變更預設不勾選：
+3.4.0 起提供 Full、SDK、toolchain、build tools、IntelProCube、OpenOCD、Extension 七種模式，預設安裝至新目錄，保留下載快取與舊版目錄。3.6.0 起，SDK 與 toolchain 也可以加到既有環境（`/ENV=<環境資料夾>`，不覆蓋既有檔案），SDK 不論哪種模式都依搭配的工具鏈準備。User settings／PATH 變更預設不勾選：
 
 - SDK：可選只切換 `ipro.sdkRoot`。
 - Toolchain：可選只切換 `ipro.toolchainPath`。
@@ -78,7 +78,7 @@ node scripts/package-manager.mjs serve --open
 
 ```powershell
 # 下列目錄必須尚不存在。SDK 1.2.1 不跟隨 stable。
-Start-Process .\IPRO-SDK-Online-Setup-3.4.0.exe -Wait -ArgumentList '/MODE=sdk', '/SDKVERSION=1.2.1', '/DIR="C:\IPRO\versions\sdk-pinned-new"', '/TASKS=""'
+Start-Process .\IPRO-SDK-Online-Setup-3.6.0.exe -Wait -ArgumentList '/MODE=sdk', '/SDKVERSION=1.2.1', '/DIR="C:\IPRO\versions\sdk-pinned-new"', '/TASKS=""'
 ```
 
 其他版本參數為 `/TOOLCHAINVERSION=`、`/TOOLSVERSION=`、`/FLASHVERSION=`、`/OPENOCDVERSION=`、`/EXTENSIONVERSION=`，預設皆為 `latest`。

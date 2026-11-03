@@ -57,6 +57,14 @@ At the end of this section the Reef runs the out-of-box firmware
 
 ### 2. Install the host tools
 
+On Windows, install the SDK and every host tool (RISC-V toolchain,
+CMake/Ninja/Python, IntelProCube and the VS Code extension) with
+[IPRO SDK Online Setup](https://github.com/INTELPRO-INC/ipro-sdk-releases/releases/latest).
+It adds `build_freertos.ps1`, the Windows counterpart of `build_freertos.sh`, to
+the SDK it installs; see
+[Windows Installation](https://intelpro-inc.github.io/ipro-sdk-docs/en/get-started/windows/).
+The steps below are for macOS and Linux.
+
 ```bash
 # macOS (Homebrew)
 brew install cmake python3
@@ -229,8 +237,10 @@ IPRO7AI's NPU runs the model. The three tools live in one Edge AI firmware,
 | USB device (VID:PID) | IPRO7 UVC Cam (3896:0705): camera + serial | IPRO Reef Voice (3896:0720): serial | IPRO Reef Sensor (3896:0721): serial |
 | IPRO AI Studio page | **Teach** | **Audio** | **Sensor** |
 
-IPRO AI Studio (macOS and Windows) and the ready-to-flash firmware files come
-in the separate IPRO Edge AI package; contact INTELPRO. This SDK carries the
+IPRO AI Studio (macOS and Windows) is downloaded from the
+[IPRO AI Studio releases](https://github.com/INTELPRO-INC/ipro-ai-studio/releases/latest).
+The ready-to-flash firmware files come in the separate IPRO Edge AI package;
+contact INTELPRO. This SDK carries the
 firmware source and `tools/teach_web/`, a browser version of image Teach.
 
 ### The flow
