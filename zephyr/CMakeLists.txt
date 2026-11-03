@@ -62,6 +62,7 @@ if(CONFIG_IPRO_HAL)
     ${CMAKE_CURRENT_LIST_DIR}/include/ipro_hal_shim
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${IPRO_BSP}/hal/inc
+    ${IPRO_BSP}/hal/sec/inc
     ${IPRO_BSP}/hal/default_config
     # soc_common/inc must precede std_drv/inc: both carry a drv_psram.h and
     # the SDK build resolves the soc_common (X8 PSRAM controller) one.
@@ -182,8 +183,8 @@ if(CONFIG_IPRO_HAL)
     ${IPRO_HAL_SRC}/hal_aon_wdt.c
     ${IPRO_HAL_SRC}/hal_rtc.c
     ${IPRO_HAL_SRC}/hal_ptmgr.c
-    ${IPRO_HAL_SRC}/hal_sec_common.c
-    ${IPRO_HAL_SRC}/hal_sec_trng.c
+    ${IPRO_BSP}/hal/sec/src/hal_sec_common.c
+    ${IPRO_BSP}/hal/sec/src/hal_sec_trng.c
     ${IPRO_SDK_ROOT}/components/utils/src/utils_crc.c
     ${IPRO_SDK_ROOT}/components/softcrc/softcrc.c
   )
@@ -459,7 +460,6 @@ if(CONFIG_IPRO_WIFI)
   set(CONFIG_IPRO6 y)
   set(CONFIG_WIFI6 y)
   set(CONFIG_IPRO_EVENT n)
-  set(CONFIG_MACSW_FORCE_SOURCE_BUILD y)
   # fhost's boot default for the 40 MHz permission (CFG_HT40): the AP and
   # the modem capability still decide the width.
   if(CONFIG_IPRO_WIFI_HT40)

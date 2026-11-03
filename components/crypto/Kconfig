@@ -15,6 +15,29 @@ config COMPONENTS_CIPHER_SUITE_ENABLE
       Enable custom configuration of supported cipher suites.
       Requires mbedTLS to be enabled.
 
+config MBEDTLS_PSA_CRYPTO
+    bool "Compile the mbedtls PSA Crypto core (psa_crypto*.c)"
+    default n
+    depends on COMPONENTS_MBEDTLS_ENABLE
+
+config MBEDTLS_V3
+    bool "mbedtls 3.6 instead of 2.28 (PSA apps only)"
+    default n
+    depends on PSA_SPE || PSA_CLIENT
+    help
+      The SPE builds components/crypto/mbedtls3 in place of
+      components/crypto/mbedtls; the NSPE PSA client takes the 3.6
+      headers. SPE and NSPE images must agree.
+
+config TF_PSA_CRYPTO
+    bool "TF-PSA-Crypto 1.2 instead of mbedtls (PSA apps only)"
+    default n
+    depends on (PSA_SPE || PSA_CLIENT) && !MBEDTLS_V3
+    help
+      The SPE builds components/crypto/tfpsa in place of
+      components/crypto/mbedtls; the NSPE PSA client takes the
+      TF-PSA-Crypto headers. SPE and NSPE images must agree.
+
 source "components/crypto/nist_sp800_22/Kconfig"
 
 #

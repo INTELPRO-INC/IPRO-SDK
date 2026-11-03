@@ -77,6 +77,12 @@ extern uint32_t writel_dump(uint32_t v, uint32_t *c);
 #define ATTR_CLOCK_CONST_SECTION            __attribute__((section(".sclock_rlt_const." ATTR_UNI_SYMBOL)))
 #define ATTR_TCM_SECTION                    __attribute__((section(".tcm_code." ATTR_UNI_SYMBOL)))
 #define ATTR_TCM_CONST_SECTION              __attribute__((section(".tcm_const." ATTR_UNI_SYMBOL)))
+/* TCM code/data that no PDS wake path runs before the hal_lp wakeup hooks
+ * (flash program/erase and detection). Still .tcm_code.* / .tcm_const.* to
+ * every linker script; the IPRO7 CONFIG_OCRAM_NORET_SCRATCH_ONLY layout keeps
+ * it out of retained OCRAM and copies it back from flash after each wake. */
+#define ATTR_TCM_RELOAD_SECTION             __attribute__((section(".tcm_code.reload." ATTR_UNI_SYMBOL)))
+#define ATTR_TCM_RELOAD_CONST_SECTION       __attribute__((section(".tcm_const.reload." ATTR_UNI_SYMBOL)))
 #define ATTR_DTCM_SECTION                   __attribute__((section(".tcm_data")))
 #define ATTR_SYSRAM_SECTION                 __attribute__((section(".system_ram")))
 

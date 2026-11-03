@@ -1,6 +1,5 @@
 # Variant B: Bluetooth LE + LE Audio + camera + display + audio + SD.
 # No AI/NPU - see README for why the two cannot coexist.
-# This is the file .config is currently a copy of.
 CONFIG_IPRO7=y
 CONFIG_CHIP="IPRO7"
 CONFIG_CPU_ID="intelpro_ipro7"

@@ -303,7 +303,7 @@ int mpu6500_fifo_start(uint16_t rate_hz)
         return -1;
 
     /*
-     * Accel-only FIFO mode.  Gyro is NOT pushed to FIFO — PHM only uses accel.
+     * Accel-only FIFO mode.  Gyro is NOT pushed to FIFO — vibration analysis only uses accel.
      *
      * With accel_fchoice_b=1, accel bypasses DLPF and runs at a fixed 4kHz,
      * independent of SMPLRT_DIV.  This is fine because there is no gyro in the

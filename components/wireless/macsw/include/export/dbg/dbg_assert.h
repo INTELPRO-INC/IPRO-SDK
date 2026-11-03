@@ -191,41 +191,6 @@ void dbg_assert_warn(const char * file, int line);
 #define ASSERT_REC_NO_RET(cond)      ASSERT_ERR(cond)
 #endif
 
-#ifdef CFG_LPM
-/// Flag to enable or disable debug message
-#define MACSW_DBG_ON            0x80U
-#define MACSW_DBG_OFF           0x00U
-
-#ifdef MACSW_DEBUG
-#define MACSW_DEBUG(debug, message) do {\
-                            if ( \
-                                   ((debug) & MACSW_DBG_ON) && \
-                                   ((s16_t)((debug) & MACSW_DBG_MASK_LEVEL) >= MACSW_DBG_MIN_LEVEL)) { \
-                                 bl_fw_printf message; \
-                            } \
-                        } while(0)
-#else
-#define MACSW_DEBUG(debug, message)
-#endif // MACSW_DEBUG
-
-#if NX_RECOVERY
-#define MACSW_ASSERT_REC(cond, message)                                                  \
-    ({                                                                                   \
-        if (!(cond)) {                                                                   \
-            __DEFF_LEVEL(__COMPONENT_FILE_NAME_DEQUOTED__, __FILENAME__, __LINE__);      \
-            GLOBAL_INT_DISABLE();                                                        \
-            bl_fw_printf ("[MAC] %d: ", LINE_NB);                                        \
-            bl_fw_printf message;                                                        \
-            dbg_assert_rec_no_log();                                                     \
-            GLOBAL_INT_RESTORE();                                                        \
-            return;                                                                      \
-        }                                                                                \
-    })
-#else
-#define MACSW_ASSERT_REC(cond, message)        ASSERT_ERR(cond)
-#endif
-#endif // CFG_LPM
-
 /// @}  // end of group ASSERT
 
 #ifdef __cplusplus

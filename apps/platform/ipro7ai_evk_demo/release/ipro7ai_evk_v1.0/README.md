@@ -12,6 +12,12 @@ tools/evk.py       terminal control over BLE
 tools/mkvid.py     pack video for the board
 ```
 
+In the SDK package this directory carries `COMMANDS.html` and `tools/` only:
+`evk_manual.bin` and `EVKBench.apk` come with the EVK. The closest SDK build is
+the Bluetooth variant, `make -C apps/platform/ipro7ai_evk_demo DEFCONFIG=config_bt`
+(console 115200), and the Android app's source is in
+`apps/platform/ipro7ai_evk_demo/tools/android/`.
+
 ## Flash it
 
 From the SDK root, with the board on USB serial:
@@ -19,10 +25,14 @@ From the SDK root, with the board on USB serial:
 ```bash
 python3 tools/serial_monitor.py /dev/cu.usbserial-XXXX --send reboot_dl --timeout 4
 
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite --chipname ipro7 \
-    --port /dev/cu.usbserial-XXXX --baudrate 921600 --flash-pin 0x02 \
+ipro_iot_tool_macos --chipname ipro7 --chip-variant IPRO7AI \
+    --port /dev/cu.usbserial-XXXX --baudrate 921600 \
     --firmware evk_manual.bin
 ```
+
+`ipro_iot_tool_macos` is the IntelProCube command-line tool (`_linux` and `.exe`
+on the other hosts). It exits 0 even when flashing fails: look for
+`[All Success]`.
 
 The serial port name changes when the USB adapter is swapped — check
 `ls /dev/cu.*` rather than assuming. Use `cu.*` and not `tty.*`: the latter

@@ -32,7 +32,7 @@ if(CONFIG_WIFI6)
 # CMakeLists (and therefore RW_WLAN_COEX_EN, and therefore the hal_machw_init()
 # call site): every build that compiles the coex block must link this, and the
 # PHY_LPFW beacon-RX trim, which drops coex entirely, must not.
-if(NOT CONFIG_PHY_LPFW)
+if(NOT CONFIG_PHY_LPFW AND NOT CONFIG_IPRO6_FMAC)
 add_subdirectory(ipro_coex)
 endif()
 add_subdirectory(macsw)

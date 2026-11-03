@@ -199,6 +199,14 @@ extern volatile uint32_t ipro_ble_ctlr_con_deep_sleep_guard;
 extern volatile uint32_t ipro_ble_ctlr_con_instant_active;
 extern volatile uint32_t ipro_ble_ctlr_con_deep_sleep_recovery;
 
+/// Bench (CONFIG_IPRO_BLE_CTLR_LINK_DIAG_S): start the periodic link line; no-op otherwise.
+void ipro_ble_ctlr_link_diag_start(void);
+
+/// Bench: per kernel heap (ke_mem type order), its size and the never-written
+/// bytes above its first free block, i.e. its minimum-ever free space.
+/// Returns the number of heaps filled in.
+uint32_t ipro_ble_ctlr_heap_watermarks(uint32_t size[], uint32_t untouched[], uint32_t n);
+
 /// 上游 assert 命中次數。量產前應為 0。
 extern volatile uint32_t ipro_ble_ctlr_assert_err_cnt;
 extern volatile uint32_t ipro_ble_ctlr_assert_param_cnt;

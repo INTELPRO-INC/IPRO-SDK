@@ -13,6 +13,11 @@ target_include_directories(__component_lib INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inst/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inst/include/detect
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inst/include/audio
+    ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/store/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/preproc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/app/include
 )
 
 # Preserved from the component's original CMakeLists.txt

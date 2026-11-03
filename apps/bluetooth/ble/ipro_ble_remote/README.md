@@ -32,7 +32,11 @@
 - 320x480 JPEG 圖片擷取與傳輸
 - 分塊傳輸協議 (支援大圖片)
 
-### 6. 🔄 OTA 韌體更新服務 (OTA Service) - NEW
+### 6. 🔄 OTA 韌體更新服務 (OTA Service)
+
+> 預設 `.config`（以及 `defconfig`）**不含 OTA**（`# CONFIG_IPRO_BLE_REMOTE_OTA is not set`），用一般分割表即可開機；
+> OTA 服務 `0xFF60` 只在 `defconfig_reef` 開啟，並需要 A/B 分割表與 boot2（見下方「BLE OTA」）。
+
 - 無線韌體更新 (Over-The-Air Update)
 - **MTU 517 自動協商**: 支援大封包傳輸，效能提升 6 倍
 - **動態負載偵測**: 自動適應手機 MTU (504-508 bytes)
@@ -63,7 +67,7 @@
 | Environment | `0xFF30` | 環境感測服務 |
 | UART | `0xFF40` | UART 透傳服務 |
 | PIR Image | `0xFF50` | PIR 動態偵測 + 圖片傳輸服務 |
-| **OTA** | **`0xFF60`** | **OTA 韌體更新服務 (MTU 517 支援)** |
+| **OTA** | **`0xFF60`** | **OTA 韌體更新服務 (MTU 517 支援)；僅 `CONFIG_IPRO_BLE_REMOTE_OTA=y`（`defconfig_reef`）** |
 | Image Upload | `0xFF70` | 手機上傳圖片到裝置 |
 | Reef Hardware | `0xFF80` | 僅 IPRO7AI Reef 版：LED 顏色、按鍵識別、麥克風音量、提示音、板卡資訊（見「IPRO7AI Reef 板」） |
 

@@ -26,7 +26,7 @@
  *     indirect window.
  *
  * Scratch contract (host <-> device): the legacy SDU exposed a directly-mapped
- * scratch region (BL_FUNC_SCRATCH_BASE = SDU_BASE + 0x160). SMID has no such
+ * scratch region (FUNC_SCRATCH_BASE = SDU_BASE + 0x160). SMID has no such
  * region; the equivalent is the custom-register indirect RAM (address @0x48 /
  * data @0x4C), driven by ipro6_sdio3_custom_reg_{read,write}(). We place the
  * scratch bytes in the global block 0 (custom-reg offset 0x00-0x3F) which the

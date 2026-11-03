@@ -66,7 +66,7 @@ int usbwifi_tx_buf_mem_register(struct usbwifi_tx_env_tag *env, void *mem, size_
 tx_buf *usbwifi_tx_buf_alloc(struct usbwifi_tx_env_tag *env, bool irq);
 void usbwifi_tx_buf_reset(tx_buf *buf);
 void usbwifi_tx_buf_free(tx_buf *buf);
-int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, uint16_t type, usbwifi_bulk_in_free_t free_fn, void *free_arg);
+int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, uint16_t type, uint16_t flags, usbwifi_bulk_in_free_t free_fn, void *free_arg);
 size_t usbwifi_rx_buf_reserve_head(void);
 
 bool usb_try_reattach_bulk_out_buf(struct usbwifi_tx_env_tag *tx_env, tx_buf *buf);

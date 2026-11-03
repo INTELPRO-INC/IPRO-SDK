@@ -3,6 +3,10 @@ __generate_library(1)
 __component_add_include_dirs(src include)
 __component_add_include_dirs(celt)
 __component_add_private_include_dirs(silk silk/fixed)
+# celt/arch.h first for opus's own sources: the BLE controller's source build
+# (CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD, e.g. for connected PDS) exports
+# plf/ipro7/arch, whose arch.h would otherwise win for silk/*.c.
+target_include_directories(${CURRENT_STATIC_LIBRARY} BEFORE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/celt)
 
 __component_add_private_compile_definitions(-DHAVE_CONFIG_H)
 

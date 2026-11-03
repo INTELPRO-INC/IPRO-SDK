@@ -133,8 +133,15 @@ void sys_mbox_post(sys_mbox_t *mbox, void *msg)
     }
 }
 
+/* Also reached from ISRs: drivers that feed tcpip_input() straight from their
+ * RX interrupt (USB CDC-ECM/NCM) end up here via tcpip_inpkt(). The task API
+ * ignores the queue lock a receiving task holds while it blocks, so an ISR
+ * must take the FromISR path. */
 err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 {
+    if (xPortIsInsideInterrupt()) {
+        return sys_mbox_trypost_fromisr(mbox, msg);
+    }
     if (xQueueSendToBack(*mbox, &msg, 0) != pdTRUE) {
         SYS_STATS_INC(mbox.err);
         return ERR_MEM;

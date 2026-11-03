@@ -48,6 +48,7 @@
 #define OTA_SIG_RS_LEN       64
 
 #define OTA_PRODUCT_GATEWAY      0x57474754u   /* gateway product ID, "TGGW" little-endian */
+#define OTA_PRODUCT_TAG          0x47544754u   /* tag product ID, "TGTG" little-endian */
 
 typedef struct {
     uint32_t product_id;

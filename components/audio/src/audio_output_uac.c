@@ -42,6 +42,10 @@ extern void usbd_event_register_callback(usbd_event_callback_t callback);
 #define USBD_PID            0x0003
 #define AUDIO_IN_EP         0x81
 #define AUDIO_IN_FU_ID      0x02
+/* Optional host -> device stream (cfg.uac_rx_hook): interface 2 */
+#define AUDIO_OUT_EP        0x02
+#define AUDIO_OUT_FU_ID     0x05
+#define UAC_RX_MAX_BYTES    192   /* 48 kHz stereo 16-bit, one 1 ms packet */
 
 /* Ring buffer: 12 segments, sized per config rate */
 #define UAC_BUF_COUNT       12
@@ -65,6 +69,25 @@ extern void usbd_event_register_callback(usbd_event_callback_t callback);
                         AUDIO_SIZEOF_AC_FEATURE_UNIT_DESC(1, 1) + \
                         AUDIO_SIZEOF_AC_OUTPUT_TERMINAL_DESC + \
                         AUDIO_AS_DESCRIPTOR_INIT_LEN(1))
+
+#define UAC_DUPLEX_AC_SIZ (AUDIO_SIZEOF_AC_HEADER_DESC(2) +           \
+                           AUDIO_SIZEOF_AC_INPUT_TERMINAL_DESC +      \
+                           AUDIO_SIZEOF_AC_FEATURE_UNIT_DESC(1, 1) +  \
+                           AUDIO_SIZEOF_AC_OUTPUT_TERMINAL_DESC +     \
+                           AUDIO_SIZEOF_AC_INPUT_TERMINAL_DESC +      \
+                           AUDIO_SIZEOF_AC_FEATURE_UNIT_DESC(1, 1) +  \
+                           AUDIO_SIZEOF_AC_OUTPUT_TERMINAL_DESC)
+
+#define UAC_DUPLEX_CONFIG_SIZ (9 +                                       \
+                               AUDIO_AC_DESCRIPTOR_INIT_LEN(2) +         \
+                               AUDIO_SIZEOF_AC_INPUT_TERMINAL_DESC +     \
+                               AUDIO_SIZEOF_AC_FEATURE_UNIT_DESC(1, 1) + \
+                               AUDIO_SIZEOF_AC_OUTPUT_TERMINAL_DESC +    \
+                               AUDIO_SIZEOF_AC_INPUT_TERMINAL_DESC +     \
+                               AUDIO_SIZEOF_AC_FEATURE_UNIT_DESC(1, 1) + \
+                               AUDIO_SIZEOF_AC_OUTPUT_TERMINAL_DESC +    \
+                               AUDIO_AS_DESCRIPTOR_INIT_LEN(1) +         \
+                               AUDIO_AS_DESCRIPTOR_INIT_LEN(1))
 
 /* Legacy default when CONFIG_DMA_CHANNEL_ALLOCATOR is off. With the
  * allocator enabled, the channel is obtained at start-time via
@@ -114,12 +137,18 @@ struct audio_output {
     volatile int       running;
     SemaphoreHandle_t  write_sem;
 
+    /* Host -> device stream (cfg.uac_rx_hook): set while interface 2 is open */
+    volatile int       rx_open;
+
     /* USB descriptor (dynamically built) */
-    uint8_t            usb_desc[256];
+    uint8_t            usb_desc[320];
     uint32_t           usb_desc_len;
 };
 
 static audio_output_t *s_uac_out;
+
+/* Filled by the driver's PIO read in the USB interrupt (no DMA, so no cache work). */
+static uint8_t s_rx_buf[UAC_RX_MAX_BYTES] __attribute__((aligned(4)));
 
 /* ---------------------------------------------------------------------------
  * Ring buffer helpers
@@ -192,12 +221,33 @@ static void uac_event_handler(uint8_t event)
 {
     if (event == USBD_EVENT_DISCONNECTED && s_uac_out) {
         s_uac_out->running = 0;
+        s_uac_out->rx_open = 0;
         dma_channel_stop(DMA0_ID, s_uac_out->dma_ch);
     }
 }
 
+/* One host packet in: hand it to the app, re-arm. USB interrupt context. */
+static void uac_out_cb(uint8_t ep, uint32_t nbytes)
+{
+    (void)ep;
+    audio_output_t *out = s_uac_out;
+    if (!out || !out->rx_open) return;
+    uint32_t frame = (uint32_t)out->cfg.channels * sizeof(int16_t);
+    if (nbytes >= frame && out->cfg.uac_rx_hook) {
+        out->cfg.uac_rx_hook((const int16_t *)s_rx_buf, nbytes / frame, out->cfg.uac_rx_ctx);
+    }
+    usbd_ep_start_read(AUDIO_OUT_EP, s_rx_buf, out->packet_size);
+}
+
 void usbd_audio_open(uint8_t intf)
 {
+    if (intf == 2) {                 /* host started playing into the device */
+        if (s_uac_out && s_uac_out->cfg.uac_rx_hook && !s_uac_out->rx_open) {
+            s_uac_out->rx_open = 1;
+            usbd_ep_start_read(AUDIO_OUT_EP, s_rx_buf, s_uac_out->packet_size);
+        }
+        return;
+    }
     if (intf != 1 || !s_uac_out || s_uac_out->running) return;
     audio_output_t *out = s_uac_out;
 
@@ -228,7 +278,20 @@ void usbd_audio_open(uint8_t intf)
     }
 }
 
-void usbd_audio_close(uint8_t intf) { (void)intf; }
+/* The host stopped recording (alternate setting 0). Without this the sink kept
+ * `running` set: write() then waited forever for a ring the host no longer
+ * drains, and the next usbd_audio_open() returned early, so a second recording
+ * never started. */
+void usbd_audio_close(uint8_t intf)
+{
+    if (intf == 2) {                 /* the callback stops re-arming */
+        if (s_uac_out) s_uac_out->rx_open = 0;
+        return;
+    }
+    if (intf != 1 || !s_uac_out || !s_uac_out->running) return;
+    s_uac_out->running = 0;
+    dma_channel_stop(DMA0_ID, s_uac_out->dma_ch);
+}
 void usbd_audio_in_callback(uint8_t ep, uint32_t nbytes) { (void)ep; (void)nbytes; }
 
 /* ---------------------------------------------------------------------------
@@ -272,11 +335,51 @@ static void build_usb_descriptor(audio_output_t *out)
         0x00
     };
 
-    out->usb_desc_len = sizeof(desc);
+    /* Microphone + speaker: AS interface 1 = mic (IN), 2 = speaker (OUT) */
+    const uint8_t duplex[] = {
+        USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xef, 0x02, 0x01,
+                                   USBD_VID, USBD_PID, 0x0001, 0x01),
+        USB_CONFIG_DESCRIPTOR_INIT(UAC_DUPLEX_CONFIG_SIZ, 0x03, 0x01,
+                                   USB_CONFIG_BUS_POWERED, 100),
+        AUDIO_AC_DESCRIPTOR_INIT(0x00, 0x03, UAC_DUPLEX_AC_SIZ, 0x00, 0x01, 0x02),
+        AUDIO_AC_INPUT_TERMINAL_DESCRIPTOR_INIT(0x01, AUDIO_INTERM_MIC,
+                                                nch, (nch == 1) ? 0x0004 : 0x0003),
+        AUDIO_AC_FEATURE_UNIT_DESCRIPTOR_INIT(AUDIO_IN_FU_ID, 0x01, 0x01,
+                                              0x03, 0x00),
+        AUDIO_AC_OUTPUT_TERMINAL_DESCRIPTOR_INIT(0x03, AUDIO_TERMINAL_STREAMING,
+                                                 AUDIO_IN_FU_ID),
+        AUDIO_AC_INPUT_TERMINAL_DESCRIPTOR_INIT(0x04, AUDIO_TERMINAL_STREAMING,
+                                                nch, (nch == 1) ? 0x0004 : 0x0003),
+        AUDIO_AC_FEATURE_UNIT_DESCRIPTOR_INIT(AUDIO_OUT_FU_ID, 0x04, 0x01,
+                                              0x03, 0x00),
+        AUDIO_AC_OUTPUT_TERMINAL_DESCRIPTOR_INIT(0x06, AUDIO_OUTTERM_SPEAKER,
+                                                 AUDIO_OUT_FU_ID),
+        AUDIO_AS_DESCRIPTOR_INIT(0x01, 0x03, nch, 2, 16,
+                                 AUDIO_IN_EP, 0x05, pkt,
+                                 0x01, AUDIO_SAMPLE_FREQ_3B(rate)),
+        AUDIO_AS_DESCRIPTOR_INIT(0x02, 0x04, nch, 2, 16,
+                                 AUDIO_OUT_EP, 0x09, pkt,
+                                 0x01, AUDIO_SAMPLE_FREQ_3B(rate)),
+        USB_LANGID_INIT(1033),
+        0x14, USB_DESCRIPTOR_TYPE_STRING,
+        'I', 0, 'N', 0, 'T', 0, 'E', 0, 'L', 0, 'P', 0, 'R', 0, 'O', 0, '7', 0,
+        0x1C, USB_DESCRIPTOR_TYPE_STRING,
+        'I', 0, 'P', 0, 'R', 0, 'O', 0, '7', 0, ' ', 0,
+        'U', 0, 'A', 0, 'C', 0, ' ', 0, 'O', 0, 'u', 0, 't', 0,
+        0x16, USB_DESCRIPTOR_TYPE_STRING,
+        '2', 0, '0', 0, '2', 0, '6', 0, '0', 0, '3', 0,
+        '2', 0, '6', 0, '0', 0, '1', 0,
+        0x00
+    };
+
+    const uint8_t *src = out->cfg.uac_rx_hook ? duplex : desc;
+    out->usb_desc_len = out->cfg.uac_rx_hook ? sizeof(duplex) : sizeof(desc);
     if (out->usb_desc_len > sizeof(out->usb_desc)) {
+        printf("uac_out: descriptor %lu B > %u B buffer\n",
+               (unsigned long)out->usb_desc_len, (unsigned)sizeof(out->usb_desc));
         out->usb_desc_len = sizeof(out->usb_desc);
     }
-    memcpy(out->usb_desc, desc, out->usb_desc_len);
+    memcpy(out->usb_desc, src, out->usb_desc_len);
 }
 
 /* ---------------------------------------------------------------------------
@@ -287,11 +390,18 @@ static struct usbd_endpoint s_ep = {
     .ep_cb = usbd_audio_in_callback,
     .ep_addr = AUDIO_IN_EP,
 };
-static struct usbd_interface s_intf0, s_intf1;
+static struct usbd_endpoint s_ep_out = {
+    .ep_cb = uac_out_cb,
+    .ep_addr = AUDIO_OUT_EP,
+};
+static struct usbd_interface s_intf0, s_intf1, s_intf2;
 static struct audio_entity_info s_entity[] = {
     { .bEntityId = AUDIO_IN_FU_ID,
       .bDescriptorSubtype = AUDIO_CONTROL_FEATURE_UNIT,
       .ep = AUDIO_IN_EP },
+    { .bEntityId = AUDIO_OUT_FU_ID,
+      .bDescriptorSubtype = AUDIO_CONTROL_FEATURE_UNIT,
+      .ep = AUDIO_OUT_EP },
 };
 
 audio_output_t *audio_output_uac_create(const audio_output_cfg_t *cfg)
@@ -300,6 +410,12 @@ audio_output_t *audio_output_uac_create(const audio_output_cfg_t *cfg)
     if (!out) return NULL;
     memset(out, 0, sizeof(*out));
     out->cfg = *cfg;
+
+    if (cfg->uac_rx_hook &&
+        ((cfg->sample_rate + 999) / 1000) * sizeof(int16_t) * cfg->channels > UAC_RX_MAX_BYTES) {
+        vPortFree(out);
+        return NULL;
+    }
 
     /* Compute buffer sizes from config */
     uint32_t samples_per_seg = cfg->sample_rate * UAC_BUF_MS / 1000;
@@ -381,9 +497,16 @@ int audio_output_uac_start(audio_output_t *out)
 
     usbd_deinitialize();
     usbd_desc_register(out->usb_desc);
-    usbd_add_interface(usbd_audio_init_intf(&s_intf0, 0x0100, s_entity, 1));
-    usbd_add_interface(usbd_audio_init_intf(&s_intf1, 0x0100, s_entity, 1));
+    uint8_t n_entity = out->cfg.uac_rx_hook ? 2 : 1;
+    usbd_add_interface(usbd_audio_init_intf(&s_intf0, 0x0100, s_entity, n_entity));
+    usbd_add_interface(usbd_audio_init_intf(&s_intf1, 0x0100, s_entity, n_entity));
+    if (out->cfg.uac_rx_hook) {
+        usbd_add_interface(usbd_audio_init_intf(&s_intf2, 0x0100, s_entity, n_entity));
+    }
     usbd_add_endpoint(&s_ep);
+    if (out->cfg.uac_rx_hook) {
+        usbd_add_endpoint(&s_ep_out);
+    }
     usbd_event_register_callback(uac_event_handler);
     usbd_initialize();
 
@@ -401,6 +524,7 @@ int audio_output_uac_stop(audio_output_t *out)
         dma_channel_stop(DMA0_ID, out->dma_ch);
         out->running = 0;
     }
+    out->rx_open = 0;
     usbd_deinitialize();
     out->started = 0;
 
@@ -444,7 +568,13 @@ int audio_output_uac_write(audio_output_t *out,
 
         /* Full segment — commit to ring */
         if (out->staging_count == seg_frames) {
-            while (ring_free(out) == 0) {
+            /* A draining host frees a segment every UAC_BUF_MS; give up after
+             * 0.5 s (host gone or stream closed) rather than block the caller. */
+            for (int waits = 0; ring_free(out) == 0; waits++) {
+                if (!out->running || waits >= 5) {
+                    out->staging_count = 0;
+                    return -1;
+                }
                 xSemaphoreTake(out->write_sem, pdMS_TO_TICKS(100));
             }
 
@@ -478,4 +608,19 @@ uint32_t audio_output_uac_consumed(audio_output_t *out)
 uint32_t audio_output_uac_segment_samples(audio_output_t *out)
 {
     return out ? out->buf_samples : 0;
+}
+
+/*
+ * Samples written and not yet drained by the host: whole segments between the
+ * DMA and the writer plus the staged partial one, so it moves in steps of up to
+ * one segment as the DMA advances.  -1 while the host has the stream closed;
+ * write() drops everything then, and usbd_audio_open() re-primes the ring.
+ */
+int32_t audio_output_uac_queued(audio_output_t *out)
+{
+    if (!out || !out->running) {
+        return -1;
+    }
+    uint32_t segs = (out->write_idx + UAC_BUF_COUNT - out->read_idx) % UAC_BUF_COUNT;
+    return (int32_t)(segs * out->buf_samples + out->staging_count);
 }

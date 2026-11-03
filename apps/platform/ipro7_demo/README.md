@@ -11,7 +11,7 @@ A comprehensive demo application for the IPRO7 platform, showcasing peripheral d
 - Command scheduler
 
 ### Memory Configuration
-- PSRAM support (16MB)
+- PSRAM support (8 MB)
 - Flash boot mode
 - Heap management with multiple regions
 
@@ -168,7 +168,7 @@ make defconfig
 ### Key Configuration Options
 | Option | Description |
 |--------|-------------|
-| `CONFIG_USE_PSRAM` | Enable PSRAM (16MB) |
+| `CONFIG_USE_PSRAM` | Enable PSRAM (8 MB) |
 | `CONFIG_LINK_FLASH` | Boot from flash |
 | `CONFIG_SHELL` | Enable shell interface |
 | `CONFIG_CHERRYUSB` | Enable USB support |

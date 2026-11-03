@@ -1,0 +1,174 @@
+menu "PSA (Platform Security Architecture)"
+
+config PSA_ENABLE
+    bool
+    default n
+
+config PSA_SPE
+    bool "Build the M-mode PSA-RoT (SPE) image"
+    default n
+    select PSA_ENABLE
+    select COMPONENTS_MBEDTLS_ENABLE
+    select MBEDTLS_PSA_CRYPTO
+    select LITTLEFS
+    select LITTLEFS_USE_PARTITION_TABLE
+    select COMPONENTS_TINYCBOR_ENABLE
+    select SEC_ENG_HAL_V2
+    help
+      Secure Processing Environment: SPM, PMP, ecall services.
+      Requires CONFIG_NO_RTOS=y.
+
+menu "PSA SPE options"
+    depends on PSA_SPE
+
+config PSA_HUK_EFUSE_SLOT
+    int "eFuse key slot of the HUK"
+    range 2 4
+    default 4
+    help
+      eFuse key slot that holds the HUK: 4 on parts with XIP AES-128
+      (ef_sf_aes_mode 1), 2 on plaintext parts (ef_sf_aes_mode 0).
+      The SEC_ENG key mux follows ef_sf_aes_mode (IPRO7 702L key
+      table, tzc_sboot_done 0): plaintext KEY_SEL 0 = slot 3, 1 =
+      slot 2; AES-128 KEY_SEL 1 = slot 4, 3 = slot 2. Slot 3 holds
+      trim data; huk.h refuses any slot but 2 and 4. HUK
+      provisioning (PSA_HUK_PROV) burns slot 4 only.
+
+config PSA_HUK_KEY_SEL
+    int "SEC_ENG KEY_SEL of the HUK hardware key"
+    range 0 3
+    default 1 if !PSA_HUK_IN_RAM
+    default 0
+    help
+      SEC_ENG KEY_SEL of the hardware-key path of huk_prf, with the
+      SE_AES_SBOOT key source 0, while tzc_sboot_done is 0 (eFuse
+      keep_dbg_port_closed set). KEY_SEL 1 is the HUK slot on both
+      slot 4 (XIP AES-128) and slot 2 (plaintext) parts; see
+      PSA_HUK_EFUSE_SLOT. huk.c refuses to build KEY_SEL 0 without
+      PSA_HUK_IN_RAM.
+
+config PSA_HUK_IN_RAM
+    bool "Read the HUK from its eFuse slot for each derivation"
+    default y
+    help
+      huk_prf reads the HUK eFuse slot into one stack buffer and runs
+      software AES; the buffer is wiped after each call. Off: the
+      SEC_ENG hardware key (KEY_SEL above) only; the slot is never
+      read and may be read-locked.
+
+config PSA_HUK_KAT
+    bool "Check the hardware key against the HUK slot at init"
+    default n
+    help
+      huk_init compares one SEC_ENG hardware-key block with software
+      AES under the HUK slot and uses the hardware key on a match.
+      Reads the slot into RAM once.
+
+config PSA_HUK_LOCK
+    bool "Close the SEC_ENG hardware-key route after init"
+    depends on !PSA_HUK_IN_RAM
+    default y
+    help
+      After the last HUK derivation of SPE init and before the NSPE
+      runs, huk_lock sets tzc_sboot_done (TZC_SEC ROM_TZSRG_CTRL
+      bits 31:28) to 0xF by read-modify-write, reads it back and
+      runs one KEY_SEL block: it must give the zero-key block, else
+      spm_fatal. Skipped when tzc_sboot_done is already non-zero at
+      huk_init (part without eFuse keep_dbg_port_closed). huk_prf
+      refuses every call after huk_lock, with or without this option.
+
+config PSA_DEV_HUK
+    bool "Built-in development HUK when the HUK slot is blank"
+    default y
+    help
+      With a blank HUK (blank slot, or a hardware key equal to the
+      all-0 / all-1 key), huk_prf runs on a public development key
+      and huk_is_dev() returns 1. A locked (tzc_sboot_done set) or
+      failed engine never falls back to it: no HUK, ITS and
+      attestation disabled. Off: no HUK, no ITS.
+
+config PSA_HUK_PROVISION
+    bool "HUK provisioning image (draws and burns eFuse slot 4)"
+    depends on !PSA_HUK_IN_RAM && !PSA_DEV_HUK && !PSA_HUK_KAT
+    depends on PSA_HUK_LOCK
+    default n
+    help
+      The SPE runs huk_prov_main instead of the services and never
+      launches an NSPE: checks the part, prints a plan digest, waits
+      60 s for "HUKPROV <chip> <digest>" on the console, draws 128
+      bits from the SEC_ENG TRNG, burns key slot 4 and the 0x7C
+      bits 23 + 30, prints KCV = AES-128(HUK, 0) and halts. Build
+      only defconfig_ipro7_hukprov with it; never ship it in an OTA
+      package.
+
+config PSA_SEC_ENG_ACCEL
+    bool "SEC_ENG accelerator driver for PSA Crypto"
+    depends on MBEDTLS_V3 || TF_PSA_CRYPTO
+    select SEC_ENG_HAL_V2
+    default n
+    help
+      The ipro_sec transparent driver (components/psa/accel) runs
+      SHA-1/224/256/384/512 (and HMAC through them), AES-128/192/256
+      ECB and CBC without padding, CTR and GCM, P-256 randomized ECDSA
+      sign, ECDSA verify, ECDH, key generation and public key export
+      on the SEC_ENG through HAL v2, and seeds the CTR_DRBG from the
+      HAL v2 TRNG. Other algorithms, curves and key sizes fall back to
+      the built-in software driver. Patches the driver wrappers of the 3.6 and
+      TF-PSA trees (port/sec_eng_driver.patch); off: no change.
+
+config PSA_TZC_ISOLATION
+    bool "Lock bus-master isolation (TZC_SEC) before the NSPE"
+    default n
+    help
+      spm_tzc_apply sets and locks TZC_SEC before the NSPE runs:
+      DMA channels, USB, SDHA, EMAC and M154 become master ID1;
+      ID1 loses SPE RAM (OCRAM and MM2OCRAM 0x11010000-0x1101FFFF),
+      all of flash (SF RX), the APB slots outside spm_periph and the
+      DMA and timer registers, the AHB slaves but USB (PDS, HBN, HBN
+      RAM, EMAC, SDH, MM), SEC_ENG and SF_CTRL. The CPU stays ID0 in
+      M and U mode, so PMP still separates SPE and NSPE. Values are
+      read back and a tamper write must not take, else spm_fatal.
+      RST pin, SW system, SW POR and WDT resets clear the locks; the
+      SPE sets them on every boot.
+
+config PSA_TZC_CCI_ID1
+    bool "CCI debug master as ID1"
+    depends on PSA_TZC_ISOLATION
+    default n
+    help
+      CCI gets the ID1 view: no SPE RAM, flash, GLB, eFuse or TZC.
+      CCI cannot set its pinmux (GLB is ID0 only): no CCI access to
+      the part while the SPE runs.
+      Product build only (defconfig_ipro7).
+
+endmenu
+
+config PSA_NSPE_DMA_USB
+    bool "NSPE owns DMA0 and the USB device"
+    depends on (PSA_SPE && PSA_TZC_ISOLATION) || PSA_CLIENT
+    default n
+    help
+      SPE: the DMA0 (0x30082000) and USB (0x30084000) register
+      blocks become NSPE PMP windows with their IRQs (DMA0_ALL_IRQn,
+      USB_IRQn); U-mode word loads and stores to GLB usb_xcvr,
+      usb_xcvr_config and the GPIO 8/9 config are done by the SPE
+      under a write mask; an NSPE reset disables the DMA channels
+      and the USB core. SPE: needs PSA_TZC_ISOLATION (both are ID1).
+      NSPE: CherryUSB on drv_usb_v1.c, HAL interrupt calls routed to
+      the vIRQ table (IPRO_HAL_OS_IRQ_SEAM).
+
+config PSA_CLIENT
+    bool "Build the NSPE PSA client library"
+    default n
+    depends on FREERTOS_PORT_NSPE
+    select PSA_ENABLE
+
+config FREERTOS_PORT_NSPE
+    bool "FreeRTOS U-mode port (NSPE under the PSA SPE)"
+    default n
+    depends on FREERTOS
+    help
+      Replaces portable_ipro7 with portable_ipro7_nspe: no M-mode
+      CSRs, interrupts arrive as virtual IRQs from the SPE.
+
+endmenu

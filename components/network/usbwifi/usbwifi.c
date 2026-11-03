@@ -20,11 +20,7 @@
 #include <assert.h>
 #include <stdio.h>
 #if defined(IPRO6)
-#if defined(IPRO6)
 #include "drv_l1c.h"
-#else
-#include <bl616_l1c.h>
-#endif
 #endif
 #include "usb.h"
 #include "utils.h"
@@ -46,7 +42,7 @@ static int rnm_tx_data(void *arg, rnm_output_data_type_t type, const void *data,
             L1C_DCache_Clean_Invalid_By_Addr((uintptr_t)copy, len);
             void *cp = (void *)MAWOC(copy);
             memcpy(cp + head, data, data_length);
-            if (usbwifi_bulk_in(env, cp + head, data_length, USBWIFI_DATA_TYPE_CMD, vPortFree, copy)) {
+            if (usbwifi_bulk_in(env, cp + head, data_length, USBWIFI_DATA_TYPE_CMD, 0, vPortFree, copy)) {
                 vPortFree(copy);
             }
         }
@@ -55,7 +51,7 @@ static int rnm_tx_data(void *arg, rnm_output_data_type_t type, const void *data,
 }
 
 /* Phase 2A.7 RX-parity instrumentation. Localizes the -43%/-55% RX-direction
- * gap vs legacy bl_iot_sdk by counting frames at each layer of the
+ * gap vs the legacy reference SDK by counting frames at each layer of the
  * lwIP -> ipro_dual_stack_peer_input -> usbwifi_bulk_in path, plus per-call
  * CPU time in the staging-copy hot path. Reset/print via dual_stack_diag
  * shell cmds. */
@@ -204,10 +200,9 @@ static void zerocp_pbuf_free(void *arg)
     pbuf_free(p);
 }
 
-int ipro_dual_stack_peer_input(void *pkt, void *arg)
+static int upload_to_host(struct pbuf *p, bool is_sta)
 {
     struct usbwifi_rx_env_tag *env = &g_usbwifi.rx_env;
-    struct pbuf *p = (struct pbuf *)pkt;
     uint32_t t_enter = inline_hal_machw_time();
 
     /* Guard standalone WiFi mode: when usbwifi shell cmd was never run,
@@ -224,7 +219,7 @@ int ipro_dual_stack_peer_input(void *pkt, void *arg)
     g_dsd.peer_calls++;
 
     /* Phase 2A.8 path delta.fix: zero-copy passthrough mirroring legacy
-     * bl_iot_sdk. Earlier Phase 2A.5 staging-buffer copy added 108us per
+     * the reference SDK. Earlier Phase 2A.5 staging-buffer copy added 108us per
      * call under iperf3 -b 50M load (Counter F bisect 2026-04-25), which
      * caps UDP RX at ~16 Mbps. usbwifi_bulk_in writes 40 bytes BEFORE the
      * payload as usb_data_emb_t header; for WiFi RX pbufs (PBUF_REF on
@@ -236,8 +231,8 @@ int ipro_dual_stack_peer_input(void *pkt, void *arg)
     uint16_t plen = p->len;
     pbuf_ref(p);
     uint32_t t_after_ref = inline_hal_machw_time();
-    int ret = usbwifi_bulk_in(env, p->payload, plen,
-                              USBWIFI_DATA_TYPE_PKT, zerocp_pbuf_free, p);
+    int ret = usbwifi_bulk_in(env, p->payload, plen, USBWIFI_DATA_TYPE_PKT,
+                              is_sta ? 0 : USB_DATA_FLAG_AP_PKT, zerocp_pbuf_free, p);
     uint32_t t_after_bulk = inline_hal_machw_time();
     if (ret) {
         pbuf_free(p);
@@ -270,6 +265,12 @@ int ipro_dual_stack_peer_input(void *pkt, void *arg)
     return 0;
 }
 
+/* lwIP hands over frames no local socket wants; they are STA-side. */
+int ipro_dual_stack_peer_input(void *pkt, void *arg)
+{
+    return upload_to_host((struct pbuf *)pkt, true);
+}
+
 static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
 {
     struct pbuf *p = (struct pbuf *)pkt;
@@ -286,7 +287,11 @@ static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
     struct pbuf *ret = NULL;
 
 #ifdef DHCP_IN_EMB
-    if (npf_is_arp(p)) {
+    if (!is_sta) {
+        /* The AP netif has no IP: the host owns ARP and DHCP there. */
+        input_emb = false;
+        input_host = true;
+    } else if (npf_is_arp(p)) {
         /* ARP duplicated: emb keeps the WiFi association ARP cache warm,
          * host needs it so its iproeth0 ARP table resolves. */
         input_emb = true;
@@ -338,8 +343,7 @@ static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
     }
 
     if (input_host) {
-        // XXX distinguish STA/AP
-        int ret = ipro_dual_stack_peer_input(p, NULL);
+        int ret = upload_to_host(p, is_sta);
         if (ret) {
             if (p_dup) {
                 pbuf_free(p_dup);

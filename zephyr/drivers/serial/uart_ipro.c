@@ -791,9 +791,9 @@ static void uart_ipro_isr_common(const void *arg)
 
 	ARG_UNUSED(config); /* interrupt-driven only: uart_ipro_isr() reads it itself */
 #ifdef CONFIG_UART_ASYNC_API
-	struct uart_ipro_data *adata = dev->data;
+	struct uart_ipro_data *async_data = dev->data;
 
-	if (adata->rx_enabled && UART_GetIntStatus(config->id, UART_INT_RTO) == SET) {
+	if (async_data->rx_enabled && UART_GetIntStatus(config->id, UART_INT_RTO) == SET) {
 		uart_ipro_async_rto(dev);
 		return;
 	}

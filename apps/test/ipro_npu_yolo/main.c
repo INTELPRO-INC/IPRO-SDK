@@ -67,7 +67,7 @@
 extern const unsigned char g_inm_model[];
 extern const unsigned char g_inm_model_end[];
 
-/* ISP feeds 640x360 ARGB in the pircam app; the model's own dims are read back
+/* The ISP feeds 640x360 ARGB in the camera apps; the model's own dims are read back
  * after load and reported, so a mismatch shows up rather than silently
  * producing a fast-but-wrong number. Plain .bss => PSRAM on this build.
  * +4 for the size header the ext_input path expects at imgBuffer+0. */
@@ -142,7 +142,7 @@ static int npu_setup(void)
                (unsigned long)need, (unsigned)sizeof(s_in_buf));
     }
 
-    /* Point the NPU at the synthetic frame, the way pircam does per ISP frame. */
+    /* Point the NPU at the synthetic frame, as a camera app does per ISP frame. */
     NPU_Img_Ext_Addr_Cfg((uint32_t)(uintptr_t)(s_in_buf + 4));
     return 0;
 }

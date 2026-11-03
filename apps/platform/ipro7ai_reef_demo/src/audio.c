@@ -21,18 +21,27 @@
  * @brief Tone, record, play and monitor on top of components/audio.
  */
 
+#include <generated/autoconf.h>
+
 #include "audio.h"
 #include "board_config.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
 #include <FreeRTOS.h>
 #include <task.h>
+#include <stream_buffer.h>
 
 #include "audio_output.h"
 #include "audio_capture.h"
+#include "audio_asrc.h"
+#include "ff.h"
+#include "hal_mtimer.h"
 #include "keys.h"
+#include "rgb_led.h"
+#include "sdcard.h"
 #include "hal_gpio.h"
 #include "drv_glb.h"
 #include "ipro_log.h"
@@ -48,7 +57,22 @@
 #define AUX_ANALOG_GAIN_DB    6      /* line level - keep the PGA low */
 #define GAIN_DB_DEFAULT       20
 
-typedef enum { JOB_NONE = 0, JOB_TONE, JOB_RECORD, JOB_PLAY, JOB_LOOP } job_t;
+#define CAPTURE_BUF_BYTES     (AUDIO_FRAME_SAMPLES * sizeof(int16_t) * 8)   /* 160 ms */
+/* SD recording rides out card stalls (cluster allocation, wear levelling)
+ * that last well beyond the 160 ms above: 1 s of PCM. */
+#define SDREC_BUF_BYTES       (AUDIO_RATE_HZ * sizeof(int16_t))
+#define SDREC_CHUNK_SAMPLES   2048u      /* 128 ms per f_write */
+#define SDREC_SYNC_SEC        30u        /* f_sync period: a pulled cable loses <= 30 s */
+/* The PDM path does not run at the 16,000 Hz asked for: nominally 2.032 MHz /
+ * 128 = 15,875 Hz, and a Reef measured 15,871.5-15,872.1 Hz against the mtimer
+ * (2026-10-30, 20 s and 120 s takes, no stalls), about 200 ppm below that. The
+ * header carries the rate each recording measures; one far from 15,875 means
+ * blocks were lost. */
+#define PDM_TRUE_RATE_HZ      15875u
+#define PDM_RATE_TOL_HZ       80u        /* 0.5 %: a lost 128 ms block in 25 s */
+
+typedef enum { JOB_NONE = 0, JOB_TONE, JOB_RECORD, JOB_PLAY, JOB_LOOP, JOB_SDREC, JOB_USBMIC,
+               JOB_USBHOST } job_t;
 
 typedef struct {
     job_t         job;
@@ -58,6 +82,7 @@ typedef struct {
     uint32_t      ms;
     uint32_t      amp_pct;
     uint32_t      seconds;
+    char          path[AUDIO_SDREC_PATH_MAX];
 } job_args_t;
 
 static TaskHandle_t   s_task;
@@ -145,7 +170,7 @@ static void sink_close(audio_output_t *out)
  * Capture source
  * -------------------------------------------------------------------------*/
 
-static int capture_open(audio_in_t src, int *consumer)
+static int capture_open(audio_in_t src, uint32_t consumer_bytes, int *consumer)
 {
     audio_capture_cfg_t cfg = {
         .sample_rate   = AUDIO_RATE_HZ,
@@ -182,7 +207,7 @@ static int capture_open(audio_in_t src, int *consumer)
         IPRO_LOGE(LOG_TAG, "capture init failed (%s)", audio_src_name(src));
         return -1;
     }
-    *consumer = audio_capture_add_consumer(AUDIO_FRAME_SAMPLES * sizeof(int16_t) * 8);
+    *consumer = audio_capture_add_consumer(consumer_bytes);
     if (*consumer < 0) {
         audio_capture_deinit();
         return -1;
@@ -332,7 +357,7 @@ static void do_record(const job_args_t *a)
     int consumer;
     uint32_t want = a->seconds * AUDIO_RATE_HZ;
 
-    if (rec_alloc() != 0 || capture_open(a->src, &consumer) != 0) {
+    if (rec_alloc() != 0 || capture_open(a->src, CAPTURE_BUF_BYTES, &consumer) != 0) {
         return;
     }
     if (want > s_rec_cap) {
@@ -394,7 +419,7 @@ static void do_loop(const job_args_t *a)
     uint32_t frames = a->seconds ? a->seconds * (AUDIO_RATE_HZ / AUDIO_FRAME_SAMPLES) : 0;
     uint32_t done = 0;
 
-    if (capture_open(a->src, &consumer) != 0) {
+    if (capture_open(a->src, CAPTURE_BUF_BYTES, &consumer) != 0) {
         return;
     }
     out = sink_open(AUDIO_RATE_HZ, a->route);
@@ -417,13 +442,373 @@ static void do_loop(const job_args_t *a)
     capture_close();
 }
 
+/* ---------------------------------------------------------------------------
+ * Record to the SD card (long takes, e.g. a meeting for a test set)
+ * -------------------------------------------------------------------------*/
+
+static int16_t s_sd_chunk[SDREC_CHUNK_SAMPLES];
+
+static void put_le(uint8_t *p, uint32_t v, int bytes)
+{
+    for (int i = 0; i < bytes; i++) {
+        p[i] = (uint8_t)(v >> (8 * i));
+    }
+}
+
+/* 44-byte PCM WAV header: mono, 16-bit. */
+static void wav_header(uint8_t h[44], uint32_t rate, uint32_t samples)
+{
+    const uint32_t data = samples * 2u;
+    memcpy(h, "RIFF", 4);
+    put_le(h + 4, data + 36u, 4);
+    memcpy(h + 8, "WAVEfmt ", 8);
+    put_le(h + 16, 16u, 4);          /* fmt chunk size */
+    put_le(h + 20, 1u, 2);           /* PCM */
+    put_le(h + 22, 1u, 2);           /* mono */
+    put_le(h + 24, rate, 4);
+    put_le(h + 28, rate * 2u, 4);    /* byte rate */
+    put_le(h + 32, 2u, 2);           /* block align */
+    put_le(h + 34, 16u, 2);          /* bits per sample */
+    memcpy(h + 36, "data", 4);
+    put_le(h + 40, data, 4);
+}
+
+static void do_sdrec(const job_args_t *a)
+{
+    FIL f;
+    UINT bw;
+    uint8_t hdr[44];
+    int consumer;
+    uint32_t n = 0, stalls = 0, next_sync = SDREC_SYNC_SEC;
+    uint64_t t0 = 0;
+
+    if (!sdcard_is_mounted() && sdcard_mount() != SD_OK) {
+        IPRO_LOGE(LOG_TAG, "sdrec: no SD card");
+        return;
+    }
+    (void)f_mkdir("sd:/rec");
+    if (f_open(&f, a->path, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) {
+        IPRO_LOGE(LOG_TAG, "sdrec: cannot create %s", a->path);
+        return;
+    }
+    wav_header(hdr, PDM_TRUE_RATE_HZ, 0);
+    if (f_write(&f, hdr, sizeof(hdr), &bw) != FR_OK ||
+        capture_open(a->src, SDREC_BUF_BYTES, &consumer) != 0) {
+        f_close(&f);
+        return;
+    }
+    rgb_led_set(40, 0, 0);                       /* red while the microphone is recorded */
+    s_peak = 0;
+    const uint32_t want = a->seconds * PDM_TRUE_RATE_HZ;
+    while (n < want && !s_stop_req) {
+        size_t got = audio_capture_read(consumer, s_sd_chunk, sizeof(s_sd_chunk), 500);
+        if (got == 0) {
+            stalls++;
+            IPRO_LOGW(LOG_TAG, "sdrec: capture stalled at %u samples", (unsigned)n);
+            if (stalls > 3) break;
+            continue;
+        }
+        if (t0 == 0) {
+            t0 = mtimer_get_time_us();           /* rate counts from the first block on */
+        } else {
+            n += got / sizeof(int16_t);
+        }
+        /* the decimator's start-up step (REC_SETTLE_MS) would otherwise be the peak */
+        for (uint32_t i = 0; n > PDM_TRUE_RATE_HZ / 4u && i < got / sizeof(int16_t); i++) {
+            int16_t v = s_sd_chunk[i] < 0 ? (int16_t)-(s_sd_chunk[i] + 1) : s_sd_chunk[i];
+            if (v > s_peak) s_peak = v;
+        }
+        if (f_write(&f, s_sd_chunk, got, &bw) != FR_OK || bw != got) {
+            IPRO_LOGE(LOG_TAG, "sdrec: write failed after %u samples (card full?)", (unsigned)n);
+            break;
+        }
+        if (n / PDM_TRUE_RATE_HZ >= next_sync) {
+            f_sync(&f);
+            next_sync += SDREC_SYNC_SEC;
+        }
+    }
+    const uint64_t us = mtimer_get_time_us() - t0;
+    capture_close();
+    rgb_led_off();
+
+    /* Every block after the first was counted against the time since the
+     * first arrived; dropped blocks show up as a rate below 15,875. */
+    const uint32_t total = (uint32_t)(f_size(&f) - sizeof(hdr)) / 2u;
+    const uint32_t mhz10 = us ? (uint32_t)((uint64_t)n * 10000000ull / us) : 0;   /* Hz x 10 */
+    uint32_t rate = (mhz10 + 5u) / 10u;
+    if (rate + PDM_RATE_TOL_HZ < PDM_TRUE_RATE_HZ || rate > PDM_TRUE_RATE_HZ + PDM_RATE_TOL_HZ) {
+        IPRO_LOGW(LOG_TAG, "sdrec: measured %u.%u Hz, far from 15875 - samples were lost",
+                  (unsigned)(mhz10 / 10u), (unsigned)(mhz10 % 10u));
+        rate = PDM_TRUE_RATE_HZ;
+    }
+    wav_header(hdr, rate, total);
+    f_lseek(&f, 0);
+    f_write(&f, hdr, sizeof(hdr), &bw);
+    f_close(&f);
+    IPRO_LOGI(LOG_TAG, "sdrec: %s %u samples (%u s) at %u Hz, measured %u.%u Hz, "
+                       "peak %d dBFS, stalls %u",
+              a->path, (unsigned)total, (unsigned)(total / rate), (unsigned)rate,
+              (unsigned)(mhz10 / 10u), (unsigned)(mhz10 % 10u), amp_dbfs(s_peak), (unsigned)stalls);
+}
+
+/* ---------------------------------------------------------------------------
+ * USB microphone: capture -> audio_asrc -> UAC at the host's 16,000 Hz
+ * -------------------------------------------------------------------------*/
+
+#if defined(CONFIG_CHERRYUSB_DEVICE_AUDIO)
+
+/* The AUADC runs near 15,872.5 Hz on the Reef (PDM_TRUE_RATE_HZ above) and the
+ * host drains exactly 16 samples per USB frame. A fixed packet size on a slower
+ * source would underrun every few seconds (the UAC sink then inserts 32 ms of
+ * silence), so the capture goes through the drift resampler and its level
+ * controller holds the UAC queue near USBMIC_TARGET. */
+#define USBMIC_IN_MHZ    15872500u
+#define USBMIC_OUT_MHZ   16000000u
+#define USBMIC_TARGET    1800        /* ring is primed with 1536 on open, plus a frame */
+#define USBMIC_MAX_PPM   500
+#define USBMIC_LOW       256         /* below one UAC segment: an underrun was close */
+
+static audio_asrc_t     s_usb_asrc;
+static audio_asrc_ctl_t s_usb_ctl;
+static int16_t          s_usb_out[AUDIO_FRAME_SAMPLES + AUDIO_FRAME_SAMPLES / 8];
+static audio_usbmic_stats_t s_usb_stats;
+
+static void usbmic_feed(audio_output_t *usb, const int16_t *pcm, uint32_t n_in)
+{
+    uint32_t pos = 0;
+
+    while (pos < n_in) {
+        uint32_t used = 0;
+        uint32_t n = audio_asrc_process(&s_usb_asrc, &pcm[pos], n_in - pos, s_usb_out,
+                                        sizeof(s_usb_out) / sizeof(s_usb_out[0]), &used);
+        if (n) {
+            audio_output_write(usb, s_usb_out, n);
+            s_usb_stats.samples += n;
+        }
+        if (used == 0 && n == 0) {
+            break;
+        }
+        pos += used;
+    }
+}
+
+static void do_usbmic(const job_args_t *a)
+{
+    static int16_t frame[AUDIO_FRAME_SAMPLES];
+    audio_output_cfg_t cfg = {
+        .type        = AUDIO_OUTPUT_UAC,
+        .mode        = AUDIO_OUTPUT_MODE_STREAMING,
+        .sample_rate = AUDIO_RATE_HZ,
+        .channels    = 1,
+    };
+    audio_output_t *usb = audio_output_create(&cfg);
+    uint32_t stalls = 0, captured = 0;
+    int consumer;
+    bool open = false;
+
+    if (!usb) {
+        IPRO_LOGE(LOG_TAG, "usb: UAC sink create failed");
+        return;
+    }
+    if (audio_output_start(usb) != 0) {
+        audio_output_destroy(usb);
+        return;
+    }
+    if (capture_open(a->src, CAPTURE_BUF_BYTES, &consumer) != 0) {
+        audio_output_destroy(usb);
+        return;
+    }
+    audio_asrc_init(&s_usb_asrc, USBMIC_IN_MHZ, USBMIC_OUT_MHZ);
+    /* One controller for the whole job: the clock offset it has learned (it
+     * settles in ~2 min) carries over when the host closes and reopens. */
+    audio_asrc_ctl_init(&s_usb_ctl, USBMIC_TARGET, USBMIC_MAX_PPM);
+    memset(&s_usb_stats, 0, sizeof(s_usb_stats));
+    rgb_led_set(40, 0, 0);                       /* red while the microphone is live */
+    s_peak = 0;
+    while (!s_stop_req) {
+        size_t got = audio_capture_read(consumer, frame, sizeof(frame), 200);
+        if (got == 0) {
+            IPRO_LOGW(LOG_TAG, "usb: capture stalled");
+            if (++stalls > 3) break;
+            continue;
+        }
+        int32_t queued = audio_output_uac_queued(usb);
+        if (queued < 0) {                        /* host is not recording: drop */
+            if (open) {
+                IPRO_LOGI(LOG_TAG, "usb: host closed the mic after %u samples, %u near-underruns",
+                          (unsigned)s_usb_stats.samples, (unsigned)s_usb_stats.lows);
+                open = false;
+            }
+            continue;
+        }
+        if (!open) {                             /* host (re)opened: the sink re-primed its ring */
+            audio_asrc_reset(&s_usb_asrc);
+            s_usb_stats.opens++;
+            s_usb_stats.samples = 0;
+            s_usb_stats.lows = 0;
+            open = true;
+        }
+        if (queued < USBMIC_LOW) {
+            s_usb_stats.lows++;
+        }
+        s_usb_stats.level = queued;
+        s_usb_stats.trim_x100 = audio_asrc_ctl_update(&s_usb_ctl,
+                                                      queued + (int32_t)audio_asrc_pending(&s_usb_asrc));
+        audio_asrc_trim_ppm_x100(&s_usb_asrc, s_usb_stats.trim_x100);
+        /* the decimator's start-up step (REC_SETTLE_MS) would otherwise be the peak */
+        for (uint32_t i = 0; captured > AUDIO_RATE_HZ / 4u && i < got / sizeof(int16_t); i++) {
+            int16_t v = frame[i] < 0 ? (int16_t)-(frame[i] + 1) : frame[i];
+            if (v > s_peak) s_peak = v;
+        }
+        captured += got / sizeof(int16_t);
+        usbmic_feed(usb, frame, got / sizeof(int16_t));
+    }
+    capture_close();
+    audio_output_stop(usb);
+    audio_output_destroy(usb);
+    rgb_led_off();
+    IPRO_LOGI(LOG_TAG, "usb: mic off (%u host opens, peak %d dBFS)",
+              (unsigned)s_usb_stats.opens, amp_dbfs(s_peak));
+}
+
+void audio_usbmic_stats(audio_usbmic_stats_t *st)
+{
+    *st = s_usb_stats;
+}
+
+/* `mic usb host`: the host plays into the board (UAC speaker) and records it
+ * back (UAC microphone). Both directions run on the host's USB frame clock, so
+ * there is no resampler: a stream buffer carries the speaker packets from the
+ * USB interrupt to this task, audio_usbhost_process() sees every 20 ms frame on
+ * the way through, and the frame goes back out as the microphone. Digital
+ * injection for scoring on-board processing against recorded audio. */
+#define USBHOST_BUF_BYTES  (AUDIO_RATE_HZ * sizeof(int16_t))   /* 1 s */
+/* A host that opens the microphone before it starts playing drains the UAC
+ * queue into an underrun first, which leaves it two segments (32 ms) deep:
+ * one late frame from then on is a gap. Below USBHOST_MIN the queue is topped
+ * up with silence to USBHOST_TARGET; in steady state both sides run on the
+ * same USB frame clock, so that happens once per playback start. */
+#define USBHOST_MIN        768
+#define USBHOST_TARGET     1536
+
+static StreamBufferHandle_t s_host_sb;
+
+static void usbhost_rx(const int16_t *pcm, uint32_t samples, void *ctx)
+{
+    BaseType_t woken = pdFALSE;
+    size_t bytes = samples * sizeof(int16_t);
+    size_t sent = xStreamBufferSendFromISR(s_host_sb, pcm, bytes, &woken);
+
+    (void)ctx;
+    s_usb_stats.rx += samples;
+    if (sent < bytes) {
+        s_usb_stats.rx_drop += (uint32_t)((bytes - sent) / sizeof(int16_t));
+    }
+    portYIELD_FROM_ISR(woken);
+}
+
+/* Pass-through; an on-board engine overrides this to see (and may rewrite)
+ * every frame between the host's speaker stream and its microphone stream. */
+__attribute__((weak)) void audio_usbhost_process(int16_t *pcm, uint32_t n)
+{
+    (void)pcm;
+    (void)n;
+}
+
+static void do_usbhost(const job_args_t *a)
+{
+    static int16_t frame[AUDIO_FRAME_SAMPLES];
+    static const int16_t silence[USBHOST_TARGET];
+    audio_output_cfg_t cfg = {
+        .type        = AUDIO_OUTPUT_UAC,
+        .mode        = AUDIO_OUTPUT_MODE_STREAMING,
+        .sample_rate = AUDIO_RATE_HZ,
+        .channels    = 1,
+        .uac_rx_hook = usbhost_rx,
+    };
+    audio_output_t *usb;
+    bool open = false;
+
+    (void)a;
+    if (!s_host_sb) {
+        s_host_sb = xStreamBufferCreate(USBHOST_BUF_BYTES, sizeof(frame));
+        if (!s_host_sb) {
+            IPRO_LOGE(LOG_TAG, "usb host: stream buffer alloc failed");
+            return;
+        }
+    }
+    xStreamBufferReset(s_host_sb);
+    memset(&s_usb_stats, 0, sizeof(s_usb_stats));
+    usb = audio_output_create(&cfg);
+    if (!usb) {
+        IPRO_LOGE(LOG_TAG, "usb host: UAC sink create failed");
+        return;
+    }
+    if (audio_output_start(usb) != 0) {
+        audio_output_destroy(usb);
+        return;
+    }
+    rgb_led_set(0, 0, 40);                       /* blue: no microphone is live */
+    while (!s_stop_req) {
+        size_t got = xStreamBufferReceive(s_host_sb, frame, sizeof(frame), pdMS_TO_TICKS(200));
+        if (got == 0) {
+            continue;                            /* host is not playing */
+        }
+        uint32_t n = (uint32_t)(got / sizeof(int16_t));
+        audio_usbhost_process(frame, n);
+        int32_t queued = audio_output_uac_queued(usb);
+        if (queued < 0) {                        /* host is not recording */
+            open = false;
+            continue;
+        }
+        if (!open) {
+            s_usb_stats.opens++;
+            open = true;
+        }
+        if (queued < USBHOST_MIN) {
+            s_usb_stats.lows++;
+            audio_output_write(usb, silence, (uint32_t)(USBHOST_TARGET - queued));
+        }
+        s_usb_stats.level = queued;
+        audio_output_write(usb, frame, n);
+        s_usb_stats.samples += n;
+    }
+    audio_output_stop(usb);
+    audio_output_destroy(usb);
+    rgb_led_off();
+    IPRO_LOGI(LOG_TAG, "usb host: off (%u samples in, %u dropped, %u out, %u silence top-ups)",
+              (unsigned)s_usb_stats.rx, (unsigned)s_usb_stats.rx_drop,
+              (unsigned)s_usb_stats.samples, (unsigned)s_usb_stats.lows);
+}
+
+#else
+
+static void do_usbmic(const job_args_t *a)
+{
+    (void)a;
+    IPRO_LOGE(LOG_TAG, "usb: built without CONFIG_CHERRYUSB_DEVICE_AUDIO");
+}
+
+void audio_usbmic_stats(audio_usbmic_stats_t *st)
+{
+    memset(st, 0, sizeof(*st));
+}
+
+static void do_usbhost(const job_args_t *a)
+{
+    do_usbmic(a);
+}
+
+#endif /* CONFIG_CHERRYUSB_DEVICE_AUDIO */
+
 static void audio_task(void *arg)
 {
     (void)arg;
 
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        bool captures_aux = (s_args.job == JOB_RECORD || s_args.job == JOB_LOOP) &&
+        bool captures_aux = (s_args.job == JOB_RECORD || s_args.job == JOB_LOOP ||
+                             s_args.job == JOB_SDREC || s_args.job == JOB_USBMIC) &&
                             s_args.src == AUDIO_IN_AUX;
 
         if (captures_aux) {
@@ -434,6 +819,9 @@ static void audio_task(void *arg)
         case JOB_RECORD: do_record(&s_args); break;
         case JOB_PLAY:   do_play(&s_args);   break;
         case JOB_LOOP:   do_loop(&s_args);   break;
+        case JOB_SDREC:  do_sdrec(&s_args);  break;
+        case JOB_USBMIC: do_usbmic(&s_args); break;
+        case JOB_USBHOST: do_usbhost(&s_args); break;
         default: break;
         }
         if (captures_aux) {
@@ -498,6 +886,40 @@ int audio_record(audio_in_t src, uint32_t seconds)
     return job_submit(&a);
 }
 
+int audio_sdrec(audio_in_t src, const char *name, uint32_t seconds)
+{
+    job_args_t a = { .job = JOB_SDREC, .src = src, .seconds = seconds };
+    size_t len = name ? strlen(name) : 0;
+    if (src >= AUDIO_IN_COUNT || seconds == 0u || seconds > AUDIO_SDREC_MAX_SEC ||
+        len == 0 || len + sizeof("sd:/rec/.wav") > sizeof(a.path)) {
+        return -1;
+    }
+    for (size_t i = 0; i < len; i++) {           /* one plain file name, no paths */
+        char c = name[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              c == '_' || c == '-')) {
+            return -1;
+        }
+    }
+    snprintf(a.path, sizeof(a.path), "sd:/rec/%s.wav", name);
+    return job_submit(&a);
+}
+
+int audio_usbmic(audio_in_t src)
+{
+    job_args_t a = { .job = JOB_USBMIC, .src = src };
+    if (src >= AUDIO_IN_COUNT) {
+        return -1;
+    }
+    return job_submit(&a);
+}
+
+int audio_usbhost(void)
+{
+    job_args_t a = { .job = JOB_USBHOST };
+    return job_submit(&a);
+}
+
 int audio_play(audio_route_t route)
 {
     job_args_t a = { .job = JOB_PLAY, .route = route };
@@ -533,6 +955,9 @@ const char *audio_job_name(void)
     case JOB_RECORD: return "record";
     case JOB_PLAY:   return "play";
     case JOB_LOOP:   return "loop";
+    case JOB_SDREC:  return "sdrec";
+    case JOB_USBMIC: return "usb";
+    case JOB_USBHOST: return "usbhost";
     default:         return "idle";
     }
 }

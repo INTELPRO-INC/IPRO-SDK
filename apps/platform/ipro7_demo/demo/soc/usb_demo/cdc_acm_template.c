@@ -36,13 +36,13 @@
 #include <string.h>
 #include "drv_glb.h"
 
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
 #include "helper_socket.h"
 #endif
 
 //#define CDC_THROUGHPUT_TEST_SUPPORT
 
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
 /*!< endpoint address (0x82/0x03/0x84 to coexist with UVC on 0x81) */
 #define CDC_IN_EP  0x82
 #define CDC_OUT_EP 0x03
@@ -153,7 +153,7 @@ static const uint8_t cdc_descriptor[] = {
 /* PSRAM buffers with cache-line alignment (32 bytes) for DMA coherency */
 static uint8_t read_buffer[2048] ATTR_EALIGN(32) ATTR_PSRAM_BSS_SECTION;
 static uint8_t write_buffer[2048] ATTR_EALIGN(32) ATTR_PSRAM_BSS_SECTION;
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
 static uint8_t iproc_tx_buffer[512] ATTR_EALIGN(32) ATTR_PSRAM_BSS_SECTION;
 static uint8_t iproc_deferred_buf[512];
 static volatile uint32_t iproc_deferred_len = 0;
@@ -175,7 +175,7 @@ static void iproc_task(void *arg)
 static volatile bool ep_tx_busy_flag = false;
 
 /* CDC write function registered as IPROC transport */
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
 static int cdc_iproc_write(const void *buf, uint32_t len)
 {
     extern volatile uint8_t dtr_enable;
@@ -259,7 +259,7 @@ void usbd_cdc_acm_bulk_out(uint8_t ep, uint32_t nbytes)
     }
 
     /* IPROC protocol: detect prefix and defer to task context */
-	#ifdef CONFIG_PIRCAM_TOOL_UART
+	#ifdef CONFIG_IPROC_TOOL_UART
     if (nbytes >= 5 && memcmp(read_buffer, "IPROC", 5) == 0) {
         uint32_t proc_len = (nbytes < sizeof(iproc_deferred_buf)) ? nbytes : sizeof(iproc_deferred_buf);
         memcpy(iproc_deferred_buf, read_buffer, proc_len);
@@ -351,7 +351,7 @@ void cdc_acm_setup(void)
     usbd_add_endpoint(&cdc_in_ep);
     usbd_event_register_callback(cdc_event_handler);
 
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
     iproc_set_write_fn(cdc_iproc_write);
     if (!iproc_task_handle)
         xTaskCreate(iproc_task, "iproc", 2048, NULL, 10, &iproc_task_handle);
@@ -373,7 +373,7 @@ void cdc_acm_add_interfaces(void)
     usbd_add_endpoint(&cdc_out_ep);
     usbd_add_endpoint(&cdc_in_ep);
 
-#ifdef CONFIG_PIRCAM_TOOL_UART
+#ifdef CONFIG_IPROC_TOOL_UART
     iproc_set_write_fn(cdc_iproc_write);
     if (!iproc_task_handle)
         xTaskCreate(iproc_task, "iproc", 2048, NULL, 10, &iproc_task_handle);

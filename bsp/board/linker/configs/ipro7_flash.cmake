@@ -184,6 +184,53 @@ else()
     endif()
 endif()
 
+# PDS with the MISC domain powered off (CONFIG_OCRAM_NORET_SCRATCH_ONLY).
+#
+# MISC off keeps only the front 64 KB and the EM bank, so the default
+# .data/.bss, the heap and every task stack stay in `ocram` (RAM is not
+# ocram_noret, the noret leftover is not given to the heap) and ocram_noret
+# holds only what no code reads across a PDS:
+#   - OCRAM_NORET_SCRATCH_INPUTS: buffers filled and consumed inside one call
+#     or one HCI exchange (the controller enters platform PDS only with both
+#     HCI rings empty); cleared at boot like the .bss they came from;
+#   - .stack: main() and then the interrupt stack (mscratch); PDS is
+#     entered with interrupts masked, so nothing on it is live across one;
+#   - OCRAM_TCM_RELOAD_OBJECTS, plus code marked ATTR_TCM_RELOAD_SECTION in
+#     mixed objects: RAM code never run between the PDS wake and the hal_lp
+#     wakeup hooks (flash program/erase and detection, PDS entry, clock
+#     queries). Copied at boot and again by the first wakeup hook.
+#     An object goes on this list only when none of its .tcm_code is
+#     reachable from hal_lp_main / hal_lp_wakeup_c_entry / hal_lp_enter.
+if(CONFIG_OCRAM_NORET_SCRATCH_ONLY)
+    if(NOT ENABLE_OCRAM_NORET OR CONFIG_OCRAM_NORET_AS_RAM)
+        message(FATAL_ERROR "CONFIG_OCRAM_NORET_SCRATCH_ONLY needs the CONFIG_OCRAM_NORET_SPLIT "
+            "layout (no PSRAM, no AI+MM) without CONFIG_OCRAM_NORET_AS_RAM")
+    endif()
+    set(OCRAM_NORET_SCRATCH_INPUTS
+        "*libipro_ble_controller_ipro7_*.a:ipro_ble_ctlr_hcitl.c.o(.bss.s_h2c_buf .bss.s_c2h_buf)"
+        "*libipro_ble_controller_ipro7_*.a:nvds.c.o(.bss.nvds_temp_buf)"
+        "*libnewlibc.a:debug.c.o(.bss.string)"
+        "*libfreertos.a:freertos_app_hooks.c.o(.bss.st.0)"
+        "*libipro7_rf.a:ipro7_rf_private.c.o(.ocram_bss)"
+    )
+    # Checked against the full (flash + RAM) call closure of the wake path;
+    # drv_ef_ctrl.c.o looks unused but the RC32M trim reads efuse on wake.
+    set(OCRAM_TCM_RELOAD_OBJECTS
+        "*libhal.a:hal_pm.c.o"
+        "*libhal.a:hal_flash.c.o"
+        "*libhal.a:hal_mtimer.c.o"
+        "*libIPRO7_soc.a:drv_xip_sflash.c.o"
+        "*libIPRO7_soc.a:drv_sf_cfg_ext.c.o"
+        "*libIPRO7_soc.a:drv_clock.c.o"
+    )
+    # Link fails when less than this is left for heap_5 in the front 64 KB.
+    if(NOT DEFINED CONFIG_OCRAM_RETAINED_HEAP_MIN)
+        set(CONFIG_OCRAM_RETAINED_HEAP_MIN 6144)
+    endif()
+    message(STATUS "OCRAM noret holds scratch only: .data/.bss/heap in the retained 64 KB "
+        "(heap >= ${CONFIG_OCRAM_RETAINED_HEAP_MIN} B)")
+endif()
+
 set(HBNRAM_ORIGIN "0x20090000")
 set(HBNRAM_SIZE  "4K")
 

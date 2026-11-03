@@ -20,7 +20,7 @@
  * @file ipro_coex.h
  * @brief WiFi/BT coexistence (PTA arbiter) control.
  *
- * Ported from bl_iot_sdk components/network/wifi_bt_coex, renamed to
+ * Ported from the reference SDK components/network/wifi_bt_coex, renamed to
  * ipro_coex. The structure is the reference's: a thin public API here, a
  * per-chip register backend behind ipro_coex_impl.h, a shared timing context,
  * and a console command.

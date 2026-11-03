@@ -1,0 +1,26 @@
+menuconfig COMPONENTS_PSA_ARCH_TESTS_ENABLE
+    bool "Arm psa-arch-tests dev_apis suites in the NSPE"
+    default n
+    depends on PSA_CLIENT
+
+if COMPONENTS_PSA_ARCH_TESTS_ENABLE
+choice
+    prompt "Suite"
+    default PSA_ARCH_TEST_SUITE_CRYPTO
+config PSA_ARCH_TEST_SUITE_CRYPTO
+    bool "CRYPTO (spec 1.0.0 list)"
+config PSA_ARCH_TEST_SUITE_ITS
+    bool "INTERNAL_TRUSTED_STORAGE"
+config PSA_ARCH_TEST_SUITE_ATTEST
+    bool "INITIAL_ATTESTATION (profile 1)"
+endchoice
+config PSA_ARCH_TEST_RANGE_START
+    int "First test number to build (0 = from the start)"
+    default 0
+config PSA_ARCH_TEST_RANGE_END
+    int "Last test number to build (0 = to the end)"
+    default 0
+config PSA_ARCH_TEST_VERBOSITY
+    int "VERBOSITY (1 all .. 5 errors only)"
+    default 3
+endif

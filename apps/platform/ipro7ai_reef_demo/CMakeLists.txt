@@ -19,6 +19,13 @@ target_sources(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sd_cli.c
 )
 
+# `mic usb`: the audio component's UAC sink needs the app to own the CherryUSB
+# event hook (usbd_event_handler -> usbd_event_register_callback); usb_config.h
+# sits in the app root, which is on the include path above.
+if(CONFIG_CHERRYUSB_DEVICE_AUDIO)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/usbd_event_common.c)
+endif()
+
 # Wi-Fi through the IPRO6S_FIN in CARD1 (ipronet_host over SDIO).
 if(CONFIG_WIFI_USE_IPRO6S)
     target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/wifi_ipro6s.c)

@@ -50,6 +50,36 @@
 #include "ipro_pm.h"
 #endif
 
+#ifdef CONFIG_OCRAM_NORET_SCRATCH_ONLY
+#include <string.h>
+#include "hal_lp.h"
+#include "system_soc.h"
+
+/* RAM code the linker keeps in ocram_noret (.tcmcode_reload,
+ * bsp/board/linker/configs/ipro7_flash.cmake): a PDS with MISC off wipes it,
+ * and none of it runs on the wake path before the wakeup hooks. */
+extern char _tcm_reload_lma[], _tcm_reload[], _tcm_reload_end[];
+
+/* Registered first, so it runs before any other hook can call that code;
+ * XIP is back by the time hooks run. */
+static int ipro_tcm_reload_wakeup_hook(int wakeup_reason, void *arg)
+{
+    size_t len = (size_t)(_tcm_reload_end - _tcm_reload);
+
+    (void)wakeup_reason;
+    (void)arg;
+    memcpy(_tcm_reload, _tcm_reload_lma, len);
+    L1C_DCACHE_CLEAN_RANGE(_tcm_reload, len);
+    __asm__ volatile("fence" ::: "memory");
+    __asm__ volatile("fence.i" ::: "memory");
+    return 0;
+}
+#endif
+
+#if defined(CONFIG_FREERTOS_STACK_REPORT_S) && (CONFIG_FREERTOS_STACK_REPORT_S > 0)
+static void stack_report_start(void);
+#endif
+
 /* -----------------------------------------------------------------------
  * Heap configuration from linker symbols
  * -----------------------------------------------------------------------*/
@@ -135,6 +165,9 @@ void ipro_platform_init(void)
 {
     /* IPRO7: board_init() inside applies CONFIG_IPRO7_XTAL_CAPCODE */
     platform_init(0);
+#ifdef CONFIG_OCRAM_NORET_SCRATCH_ONLY
+    (void)hal_lp_register_wakeup_hook(ipro_tcm_reload_wakeup_hook, NULL);
+#endif
     ipro_setup_heap();
     hal_boot2_init();
 
@@ -154,6 +187,10 @@ void ipro_platform_init(void)
 
 #ifdef CONFIG_IPRO_PM
     (void)ipro_pm_init();
+#endif
+
+#if defined(CONFIG_FREERTOS_STACK_REPORT_S) && (CONFIG_FREERTOS_STACK_REPORT_S > 0)
+    stack_report_start();
 #endif
 }
 
@@ -229,6 +266,70 @@ void ipro_dump_task_stacks(const char *where)
     (void) where;
 #endif
 }
+
+#if defined(CONFIG_FREERTOS_STACK_REPORT_S) && (CONFIG_FREERTOS_STACK_REPORT_S > 0)
+/* Bench only: the stack and heap high-water marks every
+ * CONFIG_FREERTOS_STACK_REPORT_S seconds, to size them from a real workload.
+ * The task's own wake-ups cut PDS windows. */
+#define STACK_REPORT_WORDS 512U
+static StaticTask_t s_stack_report_tcb;
+static StackType_t s_stack_report_stack[STACK_REPORT_WORDS];
+
+#if defined(CONFIG_IPRO7)
+/* hal_lp's PDS entry/wake stack (zeroed at boot and never painted): the
+ * lowest non-zero word marks its deepest use. */
+extern uint32_t *const _lp_sp;
+#ifdef CONFIG_HAL_LP_STACK_WORDS
+#define LP_STACK_REPORT_WORDS ((uint32_t)CONFIG_HAL_LP_STACK_WORDS)
+#else
+#define LP_STACK_REPORT_WORDS 512U
+#endif
+
+static unsigned lp_stack_used_bytes(void)
+{
+    const uint32_t *bottom = _lp_sp - LP_STACK_REPORT_WORDS;
+    unsigned i = 0U;
+
+    while ((i < LP_STACK_REPORT_WORDS) && (bottom[i] == 0U)) {
+        i++;
+    }
+    return (LP_STACK_REPORT_WORDS - i) * sizeof(uint32_t);
+}
+#endif
+
+/* ipro_ble_controller, when linked: its kernel heaps' minimum-ever free. */
+extern uint32_t ipro_ble_ctlr_heap_watermarks(uint32_t size[], uint32_t untouched[],
+                                              uint32_t n) __attribute__((weak));
+
+static void stack_report_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(CONFIG_FREERTOS_STACK_REPORT_S * 1000U));
+        ipro_dump_task_stacks("report");
+        printf("[STACKS] heap min-ever free=%u", (unsigned)xPortGetMinimumEverFreeHeapSize());
+#if defined(CONFIG_IPRO7)
+        printf(" lp_stack used=%u B", lp_stack_used_bytes());
+#endif
+        if (ipro_ble_ctlr_heap_watermarks != NULL) {
+            uint32_t size[4], untouched[4];
+            uint32_t n = ipro_ble_ctlr_heap_watermarks(size, untouched, 4U);
+
+            for (uint32_t i = 0U; i < n; i++) {
+                printf(" ke%lu %lu/%lu", (unsigned long)i, (unsigned long)untouched[i],
+                       (unsigned long)size[i]);
+            }
+        }
+        printf("\r\n");
+    }
+}
+
+static void stack_report_start(void)
+{
+    (void)xTaskCreateStatic(stack_report_task, "stkrep", STACK_REPORT_WORDS, NULL,
+                            tskIDLE_PRIORITY + 1, s_stack_report_stack, &s_stack_report_tcb);
+}
+#endif
 
 void __attribute__((weak)) vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {

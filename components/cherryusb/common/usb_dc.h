@@ -309,6 +309,9 @@ typedef struct {
      * the live one (see the clamp in the OUT CPU path). The copy is clamped so the
      * EP survives; >0 here means the "spurious EP_DONE" re-arm left data behind. */
     uint32_t out_rxcount_over;
+    /* RX FIFO overflow found at EP_DONE: the FIFO was cleared and the transfer
+     * re-armed (see the OUT CPU path). */
+    uint32_t out_fifo_overflow;
 } usb_irq_stats_t;
 
 extern volatile usb_irq_stats_t g_usb_irq_stats;

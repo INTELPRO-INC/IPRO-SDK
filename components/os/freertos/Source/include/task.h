@@ -1703,6 +1703,7 @@ BaseType_t xTaskGetTickCount2( TickType_t *ticks, BaseType_t *overflow ) PRIVILE
 #if ( configUSE_TICKLESS_IDLE != 0 )
 TickType_t xTaskGetExpectedIdleTimeExcludingCurrent( void ) PRIVILEGED_FUNCTION;
 TickType_t xTaskGetExpectedIdleTimeExcludingTask( TaskHandle_t xTaskToExclude ) PRIVILEGED_FUNCTION;
+TaskHandle_t xTaskGetNextUnblockOwner( TaskHandle_t xTaskToExclude, TickType_t * pxWakeTime ) PRIVILEGED_FUNCTION;
 #endif
 
 /**

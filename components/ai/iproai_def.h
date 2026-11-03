@@ -60,6 +60,8 @@ typedef enum {
     IPROAI_STATUS_OP_FAILED,
     IPROAI_STATUS_UNAVAILABLE_DEVICE,
     IPROAI_STATUS_INVALID_INPUT,
+    IPROAI_STATUS_TIMEOUT,      /* the NPU did not signal done in time; it was reset */
+    IPROAI_STATUS_FAULTED,      /* refused: a reset did not bring the NPU back (iproai_npu_clear_fault) */
 } IPROAI_Status_e;
 
 typedef enum {

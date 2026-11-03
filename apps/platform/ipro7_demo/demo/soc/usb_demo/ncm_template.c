@@ -186,7 +186,7 @@ static TimerHandle_t ncm_tx_flush_timer;
  * packet errors (busy + rxz_still) due to EP_DONE-to-FIFO timing.
  *
  * TODO: EP2 DMA P2M causes NTH sig BAD errors on standalone NCM;
- * EP3 (miniclaw composite) works fine.  Disabled until root cause
+ * EP3 (the UAV+NCM composite) works fine.  Disabled until root cause
  * is found — may be EP2-specific HW issue or DMA request conflict. */
 #if 0
 static dma_device_t ncm_rx_dma_dev = {
@@ -494,7 +494,7 @@ static int cmd_ncm_init(int argc, char **argv)
 
     /* DMA for NCM EP OUT RX — must be after usbd_initialize().
      * TODO: EP2 DMA P2M causes NTH sig BAD errors; disabled until
-     * root cause is found.  EP3 (miniclaw composite) works fine. */
+     * root cause is found.  EP3 (the UAV+NCM composite) works fine. */
     /* ncm_rx_dma_init(); */
 
     ncm_tx_flush_timer = xTimerCreate("ncm_flush", pdMS_TO_TICKS(1),

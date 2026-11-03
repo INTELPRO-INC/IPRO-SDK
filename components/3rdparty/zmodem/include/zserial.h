@@ -39,6 +39,9 @@ ZRESULT zm_send(uint8_t chr);
  */
 void zm_port_set_uart(int uart_id);
 void zm_port_set_timeout_ms(uint32_t ms);
+/* zm_recv() returns CLOSED from ms after this call, received bytes
+ * or not; 0 (default) means no session limit */
+void zm_port_set_session_ms(uint32_t ms);
 
 /*
  * Receive CR/LF (with CR being optional).

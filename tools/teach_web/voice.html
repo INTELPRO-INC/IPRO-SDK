@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPRO AI Teach · Voice</title>
+<link rel="stylesheet" href="app.css">
+<script type="module" src="voice.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark">IPRO</span> AI Teach <span class="sub">for the IPRO7AI Reef</span></div>
+  <nav class="pages"><a href="index.html">Image</a><a href="voice.html" class="on">Voice</a></nav>
+  <div class="row">
+    <span class="board" id="board-state">Board not connected</span>
+    <button id="connect" class="ghost">Connect…</button>
+  </div>
+</header>
+
+<div class="notice" id="notice" hidden></div>
+
+<main class="layout">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Who is speaking</h2>
+      <span class="grow"></span>
+      <button id="live" class="primary" disabled>Start listening</button>
+    </div>
+    <div class="now" id="now"><span class="now-dot"></span><span id="now-name">—</span><span class="now-score" id="now-score"></span></div>
+    <canvas id="timeline" class="timeline" height="240"></canvas>
+    <p class="hint">The last 60 seconds, one row per person. The Reef labels one second at a time from its own microphone; the light is red while it listens.</p>
+    <div id="anon" class="anon" hidden>
+      <h3>Not enrolled yet</h3>
+      <div id="anon-list" class="chips"></div>
+    </div>
+  </section>
+
+  <div class="side">
+    <section class="panel">
+      <div class="panel-head"><h2>Teach a voice</h2></div>
+      <div class="row">
+        <input id="enroll-name" class="text" placeholder="Name" maxlength="40" autocomplete="off">
+        <select id="enroll-seconds" aria-label="Length">
+          <option value="15">15 s</option>
+          <option value="20" selected>20 s</option>
+          <option value="30">30 s</option>
+        </select>
+        <button id="enroll" class="primary" disabled>Record</button>
+      </div>
+      <div id="enroll-run" class="enroll-run" hidden>
+        <p class="hint">Read this aloud at a normal distance from the board:</p>
+        <blockquote id="passage" class="passage"></blockquote>
+        <div class="meter"><span id="meter"></span></div>
+        <p class="result" id="enroll-clock"></p>
+      </div>
+      <p class="result" id="enroll-result">Enter a name, press Record, and read the text that appears for the whole time. Use the Reef's microphone, the one it will listen with.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Enrolled</h2>
+        <span class="grow"></span>
+        <span class="count" id="spk-count"></span>
+      </div>
+      <div id="spk-list" class="class-list"></div>
+      <div class="row mode-row"><label class="check"><input type="checkbox" id="stranger" disabled> Stranger mode</label></div>
+      <p class="hint">Turn on when people who are not enrolled will talk, or when the voices come from a loudspeaker: someone unknown then keeps their own Speaker number instead of taking the name of an enrolled voice like theirs. Leave it off for a meeting where everyone is enrolled. Switching resets the thresholds.</p>
+      <details class="advanced">
+        <summary>Thresholds</summary>
+        <div class="row">
+          <label class="check">Name match <input id="thr-id" type="number" min="0.1" max="0.95" step="0.01"></label>
+          <label class="check">New speaker <input id="thr-anon" type="number" min="0.1" max="0.95" step="0.01"></label>
+          <button id="thr-set" class="ghost" disabled>Set</button>
+        </div>
+        <p class="hint">Cosine similarity. A higher name match labels fewer people by name and more as unknown.</p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  Everything stays on the board: the voiceprints are stored in its flash, and no audio leaves it.
+  Ask everyone before you record or listen to them.
+</footer>
+</body>
+</html>

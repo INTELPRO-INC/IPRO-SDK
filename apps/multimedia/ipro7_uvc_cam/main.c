@@ -95,7 +95,8 @@ static void uvc_init_task(void *arg)
      * Preview size from uvc_isp.h: QVGA on the EVB (the 640x384 model leaves
      * too little PSRAM for a VGA ch0 ping-pong; detection stays 640x384),
      * 720p on the Reef + OV5640 build (no AI), 640x360 on the Reef
-     * rock-paper-scissors build (CONFIG_UVC_RPS, uvc_rps.c). */
+     * rock-paper-scissors build (CONFIG_UVC_RPS, uvc_rps.c) and the Teach
+     * build (CONFIG_UVC_TEACH, uvc_teach.c). */
     uvc_init();
     uvc_isp_set_param(UVC_RES_MODE, true);
     uvc_isp_init();

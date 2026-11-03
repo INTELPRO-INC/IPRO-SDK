@@ -121,13 +121,11 @@ int create_and_bind(unsigned short port)
     if (set_block_mode(sd, 0) < 0) {
         goto err;
     }
-#ifndef BL616
     if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR,
                    &reuse, sizeof(reuse)) < 0) {
         printf(ERR "Set listening socket option[SO_REUSEADDR] error");
         goto err;
     }
-#endif
     if (bind(sd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
         printf(EMERG "Bind listening sockaddr to local port[%hd] error: %s\n",
                port, strerror(errno));

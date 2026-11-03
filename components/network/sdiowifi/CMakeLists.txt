@@ -1,5 +1,5 @@
-# IPRO6 SDIO-WiFi component, ported from
-# bl_iot_sdk/components/network/host_router/dev_net_sdio.
+# IPRO6 SDIO-WiFi component, ported from the reference SDK
+# components/network/host_router/dev_net_sdio.
 # Mirrors components/network/usbwifi/CMakeLists.txt structure.
 
 __generate_library()
@@ -26,10 +26,10 @@ __component_add_sources(trcver_sdio_ipro6.c)
 __component_add_sources(sdio_port_ipro6.c)
 __component_add_compile_definitions(-DIPRO6)
 
-# bl616_demo_sdiowifi proj_config.mk:184-185 sets these. Wire-protocol header
+# The reference sdiowifi demo proj_config.mk:184-185 sets these. Wire-protocol header
 # magic + buffer accounting depend on these constants matching the legacy FW.
 __component_add_compile_definitions(-DIPRO_HOSTROUTER_ENABLE)
-__component_add_compile_definitions(-DBL_SDIO_RX_MAX_PORT_NUM=8)
+__component_add_compile_definitions(-DIPRO_SDIO_RX_MAX_PORT_NUM=8)
 
 if(CONFIG_DHCP_IN_EMB)
     __component_add_compile_definitions(-DDHCP_IN_EMB)

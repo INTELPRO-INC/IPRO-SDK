@@ -1,17 +1,10 @@
 # Public include directories - headers available for applications
 # (subdirectories will add their own includes when building from source)
 
-# Optional: use prebuilt archive instead of sources
-if(CONFIG_WIFI6_PREBUILT)
-    set(CURRENT_STATIC_LIBRARY wifi6)
-    add_library(${CURRENT_STATIC_LIBRARY} STATIC IMPORTED GLOBAL)
-    set_target_properties(${CURRENT_STATIC_LIBRARY} PROPERTIES IMPORTED_LOCATION ${CONFIG_WIFI6_PREBUILT_PATH})
-    set_property(GLOBAL APPEND PROPERTY SDK_LIBS ${CURRENT_STATIC_LIBRARY})
-    target_link_libraries(${CURRENT_STATIC_LIBRARY} PUBLIC __component_lib)
-    message(STATUS "Wi-Fi 6: using prebuilt archive at ${CONFIG_WIFI6_PREBUILT_PATH}")
-    return()
-endif()
-
+# IPRO6S FullMAC firmware (CONFIG_IPRO6_FMAC): the host runs the control
+# path and the supplicant, so the fhost glue, wpa_supplicant, the lwIP
+# adapter and sigma_dut stay out; macsw keeps CFG_FHOST for its layouts.
+if(NOT CONFIG_IPRO6_FMAC)
 add_subdirectory(ipro_fhost)
 # LP beacon-RX firmware (CONFIG_PHY_LPFW): wpa_supplicant does not compile
 # against the trimmed UMAC-less headers and its archive is never linked by the
@@ -19,19 +12,22 @@ add_subdirectory(ipro_fhost)
 if(NOT CONFIG_PHY_LPFW)
 add_subdirectory(ipro_wpa_supplicant)
 endif()
+endif()
 # LP beacon-RX firmware (CONFIG_PHY_LPFW): the lwIP adapter's lwipopts.h ->
 # fhost.h include chain needs the full UMAC task enum, and the lp_fw link pulls
 # no member from its archive (verified via the blob map) — skip it.
 # Under Zephyr (IPRO_SDK_UNDER_ZEPHYR) the IP stack is Zephyr's own: the lwIP
 # adapter and sigma_dut stay out, the RTOS abstraction comes from the Zephyr
 # module (zephyr/hal_glue/ipro_wifi_rtos_al.c).
-if(NOT CONFIG_PHY_LPFW AND NOT IPRO_SDK_UNDER_ZEPHYR)
+if(NOT CONFIG_PHY_LPFW AND NOT IPRO_SDK_UNDER_ZEPHYR AND NOT CONFIG_IPRO6_FMAC)
 add_subdirectory(wifi6_lwip_adapter)
 endif()
 if(NOT IPRO_SDK_UNDER_ZEPHYR)
 add_subdirectory(ipro_os_adapter)
 
+if(NOT CONFIG_IPRO6_FMAC)
 add_subdirectory(sigma_dut)
+endif()
 endif()
 
 # Enable common section for wifi6
@@ -60,9 +56,20 @@ __component_add_compile_definitions(-DCFG_WIFI_DBG=2)
 # and coexist.c drops from the beacon-RX closure. Normal builds keep both.
 if(NOT CONFIG_PHY_LPFW)
 __component_add_compile_definitions(-DCFG_REC)
+if(NOT CONFIG_IPRO6_FMAC)
 __component_add_compile_definitions(-DCFG_COEX)
 endif()
+endif()
+# IPRO6S FullMAC firmware: STA only, so no beaconing and no radio
+# measurement (CFG_FMAC turns NX_RM off in rwnx_config.h)
+if(CONFIG_IPRO6_FMAC)
+__component_add_compile_definitions(-DCFG_FMAC)
+if(CONFIG_IPRO6_FMAC_AP)
 __component_add_compile_definitions(-DCFG_BCN) # NX_BEACONING
+endif()
+else()
+__component_add_compile_definitions(-DCFG_BCN) # NX_BEACONING
+endif()
 __component_add_compile_definitions(-DCFG_AGG) # NX_MAX_BA_TX(CFG_BATX)
 # LP beacon-RX firmware collapses the VIF/STA tables to zero (verified trim from
 # the standalone lp_fw): no association/station state is retained in the image.
@@ -144,6 +151,9 @@ if(CONFIG_WIFI_MEM_PROFILE_APP)
     set(STA_MEM_PROFILE 8 12288 10 8760 11680 24576)
 elseif(CONFIG_WIFI_MEM_PROFILE_BALANCED)
     set(STA_MEM_PROFILE 8 12288 12 11680 23360 32768)
+elseif(CONFIG_IPRO6_FMAC)
+    # FullMAC FW (no lwIP): reorder window 12, MAC RX buffer 1 16 KB
+    set(STA_MEM_PROFILE 12 16384 20 35040 49640 71680)
 else()
     set(STA_MEM_PROFILE 16 20480 20 35040 49640 71680)
 endif()
@@ -369,6 +379,7 @@ __component_add_compile_definitions_ifdef(CONFIG_WIFI_TG -DCFG_TG)
 # Boot default for the fhost HT40 permission flag (fhost_config.c). Permission
 # only - the read-only modem capability and the AP still decide the width.
 __component_add_compile_definitions_ifdef(CONFIG_WIFI_HT40_ENABLE -DCFG_HT40)
+__component_add_compile_definitions_ifdef(CONFIG_WIFI_AP_MAC_SPLIT -DWIFI_MGMR_AP_MAC_SPLIT)
 #__component_add_compile_definitions(-DHIGH_PERFORMANCE_PBUF)
 __component_add_compile_definitions(-DCFG_SMARTCONFIG)
 __component_add_compile_definitions(-DWL_BB_TPC=1)

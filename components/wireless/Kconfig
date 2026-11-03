@@ -52,6 +52,34 @@ config PHY_LPFW
       event memory and re-tuned RX gain-control / reference-level settings.
       Leave unset for normal phyrf / Wi-Fi builds.
 
+config WIRELESS_LIB_VARIANT
+    string "Prebuilt library variant"
+    default ""
+    help
+      Name of the lib/<variant>/ directory that holds prebuilt archives.
+      A component whose lib/<variant>/lib<name>.a exists links that archive
+      instead of compiling its sources. Empty builds everything from source.
+      Release packages set it per shipped defconfig.
+
+config IPRO6_FMAC
+    bool "Build the IPRO6S FullMAC firmware variant"
+    depends on WIFI6
+    help
+      FullMAC firmware for a Linux cfg80211 host: the macsw UMAC/LMAC with
+      macif_bus.c in place of the fhost glue, and no fhost, wpa_supplicant,
+      lwIP adapter, sigma_dut, Wi-Fi/BT coexistence, beaconing, radio
+      measurement or PHY CLI. Set only by apps/platform/ipro6_fmac
+      (defconfig_ipro6_fmac).
+
+config IPRO6_FMAC_AP
+    bool "FullMAC firmware: softAP for a host hostapd"
+    depends on IPRO6_FMAC
+    help
+      Adds beaconing (apm, mm_bcn) to the FullMAC firmware and the bus
+      messages hostapd needs through nl80211: AP start/stop, station
+      add/delete, beacon template download and host management frame
+      TX with ack status. The host runs the AP SME.
+
 config WIFI_HT40_ENABLE
     bool "Permit HT40 (40 MHz) channel width by default"
     depends on WIFI6
@@ -66,6 +94,16 @@ config WIFI_HT40_ENABLE
 
       Leave unset to keep the historic 20 MHz-only behaviour. Either way the
       `wifi_ht40` shell command overrides it at runtime, before stack_wifi.
+
+config WIFI_AP_MAC_SPLIT
+    bool "Give the softAP its own MAC address"
+    depends on WIFI6
+    help
+      The AP interface takes the station MAC with its last bit flipped.
+      Without it the AP and the station interface of one device share
+      an address, and an IPRO6S client cannot join the AP. The bridge
+      images always set it; set it in a standalone image that runs
+      wifi_ap_start.
 
 config IPRO6S_HOTCODE
     bool "Place per-frame hot functions in TCM"
@@ -107,7 +145,6 @@ config WIFI_MEM_PROFILE_APP
 endchoice
 
 if WIFI6
-    osource "components/wireless/wifi6/sigma_dut/Kconfig"
 endif
 
 # ATBM6162 (Altobeam OCEANUS) external Wi-Fi 6 over SDIO
@@ -133,8 +170,6 @@ config LOWER_MAC_15P4_LIB
     bool
     default IEEE802154_ENABLE
 
-osource "components/wireless/ieee802154/Kconfig"
-osource "components/wireless/ipro_intercom/Kconfig"
 osource "components/wireless/coex_bz/Kconfig"
 
 config OPENTHREAD_ENABLE
@@ -148,7 +183,6 @@ config OPENTHREAD_ENABLE
       for IoT devices.
 
 if OPENTHREAD_ENABLE
-    osource "components/wireless/thread/Kconfig"
 endif
 
 # IPRO6S BLE controller compatibility configuration.  The historical BTDM

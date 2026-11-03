@@ -52,7 +52,6 @@ endmenu
 
 endif  # COMPONENTS_LWIP_ENABLE
 
-source "components/network/lte_modem/Kconfig"
 source "components/network/esp32_wifi_at/Kconfig"
 source "components/network/rtsp_server/Kconfig"
 

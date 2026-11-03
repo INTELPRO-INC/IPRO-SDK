@@ -233,7 +233,7 @@ static int cmd_efuse_set_sf3(int argc, char **argv)
         printf("Next steps:\r\n");
         printf("  1. Power off\r\n");
         printf("  2. Ensure SF3 flash (GPIO28-33) is connected\r\n");
-        printf("  3. Flash firmware to SF3 using ipro_iot_tool_lite\r\n");
+        printf("  3. Flash firmware to SF3 with the IntelProCube flash tool\r\n");
         printf("  4. Power on — board boots from SF3\r\n\r\n");
     }
 

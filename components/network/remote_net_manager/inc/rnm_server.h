@@ -38,7 +38,7 @@ extern "C" {
 // TODO hide info that should be kept private
 
 #define RNMS_TASK_PRIORITY              21
-#define RNMS_TASK_STACK_SIZE            2048
+#define RNMS_TASK_STACK_SIZE            3072
 #define RNMS_TASK_STACK_DEPTH           (RNMS_TASK_STACK_SIZE / sizeof(StackType_t))
 #define RNMS_CMD_MSG_QUEUE_CAP          8
 #define RNMS_CMD_MSG_SIZE               sizeof(rnm_msg_t)
@@ -81,6 +81,14 @@ typedef struct {
     void *ota;
 
     bool have_valid_sta_ip;
+
+    // last AP_START request, replayed when the STA changes channel
+    struct {
+        char ssid[32 + 1];
+        char key[64 + 1];
+        uint16_t req_channel;
+        uint16_t channel;
+    } ap;
 
     rnm_statistic_t statistic;
 } rnms_t;

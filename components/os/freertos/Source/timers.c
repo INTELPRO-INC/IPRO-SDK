@@ -696,6 +696,28 @@
     }
 /*-----------------------------------------------------------*/
 
+    /* Bench diagnostics: the active timer that expires first. Call with
+     * interrupts masked; read-only. */
+    const char * pcTimerGetNextExpiryName( TickType_t * pxExpiry )
+    {
+        const Timer_t * pxTimer;
+
+        if( ( pxCurrentTimerList == NULL ) || ( listLIST_IS_EMPTY( pxCurrentTimerList ) != pdFALSE ) )
+        {
+            return NULL;
+        }
+
+        pxTimer = ( const Timer_t * ) listGET_OWNER_OF_HEAD_ENTRY( pxCurrentTimerList );
+
+        if( pxExpiry != NULL )
+        {
+            *pxExpiry = listGET_ITEM_VALUE_OF_HEAD_ENTRY( pxCurrentTimerList );
+        }
+
+        return pxTimer->pcTimerName;
+    }
+/*-----------------------------------------------------------*/
+
     static void prvReloadTimer( Timer_t * const pxTimer,
                                 TickType_t xExpiredTime,
                                 const TickType_t xTimeNow )

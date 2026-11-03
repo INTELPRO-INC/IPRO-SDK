@@ -51,14 +51,19 @@ typedef struct {
     int16_t mel_hi[FBANK_N_MELS];
 } FBankContext;
 #else
+/* Every FFT bin lies under at most two of the triangles. */
+#define FBANK_MEL_WEIGHTS (2 * FBANK_N_BINS)
 typedef struct {
     float window[FBANK_FRAME_LEN];                  /* Povey window     */
-    float mel_fb[FBANK_N_MELS][FBANK_N_BINS];       /* mel filter bank  */
-    /* per-mel nonzero bin span [lo,hi] — each triangular filter only covers a
-       few contiguous bins, so the filterbank dot product skips the zeros.
-       Bit-identical to the full loop (the skipped weights are exactly 0). */
-    int16_t mel_lo[FBANK_N_MELS];
-    int16_t mel_hi[FBANK_N_MELS];
+    /* The mel filter bank, nonzero spans only: filter m's weights for bins
+       mel_lo[m]..mel_hi[m] are mel_w[mel_off[m]] onwards. Each triangle covers
+       a few contiguous bins, so this is 2 KB where the full 80 x 257 table was
+       82 KB, and the dot product reads the same weights in the same order -
+       bit-identical to summing the whole row (the rest is exactly 0). */
+    float    mel_w[FBANK_MEL_WEIGHTS];
+    int16_t  mel_lo[FBANK_N_MELS];
+    int16_t  mel_hi[FBANK_N_MELS];
+    uint16_t mel_off[FBANK_N_MELS];
 } FBankContext;
 #endif
 

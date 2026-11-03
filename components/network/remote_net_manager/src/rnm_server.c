@@ -20,10 +20,7 @@
 
 #include <assert.h>
 #include <string.h>
-#ifndef CFG_IPRO_WIFI
-#include <bl_wifi.h>
-#include <aos/yloop.h>
-#else
+#ifdef CFG_IPRO_WIFI
 /* On IPRO chips, bridge the legacy aos_register_event_filter API to ipro_event. */
 #include "ipro_event.h"
 IPRO_EVENT_DECLARE_BASE(WIFI_EVENT);
@@ -110,7 +107,10 @@ static void wifi_event_cb(input_event_t *event, void *private_data)
     rnms_t *rnm = (rnms_t *)private_data;
 
     if (event->code == CODE_WIFI_ON_CONNECTED) {
+        rnm_msg_t follow = {.cmd = {.cmd = IPRO_CMD_AP_START, .flags = RNM_MSG_FLAG_LOCAL}};
+
         rnms_send_simple_async_msg(rnm, IPRO_CMD_STA_CONNECTED_IND);
+        rnm_cmd_input(rnm, &follow, 0);
     } else if (event->code == CODE_WIFI_ON_DISCONNECT) {
         rnm->have_valid_sta_ip = false;
         rnms_send_simple_async_msg(rnm, IPRO_CMD_STA_DISCONNECTED_IND);

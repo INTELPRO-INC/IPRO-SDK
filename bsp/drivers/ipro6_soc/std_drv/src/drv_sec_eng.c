@@ -3931,9 +3931,9 @@ void Sec_Eng_CDET_Init(uint16_t xtalNum)
 
     writel(0x0000FFFF, SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_1_OFFSET);
 
-    tmpVal = readl(SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_2_OFFSET);
+    tmpVal = readl(SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_5_OFFSET);
     tmpVal = reg_set_bits(tmpVal, SEC_ENG_SE_CDET_0_T_LOOP_N, xtalNum - 1);
-    writel(tmpVal, SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_2_OFFSET);
+    writel(tmpVal, SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_5_OFFSET);
 }
 
 void Sec_Eng_CDET_Start(void)
@@ -3970,9 +3970,8 @@ uint32_t Sec_Eng_CDET_GetXtalFreq(void)
         }
     }
 
-    tmpVal = readl(SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_3_OFFSET);
-    xtalNum = tmpVal & 0xFFFF;
-    rcNum = (tmpVal >> 16) & 0xFFFF;
+    xtalNum = readl(SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_3_OFFSET);
+    rcNum = readl(SEC_ENG_BASE + SEC_ENG_SE_CDET_0_CTRL_4_OFFSET);
 
     return (uint32_t)((32000000 * xtalNum +  rcNum / 2)/ rcNum);
 }

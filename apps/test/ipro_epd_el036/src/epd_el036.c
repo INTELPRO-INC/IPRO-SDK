@@ -271,7 +271,7 @@ static void hw_spi_send(void *buf, uint32_t len)
  * SPI_SendData() returns once the TX FIFO is empty and BUSY reads clear - but there are a cycle or two
  * after the shifter takes the last byte from the FIFO and before BUSY rises, and a return in that
  * window lets CSB go high mid-byte. The panel drops that byte and the rest of the frame lands one
- * byte early: on the Zinwell board (2026-10-11) app images came out shifted left from some row on,
+ * byte early: on the AI Assistant reference board (2026-10-11) app images came out shifted left from some row on,
  * wrapping at the right edge, once or twice a frame. Wait one byte time, then for BUSY to clear.
  */
 static void hw_spi_settle(void)
@@ -797,10 +797,10 @@ int epd_init(void)
  */
 static int refresh_tail(void)
 {
-    /* Application Note Figure 12. On the Zinwell AI Assistant board's panel (EL036MF1, 2026-10-11)
+    /* Application Note Figure 12. On the AI Assistant reference board's panel (EL036MF1, 2026-10-11)
      * blue comes out grey-green and green near black with this flow; the factory firmware's longer
      * waits (200 ms after PON and after BTST2) and its single reset pulse changed nothing, and the
-     * register values are the reference's byte for byte - see the voice_device README. */
+     * register values are the reference's byte for byte. */
     spi_cmd(CMD_PON);
     if (wait_busy_stage(10000, "PON (power on)") != 0) {
         return -1;

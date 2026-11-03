@@ -65,7 +65,7 @@ static void board_clock_init(void)
     board_mcu_clock_set(320000000u, 80000000u,
                         GLB_MCU_SYS_CLK_TOP_WIFIPLL_320M, 3);
 #elif defined(CONFIG_BTDM_CLOCK_320_160_TEST)
-    /* Match the BL616D reference board implementation exactly. */
+    /* Match the reference board implementation exactly. */
     board_mcu_clock_set(320000000u, 160000000u,
                         GLB_MCU_SYS_CLK_TOP_WIFIPLL_320M, 1);
 #elif defined(CONFIG_BTDM_CLOCK_240_120_TEST)

@@ -4075,6 +4075,46 @@ void vTaskSuspendAll( void )
         return ( xFound != pdFALSE ) ? xBestWakeTime : portMAX_DELAY;
     }
 
+    /* Bench diagnostics: the delayed task that sets the next wake once
+     * xTaskToExclude is left out (NULL: none left out). Call with interrupts
+     * masked; read-only. */
+    TaskHandle_t xTaskGetNextUnblockOwner( TaskHandle_t xTaskToExclude, TickType_t * pxWakeTime )
+    {
+        const List_t * pxLists[ 2 ] = { pxDelayedTaskList, pxOverflowDelayedTaskList };
+        const TCB_t * pxBest = NULL;
+        TickType_t xBestDelta = portMAX_DELAY;
+        TickType_t xBestWakeTime = portMAX_DELAY;
+        UBaseType_t uxList;
+
+        for( uxList = 0U; uxList < 2U; uxList++ )
+        {
+            const ListItem_t * pxEnd = listGET_END_MARKER( pxLists[ uxList ] );
+            const ListItem_t * pxItem;
+
+            for( pxItem = listGET_HEAD_ENTRY( pxLists[ uxList ] );
+                 pxItem != pxEnd;
+                 pxItem = listGET_NEXT( pxItem ) )
+            {
+                const TCB_t * pxOwner = ( const TCB_t * ) listGET_LIST_ITEM_OWNER( pxItem );
+                TickType_t xDelta = listGET_LIST_ITEM_VALUE( pxItem ) - xTickCount;
+
+                if( ( pxOwner != ( const TCB_t * ) xTaskToExclude ) && ( ( pxBest == NULL ) || ( xDelta < xBestDelta ) ) )
+                {
+                    pxBest = pxOwner;
+                    xBestDelta = xDelta;
+                    xBestWakeTime = listGET_LIST_ITEM_VALUE( pxItem );
+                }
+            }
+        }
+
+        if( pxWakeTime != NULL )
+        {
+            *pxWakeTime = xBestWakeTime;
+        }
+
+        return ( TaskHandle_t ) pxBest;
+    }
+
     TickType_t xTaskGetExpectedIdleTimeExcludingTask( TaskHandle_t xTaskToExclude )
     {
         TickType_t xWakeTime;

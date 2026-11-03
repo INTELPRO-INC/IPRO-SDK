@@ -997,6 +997,8 @@ int GLB_PER_Clock_Gate(GLB_AHB_CLOCK_Type module)
     uint32_t regAddr = 0;
 
     if (module == GLB_AHB_CLOCK_SEC) {
+        /* SEC, SEC_DBG and SEC_ENG all sit in CGEN_CFG0 */
+        regAddr = GLB_BASE + GLB_CGEN_CFG0_OFFSET;
         tmpVal = readl(regAddr);
         tmpVal &= ~(1 << GLB_AHB_CLOCK_SEC);
         tmpVal &= ~(1 << GLB_AHB_CLOCK_SEC_DBG);
@@ -1028,6 +1030,8 @@ int GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_Type module)
     uint32_t regAddr = 0;
 
     if (module == GLB_AHB_CLOCK_SEC) {
+        /* SEC, SEC_DBG and SEC_ENG all sit in CGEN_CFG0 */
+        regAddr = GLB_BASE + GLB_CGEN_CFG0_OFFSET;
         tmpVal = readl(regAddr);
         tmpVal |= (1 << GLB_AHB_CLOCK_SEC);
         tmpVal |= (1 << GLB_AHB_CLOCK_SEC_DBG);

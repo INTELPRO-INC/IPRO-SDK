@@ -20,7 +20,6 @@
 #define __LMAC154_IPRO7_H__
 
 #include "ipro7.h"
-// #include <bl616_glb.h>
 // #include "rf.h"
 #include <bz_phy_reg.h>
 #include <m154_reg.h>
@@ -91,7 +90,7 @@
 #define LMAC154_IS_DISABLED()           !(BL_IS_REG_BIT_SET(BL_RD_REG(MAC154_BASE, M154_GLB_CFG), M154_CLK_EN)) // TODO: sync with 702L
 #define LMAC154_RFPHY_IS_IDLE()         (LMAC154_RF_STATE() == 0)
 
-// Original BL616/BL702 check at unmapped IPRO7 address — replaced.
+// Original check at an address unmapped on IPRO7 — replaced.
 // #define LMAC154_COEX_ENABLED()          ((*((volatile uint32_t *)BL_PTA_CONFIG2_ADDR) & BL_PTA_CONFIG2_ADDR_BZ_PTI_MSK) == BL_PTA_CONFIG2_ADDR_BZ_PTI_MSK)
 //
 // IPRO7 puts the coex enable bit in the GLB block: BZ_COEX_CTRL @ 0x300000C0 bit[0]

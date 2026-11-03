@@ -1,0 +1,46 @@
+{
+ "input": 128,
+ "max_classes": 8,
+ "label_max": 15,
+ "box_1280x720": [
+  384,
+  104,
+  512
+ ],
+ "backbones": {
+  "mnv2_035": {
+   "feat_scale": 0.0235294122248888,
+   "feat_zp": -128,
+   "feat_shape": [
+    1,
+    4,
+    4,
+    1280
+   ],
+   "channels": 1280,
+   "n_max": 8,
+   "description": "MobileNetV2 0.35 - 12 ms on the NPU, the more accurate",
+   "inm": "mnv2_035.inm",
+   "features": "mnv2_035_features.tflite",
+   "inm_bytes": 460952,
+   "inm_sha256": "fa16127bb083772d03546cf4fec795ebea9343918ba997846c5f6b5eac9cb469"
+  },
+  "mnv1_025": {
+   "feat_scale": 0.0235294122248888,
+   "feat_zp": -128,
+   "feat_shape": [
+    1,
+    4,
+    4,
+    256
+   ],
+   "channels": 256,
+   "n_max": 8,
+   "description": "MobileNetV1 0.25 - 5 ms on the NPU, half the flash",
+   "inm": "mnv1_025.inm",
+   "features": "mnv1_025_features.tflite",
+   "inm_bytes": 236712,
+   "inm_sha256": "c5aeafb3d6ff1d1cd68d71885a5dfddd472ec25dfa0d5bf325db2c7a3ca3d13e"
+  }
+ }
+}

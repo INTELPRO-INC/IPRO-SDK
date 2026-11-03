@@ -163,12 +163,11 @@ void  vPortFree(void *pv);
 #endif
 
 /* ========================================================================
- * Flash size optimization — disable unused features for miniclaw
- * Miniclaw only needs TLS 1.2 client with ECDHE/RSA to reach
- * api.telegram.org and api.anthropic.com.
+ * Flash size optimization — disable features a TLS 1.2 client does not
+ * need (ECDHE/RSA client-only is enough to reach typical HTTPS APIs).
  * ======================================================================== */
 
-/* TLS server not needed for miniclaw (client-only). BUT the OpenThread
+/* TLS server not needed for a client-only build. BUT the OpenThread
  * MeshCoP COMMISSIONER is a DTLS SERVER — it sends HelloVerifyRequest +
  * ServerHello to the joiner and REQUIRES MBEDTLS_SSL_SRV_C (+ SSL_COOKIE_C,
  * which stays on). Without it, ssl_srv.c is not compiled, the server handshake
@@ -198,7 +197,7 @@ void  vPortFree(void *pv);
 
 /* Keep MBEDTLS_SELF_TEST — port/mbedtls_self_test.c depends on it */
 
-/* DTLS and EC-JPAKE only needed for OpenThread (not used in miniclaw).
+/* DTLS and EC-JPAKE only needed for OpenThread (not by a plain TLS client).
  * Gate on CONFIG_OPENTHREAD_ENABLE — the build only ever defines that token
  * (bare CONFIG_OPENTHREAD is never emitted by Kconfig/autoconf.h), so the old
  * `#ifndef CONFIG_OPENTHREAD` fired unconditionally and stripped DTLS/EC-JPAKE

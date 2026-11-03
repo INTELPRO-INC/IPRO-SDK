@@ -105,6 +105,6 @@ int ipro_coex_cli_init(void)
 {
     /* The component is linked whole-archive (see CMakeLists.txt), so unlike
      * the reference nothing has to call this to keep the command alive. Kept
-     * so callers ported from bl_iot_sdk still compile. */
+     * so callers ported from the reference SDK still compile. */
     return 0;
 }

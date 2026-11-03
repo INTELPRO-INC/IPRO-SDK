@@ -71,7 +71,7 @@ static int     s_ready;
  * the live commands and the streaming monitor. Created in spk_ai_init(). */
 static SemaphoreHandle_t s_embed_mutex;
 
-/* ---- streaming monitor (meeting_poc pattern: ISR accumulate -> task infer) ---- */
+/* ---- streaming monitor (as in ipro_speaker_recog: ISR accumulate -> task infer) ---- */
 #define MON_SEC        3                                   /* model needs 3 s */
 #define MON_SAMPLES    (16000 * MON_SEC)
 #define MON_BYTES      (MON_SAMPLES * (int)sizeof(int16_t))
@@ -85,7 +85,7 @@ static int               s_mon_vad_rms = 60;   /* RMS below this = silence, skip
 static SemaphoreHandle_t s_mon_ready_sem;
 static TaskHandle_t      s_mon_task;
 
-/* -------- load model from the 'mfg' flash partition (pircam XIP pattern) -------- */
+/* -------- load model from the 'mfg' flash partition (XIP-mapped) -------- */
 static int load_model_from_flash(void)
 {
     uint32_t part_addr = 0, part_size = 0;
@@ -168,7 +168,7 @@ void spk_ai_feed_frame_isr(const int16_t *pcm, uint32_t bytes, BaseType_t *woken
     }
 }
 
-/* Integer RMS over the window (every 8th sample) — energy VAD, meeting_poc style. */
+/* Integer RMS over the window (every 8th sample) — energy VAD, as in ipro_speaker_recog. */
 static uint32_t mon_rms(const int16_t *pcm, int n)
 {
     int64_t energy = 0;

@@ -46,9 +46,9 @@ enum adc_index_type {
     ADC_MAX_INDEX
 };
 
-#define adc_channel_start(index)        adc_ioctl(index, ADC_CTRL_CHANNEL_START, NULL)
-#define adc_channel_stop(index)         adc_ioctl(index, ADC_CTRL_CHANNEL_STOP, NULL)
-#define adc_channel_config(index, list) adc_ioctl(index, ADC_CTRL_CHANNEL_CONFIG, list)
+#define adc_channel_start(index)        hal_adc_ioctl(index, ADC_CTRL_CHANNEL_START, NULL)
+#define adc_channel_stop(index)         hal_adc_ioctl(index, ADC_CTRL_CHANNEL_STOP, NULL)
+#define adc_channel_config(index, list) hal_adc_ioctl(index, ADC_CTRL_CHANNEL_CONFIG, list)
 
 typedef enum {
     ADC_CHANNEL0,          /* ADC channel 0 */

@@ -15,6 +15,7 @@ __component_add_sources(
 	src/znumbers.c
 	src/zserial.c
 	src/port.c
+	src/zreceive.c
 )
 
 #__component_add_compile_definitions(-DZDEBUG -DZTRACE)

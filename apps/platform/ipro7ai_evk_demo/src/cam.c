@@ -513,8 +513,8 @@ static int cam_isp_up(void)
      * the sensor still probes fine (SCCB is I2C0, a different domain) and
      * isp_init() returns success, but nothing ever streams and no completion
      * interrupt fires - `cam status` sits at 0 frames with 0 errors. Every
-     * working camera app in the SDK does this first (uvc_isp.c:883,
-     * mc_camera.c:952, pircam_isp.c:725). */
+     * working camera app in the SDK does this first (e.g. ipro7_uvc_cam's
+     * uvc_isp.c). */
     GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_MM);
 
     cam_sensor_size(&sw, &sh);
@@ -731,8 +731,7 @@ void cam_stop(void)
          * `cam start` come back with zero completions and zero errors.
          *
          * 1. Stop the SENSOR first. Tearing the ISP down while DVP data is
-         *    still arriving leaves the capture side wedged mid-frame - the
-         *    SDK's own miniclaw teardown calls this out in as many words
+         *    still arriving leaves the capture side wedged mid-frame
          *    ("Stop sensor before tearing down ISP - prevents stale DVP
          *    data"). Re-pulsing the sensor at the next start is NOT enough on
          *    its own; the wedge is on the ISP side.

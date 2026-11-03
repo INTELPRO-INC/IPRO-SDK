@@ -3,7 +3,8 @@
  *
  * The library leaves only two hooks unimplemented (zm_recv / zm_send); this
  * file backs them with hal_uart. The target UART and the receive idle-timeout
- * are runtime-settable (zm_port_set_uart / zm_port_set_timeout_ms) so a caller
+ * are runtime-settable (zm_port_set_uart / zm_port_set_timeout_ms, and an
+ * optional session limit zm_port_set_session_ms) so a caller
  * can drive zmodem over any UART at any baud without editing this file.
  *
  * No printf in the data path: the wire must stay byte-clean. RX is polled in
@@ -24,6 +25,8 @@
 /* Bulk-drain the RX FIFO once, then dole out one byte per zm_recv() call. */
 static int      s_uart_id    = UART1_INDEX;
 static uint32_t s_timeout_ms = 30000;
+static bool       s_session_on;
+static TickType_t s_session_end;
 static uint8_t  s_rx[256];
 static uint16_t s_rx_len;
 static uint16_t s_rx_pos;
@@ -40,12 +43,24 @@ void zm_port_set_timeout_ms(uint32_t ms)
     s_timeout_ms = ms;
 }
 
+void zm_port_set_session_ms(uint32_t ms)
+{
+    s_session_on  = ms != 0;
+    s_session_end = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
+}
+
 ZRESULT zm_recv(void)
 {
     if (s_rx_pos >= s_rx_len) {
         TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(s_timeout_ms);
         int n;
 
+        if (s_session_on) {
+            if ((int32_t)(deadline - s_session_end) > 0)
+                deadline = s_session_end;   /* session end caps the wait */
+            if ((int32_t)(xTaskGetTickCount() - deadline) >= 0)
+                return CLOSED;
+        }
         while ((n = uart_read_available(s_uart_id, s_rx, sizeof(s_rx))) <= 0) {
             if ((int32_t)(xTaskGetTickCount() - deadline) >= 0)
                 return CLOSED;          /* idle timeout -> abort transfer */

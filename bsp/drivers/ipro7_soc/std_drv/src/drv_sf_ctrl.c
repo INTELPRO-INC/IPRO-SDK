@@ -31,7 +31,7 @@
  * @return None
  *
 *******************************************************************************/
-void ATTR_TCM_SECTION SF_Ctrl_SetDelay(uint8_t clkDelay)
+void ATTR_TCM_RELOAD_SECTION SF_Ctrl_SetDelay(uint8_t clkDelay)
 {
     uint32_t tmpVal = 0;
 
@@ -718,7 +718,7 @@ void ATTR_TCM_SECTION SF_Ctrl_AES_Set_IV_BE(uint8_t region, uint8_t *iv, uint32_
 *******************************************************************************/
 #ifndef DRV_USE_ROM_DRIVER
 __WEAK
-void ATTR_TCM_SECTION SF_Ctrl_AES_Enable(void)
+void ATTR_TCM_RELOAD_SECTION SF_Ctrl_AES_Enable(void)
 {
     uint32_t tmpVal;
 
@@ -739,7 +739,7 @@ void ATTR_TCM_SECTION SF_Ctrl_AES_Enable(void)
 *******************************************************************************/
 #ifndef DRV_USE_ROM_DRIVER
 __WEAK
-void ATTR_TCM_SECTION SF_Ctrl_AES_Disable(void)
+void ATTR_TCM_RELOAD_SECTION SF_Ctrl_AES_Disable(void)
 {
     uint32_t tmpVal;
 
@@ -760,7 +760,7 @@ void ATTR_TCM_SECTION SF_Ctrl_AES_Disable(void)
 *******************************************************************************/
 #ifndef DRV_USE_ROM_DRIVER
 __WEAK
-uint8_t ATTR_TCM_SECTION SF_Ctrl_Is_AES_Enable(void)
+uint8_t ATTR_TCM_RELOAD_SECTION SF_Ctrl_Is_AES_Enable(void)
 {
     uint32_t tmpVal;
 
@@ -795,7 +795,7 @@ void ATTR_TCM_SECTION SF_Ctrl_Set_Flash_Image_Offset(uint32_t addrOffset, uint8_
 *******************************************************************************/
 #ifndef DRV_USE_ROM_DRIVER
 __WEAK
-uint32_t ATTR_TCM_SECTION SF_Ctrl_Get_Flash_Image_Offset(uint8_t group, uint8_t bank)
+uint32_t ATTR_TCM_RELOAD_SECTION SF_Ctrl_Get_Flash_Image_Offset(uint8_t group, uint8_t bank)
 {
     return readl(SF_CTRL_BASE + SF_CTRL_SF_ID0_OFFSET_OFFSET);
 }

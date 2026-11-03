@@ -24,7 +24,6 @@
 #include <string.h>
 #include <sdiowifi_platform_adapt.h>
 #include <lwip/netif.h>
-//#include <bl_wifi.h>
 #include <wifi_mgmr_ext.h>
 //#include <vfs.h>
 

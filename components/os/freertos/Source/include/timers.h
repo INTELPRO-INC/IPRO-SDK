@@ -1252,6 +1252,7 @@ TaskHandle_t xTimerGetTimerDaemonTaskHandle( void ) PRIVILEGED_FUNCTION;
  * @return The name assigned to the timer specified by the xTimer parameter.
  */
 const char * pcTimerGetName( TimerHandle_t xTimer ) PRIVILEGED_FUNCTION;
+const char * pcTimerGetNextExpiryName( TickType_t * pxExpiry ) PRIVILEGED_FUNCTION;
 
 /**
  * void vTimerSetReloadMode( TimerHandle_t xTimer, const BaseType_t xAutoReload );

@@ -36,6 +36,7 @@
 #include "iproai_core.h"
 #include "iproai_def.h"         /* IPROAI_Model_t: share_buffer, the loaded sections */
 #include "iproai_inst_util.h"   /* BALI_CHN_ALIGN */
+#include "ipro_ai.h"            /* ipro_ai_npu_lock: the one NPU lock in the image */
 #include <system_soc.h>         /* L1C_DCACHE_* */
 
 #include "ipro_llm_npu.h"
@@ -200,8 +201,10 @@ static iproai_model_hdl_t load_model(const llm_npu_template_t *t, int cin, int c
     IPROAI_Model_t *model = (IPROAI_Model_t *)hdl;
     model->share_buffer = 1;            /* every projection runs on the same activation memory */
     model->buffer = s_act;
+    ipro_ai_npu_lock();                 /* the load writes the NPU registers and reads imgBuffer */
     imgBuffer = (char *)s_feed;
     const IPROAI_Status_e st = iproai_load_model_from_buffer(hdl, inm);
+    ipro_ai_npu_unlock();
     vPortFree(inm);                     /* the runtime copied every section */
     if (st != IPROAI_STATUS_NO_ERROR) {
         model->buffer = NULL;           /* not ours to free */
@@ -290,8 +293,13 @@ static int npu_run(void *ctx, int slot, const int8_t *x, int n, int8_t *y)
         return -1;
     }
     uint32_t pitch;
+    /* The runtime's lock (components/ai/runtime): a Teach model or another
+     * runtime user in the same image must not move the NPU's registers or
+     * imgBuffer between this restore and the output being read. */
+    ipro_ai_npu_lock();
     const uint8_t *out = npu_infer(slot, x, n, &pitch);
     if (!out) {
+        ipro_ai_npu_unlock();
         return -1;
     }
     const int cout = s_slot[slot].tmpl[CHUNK]->cout;
@@ -302,12 +310,13 @@ static int npu_run(void *ctx, int slot, const int8_t *x, int n, int8_t *y)
             yt[c] = (int8_t)(o[c] ^ 0x80u);
         }
     }
+    ipro_ai_npu_unlock();
     return 0;
 }
 
 int ipro_llm_npu_init(ipro_llm_accel_t *a)
 {
-    if (!a) {
+    if (!a || ipro_ai_init() != IPRO_AI_OK) {     /* creates the NPU lock npu_run takes */
         return -1;
     }
     if (!s_act || !s_feed) {

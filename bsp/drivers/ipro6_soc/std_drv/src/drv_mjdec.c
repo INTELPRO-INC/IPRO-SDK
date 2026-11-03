@@ -630,7 +630,8 @@ int decode_sos_header(MJDEC_Header_Info *a_ptHeaderInfo)
     if ((a_ptHeaderInfo->streamBufEndAddr - pucChkAddr +1) < (16/8))     // next 16/8 bytes availabe or not
         return -1;
 
-    // Length, Ls
+
+    // Length, Ls
     len = (*(pucChkAddr+0)<<8) |
           (*(pucChkAddr+1)<<0);
     pucChkAddr += 2;
@@ -648,7 +649,8 @@ int decode_sos_header(MJDEC_Header_Info *a_ptHeaderInfo)
     //    a_ptHeaderInfo->wordPtr += 64;
     //if (a_ptHeaderInfo->wordPtr & 1)
     //    a_ptHeaderInfo->wordPtr -= 1; // to make even.
-   //
+
+   //
     //a_ptHeaderInfo->bitPtr = (ecsPtr % 4) * 8;    // bit unit
     //if (((ecsPtr % 256) / 4) & 1)
     //    a_ptHeaderInfo->bitPtr += 32;
@@ -1323,7 +1325,7 @@ int drv_mjdec_init(MJDEC_CFG_Type *cfg)
     writel(tmpVal, MJPEG_BASE + MJCOMB_CSR_JDEC_CSR_1_OFFSET);
 
     #if 0
-        /* align buffer to 16 bytes boundary (from bl808)*/
+        /* align buffer to 16 bytes boundary (from the reference SDK)*/
         writel((cfg->bufferFrameYY + 0xF) & (~0xF), MJPEG_BASE + MJCOMB_CSR_SHARE_CSR_1_OFFSET);
         writel((cfg->bufferFrameUV + 0xF) & (~0xF), MJPEG_BASE + MJCOMB_CSR_SHARE_CSR_2_OFFSET);
     #else
@@ -1777,4 +1779,4 @@ void drv_mjdec_set_out_addr(uint32_t out_yy_addr, uint32_t out_uv_addr)
 
 /*@} end of group MJDEC */
 
-/*@} end of group BL808_Peripheral_Driver */
+/*@} end of group IPRO6_Peripheral_Driver */

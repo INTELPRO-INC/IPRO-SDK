@@ -2,7 +2,7 @@ python convert_audio_weights.py <params.h> <output.bin>
 
 example:
 
-cd /mnt/d/software/IP7AI/ipro_sdk/apps/platform/ipro7_demo/demo/ai/tools
+cd <SDK>/apps/platform/ipro7_demo/demo/ai/tools
 python convert_audio_weights.py params.h audio_weights.bin
 
 If your dimensions are different:
@@ -18,7 +18,7 @@ you will need to modify lines 81–82 in the script.
 python convert_audio_input.py <wav_data_speaker.h> <audio_input.bin>
 example:
 
-cd /mnt/d/software/IP7AI/ipro_sdk/apps/platform/ipro7_demo/demo/ai/tools
+cd <SDK>/apps/platform/ipro7_demo/demo/ai/tools
 python convert_audio_input.py wav_data_speaker1_0.h audio_input.bin
 
 使用流程

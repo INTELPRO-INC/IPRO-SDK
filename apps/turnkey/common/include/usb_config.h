@@ -17,10 +17,8 @@
  */
 
 /*
- * CherryUSB configuration for the fall turnkey apps (tag CDC-ACM console,
- * gateway CDC-ECM or CDC-NCM network).
- * Shared by ipro7_fall_neck and ipro7_fall_gateway via the
- * apps/turnkey/common include path.
+ * CherryUSB configuration for the apps that use the apps/turnkey/common
+ * include path (CDC-ACM console, CDC-ECM or CDC-NCM network).
  */
 #ifndef CHERRYUSB_CONFIG_H
 #define CHERRYUSB_CONFIG_H
@@ -54,7 +52,7 @@
 #define CONFIG_USBDEV_MSC_MAX_BUFSIZE 512
 #endif
 
-/* CDC-NCM (ipro7_fall_gateway's Windows-capable USB link): lwIP pbuf
+/* CDC-NCM (a Windows-capable USB network link): lwIP pbuf
  * helpers usbd_cdc_ncm_eth_rx/_eth_tx. */
 #ifdef CONFIG_CHERRYUSB_DEVICE_CDC_NCM
 #define CONFIG_USBDEV_CDC_NCM_USING_LWIP

@@ -20,11 +20,7 @@
 #include "utils.h"
 
 #if defined(IPRO6)
-#if defined(IPRO6)
 #include "drv_l1c.h"
-#else
-#include <bl616_l1c.h>
-#endif
 #endif
 
 static void in_cb(void *arg, size_t len)

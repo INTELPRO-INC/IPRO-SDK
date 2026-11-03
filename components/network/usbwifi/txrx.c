@@ -73,7 +73,7 @@ size_t usbwifi_rx_buf_reserve_head(void)
     return sizeof(usb_data_emb_t) + USBWIFI_BULK_IN_ALIGN;
 }
 
-int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, uint16_t type, usbwifi_bulk_in_free_t free_fn, void *free_arg)
+int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, uint16_t type, uint16_t flags, usbwifi_bulk_in_free_t free_fn, void *free_arg)
 {
     usb_data_emb_t *ud = (usb_data_emb_t *)ALIGN_LOW(USBWIFI_BULK_IN_ALIGN, data - sizeof(usb_data_emb_t));
     uint32_t payload_offset = data - (void *)ud;
@@ -89,6 +89,7 @@ int usbwifi_bulk_in(struct usbwifi_rx_env_tag *env, void *data, uint16_t len, ui
     memset(ud, 0, payload_offset);
     ud->type = type;
     ud->length = len;
+    ud->flags = flags;
     ud->payload_offset = payload_offset;
     ud->free_fn = (uint32_t)free_fn;
     ud->free_arg = (uint32_t)free_arg;

@@ -17,8 +17,8 @@
  */
 
 
-#ifndef __WB03_ACOMP_H__
-#define __WB03_ACOMP_H__
+#ifndef __DRV_ACOMP_H__
+#define __DRV_ACOMP_H__
 
 #include "aon_reg.h"
 #include "drv_common.h"
@@ -129,4 +129,4 @@ int AON_ACOMP_Get_Result(AON_ACOMP_ID_Type acompNo);
 uint32_t AON_ACOMP_Get_Postive_Input(AON_ACOMP_ID_Type acompNo);
 int AON_ACOMP_Disable(AON_ACOMP_ID_Type acompNo);
 
-#endif /* __BL606P_ACOMP_H__ */
+#endif /* __DRV_ACOMP_H__ */

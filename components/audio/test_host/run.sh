@@ -23,7 +23,13 @@
 set -e
 cd "$(dirname "$0")/.."
 OUT="${TMPDIR:-/tmp}"
-CFLAGS="-std=c11 -Wall -Wextra -Werror -O1 -I include -I test_host"
+CFLAGS="-std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined \
+-fno-sanitize-recover=all -fno-omit-frame-pointer -I include -I test_host"
 
 cc $CFLAGS -o "$OUT/audio_asrc_test" test_host/test_audio_asrc_host.c src/audio_asrc.c src/audio_asrc_coef.c -lm
 "$OUT/audio_asrc_test"
+
+# The shared PDM microphone chain against the two copies it replaced (fake capture).
+cc $CFLAGS -o "$OUT/audio_pdm_mic_test" test_host/test_audio_pdm_mic_host.c src/audio_pdm_mic.c \
+    src/audio_asrc.c src/audio_asrc_coef.c -lm
+"$OUT/audio_pdm_mic_test"

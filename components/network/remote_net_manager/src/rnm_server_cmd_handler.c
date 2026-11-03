@@ -26,10 +26,6 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <hal_sys.h>
-#ifndef CFG_IPRO_WIFI
-#include <bl_os_private.h>
-#include <bl_wifi.h>
-#endif
 #include <wifi_mgmr_ext.h>
 
 #ifdef RNMS_OTA_ENABLE
@@ -208,13 +204,8 @@ static chr_t handle_ping(rnms_t *rnm, rnm_msg_t *cmd)
 void rnms_build_get_mac_resp(rnms_t *rnm, const rnm_msg_t *cmd, rnm_mac_addr_ind_msg_t *resp)
 {
     rnms_msg_fill_common(rnm, resp, cmd);
-#ifdef CFG_IPRO_WIFI
     wifi_mgmr_sta_mac_get(resp->sta_mac);
     wifi_mgmr_ap_mac_get(resp->ap_mac);
-#else
-    bl_wifi_mac_addr_get(resp->sta_mac);
-    bl_wifi_mac_addr_get(resp->ap_mac);
-#endif
 }
 
 static chr_t handle_get_mac_addr(rnms_t *rnm, rnm_msg_t *cmd)
@@ -386,7 +377,7 @@ static chr_t handle_sta_connect(rnms_t *rnm, rnm_msg_t *cmd)
     rnm_sta_connect_msg_t *ccmd;
     void *password;
 
-    if (!(rnm->mode == RNM_WIFI_MODE_NONE || rnm->mode == RNM_WIFI_MODE_STA)) {
+    if (rnm->mode == RNM_WIFI_MODE_SNIFFER) {
         rnm_err("mode incorrect, ignore connect ap\r\n");
         return CMD_HANDLER_RET_ERR_ACK(STATUS_INVALID_MODE);
     }
@@ -541,19 +532,67 @@ static chr_t handle_sta_get_link_status(rnms_t *rnm, rnm_msg_t *cmd)
     return CMD_HANDLER_RET_NO_ACK;
 }
 
+#ifdef CFG_IPRO_WIFI
+// The radio has one channel: a STA with an operating channel (set from
+// association on) decides it for the AP.
+static uint16_t ap_channel_pick(uint16_t requested)
+{
+    int sta_channel;
+
+    if (wifi_mgmr_sta_channel_get(&sta_channel) == 0) {
+        return sta_channel;
+    }
+    // 0 = wifi_mgmr default
+    return requested ? requested : 6;
+}
+
+static int ap_start_saved(rnms_t *rnm)
+{
+    wifi_mgmr_ap_params_t config = {};
+    uint16_t channel = ap_channel_pick(rnm->ap.req_channel);
+
+    config.ssid = rnm->ap.ssid;
+    config.key = rnm->ap.key;
+    config.channel = channel;
+    rnm_info("Starting AP %s on channel %u (requested %u)\r\n", rnm->ap.ssid, channel, rnm->ap.req_channel);
+    if (wifi_mgmr_ap_start(&config)) {
+        return -1;
+    }
+    rnm->ap.channel = channel;
+    return 0;
+}
+
+// Runs in the RNM task after STA_CONNECTED; clients rejoin (no CSA).
+static chr_t ap_follow_sta(rnms_t *rnm)
+{
+    if (rnm->mode != RNM_WIFI_MODE_AP_STA || ap_channel_pick(rnm->ap.req_channel) == rnm->ap.channel) {
+        return CMD_HANDLER_RET_NO_ACK;
+    }
+    stop_ap();
+    if (ap_start_saved(rnm)) {
+        rnm_err("AP restart failed\r\n");
+        rnm->mode = RNM_WIFI_MODE_STA;
+    }
+    return CMD_HANDLER_RET_NO_ACK;
+}
+#endif
+
 static chr_t handle_ap_start(rnms_t *rnm, rnm_msg_t *cmd)
 {
     rnm_debug("handle ap_start\r\n");
     rnm_ap_start_msg_t *ccmd;
-    bool use_dhcpd = false;
-#ifdef CFG_IPRO_WIFI
-    wifi_mgmr_ap_params_t config = {};
-#else
+    rnm_wifi_mode_t prev_mode = rnm->mode;
+#ifndef CFG_IPRO_WIFI
     wifi_interface_t wifi_interface;
-#endif
-    int channel;
+    bool use_dhcpd = false;
     char *passwd;
+#endif
 
+#ifdef CFG_IPRO_WIFI
+    if (cmd->cmd.flags & RNM_MSG_FLAG_LOCAL) {
+        return ap_follow_sta(rnm);
+    }
+#endif
     CMD_COMMON_CHECK(cmd, rnm_ap_start_msg_t);
     if (!(rnm->mode == RNM_WIFI_MODE_NONE || rnm->mode == RNM_WIFI_MODE_STA)) {
         rnm_err("mode incorrect, ignore start ap\r\n");
@@ -562,42 +601,35 @@ static chr_t handle_ap_start(rnms_t *rnm, rnm_msg_t *cmd)
 
     ccmd = (rnm_ap_start_msg_t *)cmd->data;
 
-    if (strlen((char *)ccmd->ssid) == 0) {
+    if (ccmd->ssid[0] == 0) {
         rnm_err("SSID null\r\n");
         return CMD_HANDLER_RET_ERR_ACK(STATUS_INVALID_INPUT);
     }
 
-    channel = ccmd->channel;
-    if (ccmd->is_open) {
-#ifdef CFG_IPRO_WIFI
-        passwd = "";
-#else
-        passwd = NULL;
-#endif
-    } else {
-        passwd = (char *)ccmd->password;
-    }
-#ifdef DHCP_IN_EMB
-    use_dhcpd = true;
-#endif
-    rnm_debug("Starting AP with SSID %s, channel %d, password %s\r\n",
-              ccmd->ssid,
-              channel,
-              passwd ? passwd : "[nil]");
     if (rnm->mode == RNM_WIFI_MODE_NONE) {
         rnm->mode = RNM_WIFI_MODE_AP;
     } else {
         rnm->mode = RNM_WIFI_MODE_AP_STA;
     }
 #ifdef CFG_IPRO_WIFI
-    config.ssid = (char *)ccmd->ssid;
-    config.key = passwd;
-    config.channel = channel;
-    config.use_dhcpd = use_dhcpd;
-    wifi_mgmr_ap_start(&config);
+    memset(&rnm->ap, 0, sizeof(rnm->ap));
+    memcpy(rnm->ap.ssid, ccmd->ssid, sizeof(ccmd->ssid));
+    if (!ccmd->is_open) {
+        memcpy(rnm->ap.key, ccmd->password, sizeof(ccmd->password));
+    }
+    rnm->ap.req_channel = ccmd->channel;
+    if (ap_start_saved(rnm)) {
+        rnm->mode = prev_mode;
+        return CMD_HANDLER_RET_ERR_ACK(STATUS_ERR_UNSPECIFIED);
+    }
 #else
+    (void)prev_mode;
+    passwd = ccmd->is_open ? NULL : (char *)ccmd->password;
+#ifdef DHCP_IN_EMB
+    use_dhcpd = true;
+#endif
     wifi_interface = wifi_mgmr_ap_enable();
-    wifi_mgmr_ap_start_adv(wifi_interface, (char *)ccmd->ssid, 0, passwd, channel, use_dhcpd);
+    wifi_mgmr_ap_start_adv(wifi_interface, (char *)ccmd->ssid, 0, passwd, ccmd->channel, use_dhcpd);
 #endif
     return CMD_HANDLER_RET_OK_ACK;
 }
@@ -667,33 +699,10 @@ static chr_t handle_ap_get_sta_list(rnms_t *rnm, rnm_msg_t *cmd)
 #endif
 }
 
-#ifdef CFG_IPRO_WIFI
-#else
-static void sniffer_cb(void *env, void *pkt_wrap, bl_rx_info_t *info)
-{
-    rnms_t *rnm = env;
-    if (!(rnm->mode == RNM_WIFI_MODE_SNIFFER)) {
-        return;
-    }
-    rnm->output_fn(rnm->output_fn_env, RNM_OUT_SNIFFER_FRAME, pkt_wrap, 0);
-}
-#endif
-
 static chr_t handle_monitor_start(rnms_t *rnm, rnm_msg_t *cmd)
 {
     rnm_debug("handle monitor_start\r\n");
-#ifdef CFG_IPRO_WIFI
     return CMD_HANDLER_RET_ERR_ACK(STATUS_NOT_IMPLEMENTED);
-#else
-    if (!(rnm->mode == RNM_WIFI_MODE_NONE)) {
-        rnm_err("mode incorrect, ignore start monitor\r\n");
-        return CMD_HANDLER_RET_ERR_ACK(STATUS_INVALID_MODE);
-    }
-    rnm->mode = RNM_WIFI_MODE_SNIFFER;
-    wifi_mgmr_sniffer_enable();
-    wifi_mgmr_sniffer_register_adv(rnm, sniffer_cb);
-    return CMD_HANDLER_RET_OK_ACK;
-#endif
 }
 
 static chr_t handle_monitor_stop(rnms_t *rnm, rnm_msg_t *cmd)
@@ -894,7 +903,7 @@ void rnms_msg_process(rnms_t *rnm, rnm_msg_t *msg)
         rnm->statistic.cmds[msg->cmd.cmd].rx_cnt++;
 
         ret = cmd_handler_table[cmd_id].handler(rnm, msg);
-        if (ret.flag & CMD_HANDLER_FLAG_NO_ACK) {
+        if ((ret.flag & CMD_HANDLER_FLAG_NO_ACK) || (msg->cmd.flags & RNM_MSG_FLAG_LOCAL)) {
             goto free;
         }
         rnms_msg_fill_common(rnm, &ack, msg);

@@ -390,6 +390,7 @@ int usb_dc_init(void)
 int usb_dc_deinit(void)
 {
     uint32_t regval;
+    uint8_t pinList[2] = { GLB_GPIO_PIN_8, GLB_GPIO_PIN_9 };
 
     regval = getreg32(USB_BASE + USB_CONFIG_OFFSET);
     regval &= ~USB_CR_USB_EN;
@@ -398,6 +399,14 @@ int usb_dc_deinit(void)
     regval = getreg32(GLB_BASE + _GLB_USB_XCVR_OFFSET);
     regval &= ~_GLB_USB_ENUM;
     putreg32(regval, GLB_BASE + _GLB_USB_XCVR_OFFSET);
+
+    /* Float D+/D- (analog, no pull) so the host really sees a detach. A board
+     * pinmux can park them with a pull-up -- ipro7_arduino puts JTAG TDO +
+     * pull-up on GPIO9 = D- -- which a hub reads as a low-speed attach.
+     * Attaching full-speed straight over that, with no SE0 in between, leaves
+     * the host resetting a "low-speed" device that never sees a SETUP; macOS
+     * gives up after ~5 tries and the port stays dead until a replug. */
+    GLB_GPIO_Func_Init(GPIO_FUN_ANALOG, pinList, 2);
 
     return 0;
 }
@@ -1007,6 +1016,22 @@ void USBD_IRQHandler(void)
                 }
 
                 /* ---- CPU path: manual FIFO read (non-DMA endpoints) ---- */
+
+                /* RX FIFO overflow: a packet landed while the FIFO still held
+                 * bytes. From then on the FIFO stays full, the reads below no
+                 * longer drain it, and every host retry of the un-ACKed packet
+                 * raises EP_DONE over the same stale bytes -- a replay storm
+                 * at wire rate that starves the CPU (a gateway on a Linux host
+                 * behind a hub, 2026-10-20). Bus reset and re-enumeration do not
+                 * clear it; RX_FIFO_CLR does (it also clears this flag). Drop
+                 * the FIFO and re-arm: the host resends what it lost. */
+                if (getreg32(USB_BASE + USB_EP0_FIFO_CONFIG_OFFSET + 0x10 * ep_idx) &
+                    (1U << 6)) {   /* EPx_RX_FIFO_OVERFLOW */
+                    g_usb_irq_stats.out_fifo_overflow++;
+                    drv_usb_ep_fifo_rx_clear(ep_idx);
+                    drv_usb_ep_set_ready(ep_idx);
+                    continue;
+                }
 
                 /* Skip EP_RDY wait for bulk endpoints — the IPRO7 USB
                  * controller sometimes delays clearing STS_EP_RDY for

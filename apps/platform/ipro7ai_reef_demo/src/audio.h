@@ -55,6 +55,8 @@ typedef enum {
 #define AUDIO_RATE_HZ        16000u
 #define AUDIO_FRAME_SAMPLES  320u        /* 20 ms */
 #define AUDIO_REC_MAX_SEC    10u
+#define AUDIO_SDREC_MAX_SEC  7200u       /* 2 h */
+#define AUDIO_SDREC_PATH_MAX 48u
 
 int  audio_init(void);
 
@@ -63,6 +65,40 @@ int  audio_tone(uint32_t freq_hz, uint32_t ms, uint32_t amp_pct, audio_route_t r
 
 /** Record `seconds` (<= AUDIO_REC_MAX_SEC) of 16 kHz mono from `src`. */
 int  audio_record(audio_in_t src, uint32_t seconds);
+
+/** Record `seconds` (<= AUDIO_SDREC_MAX_SEC) from `src` straight to the SD card
+ *  as sd:/rec/<name>.wav (name: letters, digits, '_' and '-'). Mono 16-bit; the
+ *  header carries the rate the recording measures (about 15,872 Hz on the PDM
+ *  path, not 16,000 - resample on the PC); the RGB LED is red
+ *  while it runs; `mic stop` ends it early. */
+int  audio_sdrec(audio_in_t src, const char *name, uint32_t seconds);
+
+/** USB microphone: until `mic stop` the board enumerates as a 16 kHz mono UAC
+ *  microphone fed from `src` (raw capture, no make-up gain, like sdrec),
+ *  converted to the host's clock by audio_asrc; the RGB LED is red. Needs
+ *  CONFIG_CHERRYUSB_DEVICE_AUDIO and the board's own USB-C port on the host. */
+int  audio_usbmic(audio_in_t src);
+
+/** USB loopback for digital injection: until `mic stop` the board is a 16 kHz
+ *  mono UAC speaker and microphone at once; what the host plays comes back
+ *  as the microphone after audio_usbhost_process(). No microphone is used;
+ *  the RGB LED is blue. */
+int  audio_usbhost(void);
+
+/** Called for every frame `audio_usbhost` passes through (weak, pass-through). */
+void audio_usbhost_process(int16_t *pcm, uint32_t n);
+
+typedef struct {
+    uint32_t opens;       /* times the host opened the stream */
+    uint32_t samples;     /* sent since the last open */
+    uint32_t lows;        /* frames with the UAC queue below one segment */
+    int32_t  level;       /* UAC queue, samples (the controller holds ~1800) */
+    int32_t  trim_x100;   /* resampler trim, ppm x 100 */
+    uint32_t rx;          /* host mode: samples the host played into the board */
+    uint32_t rx_drop;     /* host mode: of those, lost to a full buffer */
+} audio_usbmic_stats_t;
+
+void audio_usbmic_stats(audio_usbmic_stats_t *st);
 
 /** Play back the last recording. */
 int  audio_play(audio_route_t route);

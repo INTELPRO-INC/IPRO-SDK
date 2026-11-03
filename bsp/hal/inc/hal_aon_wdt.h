@@ -57,6 +57,14 @@ extern "C" {
 void aon_wdt_init(uint8_t mask_bit);
 
 /**
+ * @brief Mask bit for the shortest timeout of at least @p seconds
+ * @param seconds  Wanted timeout; rounded up to 2, 4, 8, 16, 32 or 64 s
+ * @param actual_s If not NULL, receives the timeout the mask gives
+ * @return AON_WDT_TIMEOUT_2S .. AON_WDT_TIMEOUT_64S
+ */
+uint8_t aon_wdt_mask_for_seconds(uint32_t seconds, uint32_t *actual_s);
+
+/**
  * @brief Feed (kick) the AON watchdog timer, resetting its counter
  */
 void aon_wdt_feed(void);

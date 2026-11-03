@@ -44,7 +44,14 @@ void platform_init(uint32_t baudrate)
 
     hal_system_init();
 
-#if !defined(CONFIG_AON_WDT_ENABLE) && !defined(BOOTROM)
+#if defined(CONFIG_APP_WATCHDOG) && !defined(BOOTROM)
+    /* The application arms the watchdog again when its feeder task first runs
+     * (components/os/freertos/app_watchdog.h). Arming it here too covers the
+     * boot up to that point: a boot that hangs before the feeder runs is
+     * restarted instead of staying stuck. Seen on the Reef after a restart
+     * that landed while the camera was being reset. */
+    aon_wdt_init(aon_wdt_mask_for_seconds(CONFIG_APP_WATCHDOG_TIMEOUT_S, NULL));
+#elif !defined(CONFIG_AON_WDT_ENABLE) && !defined(BOOTROM)
     /* Boot2 may have enabled AON WDT. If FW doesn't manage it, disable here. */
     aon_wdt_disable();
 #endif

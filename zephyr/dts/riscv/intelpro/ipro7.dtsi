@@ -340,7 +340,7 @@
 			status = "disabled";
 		};
 
-		/* BLE controller (RivieraWaves-derived, prebuilt in
+		/* BLE controller (INTELPRO Bluetooth controller, prebuilt in
 		 * components/wireless/bluetooth/ipro_ble_controller). */
 		bt_hci: bt_hci@30002000 {
 			compatible = "intelpro,ipro-bt-hci";

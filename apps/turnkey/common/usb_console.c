@@ -20,8 +20,7 @@
  * @file usb_console.c
  * @brief Single-CDC-ACM USB console — see usb_console.h.
  *
- * Distilled from apps/turnkey/robust/ipro_dual_imu_streamer's dual-CDC
- * streamer, keeping only the console half: one CDC-ACM whose IN endpoint
+ * Distilled from a dual-CDC streamer, keeping only the console half: one CDC-ACM whose IN endpoint
  * carries printf/log output and whose OUT endpoint feeds the SDK shell.
  *
  * Output path: __wrap_printf/puts/putchar -> console ring (drop-oldest on
@@ -30,6 +29,19 @@
  *
  * The 1200-baud bootloader touch is handled by components/boot/uboot_trigger
  * (it owns usbd_cdc_acm_set_line_coding / set_dtr) — not here.
+ *
+ * Attach timing: usb_console_init() DETACHES the device (USB off, D+/D-
+ * floating) and the console task attaches it once the scheduler runs.
+ *  - The host must see a real detach first. After a warm reset (reboot, boot2
+ *    BOOT) the cable stays attached and the board pinmux has just parked D-
+ *    with a pull-up (ipro7_arduino: JTAG TDO on GPIO9), a phantom low-speed
+ *    attach; a full-speed attach straight over it was never enumerated, so a
+ *    battery-powered tag lost its console until the cable was re-plugged.
+ *  - Apps call init from main(), and from the first critical section until
+ *    vTaskStartScheduler() the USB IRQ is masked: a device attached there
+ *    cannot answer the host for the rest of the pre-scheduler bring-up.
+ * If the host still has not configured us ATTACH_TIMEOUT_MS after an attach,
+ * the task detaches and attaches again (bounded by ATTACH_RETRIES).
  */
 
 #include <generated/autoconf.h>
@@ -42,6 +54,9 @@
 
 #include "usbd_core.h"
 #include "usbd_cdc.h"
+#include "usb_dc.h"
+#include "hal_mtimer.h"
+#include "system_soc.h"     /* CPU_Interrupt_Disable/Enable, USB_IRQn */
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -61,10 +76,10 @@
 #define USB_CONSOLE_PID 0x7010
 #endif
 #ifndef USB_CONSOLE_PRODUCT
-#define USB_CONSOLE_PRODUCT "IPRO Fall Console"
+#define USB_CONSOLE_PRODUCT "IPRO USB Console"
 #endif
 #ifndef USB_CONSOLE_SERIAL
-#define USB_CONSOLE_SERIAL "FALL-0001"
+#define USB_CONSOLE_SERIAL "IPRO-0001"
 #endif
 
 /* ---- Endpoints (single CDC-ACM, interfaces 0/1) ---- */
@@ -87,11 +102,28 @@
 #define CONSOLE_RING_BYTES (4u * 1024u)
 #define TX_CHUNK_BYTES     512u
 
+/* Not configured this long after attaching -> detach and attach again, at
+ * most ATTACH_RETRIES times, and only before the first configuration (later
+ * unconfigured spells are host resets / unplugs). A dumb charger never
+ * configures; it just sees the retries and then a device left attached. */
+#define ATTACH_TIMEOUT_MS  4000u
+#define ATTACH_RETRIES     2u
+#define DETACH_MS          300u
+
 /* ---- String-descriptor builders (ASCII macro -> UTF-16LE at compile
  * time is awkward; build these descriptors once at init instead). ---- */
 #define STR_DESC_MAX 64
 
 static volatile bool s_configured;
+
+/* Attach bookkeeping (mtimer ms), reported once the host configures us. */
+static uint32_t          s_init_ms;     /* usb_console_init(): detached   */
+static uint32_t          s_task_ms;     /* console task start (scheduler) */
+static uint32_t          s_attach_ms;   /* last attach                    */
+static volatile uint32_t s_cfg_ms;      /* first USBD_EVENT_CONFIGURED    */
+static uint8_t           s_attempt;     /* attaches so far                */
+
+static void usb_console_attach(void);
 
 static uint8_t s_cdc_rx_buf[CDC_MAX_MPS];
 
@@ -251,13 +283,48 @@ static void console_advance(uint32_t n)
 /* DMA-safe TX buffer (OCRAM, aligned — must not live in PSRAM). */
 static uint8_t s_tx_buf[TX_CHUNK_BYTES] __attribute__((aligned(32)));
 
+/* cherryusb's usbd_ep_start_read/write take no lock and IPRO7 drives every
+ * endpoint through one VDMA engine: this task's IN write racing the OUT
+ * callback's re-arm in the USB ISR interleaves the two descriptors, and under
+ * sustained traffic the endpoint wedges or DMAs stray memory (tag OTA over the
+ * console stalled and hung the tag, 2026-10-20; same race as ipro7_cmsis_dap).
+ * This task is the only task-context caller, so masking USB_IRQn is enough;
+ * the ISR side cannot run while it is masked. */
+static int ep_start_write_guarded(uint8_t ep, uint8_t *buf, uint32_t len)
+{
+    CPU_Interrupt_Disable(USB_IRQn);
+    int rc = usbd_ep_start_write(ep, buf, len);
+    CPU_Interrupt_Enable(USB_IRQn);
+    return rc;
+}
+
 static void console_tx_task(void *pv)
 {
     (void)pv;
+    bool reported = false;
+
+    /* The scheduler is up, so the USB IRQ can serve the host: attach now. */
+    s_task_ms = (uint32_t)mtimer_get_time_ms();
+    usb_console_attach();
+
     while (1) {
         if (!s_configured) {
+            if (s_cfg_ms == 0 && s_attempt <= ATTACH_RETRIES &&
+                (uint32_t)mtimer_get_time_ms() - s_attach_ms >= ATTACH_TIMEOUT_MS) {
+                usbd_deinitialize();   /* pull-up off: the host sees a detach */
+                vTaskDelay(pdMS_TO_TICKS(DETACH_MS));
+                usb_console_attach();
+            }
             vTaskDelay(pdMS_TO_TICKS(50));
             continue;
+        }
+        if (!reported) {
+            reported = true;
+            IPRO_LOGI(LOG_TAG, "configured on attach %u, %lu ms after it "
+                      "(scheduler up %lu ms after init, %lu bus resets)",
+                      s_attempt, (unsigned long)(s_cfg_ms - s_attach_ms),
+                      (unsigned long)(s_task_ms - s_init_ms),
+                      (unsigned long)g_usb_irq_stats.reset);
         }
         uint32_t chunk_len = 0;
         uint32_t off = console_peek(TX_CHUNK_BYTES, &chunk_len);
@@ -268,7 +335,7 @@ static void console_tx_task(void *pv)
         memcpy(s_tx_buf, &s_console_ring[off], chunk_len);
         console_advance(chunk_len);
 
-        if (usbd_ep_start_write(CDC_IN_EP, s_tx_buf, chunk_len) < 0) {
+        if (ep_start_write_guarded(CDC_IN_EP, s_tx_buf, chunk_len) < 0) {
             vTaskDelay(pdMS_TO_TICKS(10));   /* host hasn't opened the port */
             continue;
         }
@@ -338,6 +405,7 @@ void usbd_event_handler(uint8_t event)
 {
     switch (event) {
     case USBD_EVENT_CONFIGURED:
+        if (s_cfg_ms == 0) s_cfg_ms = (uint32_t)mtimer_get_time_ms();
         s_configured = true;
         usbd_ep_start_read(CDC_OUT_EP, s_cdc_rx_buf, sizeof(s_cdc_rx_buf));
         break;
@@ -356,6 +424,20 @@ static struct usbd_interface s_intf0, s_intf1;
 static struct usbd_endpoint s_ep_out = { .ep_addr = CDC_OUT_EP, .ep_cb = cdc_out_cb };
 static struct usbd_endpoint s_ep_in  = { .ep_addr = CDC_IN_EP,  .ep_cb = cdc_in_cb  };
 
+/* Register the composite and turn the pull-up on. usbd_deinitialize() clears
+ * the interface table, so every attach registers again. Task context only. */
+static void usb_console_attach(void)
+{
+    usbd_desc_register(s_descriptor);
+    usbd_add_interface(usbd_cdc_acm_init_intf(&s_intf0));
+    usbd_add_interface(usbd_cdc_acm_init_intf(&s_intf1));
+    usbd_add_endpoint(&s_ep_out);
+    usbd_add_endpoint(&s_ep_in);
+    s_attempt++;
+    s_attach_ms = (uint32_t)mtimer_get_time_ms();
+    usbd_initialize();
+}
+
 int usb_console_init(void)
 {
     s_console_lock = xSemaphoreCreateMutexStatic(&s_console_lock_buf);
@@ -363,17 +445,15 @@ int usb_console_init(void)
     s_tx_done      = xSemaphoreCreateBinaryStatic(&s_tx_done_buf);
     if (!s_console_lock || !s_console_sig || !s_tx_done) return -1;
 
+    /* Detach whatever the bootloader left attached (USB_EN + pull-up) and
+     * stay detached until console_tx_task attaches -- see the file header. */
+    usb_dc_deinit();
+    s_init_ms = (uint32_t)mtimer_get_time_ms();
+    build_descriptor();
+
     xTaskCreateStatic(console_tx_task, "usb_con",
                       sizeof(s_console_stack) / sizeof(StackType_t),
                       NULL, 2, s_console_stack, &s_console_tcb);
-
-    build_descriptor();
-    usbd_desc_register(s_descriptor);
-    usbd_add_interface(usbd_cdc_acm_init_intf(&s_intf0));
-    usbd_add_interface(usbd_cdc_acm_init_intf(&s_intf1));
-    usbd_add_endpoint(&s_ep_out);
-    usbd_add_endpoint(&s_ep_in);
-    usbd_initialize();
 
     return 0;
 }

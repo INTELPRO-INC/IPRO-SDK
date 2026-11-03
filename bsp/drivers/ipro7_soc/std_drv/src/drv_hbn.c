@@ -60,7 +60,7 @@ void ATTR_TCM_SECTION HBN_Mode_Enter(HBN_APP_CFG_Type *cfg)
  * @param gpio_wakeup_src PIN Wakeup PDS or HBN
  * @param gpio_trig_type HBN GPIO interrupt trigger type
  */
-void ATTR_TCM_SECTION HBN_GPIO_Wakeup_Set(uint16_t gpio_wakeup_src, HBN_GPIO_INT_Trigger_Type gpio_trig_type)
+void ATTR_TCM_RELOAD_SECTION HBN_GPIO_Wakeup_Set(uint16_t gpio_wakeup_src, HBN_GPIO_INT_Trigger_Type gpio_trig_type)
 {
     HBN_Pin_WakeUp_Mask(~(gpio_wakeup_src));
 
@@ -861,7 +861,7 @@ int HBN_Clear_All_IRQ(void)
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION HBN_Hw_Pu_Pd_Cfg(uint8_t enable)
+int ATTR_TCM_RELOAD_SECTION HBN_Hw_Pu_Pd_Cfg(uint8_t enable)
 {
     uint32_t tmpVal;
 

@@ -21,7 +21,6 @@
 #include <string.h>
 #include <sdiowifi_platform_adapt.h>
 #include <lwip/netif.h>
-//#include <bl_wifi.h>
 #include <wifi_mgmr_ext.h>
 //#include <vfs.h>
 
@@ -67,7 +66,7 @@ volatile uint8_t g_sdio_credit_scratch_en = 0;
  *
  * This throttle samples (tx_mpdu_total, tx_mpdu_ok) at each credit update.
  * Credit update fires from tx_buf_free which runs once per host TX frame
- * BL616 finishes — naturally rate-paced with actual MAC TX progress.
+ * the MAC finishes — naturally rate-paced with actual MAC TX progress.
  *
  * After PM26_BAD_STREAK_LIMIT consecutive samples with >= MIN_ATTEMPTS
  * MPDUs attempted and zero OK, drop the reported window to PM26_THROTTLED.
@@ -240,7 +239,7 @@ static void tx_buf_init(sdiowifi_mgmr_t *sdm)
 #endif // SDIO_REUSE_LP_RAM
 #endif // LP_APP
 
-#ifndef BL_SDIO_BUFF_REDUCTION
+#ifndef IPRO_SDIO_BUFF_REDUCTION
     extern uint8_t _heap_wifi_start;
     extern uint8_t _heap_wifi_size;
     sdiowifi_tx_buf_mem_register(&sdm->tx_desc, &_heap_wifi_start, (size_t)&_heap_wifi_size);

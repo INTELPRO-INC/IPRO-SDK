@@ -304,12 +304,8 @@ int usbwifi_usb_init()
 {
     usbwifi_t *uw = &g_usbwifi;
 
-#if defined(IPRO6)
-    /* IPRO6: the CherryUSB device port registers + enables USB_IRQn inside
+    /* The CherryUSB device port registers + enables USB_IRQn inside
      * usb_dc_init() (called by usbd_initialize() below); do not double-register. */
-#else
-    bl_irq_register(37, USBD_IRQHandler);
-#endif
 
     xTaskCreate(usb_worker, "usb_worker", 512, NULL, 31, &uw->usb_worker_task);
 

@@ -122,6 +122,11 @@ typedef struct {
     const char        *dump_path;   /**< SD card path (used when dump_hook is NULL) */
     audio_dump_hook_t  dump_hook;   /**< Custom write hook (NULL = file dump) */
     void              *dump_ctx;    /**< Hook user context */
+    /* AUDIO_OUTPUT_UAC: with uac_rx_hook set the device is also a USB speaker
+     * (host -> device, same rate and channel count). The hook runs in the USB
+     * interrupt for every packet the host sends. NULL = microphone only. */
+    void (*uac_rx_hook)(const int16_t *pcm, uint32_t samples, void *ctx);
+    void              *uac_rx_ctx;  /**< uac_rx_hook user context */
 } audio_output_cfg_t;
 
 /** Opaque output handle */
@@ -197,6 +202,16 @@ uint32_t audio_output_consumed(audio_output_t *out);
  * whether an observed difference is real or just quantisation.
  */
 uint32_t audio_output_segment_samples(audio_output_t *out);
+
+/**
+ * @brief UAC handles only: samples written but not yet drained by the host,
+ *        or -1 while the host has the stream closed (writes are dropped then).
+ *
+ * A producer on its own clock (a PDM microphone) holds this level with
+ * audio_asrc_ctl so the host never sees an underrun.  Built only with
+ * CONFIG_CHERRYUSB_DEVICE_AUDIO.
+ */
+int32_t audio_output_uac_queued(audio_output_t *out);
 
 int audio_output_write(audio_output_t *out,
                        const int16_t *pcm, uint32_t samples);

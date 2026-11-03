@@ -71,6 +71,15 @@ void hal_npu_start(void);
 void hal_npu_stop(void);
 
 /**
+ * Reset the NPU block (MM_MISC software reset) after a run that never signalled done,
+ * and write back the configuration it held: instruction/weight/bias/multiplier
+ * addresses, work buffer and patch size, external input, net parameters, bus and
+ * DVP settings. Start/stop/resume and the interrupt flag are left clear; the next
+ * hal_npu_start() starts afresh. Call with the NPU interrupt disabled.
+ */
+void hal_npu_block_reset(void);
+
+/**
  * NPU Image External Address Configuration
  */
 void NPU_Img_Ext_Addr_Cfg(uint32_t addr);

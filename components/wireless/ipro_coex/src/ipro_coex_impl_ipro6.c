@@ -19,7 +19,7 @@
 /**
  * @file ipro_coex_impl_ipro6.c
  * @brief IPRO6 backend for ipro_coex. Modelled on the reference's
- *        wifi_bt_coex_impl_bl808.c.
+ *        the reference SDK wifi_bt_coex implementation.
  *
  * Base address: the reference uses 0x24920400 for the PTA block, macsw and the
  * 802.15.4 HAL use 0x24920000. Verified on hardware (028HXHKN) that these are

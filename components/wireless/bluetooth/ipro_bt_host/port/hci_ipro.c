@@ -695,7 +695,8 @@ static int ipro_hci_open(const struct device *dev, bt_hci_recv_t recv)
 	(void)k_sem_init(&rx_sem, 0, UINT16_MAX);
 	(void)k_sem_init(&tx_lock, 1, 1);
 	ipro_ble_ctlr_hcitl_host_set_rx_notify(controller_rx_notify);
-	if (xTaskCreate(rx_thread, "ipro_hci_rx", 2048 / sizeof(StackType_t),
+	if (xTaskCreate(rx_thread, "ipro_hci_rx",
+			CONFIG_IPRO_BT_HCI_RX_STACK_SIZE / sizeof(StackType_t),
 			(void *)dev, 6, NULL) != pdPASS) {
 		return -ENOMEM;
 	}

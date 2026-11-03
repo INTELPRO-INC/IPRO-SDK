@@ -35,6 +35,27 @@ config IPRO_PM_PDS_CONNECTED
       connected-PDS patch series (CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=y)
       and a 16 KB exchange memory.  Off: links stay on WFI.
 
+config IPRO_PM_PDS_ARM_STEP_DIAG
+    bool "Bench: HBN_CTL and MTIME after each step of the PDS RTC arm"
+    default n
+    depends on IPRO7
+    help
+      bsp/hal/src/hal_pm.c pm_pds_mode_enter() records HBN_CTL and the MTIME
+      low word after each step between enabling the RTC counter and reading
+      it for the wake target (pm_pds_arm_step_ctl/_mtime[8]). Plain reads, no
+      RTC latch: a latch read after every step hides the XTAL-root RTC
+      restart it was added to catch.
+
+config IPRO_PM_PDS_ARM_RTC_RESYNC
+    bool "Bench: one RTC latch read right after HBN_Clear_All_IRQ() in the PDS arm"
+    default n
+    depends on IPRO7
+
+config IPRO_PM_PDS_RC32K_SKIP_IF_READY
+    bool "Bench: skip the ROM RC32K power-on in the PDS arm when RC32K is ready"
+    default n
+    depends on IPRO7
+
 config IPRO_PM_BLE_PDS_MIN_INTERVAL_MS
     int "Shortest connection interval put in the PDS profile (ms)"
     default 200
@@ -73,6 +94,64 @@ config IPRO_PM_BLE_EXEC_WAKE_US
       Thread CSL window or data poll) has an earlier deadline, the sleep is
       cut so the controller has restored (<= ~9 ms) and the CPU is free
       this long before that deadline.
+
+config IPRO_PM_BLE_PDS_DOMAIN_POLICY
+    hex "Connected PDS domain policy (PM_PDS_BLE_CTLR_DOMAIN_POLICY_* bits)"
+    default 0xff
+    depends on IPRO_PM_BLE
+    help
+      What the controller's PDS between connection events powers down.
+      0xff = CONNECTED_BASELINE | KEEP_MISC_LIVE: RF and baseband (BZ)
+      kept, the BLE core powered down with its exchange memory kept, MISC
+      powered, clocked and out of reset, which keeps the UART and all of
+      OCRAM (an image with CONFIG_OCRAM_NORET_AS_RAM keeps its .data/.bss
+      above the 64 KB that survives a PDS without MISC).
+      0x79 = RF and BZ under PDS control (restored on every wake), MISC
+      powered but clock-gated and isolated: the lowest policy that keeps
+      MISC.  PDS-state mean on the IPRO7 EVB (3.3 V supply, 2026-10-27):
+      0xff 658 uA, 0x79 511 uA; with MISC powered the PDS current is a
+      ~5 kHz pulse train.  MISC off (not usable while .data/.bss live
+      above the front 64 KB of OCRAM) measured 94 uA with RF/BZ kept.
+
+config IPRO_PM_BLE_PDS_POLICY_SWEEP
+    string "Bench: connected-PDS policies to step through"
+    default ""
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      Comma-separated hex policy words, each optionally followed by
+      "/<code>" to also set the VDD14 DCDC output code (0x0f 1.5 V, 0x1b
+      1.8 V), e.g. "ff,7f,ff/1b".  Once the first link enters the PDS
+      profile, one entry applies every IPRO_PM_BLE_PDS_POLICY_SWEEP_S
+      seconds; each step holds the part at WFI for 1.5 s (a marker in the
+      current trace) and prints itself on the console.  The last entry
+      stays.  Empty: off.
+
+config IPRO_PM_BLE_PDS_POLICY_SWEEP_S
+    int "Bench: seconds per sweep step"
+    default 60
+    depends on IPRO_PM_PDS_CONNECTED
+
+config IPRO_PM_BLE_DEADLINE_DIAG
+    bool "Bench: record whose RTOS deadline shortens a connected PDS"
+    default n
+    depends on IPRO_PM_PDS_CONNECTED
+    help
+      On every offered connected-PDS window where the RTOS deadline is
+      shorter than the controller's window, notes the delayed task (or, for
+      the timer task, the software timer) that owns the earliest wake, with
+      the min/max distance.  ipro_pm_ble_deadline_diag_dump() prints and
+      clears the table.  Read-only on the scheduler lists, off by default.
+
+config IPRO_PM_BLE_HBN_STATS
+    bool "Bench: keep the connected-PDS counters in HBN RAM"
+    default n
+    depends on IPRO_PM_BLE && IPRO7
+    help
+      Mirrors grants, cycles, recovered, failures and backoffs into HBN RAM
+      (.hbn_noinit, 24 bytes) on every recovered or failed PDS cycle, and
+      prints the previous boot's copy at ipro_pm init. A reset that keeps
+      power (RESET pin, watchdog, hal_reboot) preserves it; a power cycle
+      does not. For runs where UART0 cannot be read during the test.
 
 config IPRO_PM_IDLE_PDS
     bool "PDS from the idle task (radios that do not run PDS themselves)"

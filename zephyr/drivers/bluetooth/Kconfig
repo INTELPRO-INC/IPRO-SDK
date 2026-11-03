@@ -11,7 +11,7 @@ config BT_IPRO_HCI
 	select IPRO_BT_CTLR_PREBUILT
 	help
 	  Zephyr bt_hci_driver_api over the prebuilt IPRO7 BLE controller.
-	  The controller keeps its RivieraWaves platform layer and talks H4
+	  The controller keeps its own platform layer and talks H4
 	  through the in-memory hcitl transport; this driver is the Zephyr
 	  counterpart of components/wireless/bluetooth/ipro_bt_host/port/hci_ipro.c.
 
@@ -50,7 +50,7 @@ config BT_IPRO_CTLR_CFG_DBG
 config BT_IPRO_CTLR_SOURCE_BUILD
 	bool "Build the BLE controller from source instead of linking the archive"
 	help
-	  Compile the controller (RivieraWaves core + IPRO7 platform layer +
+	  Compile the controller (controller core + IPRO7 platform layer +
 	  IPRO patches, the same description the SDK and the prebuilt archives
 	  use: components/wireless/bluetooth/ipro_ble_controller/cmake/
 	  ipro7_build.cmake) into this image. Needs the controller sources and

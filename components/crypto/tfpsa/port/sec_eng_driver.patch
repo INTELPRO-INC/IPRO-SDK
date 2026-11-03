@@ -1,0 +1,524 @@
+diff --git a/core/psa_crypto_driver_wrappers.h b/core/psa_crypto_driver_wrappers.h
+index 2728b0aa3..a1f3df09a 100644
+--- a/core/psa_crypto_driver_wrappers.h
++++ b/core/psa_crypto_driver_wrappers.h
+@@ -52,6 +52,9 @@
+ 
+ #endif
+ 
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++#include "ipro_sec_driver.h"
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ /* END-driver headers */
+ 
+ /* Auto-generated values depending on which drivers are registered.
+@@ -64,6 +67,9 @@
+ #define MBEDTLS_TEST_TRANSPARENT_DRIVER_ID (4)
+ #define MBEDTLS_TEST_OPAQUE_DRIVER_ID (5)
+ 
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++#define IPRO_SEC_TRANSPARENT_DRIVER_ID (16)
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ /* END-driver id */
+ 
+ /* BEGIN-Common Macro definitions */
+@@ -73,6 +79,11 @@
+ static inline psa_status_t psa_driver_wrapper_init( void )
+ {
+     psa_status_t status = PSA_ERROR_CORRUPTION_DETECTED;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    status = ipro_sec_init( );
++    if( status != PSA_SUCCESS )
++        return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ 
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+     status = mbedtls_test_transparent_init( );
+@@ -722,6 +733,14 @@ static inline psa_status_t psa_driver_wrapper_sign_hash(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_sign_hash( attributes,
++                key_buffer, key_buffer_size, alg,
++                hash, hash_length,
++                signature, signature_size, signature_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -805,6 +824,14 @@ static inline psa_status_t psa_driver_wrapper_verify_hash(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_verify_hash( attributes,
++                key_buffer, key_buffer_size, alg,
++                hash, hash_length,
++                signature, signature_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -1168,6 +1195,15 @@ static inline psa_status_t psa_driver_wrapper_generate_key(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            if( is_default_production )
++            {
++                status = ipro_sec_generate_key( attributes,
++                            key_buffer, key_buffer_size, key_buffer_length );
++                if( status != PSA_ERROR_NOT_SUPPORTED )
++                    return( status );
++            }
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+             /* Transparent drivers are limited to generating asymmetric keys. */
+             /* We don't support passing custom production parameters
+@@ -1420,6 +1456,14 @@ static inline psa_status_t psa_driver_wrapper_cipher_encrypt(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_cipher_encrypt( attributes,
++                key_buffer, key_buffer_size, alg, iv, iv_length,
++                input, input_length, output, output_size,
++                output_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -1510,6 +1554,14 @@ static inline psa_status_t psa_driver_wrapper_cipher_decrypt(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_cipher_decrypt( attributes,
++                key_buffer, key_buffer_size, alg,
++                input, input_length, output, output_size,
++                output_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -1587,6 +1639,14 @@ static inline psa_status_t psa_driver_wrapper_cipher_encrypt_setup(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_cipher_encrypt_setup( &operation->ctx.ipro_sec_ctx,
++                attributes, key_buffer, key_buffer_size, alg );
++            if( status == PSA_SUCCESS )
++                operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -1660,6 +1720,14 @@ static inline psa_status_t psa_driver_wrapper_cipher_decrypt_setup(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_cipher_decrypt_setup( &operation->ctx.ipro_sec_ctx,
++                attributes, key_buffer, key_buffer_size, alg );
++            if( status == PSA_SUCCESS )
++                operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+@@ -1727,6 +1795,11 @@ static inline psa_status_t psa_driver_wrapper_cipher_set_iv(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_cipher_set_iv( &operation->ctx.ipro_sec_ctx,
++                                            iv, iv_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_CIPHER)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_cipher_set_iv( &operation->ctx.mbedtls_ctx,
+@@ -1765,6 +1838,13 @@ static inline psa_status_t psa_driver_wrapper_cipher_update(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_cipher_update( &operation->ctx.ipro_sec_ctx,
++                                            input, input_length,
++                                            output, output_size,
++                                            output_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_CIPHER)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_cipher_update( &operation->ctx.mbedtls_ctx,
+@@ -1809,6 +1889,12 @@ static inline psa_status_t psa_driver_wrapper_cipher_finish(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_cipher_finish( &operation->ctx.ipro_sec_ctx,
++                                            output, output_size,
++                                            output_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_CIPHER)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_cipher_finish( &operation->ctx.mbedtls_ctx,
+@@ -1846,6 +1932,10 @@ static inline psa_status_t psa_driver_wrapper_cipher_abort(
+ 
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_cipher_abort( &operation->ctx.ipro_sec_ctx ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_CIPHER)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_cipher_abort( &operation->ctx.mbedtls_ctx ) );
+@@ -1888,6 +1978,12 @@ static inline psa_status_t psa_driver_wrapper_hash_compute(
+     size_t *hash_length)
+ {
+     psa_status_t status = PSA_ERROR_CORRUPTION_DETECTED;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    status = ipro_sec_hash_compute( alg, input, input_length,
++                                    hash, hash_size, hash_length );
++    if( status != PSA_ERROR_NOT_SUPPORTED )
++        return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ 
+     /* Try accelerators first */
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+@@ -1920,6 +2016,13 @@ static inline psa_status_t psa_driver_wrapper_hash_setup(
+     psa_algorithm_t alg )
+ {
+     psa_status_t status = PSA_ERROR_CORRUPTION_DETECTED;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    status = ipro_sec_hash_setup( &operation->ctx.ipro_sec_ctx, alg );
++    if( status == PSA_SUCCESS )
++        operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++    if( status != PSA_ERROR_NOT_SUPPORTED )
++        return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ 
+     /* Try setup on accelerators first */
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+@@ -1954,6 +2057,13 @@ static inline psa_status_t psa_driver_wrapper_hash_clone(
+ {
+     switch( source_operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            target_operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++            return( ipro_sec_hash_clone(
++                        &source_operation->ctx.ipro_sec_ctx,
++                        &target_operation->ctx.ipro_sec_ctx ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_HASH)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             target_operation->id = PSA_CRYPTO_MBED_TLS_DRIVER_ID;
+@@ -1980,6 +2090,11 @@ static inline psa_status_t psa_driver_wrapper_hash_update(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_hash_update( &operation->ctx.ipro_sec_ctx,
++                                          input, input_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_HASH)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_hash_update( &operation->ctx.mbedtls_ctx,
+@@ -2006,6 +2121,11 @@ static inline psa_status_t psa_driver_wrapper_hash_finish(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_hash_finish( &operation->ctx.ipro_sec_ctx,
++                                          hash, hash_size, hash_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_HASH)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_hash_finish( &operation->ctx.mbedtls_ctx,
+@@ -2030,6 +2150,10 @@ static inline psa_status_t psa_driver_wrapper_hash_abort(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_hash_abort( &operation->ctx.ipro_sec_ctx ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_HASH)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_hash_abort( &operation->ctx.mbedtls_ctx ) );
+@@ -2193,6 +2317,16 @@ static inline psa_status_t psa_driver_wrapper_aead_encrypt(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_aead_encrypt( attributes,
++                key_buffer, key_buffer_size, alg,
++                nonce, nonce_length,
++                additional_data, additional_data_length,
++                plaintext, plaintext_length,
++                ciphertext, ciphertext_size, ciphertext_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ 
+@@ -2255,6 +2389,16 @@ static inline psa_status_t psa_driver_wrapper_aead_decrypt(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_aead_decrypt( attributes,
++                key_buffer, key_buffer_size, alg,
++                nonce, nonce_length,
++                additional_data, additional_data_length,
++                ciphertext, ciphertext_length,
++                plaintext, plaintext_size, plaintext_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ 
+@@ -2314,6 +2458,14 @@ static inline psa_status_t psa_driver_wrapper_aead_encrypt_setup(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_aead_encrypt_setup( &operation->ctx.ipro_sec_ctx,
++                attributes, key_buffer, key_buffer_size, alg );
++            if( status == PSA_SUCCESS )
++                operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ 
+@@ -2368,6 +2520,14 @@ static inline psa_status_t psa_driver_wrapper_aead_decrypt_setup(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_aead_decrypt_setup( &operation->ctx.ipro_sec_ctx,
++                attributes, key_buffer, key_buffer_size, alg );
++            if( status == PSA_SUCCESS )
++                operation->id = IPRO_SEC_TRANSPARENT_DRIVER_ID;
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ 
+@@ -2417,6 +2577,11 @@ static inline psa_status_t psa_driver_wrapper_aead_set_nonce(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_set_nonce( &operation->ctx.ipro_sec_ctx,
++                                             nonce, nonce_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_set_nonce( &operation->ctx.mbedtls_ctx,
+@@ -2451,6 +2616,12 @@ static inline psa_status_t psa_driver_wrapper_aead_set_lengths(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_set_lengths( &operation->ctx.ipro_sec_ctx,
++                                               ad_length,
++                                               plaintext_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_set_lengths( &operation->ctx.mbedtls_ctx,
+@@ -2485,6 +2656,11 @@ static inline psa_status_t psa_driver_wrapper_aead_update_ad(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_update_ad( &operation->ctx.ipro_sec_ctx,
++                                             input, input_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_update_ad( &operation->ctx.mbedtls_ctx,
+@@ -2522,6 +2698,13 @@ static inline psa_status_t psa_driver_wrapper_aead_update(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_update( &operation->ctx.ipro_sec_ctx,
++                                          input, input_length,
++                                          output, output_size,
++                                          output_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_update( &operation->ctx.mbedtls_ctx,
+@@ -2565,6 +2748,13 @@ static inline psa_status_t psa_driver_wrapper_aead_finish(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_finish( &operation->ctx.ipro_sec_ctx,
++                                          ciphertext, ciphertext_size,
++                                          ciphertext_length,
++                                          tag, tag_size, tag_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_finish( &operation->ctx.mbedtls_ctx,
+@@ -2609,6 +2799,13 @@ static inline psa_status_t psa_driver_wrapper_aead_verify(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_verify( &operation->ctx.ipro_sec_ctx,
++                                          plaintext, plaintext_size,
++                                          plaintext_length,
++                                          tag, tag_length ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             {
+@@ -2667,6 +2864,10 @@ static inline psa_status_t psa_driver_wrapper_aead_abort(
+ {
+     switch( operation->id )
+     {
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++        case IPRO_SEC_TRANSPARENT_DRIVER_ID:
++            return( ipro_sec_aead_abort( &operation->ctx.ipro_sec_ctx ) );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(MBEDTLS_PSA_BUILTIN_AEAD)
+         case PSA_CRYPTO_MBED_TLS_DRIVER_ID:
+             return( mbedtls_psa_aead_abort( &operation->ctx.mbedtls_ctx ) );
+@@ -3167,6 +3368,15 @@ static inline psa_status_t psa_driver_wrapper_key_agreement(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_key_agreement( attributes,
++                key_buffer, key_buffer_size, alg,
++                peer_key, peer_key_length,
++                shared_secret, shared_secret_size,
++                shared_secret_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+diff --git a/core/psa_crypto_driver_wrappers_no_static.c b/core/psa_crypto_driver_wrappers_no_static.c
+index e9fd4f398..4120eda03 100644
+--- a/core/psa_crypto_driver_wrappers_no_static.c
++++ b/core/psa_crypto_driver_wrappers_no_static.c
+@@ -50,6 +50,9 @@
+ 
+ #endif
+ 
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++#include "ipro_sec_driver.h"
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ /* END-driver headers */
+ 
+ /* Auto-generated values depending on which drivers are registered.
+@@ -133,6 +136,13 @@ psa_status_t psa_driver_wrapper_export_public_key(
+     switch( location )
+     {
+         case PSA_KEY_LOCATION_LOCAL_STORAGE:
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++            status = ipro_sec_export_public_key( attributes,
++                key_buffer, key_buffer_size,
++                data, data_size, data_length );
++            if( status != PSA_ERROR_NOT_SUPPORTED )
++                return( status );
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+             /* Key is stored in the slot in export representation, so
+              * cycle through all known transparent accelerators */
+ #if defined(PSA_CRYPTO_ACCELERATOR_DRIVER_PRESENT)
+diff --git a/include/psa/crypto_driver_contexts_composites.h b/include/psa/crypto_driver_contexts_composites.h
+index e2fd473ca..2e7947333 100644
+--- a/include/psa/crypto_driver_contexts_composites.h
++++ b/include/psa/crypto_driver_contexts_composites.h
+@@ -28,6 +28,9 @@
+ 
+ /* Include the context structure definitions for the Mbed TLS software drivers */
+ #include "mbedtls/private/crypto_builtin_composites.h"
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++#include "ipro_sec_driver_contexts.h"
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ 
+ /* Include the context structure definitions for those drivers that were
+  * declared during the autogeneration process. */
+@@ -132,6 +135,9 @@ typedef union {
+ typedef union {
+     unsigned dummy; /* Make sure this union is always non-empty */
+     mbedtls_psa_aead_operation_t mbedtls_ctx;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    ipro_sec_aead_operation_t ipro_sec_ctx;
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+     mbedtls_transparent_test_driver_aead_operation_t transparent_test_driver_ctx;
+ #endif
+diff --git a/include/psa/crypto_driver_contexts_primitives.h b/include/psa/crypto_driver_contexts_primitives.h
+index baaa53dbf..4b99322df 100644
+--- a/include/psa/crypto_driver_contexts_primitives.h
++++ b/include/psa/crypto_driver_contexts_primitives.h
+@@ -27,6 +27,9 @@
+ 
+ /* Include the context structure definitions for the Mbed TLS software drivers */
+ #include "mbedtls/private/crypto_builtin_primitives.h"
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++#include "ipro_sec_driver_contexts.h"
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ 
+ /* Include the context structure definitions for those drivers that were
+  * declared during the autogeneration process. */
+@@ -109,6 +112,9 @@ typedef struct {
+ typedef union {
+     unsigned dummy; /* Make sure this union is always non-empty */
+     mbedtls_psa_hash_operation_t mbedtls_ctx;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    ipro_sec_hash_operation_t ipro_sec_ctx;
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+     mbedtls_transparent_test_driver_hash_operation_t test_driver_ctx;
+ #endif
+@@ -125,6 +131,9 @@ typedef union {
+ typedef union {
+     unsigned dummy; /* Make sure this union is always non-empty */
+     mbedtls_psa_cipher_operation_t mbedtls_ctx;
++#if defined(CONFIG_PSA_SEC_ENG_ACCEL)
++    ipro_sec_cipher_operation_t ipro_sec_ctx;
++#endif /* CONFIG_PSA_SEC_ENG_ACCEL */
+ #if defined(PSA_CRYPTO_DRIVER_TEST)
+     mbedtls_transparent_test_driver_cipher_operation_t transparent_test_driver_ctx;
+     mbedtls_opaque_test_driver_cipher_operation_t opaque_test_driver_ctx;

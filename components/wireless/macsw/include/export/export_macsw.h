@@ -133,7 +133,7 @@ void mm_timer_clear(struct mm_timer_tag *timer);
 #endif /* MACSW_INTERNAL */
 void tx_txdesc_release(struct txdesc *txdesc);
 void me_init_chan(struct mac_chan_op *chan);
-uint8_t vif_mgmt_get_staid(void *vif, const struct mac_addr *sta_addr);
+uint16_t vif_mgmt_get_staid(void *vif, const struct mac_addr *sta_addr);
 uint32_t dbg_snprintf(char *buffer, uint32_t size, const char *fmt, ...);
 int macif_kmsg_push(int msg_id, int task_id, void *param, int param_len);
 int macif_kmsg_push_t(int msg_id, int task_id, int nb_msg, ...);
@@ -561,7 +561,7 @@ struct fhost_statistic {
     // AC_TMO fires; if head doesn't advance AND tx_mpdu_ok doesn't
     // progress for >= PM45_NO_ADVANCE_THRESHOLD fires (~3s at 635ms
     // cadence), declares HW wedge and triggers KE_EVT_RESET (MAC reset),
-    // matching bl_iot_sdk's unconditional ASSERT_REC behavior.
+    // matching the reference SDK's unconditional ASSERT_REC behavior.
     //   hw_head_prev   -- HW head_ptr at last AC_TMO entry (sentinel 0)
     //   no_advance_now -- consecutive AC_TMO fires with no head advance
     //                     AND no tx_mpdu_ok progress

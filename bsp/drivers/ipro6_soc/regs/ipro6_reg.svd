@@ -35934,7 +35934,7 @@
             </field>
             <field>
               <name>tzc_glb_cpu_reset_tzsid_en</name>
-              <description>e907</description>
+              <description>cpu</description>
               <bitRange>[3:2]</bitRange>
               <access>read-write</access>
             </field>
@@ -36033,7 +36033,7 @@
             </field>
             <field>
               <name>tzc_glb_cpu_reset_tzsid_lock</name>
-              <description>e907</description>
+              <description>cpu</description>
               <bitRange>[1:1]</bitRange>
               <access>read-write</access>
             </field>
@@ -38649,7 +38649,7 @@
             </field>
             <field>
               <name>tzc_glb_cpu_reset_tzsid_en</name>
-              <description>e907</description>
+              <description>cpu</description>
               <bitRange>[3:2]</bitRange>
               <access>read-only</access>
             </field>
@@ -38748,7 +38748,7 @@
             </field>
             <field>
               <name>tzc_glb_cpu_reset_tzsid_lock</name>
-              <description>e907</description>
+              <description>cpu</description>
               <bitRange>[1:1]</bitRange>
               <access>read-only</access>
             </field>

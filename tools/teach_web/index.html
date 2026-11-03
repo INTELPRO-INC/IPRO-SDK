@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPRO AI Teach</title>
+<link rel="stylesheet" href="app.css">
+<script type="importmap">{"imports": {"@litertjs/wasm-utils": "./vendor/litertjs/wasm-utils/dist/index.js"}}</script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="mark">IPRO</span> AI Teach <span class="sub">for the IPRO7AI Reef</span></div>
+  <nav class="pages"><a href="index.html" class="on">Image</a><a href="voice.html">Voice</a></nav>
+  <ol class="steps" id="steps">
+    <li data-step="collect"><b>1</b> Collect</li>
+    <li data-step="train"><b>2</b> Train</li>
+    <li data-step="deploy"><b>3</b> Deploy</li>
+    <li data-step="run"><b>4</b> Run</li>
+  </ol>
+</header>
+
+<div class="notice" id="notice" hidden></div>
+
+<main class="layout">
+  <section class="panel camera-panel">
+    <div class="panel-head">
+      <h2>Camera</h2>
+      <select id="camera-select" aria-label="Camera"></select>
+      <label class="check"><input type="checkbox" id="mirror"> Mirror</label>
+    </div>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="stage-msg" id="stage-msg">Starting the camera…</div>
+    </div>
+    <div class="record-bar">
+      <p id="record-hint">Put the object in the box, then hold the button (or the space bar).</p>
+      <button id="record" class="primary big" disabled>Hold to record</button>
+    </div>
+  </section>
+
+  <div class="side">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Classes</h2>
+        <span class="grow"></span>
+        <button id="open-set" class="ghost">Open…</button>
+        <button id="save-set" class="ghost">Save…</button>
+        <button id="add-class" class="ghost">+ Add class</button>
+      </div>
+      <div id="class-list" class="class-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Train</h2></div>
+      <div class="row">
+        <select id="backbone" aria-label="Backbone"></select>
+        <button id="train" class="primary" disabled>Train</button>
+      </div>
+      <div class="progress" id="train-progress" hidden><span></span></div>
+      <p class="result" id="train-result">Record at least two classes, then train.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Put it on the board</h2></div>
+      <div class="row">
+        <span class="board" id="board-state">Board not connected</span>
+        <span class="grow"></span>
+        <button id="connect" class="ghost">Connect…</button>
+        <button id="deploy" class="primary" disabled>Deploy</button>
+      </div>
+      <ol class="deploy-steps" id="deploy-steps">
+        <li data-k="build">Build the model</li>
+        <li data-k="send">Send and write</li>
+        <li data-k="restart">Restart the board</li>
+      </ol>
+      <div class="progress" id="deploy-progress" hidden><span></span></div>
+      <p class="result" id="deploy-result"></p>
+    </section>
+  </div>
+</main>
+
+<dialog id="review">
+  <form method="dialog" class="review-head">
+    <h2 id="review-title">Review</h2>
+    <span class="grow"></span>
+    <button id="review-delete" class="ghost" value="delete">Delete selected</button>
+    <button class="primary" value="close">Done</button>
+  </form>
+  <p class="hint">Click the pictures to drop, for example those where the object is half out of the box.</p>
+  <div id="review-grid" class="review-grid"></div>
+</dialog>
+
+<input type="file" id="file-open" accept=".teach,.json,application/json" hidden>
+
+<footer class="foot">
+  Runs in this browser: the pictures, the training and the model never leave this computer.
+  <span id="runtime-note"></span>
+</footer>
+</body>
+</html>

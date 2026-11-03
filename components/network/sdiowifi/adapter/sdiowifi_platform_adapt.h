@@ -75,33 +75,6 @@ int sdiowifi_streambuf_send(sdiowifi_streambuf_handle_t handle, const void *data
 int sdiowifi_streambuf_receive(sdiowifi_streambuf_handle_t handle, void *data, size_t len, size_t timeout_ms);
 int sdiowifi_streambuf_spaces_available(sdiowifi_streambuf_handle_t handle);
  
-#ifdef BL_IOT_SDK
-#include <hal_boot2.h>
-#include <bl_mtd.h>
-#include <hal_sys.h>
-#elif defined(SDIOWIFI_OTA_BFLB)
-#include <bflb_boot2.h>
-#include <bflb_mtd.h>
-#include <bflb_ota.h>
-
-#define iot_sha256_context sha256_context
-#define HALPartition_Entry_Config bflb_partition_config_t
-#define hal_reboot bl_sys_reset_por
-
-#define BL_MTD_PARTITION_NAME_FW_DEFAULT BFLB_MTD_PARTITION_NAME_FW_DEFAULT
-#define BL_MTD_OPEN_FLAG_BACKUP BFLB_MTD_OPEN_FLAG_BACKUP
-
-#define bl_mtd_handle_t bflb_mtd_handle_t 
-#define bl_mtd_open bflb_mtd_open 
-#define bl_mtd_write bflb_mtd_write
-#define bl_mtd_read bflb_mtd_read
-#define bl_mtd_erase_all bflb_mtd_erase_all 
-#define bl_mtd_close bflb_mtd_close
-
-#define hal_boot2_get_active_entries bflb_boot2_get_active_entries
-#define hal_boot2_get_active_partition bflb_boot2_get_active_partition 
-#define hal_boot2_update_ptable bflb_boot2_update_ptable
-#endif
 
 #endif 
 

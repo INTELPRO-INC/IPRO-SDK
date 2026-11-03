@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""
-Copyright (c) 2026 IntelPro Technology Co., Ltd.
-All rights reserved.
-
-This software and associated documentation files (the "Software") are
-proprietary and confidential to IntelPro Technology Co., Ltd..
-
-Access to and use of this Software is limited exclusively to authorized 
-customers and partners of IntelPro Technology Co., Ltd. who have entered into a 
-valid license or non-disclosure agreement.
-
-Unauthorized copying, modification, distribution, or reverse engineering 
-of this Software, via any medium, is strictly prohibited without 
-prior written permission from IntelPro Technology Co., Ltd..
-
-SPDX-License-Identifier: Proprietary
-"""
+#======================================================================
+# Copyright (c) 2026 IntelPro Technology Co., Ltd.
+# All rights reserved.
+#
+# This software and associated documentation files (the "Software") are
+# proprietary and confidential to IntelPro Technology Co., Ltd..
+#
+# Access to and use of this Software is limited exclusively to authorized 
+# customers and partners of IntelPro Technology Co., Ltd. who have entered into a 
+# valid license or non-disclosure agreement.
+#
+# Unauthorized copying, modification, distribution, or reverse engineering 
+# of this Software, via any medium, is strictly prohibited without 
+# prior written permission from IntelPro Technology Co., Ltd..
+#
+# SPDX-License-Identifier: Proprietary
+#======================================================================
 
 """
 Create OTA package for IPRO7 boot2 OTA.
@@ -119,7 +119,7 @@ def sign_header(header, key_path, product_id, hw_id, fw_version, unpacked_len, k
     return bytes(h)
 
 
-def create_ota_header(payload, use_xz, hw_ver="BFL_Module_v1.1", fw_ver="OTA_V1.0.0"):
+def create_ota_header(payload, use_xz, hw_ver="IPRO7_HW_v1.1", fw_ver="OTA_V1.0.0"):
     header = bytearray(512)
 
     # Magic (16 bytes)
@@ -159,7 +159,8 @@ def main():
     parser.add_argument("input", help="Input firmware binary (.bin)")
     parser.add_argument("--raw", action="store_true", help="No compression (RAW)")
     parser.add_argument("-o", "--output", help="Output file (default: <input>.xz.ota or <input>.ota)")
-    parser.add_argument("--hw-ver", default="BFL_Module_v1.1", help="HW version string")
+    parser.add_argument("--hw-ver", default="IPRO7_HW_v1.1",
+                        help="HW version string (informational; boot2 does not check it)")
     parser.add_argument("--fw-ver", default="OTA_V1.0.0", help="FW version string")
     parser.add_argument("--sign-key", help="ECDSA P-256 private key (PEM) — adds the "
                         "signature block; keep the key OUTSIDE the repo")

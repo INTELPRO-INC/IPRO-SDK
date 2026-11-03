@@ -20,7 +20,6 @@
 #include <lwip/netifapi.h>
 #include <sdiowifi_platform_adapt.h>
 
-//#include <bl_wifi.h>
 #include <wifi_mgmr_ext.h>
 #include <net_pkt_filter.h>
 
@@ -378,11 +377,11 @@ static void handle_cmd_recv(sdiowifi_mgmr_t *sdm, const uint8_t *data, uint16_t 
 
 static void sdio_recv_cb(void *arg, const void *data_ptr, uint16_t data_len)
 {
-    bl602_sdio_msg_t *msg;
+    ipro_sdio_msg_t *msg;
     sdiowifi_mgmr_t *sdm;
 
     rxprof_t1();
-    msg = (bl602_sdio_msg_t *)data_ptr;
+    msg = (ipro_sdio_msg_t *)data_ptr;
     sdm = &g_sdiowifi_mgmr;
     switch (msg->type) {
     case IPRO_MSG_TYPE_ETH_WIFI_FRAME:
@@ -421,8 +420,6 @@ static int ipro_net_wifi_trcver_write_mac(net_wifi_trcver_t *trcver)
 #ifdef CFG_IPRO_WIFI
     // FIXME
     wifi_mgmr_sta_mac_get(mac);
-#else
-    bl_wifi_mac_addr_get(mac);
 #endif
 
     for (i = 0; i < 6; ++i) {
@@ -465,7 +462,7 @@ static void start_ack_bootsrc(void *pvParameters)
 #endif
 
 
-// XXX copied from bl_rx.h. Remember to keep identical!
+// XXX copied from the reference SDK rx header. Remember to keep identical!
 /////////////// start of copy ///////////////
 #define PBUF_FLAG_AMSDU 0x80U
 /////////////// end of copy ///////////////
@@ -475,13 +472,20 @@ static void sdio_pbuf_cfm_cb(int idx, void *arg)
     pbuf_free(arg);
 }
 
-int __attribute__((section(".tcm_code"))) ipro_dual_stack_peer_input(void *pkt, void *arg)
+static int __attribute__((section(".tcm_code"))) upload_to_host(struct pbuf *p, bool is_sta)
 {
     net_wifi_trcver_t *trcver = &g_sdiowifi_mgmr.trcver;
-    struct pbuf *p = (struct pbuf *)pkt;
     bool is_amsdu = p->flags & PBUF_FLAG_AMSDU;
-    int ret = ipro_msg_send_pbuf(trcver, IPRO_MSG_TYPE_ETH_WIFI_FRAME, IPRO_MSG_ETH_WIFI_FRAME_SUBTYPE_STA_FROM_WIFI_RX, p, is_amsdu, sdio_pbuf_cfm_cb, pkt);
-    return ret;
+    uint16_t subtype = is_sta ? IPRO_MSG_ETH_WIFI_FRAME_SUBTYPE_STA_FROM_WIFI_RX
+                              : IPRO_MSG_ETH_WIFI_FRAME_SUBTYPE_AP_FROM_WIFI_RX;
+
+    return ipro_msg_send_pbuf(trcver, IPRO_MSG_TYPE_ETH_WIFI_FRAME, subtype, p, is_amsdu, sdio_pbuf_cfm_cb, p);
+}
+
+/* lwIP hands over frames no local socket wants; they are STA-side. */
+int __attribute__((section(".tcm_code"))) ipro_dual_stack_peer_input(void *pkt, void *arg)
+{
+    return upload_to_host((struct pbuf *)pkt, true);
 }
 
 static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
@@ -500,7 +504,11 @@ static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
     struct pbuf *ret = NULL;
 
 #ifdef DHCP_IN_EMB
-    if (npf_is_arp(p)) {
+    if (!is_sta) {
+        /* The AP netif has no IP: the host owns ARP and DHCP there. */
+        input_emb = false;
+        input_host = true;
+    } else if (npf_is_arp(p)) {
         /* ARP duplicated: emb keeps the WiFi association ARP cache warm,
          * host needs it so its iproeth0 ARP table resolves. */
         input_emb = true;
@@ -549,9 +557,8 @@ static void *eth_input_hook(bool is_sta, void *pkt, void *arg)
     }
 
     if (input_host) {
-        // XXX distinguish STA/AP
         sdio_upld_attempt++;
-        int ret = ipro_dual_stack_peer_input(p, NULL);
+        int ret = upload_to_host(p, is_sta);
         if (ret) {
             /* printf("RX FRM swdesc %p failed, drop\r\n", swdesc); */
             sdio_upld_fail++;
@@ -606,7 +613,6 @@ static void register_pkt_hooks(net_wifi_trcver_t *trcver)
     // Allowing all output.
     // Leave output hook here as it may be added back.
     (void)eth_output_hook;
-    /* bl_pkt_eth_output_hook_register(eth_output_hook, trcver); */
 #endif
 }
 

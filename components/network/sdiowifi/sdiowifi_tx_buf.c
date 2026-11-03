@@ -61,7 +61,7 @@ typedef struct {
 } sdio_txbuf_payload_t;
 
 /* TX = N * 1904B.
- * 11 was sized for legacy bl_iot_sdk LP_FW layout (38KB - 16KB RX); 16 was
+ * 11 was sized for legacy reference SDK LP_FW layout (38KB - 16KB RX); 16 was
  * the largest that fit ram_wifi keeping the original lwIP heap. To get TCP
  * TX above the 16-slot ceiling (~10 Mbps observed) we trade lwIP heap for
  * more in-flight TX slots. 32 slots ~60KB pulls TX BDP up to ~25 Mbps to
@@ -90,7 +90,7 @@ static tx_pbuf_t            g_txpbuf_context[SDIO_TX_NORMAL_BUFFER_COUNT];
 #if defined(IPRO6)
 /* IPRO6: place TX payload storage in .lwip_mem.sdiowifi (linker rule
  * `*(.lwip_mem*)` catches it into ram_wifi after lwIP heap + memp pools).
- * Original hardcoded TXBUF_PAYLOAD_START_ADDR=0x2302A800 was for bl_iot_sdk's
+ * Original hardcoded TXBUF_PAYLOAD_START_ADDR=0x2302A800 was for the reference SDK's
  * LP_FW layout (LP_FW_START_ADDR + 16KB RX).
  * On IPRO6 the hardcoded 0x2302A800 is OUTSIDE the SHRAM
  * window [_sshram, _eshram] = ram_wifi (0x21050000..0x21078000), so

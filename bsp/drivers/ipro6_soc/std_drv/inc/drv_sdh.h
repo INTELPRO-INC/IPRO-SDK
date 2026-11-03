@@ -710,8 +710,8 @@ struct SDH_Handle_Cfg_Tag {
 #define SDH_GetIntStatus()       readl(SDH_BASE + SDH_SD_NORMAL_INT_STATUS_OFFSET);
 #define SDH_GetIntEnableStatus() readl(SDH_BASE + SDH_SD_NORMAL_INT_STATUS_INT_EN_OFFSET);
 #define SDH_ClearIntStatus(mask) writel((mask), SDH_BASE + SDH_SD_NORMAL_INT_STATUS_OFFSET);
-#define SDH_AutoCmd12ErrStatus() BL_RD_SHORT(SDH_BASE + SDH_SD_AUTO_CMD12_ERROR_STATUS_OFFSET);
-#define SDH_GetDMAErrStatus()    BL_RD_SHORT(SDH_BASE + SDH_SD_ADMA_ERROR_STATUS_OFFSET);
+#define SDH_AutoCmd12ErrStatus() IPRO_RD_SHORT(SDH_BASE + SDH_SD_AUTO_CMD12_ERROR_STATUS_OFFSET);
+#define SDH_GetDMAErrStatus()    IPRO_RD_SHORT(SDH_BASE + SDH_SD_ADMA_ERROR_STATUS_OFFSET);
 #define SDH_GetPresentStatus()   readl(SDH_BASE + SDH_SD_PRESENT_STATE_1_OFFSET);
 #define SDH_MAX_BLOCK_COUNT      0xffff
 //#define SDH_CMD_INDEX(x)                    (x)

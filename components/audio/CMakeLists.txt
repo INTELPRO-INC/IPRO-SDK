@@ -21,6 +21,8 @@ __component_add_sources(src/audio_bass_boost.c)
 
 if(CONFIG_AUDIO_CAPTURE)
     __component_add_sources(src/audio_capture.c)
+    # the PDM microphone chain the voice tool and Sensor Teach share
+    __component_add_sources(src/audio_pdm_mic.c)
 endif()
 
 if(CONFIG_AUDIO_OUTPUT)

@@ -265,7 +265,7 @@ static void detect_task(void *arg)
         }
 
         TickType_t t0 = xTaskGetTickCount();
-        npu_share_begin(s_net, addr);
+        npu_share_begin(s_hdl, addr);
         TickType_t tw = xTaskGetTickCount();
         IPROAI_Status_e st = iproai_startCompute(s_hdl);
         npu_share_end();
@@ -342,11 +342,6 @@ int detect_init(void)
         s_frame = (uint32_t)p;
         memset((void *)p, 0, DETECT_FRAME_BYTES);
     }
-    /* The runtime programs DM2 = imgBuffer + 4 while it parses THIS model;
-     * gesture_init() pointed it at the gesture frame for its own load. The
-     * ext-input address is re-applied per inference by npu_share anyway. */
-    imgBuffer = (char *)(uintptr_t)(s_frame - 4u);
-
     if (!s_result_mtx) {
         s_result_mtx = xSemaphoreCreateMutex();
     }
@@ -358,7 +353,15 @@ int detect_init(void)
         return DETECT_ERR_NOMEM;
     }
 
+    /* The gesture task may be running: the load writes the NPU registers, so it
+     * holds the NPU like an inference does. The runtime programs DM2 = imgBuffer
+     * + 4 while it parses THIS model; gesture_init() pointed it at the gesture
+     * frame for its own load. The ext-input address is re-applied per inference
+     * by npu_share anyway. */
+    npu_share_load_begin();
+    imgBuffer = (char *)(uintptr_t)(s_frame - 4u);
     rc = load_model();
+    npu_share_load_end();
     if (rc != DETECT_OK) {
         return rc;
     }

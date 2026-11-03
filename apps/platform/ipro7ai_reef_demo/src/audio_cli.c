@@ -112,8 +112,11 @@ SHELL_CMD_EXPORT_ALIAS(cmd_spk, spk, speaker / headphone DAC output);
 static void mic_usage(void)
 {
     printf("mic rec <pdm|headset|aux> <sec>       record up to %u s at 16 kHz\n"
+           "mic sdrec <pdm|headset|aux> <name> <sec>  record to sd:/rec/<name>.wav (up to 2 h)\n"
            "mic play [hp]                         play the recording\n"
            "mic loop <pdm|headset|aux> [sec] [hp] live monitor (0/omit = until stop)\n"
+           "mic usb <pdm|headset|aux>             USB microphone on the board's USB-C (until stop)\n"
+           "mic usb host                          USB speaker looped back to the USB mic (injection)\n"
            "mic gain <db>                         playback make-up gain 0..40 (now %d)\n"
            "mic ch <0|1>                          PDM slot, 0 = left (board default)\n"
            "mic stop | mic status\n"
@@ -139,6 +142,15 @@ static int cmd_mic(int argc, char **argv)
         } else {
             printf("rejected (1..%u s, not while another job runs)\n", AUDIO_REC_MAX_SEC);
         }
+    } else if (strcmp(argv[1], "sdrec") == 0 && argc >= 5 && src_arg(argv[2], &src) == 0) {
+        uint32_t sec = (uint32_t)atoi(argv[4]);
+        if (audio_sdrec(src, argv[3], sec) == 0) {
+            printf("recording %u s from %s to sd:/rec/%s.wav (LED red; `mic stop` ends it)\n",
+                   (unsigned)sec, audio_src_name(src), argv[3]);
+        } else {
+            printf("rejected (1..%u s, name of letters/digits/_/-, not while another job runs)\n",
+                   AUDIO_SDREC_MAX_SEC);
+        }
     } else if (strcmp(argv[1], "play") == 0) {
         if (audio_play(route_arg(argc, argv, 2)) == 0) {
             printf("playing %u samples, +%d dB\n", (unsigned)audio_rec_samples(),
@@ -162,6 +174,20 @@ static int cmd_mic(int argc, char **argv)
         } else {
             printf("rejected\n");
         }
+    } else if (strcmp(argv[1], "usb") == 0 && argc >= 3 && strcmp(argv[2], "host") == 0) {
+        if (audio_usbhost() == 0) {
+            printf("USB loopback: what the host plays into the board comes back as its "
+                   "microphone (LED blue; `mic stop` ends it)\n");
+        } else {
+            printf("rejected (not while another job runs)\n");
+        }
+    } else if (strcmp(argv[1], "usb") == 0 && argc >= 3 && src_arg(argv[2], &src) == 0) {
+        if (audio_usbmic(src) == 0) {
+            printf("USB microphone from %s: 16 kHz mono UAC on the board's USB-C "
+                   "(LED red; `mic stop` ends it)\n", audio_src_name(src));
+        } else {
+            printf("rejected (not while another job runs)\n");
+        }
     } else if (strcmp(argv[1], "gain") == 0 && argc >= 3) {
         if (audio_set_gain_db(atoi(argv[2])) == 0) {
             printf("make-up gain %d dB\n", audio_get_gain_db());
@@ -182,6 +208,20 @@ static int cmd_mic(int argc, char **argv)
                audio_job_name(), (unsigned)audio_rec_samples(), audio_last_peak_dbfs(), audio_last_rms_dbfs(),
                audio_last_band_rms_dbfs(),
                audio_get_gain_db(), audio_get_pdm_channel());
+        if (strncmp(audio_job_name(), "usb", 3) == 0) {
+            audio_usbmic_stats_t st;
+            audio_usbmic_stats(&st);
+            int trim = (int)(st.trim_x100 < 0 ? -st.trim_x100 : st.trim_x100);
+            printf("usb: host opens %u, %u samples since open, queue %d (holds ~1800), "
+                   "trim %s%d.%02d ppm, near-underruns %u\n",
+                   (unsigned)st.opens, (unsigned)st.samples, (int)st.level,
+                   st.trim_x100 < 0 ? "-" : "", trim / 100, trim % 100, (unsigned)st.lows);
+            if (strcmp(audio_job_name(), "usbhost") == 0) {
+                printf("usb host: %u samples played in, %u dropped "
+                       "(near-underruns above = silence top-ups)\n",
+                       (unsigned)st.rx, (unsigned)st.rx_drop);
+            }
+        }
     } else {
         mic_usage();
     }

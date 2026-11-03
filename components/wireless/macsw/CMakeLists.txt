@@ -47,50 +47,9 @@ __macsw_debug_knob(RXL_DESYNC_LOG PUBLIC)         # also read by wifi6 cli_al.c
 # ADDRESS or the offset. Single-file, so it stays inside macsw.
 
 # LP beacon-RX firmware trim. PUBLIC, and it changes what is compiled into the
-# archive, so a prebuilt built without it cannot serve a CONFIG_PHY_LPFW build
-# -- the check in the prebuilt branch below refuses that combination instead of
-# letting it link.
+# archive: a prebuilt variant serves only builds that match it on this option.
 if(CONFIG_PHY_LPFW)
     __component_add_compile_definitions(-DIPRO_WIFI_LP_FW=1)
-endif()
-
-# ---------------------------------------------------------------------------
-# Prebuilt archive
-#
-# Same contract as ipro_ble_controller: an explicit path wins, otherwise the
-# component's own lib/ is used when present, and CONFIG_MACSW_FORCE_SOURCE_BUILD
-# always forces sources. lib/ is NEVER committed: the release packager drops the
-# archive there in place of the RivieraWaves Wi-Fi MAC sources, so an internal
-# tree always builds from sources. (A checked-in archive silently replaced every
-# developer's MAC changes, and one built without CFG_IPRO_WIFI_PS_ENABLE cannot
-# link the lpwifi carrier.) The packager must build the archive with the same
-# CFG_IPRO_WIFI_PS_ENABLE / IPRO_WIFI_LP_FW set as the app that links it.
-# ---------------------------------------------------------------------------
-if(DEFINED CONFIG_MACSW_PREBUILT_PATH AND NOT "${CONFIG_MACSW_PREBUILT_PATH}" STREQUAL "")
-    set(MACSW_PREBUILT "${CONFIG_MACSW_PREBUILT_PATH}")
-elseif(CONFIG_PHY_LPFW)
-    set(MACSW_PREBUILT "${CMAKE_CURRENT_SOURCE_DIR}/lib/libmacsw_lpfw.a")
-else()
-    set(MACSW_PREBUILT "${CMAKE_CURRENT_SOURCE_DIR}/lib/libmacsw.a")
-endif()
-
-if((CONFIG_MACSW_PREBUILT OR EXISTS "${MACSW_PREBUILT}") AND NOT CONFIG_MACSW_FORCE_SOURCE_BUILD)
-    if(NOT EXISTS "${MACSW_PREBUILT}")
-        message(FATAL_ERROR
-            "[macsw] prebuilt requested but not found: ${MACSW_PREBUILT}\n"
-            "        CONFIG_PHY_LPFW builds need the _lpfw archive; set "
-            "CONFIG_MACSW_FORCE_SOURCE_BUILD=y to build from sources instead.")
-    endif()
-    set(CURRENT_STATIC_LIBRARY macsw)
-    add_library(${CURRENT_STATIC_LIBRARY} STATIC IMPORTED GLOBAL)
-    set_target_properties(${CURRENT_STATIC_LIBRARY} PROPERTIES IMPORTED_LOCATION ${MACSW_PREBUILT})
-    set_property(GLOBAL APPEND PROPERTY SDK_LIBS ${CURRENT_STATIC_LIBRARY})
-    # INTERFACE, not PUBLIC: CMake rejects PUBLIC/PRIVATE on an IMPORTED target.
-    # The original line here said PUBLIC, which means this branch had never once
-    # been executed -- the prebuilt path existed but nothing ever took it.
-    target_link_libraries(${CURRENT_STATIC_LIBRARY} INTERFACE __component_lib)
-    message(STATUS "MACSW: using prebuilt archive at ${MACSW_PREBUILT}")
-    return()
 endif()
 
 __generate_library(1)
@@ -181,7 +140,7 @@ __component_add_private_include_dirs(plf/refip/src/arch/risc-v)
 __component_add_private_include_dirs(plf/refip/src/arch/risc-v/boot)
 __component_add_private_include_dirs(plf/refip/src/arch/risc-v/boot/riscv32)
 __component_add_private_include_dirs(plf/refip/src/arch/risc-v/ll/riscv32)
-__component_add_private_include_dirs(plf/refip/src/arch/risc-v/ll/thead_e907)
+__component_add_private_include_dirs(plf/refip/src/arch/risc-v/ll/ipro6)
 __component_add_private_include_dirs(plf/refip/src/driver)
 __component_add_private_include_dirs(plf/refip/src/driver/reg)
 __component_add_private_include_dirs(plf/refip/src/driver/crm)
@@ -199,15 +158,17 @@ __component_add_private_include_dirs(plf/refip/src/driver/led)
 # FHOST private headers needed by release macif_fhost.c
 __component_add_private_include_dirs(../wifi6/ipro_fhost/src)
 
-# Export layer (SDK-specific API bridge)
+# Export layer (SDK-specific API bridge), for the fhost glue only
+if(NOT CONFIG_IPRO6_FMAC)
 __component_add_sources(include/export/export_func.c)
+endif()
 # LP beacon-RX firmware trim (CONFIG_PHY_LPFW): these three are pure UMAC message
 # marshalling (export_struct/export_malloc) and fhost-TX descriptor glue
 # (export_tx). The upper-MAC host API and the fhost TX path do not exist in the
 # no-UMAC / no-host-networking LP build, so they cannot compile there — the
 # reference lp_fw source set builds none of the export/*.c shims either. Normal
 # builds compile them as before.
-if(NOT CONFIG_PHY_LPFW)
+if(NOT CONFIG_PHY_LPFW AND NOT CONFIG_IPRO6_FMAC)
 __component_add_sources(include/export/export_struct.c)
 __component_add_sources(include/export/export_malloc.c)
 __component_add_sources(include/export/export_tx.c)
@@ -295,7 +256,10 @@ __component_add_sources(modules/dbg/src/trace.c)
 # (rxu_stat_desc) / fhost TX (umacdesc) path to the host stack, which does not
 # exist in the no-UMAC / no-host-networking LP build. Excluded there, matching
 # the reference lp_fw (which uses the IPC macif variant, not the fhost one).
-if(NOT CONFIG_PHY_LPFW)
+if(CONFIG_IPRO6_FMAC)
+__component_add_sources(modules/macif/src/macif_bus.c)
+__component_add_sources(modules/macif/src/macif_bus_cfg.c)
+elseif(NOT CONFIG_PHY_LPFW)
 __component_add_sources(modules/macif/src/macif_fhost.c)
 endif()
 
@@ -358,10 +322,11 @@ endif()
 
 # Platform drivers
 __component_add_sources(plf/refip/src/driver/rwnx_platform.c)
-if(NOT IPRO_SDK_UNDER_ZEPHYR)
 # The RF component (rf/ipro6_rf/crm/crm.c) carries the same crm_* symbols and
 # is what the SDK link actually resolves them from; Zephyr links whole-archive
-# and would see both.
+# and would see both. The FMAC FW links the archives in another order and
+# would resolve them here, so it never builds this copy.
+if(NOT IPRO_SDK_UNDER_ZEPHYR AND NOT CONFIG_IPRO6_FMAC)
 __component_add_sources(plf/refip/src/driver/crm/v30/crm.c)
 endif()
 __component_add_sources(plf/refip/src/driver/phy/phy_ipro6rf.c)

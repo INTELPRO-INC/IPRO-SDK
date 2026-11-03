@@ -17,8 +17,9 @@ customer audio product:
 - audio output/render is currently disabled; LC3 decode/render and acoustic
   validation remain open
 
-Use `apps/bluetooth/ble/ipro_ble_controller_central_test` as the current
-automated peer for basic validation.
+The two-board automated peer used for this validation
+(`ipro_ble_controller_central_test`) is an internal test app and is not part of
+the SDK package; any LE Audio unicast client can act as the peer.
 
 Android phone basic status:
 
@@ -99,8 +100,8 @@ Android phone basic status:
 ### Audio Profiles
 - **BAP (Basic Audio Profile)**: Unicast audio streaming with CIS (Connected Isochronous Stream)
 - **VCP (Volume Control Profile)**: Remote volume control from source device
-- **MCP (Media Control Profile)**: Playback control (play/pause/next/prev)
-- **CCP (Call Control Profile)**: Phone call handling (ready for future development)
+- MCP (media control) and CCP (call control) are not enabled in the shipped
+  `.config` (no `CONFIG_BT_MCC` / `CONFIG_BT_MCS`)
 
 ### Audio Capabilities
 - **Codec**: LC3 (Low Complexity Communications Codec)
@@ -290,29 +291,22 @@ Latest recorded r48 result:
 ## Configuration
 
 ### Kconfig Options
-Key configuration options in `defconfig`:
+Key configuration options in `.config` (`DAC.config` and `UAC.config` switch
+the audio output between the on-chip DAC and a USB Audio Class device):
 
 ```ini
-# BLE Configuration
-CONFIG_BLE_PERIPHERAL=y
-CONFIG_BLE_CENTRAL=n
+# LE Audio roles (Zephyr host)
+CONFIG_BT_AUDIO=y
+CONFIG_BT_AUDIO_RX=y
+CONFIG_BT_BAP_UNICAST_SERVER=y
+CONFIG_BT_PACS=y
+CONFIG_BT_ASCS=y
+CONFIG_BT_CAP_ACCEPTOR=y
+CONFIG_BT_CSIP_SET_MEMBER=y
+CONFIG_BT_VCP_VOL_REND=y
 
-# GAF Audio Profiles
-CONFIG_GAF_BAP=y
-CONFIG_GAF_BAP_CAPA_SRV=y
-CONFIG_GAF_VCP=y
-CONFIG_GAF_VCP_SRV=y
-CONFIG_GAF_MCP=y
-CONFIG_GAF_MCP_SRV=y
-
-# Audio Configuration
-CONFIG_LC3_CODEC=y
-CONFIG_ISOOHCI=y
-
-# USB Audio
-CONFIG_CHERRYUSB=y
-CONFIG_CHERRYUSB_DEVICE=y
-CONFIG_CHERRYUSB_DEVICE_AUDIO=y
+# LC3 decoder
+CONFIG_COMPONENTS_LC3_ENABLE=y
 ```
 
 ### Audio Parameters
@@ -332,7 +326,6 @@ Configurable in `src/app_audio.h`:
 - [x] LC3 codec integration
 - [x] USB audio bridge
 - [x] VCP volume control
-- [x] MCP media control
 - [x] Auto-reconnection support
 
 ### Phase 2: Enhanced User Experience (Q1 2026)

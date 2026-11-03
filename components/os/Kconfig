@@ -91,6 +91,42 @@ config FREERTOS_TIMER_TASK_STACK_WORDS
       interrupt stack usage have been audited and measured under load.
       This does not change the separate Matter event-loop task stack.
 
+config FREERTOS_STACK_REPORT_S
+    int "Bench: print stack and heap high-water marks every N seconds"
+    default 0
+    help
+      Zero (default) builds nothing. Otherwise ipro_platform_init() starts a
+      low-priority task (2 KB static stack) that prints every task's minimum
+      free stack, the heap's minimum-ever free size and, on IPRO7, how deep
+      the hal_lp PDS stack has been used. Its wake-ups cut PDS windows, so
+      use it to size stacks under the real workload, not for power runs.
+
+config APP_WATCHDOG
+    bool "Arm the AON watchdog, fed from a highest-priority task"
+    depends on IPRO7
+    default n
+    help
+      app_watchdog_start() (app_watchdog.h) arms the always-on watchdog and
+      feeds it every second (hardware-timer time) from a task at configMAX_PRIORITIES - 1, so the
+      SoC restarts when the CPU as a whole stops: a bus stall (an NPU running
+      a malformed program), interrupts left off, an interrupt storm. A busy
+      task starving lower ones does not trip it. platform_init() arms it at
+      the start of every boot as well, so a boot that hangs before the
+      feeder runs restarts too: an app that enables this must call
+      app_watchdog_start(). Shell: `watchdog`, `watchdog test` (stop
+      feeding). The Edge AI Teach firmwares enable it.
+
+config APP_WATCHDOG_TIMEOUT_S
+    int "AON watchdog timeout (seconds; 2, 4, 8, 16, 32 or 64)"
+    depends on APP_WATCHDOG
+    range 2 64
+    default 8
+    help
+      Rounded up to the next power of two (the hardware only doubles). It
+      must cover the longest stretch with interrupts off: flash_erase() holds
+      them off for the whole range it erases (about 45 ms per 4 KB sector,
+      400 ms at worst).
+
 config COMPONENTS_FREERTOS_POSIX_ENABLE
     bool "Enable FreeRTOS POSIX Compatibility Layer"
     default n

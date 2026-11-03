@@ -50,8 +50,8 @@
 #define LWIP_ALTCP                      1
 
 /* TLS over altcp (mbedtls) — opt-in per app via CONFIG_LWIP_ALTCP_TLS so apps
- * that don't need it (most) don't pull the altcp_tls_mbedtls port. The G-TAG
- * gateway enables it for MQTT-over-TLS to the broker. */
+ * that don't need it (most) don't pull the altcp_tls_mbedtls port. Enable it
+ * for MQTT-over-TLS to a broker. */
 #ifdef CONFIG_LWIP_ALTCP_TLS
 #define LWIP_ALTCP_TLS                  1
 #define LWIP_ALTCP_TLS_MBEDTLS          1
@@ -68,8 +68,8 @@
 #else
 #define MQTT_VAR_HEADER_BUFFER_LEN      1024
 #endif
-/* App-tunable via CONFIG_LWIP_MQTT_OUTPUT_RINGBUF (e.g. the G-TAG gateway
- * mirrors 1568B binary waveforms); other projects keep the 1024 default. */
+/* App-tunable via CONFIG_LWIP_MQTT_OUTPUT_RINGBUF (e.g. an app publishing
+ * 1568 B binary payloads); other projects keep the 1024 default. */
 #ifdef CONFIG_LWIP_MQTT_OUTPUT_RINGBUF
 #define MQTT_OUTPUT_RINGBUF_SIZE        CONFIG_LWIP_MQTT_OUTPUT_RINGBUF
 #else

@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include "hal_emac.h"
+#include "mii.h"
 #include "platform_common.h"
 
 #define PHY_AUTONEGOTIATE_TIMEOUT 5000

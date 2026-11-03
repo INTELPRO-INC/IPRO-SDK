@@ -16,7 +16,13 @@ __component_add_sources(Source/queue.c)
 __component_add_sources(Source/tasks.c)
 __component_add_sources(Source/stream_buffer.c)
 __component_add_sources(Source/timers.c)
-if(CONFIG_IPRO7 OR CONFIG_IPRO6)
+if(CONFIG_FREERTOS_PORT_NSPE)
+__component_add_private_include_dirs(Source/portable_ipro7_nspe)
+__component_add_include_dirs(Source/portable_ipro7_nspe)
+__component_add_sources(Source/portable_ipro7/MemMang/heap_5.c)
+__component_add_sources(Source/portable_ipro7_nspe/port.c)
+__component_add_sources(Source/portable_ipro7_nspe/GCC/portasm.S)
+elseif(CONFIG_IPRO7 OR CONFIG_IPRO6)
 # IPRO6 uses same CPU as IPRO7, so use IPRO7's portable layer
 __component_add_private_include_dirs(Source/portable_ipro7)
 __component_add_include_dirs(Source/portable_ipro7)
@@ -31,7 +37,11 @@ endif()
 endif()
 
 ################# Default FreeRTOS app hooks #################
+if(NOT CONFIG_FREERTOS_PORT_NSPE)
 __component_add_sources(freertos_app_hooks.c)
+# AON watchdog fed from a top-priority task; a no-op without CONFIG_APP_WATCHDOG
+__component_add_sources(app_watchdog.c)
+endif()
 
 ############ Add global compile option ################
 #add components denpend on this component

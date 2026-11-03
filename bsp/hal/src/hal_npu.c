@@ -25,6 +25,7 @@
 #include "iproai_reg.h"
 #include "drv_glb.h"
 #include "glb_reg.h"
+#include "drv_mm_misc.h"
 #include "compiler/common.h"
 
 static bool g_bNPUStarted = false;
@@ -211,6 +212,45 @@ void hal_npu_stop(void)
     tmp = reg_set_bit(tmp, IPROAI4_REG_IPROAI_STOP);
     writel(tmp, IPROAI_BASE + IPROAI4_IPROAI_INT_CFG_OFFSET);
 
+    g_bNPUStarted = false;
+}
+
+void hal_npu_block_reset(void)
+{
+    /* The configuration registers, in the order iproai_reg.h lists them. INT_CFG and the
+     * read-only status words (PMC_STS0/1) are not among them. */
+    static const uint16_t keep[] = {
+        IPROAI4_BALI_GENERAL_CFG_OFFSET, IPROAI4_IPROAI_BUS_OFFSET, IPROAI4_IPROAI_TFPM_ADDR_OFFSET,
+        IPROAI4_IPROAI_WEIGHT_ADDR_OFFSET, IPROAI4_IPROAI_BIAS_ADDR_OFFSET, IPROAI4_IPROAI_INST_ADDR_OFFSET,
+        IPROAI4_APU_DM0_ADDR_OFFSET, IPROAI4_APU_DM1_ADDR_OFFSET, IPROAI4_IPROAI_TF_CFG0_OFFSET,
+        IPROAI4_APU_DM2_ADDR_OFFSET, IPROAI4_IPROAI_DVP_OFFSET, IPROAI4_IPROAI_PMC_CFG_OFFSET,
+    };
+    uint32_t saved[sizeof(keep) / sizeof(keep[0])];
+    uint32_t i;
+
+    for (i = 0; i < sizeof(keep) / sizeof(keep[0]); i++) {
+        saved[i] = readl(IPROAI_BASE + keep[i]);
+    }
+    uint32_t int_cfg = readl(IPROAI_BASE + IPROAI4_IPROAI_INT_CFG_OFFSET);
+    int_cfg &= IPROAI4_REG_IPROAI_START_UMSK & IPROAI4_REG_IPROAI_STOP_UMSK &
+               IPROAI4_REG_IPROAI_RESUME_UMSK & IPROAI4_REG_INT_CLR_UMSK & IPROAI4_STS_IPROAI_INT_UMSK;
+
+    /* 1 holds the block in reset, 0 releases it (as the JPEG reset in the camera apps) */
+    MM_MISC_Set_SW_Reset(MM_MISC_SW_RESET_ID_IPROAI, 1);
+    for (i = 0; i < 16; i++) {
+        (void)readl(IPROAI_BASE + IPROAI4_IPROAI_PMC_STS0_OFFSET);   /* a few bus cycles in reset */
+    }
+    MM_MISC_Set_SW_Reset(MM_MISC_SW_RESET_ID_IPROAI, 0);
+
+    for (i = 0; i < sizeof(keep) / sizeof(keep[0]); i++) {
+        uint32_t v = saved[i];
+        if (keep[i] == IPROAI4_IPROAI_PMC_CFG_OFFSET) {
+            v &= IPROAI4_REG_PMC_CLR_UMSK;
+        }
+        writel(v, IPROAI_BASE + keep[i]);
+    }
+    writel(int_cfg, IPROAI_BASE + IPROAI4_IPROAI_INT_CFG_OFFSET);
+    hal_npu_ack_irq();
     g_bNPUStarted = false;
 }
 

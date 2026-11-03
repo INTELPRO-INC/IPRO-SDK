@@ -290,7 +290,7 @@ SECTIONS
     KEEP(*(SORT_BY_NAME("._bt_sco_hci_cb.static.*")))
     _bt_sco_hci_cb_list_end = .;
 
-    /* For BFLB Coredump */
+    /* For coredump */
     _coredump_binary_id_start = . - ADDR(.data) + LOADADDR(.data);
     KEEP(*(.coredump_binary_id))
 
@@ -305,9 +305,6 @@ SECTIONS
     *(.tcm_data.*)
     *(.sclock_rlt_code.*)
     *(.sclock_rlt_const.*)
-
-    *libbl6_freertos.a:*.o(.text*)
-    *libbl6_freertos.a:*.o(.rodata*)
 
     /* OCRAM data - HAL drivers (ATTR_OCRAM_SECTION) and FreeRTOS port vars */
     . = ALIGN(4);

@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include "rtos_def.h"
 
-/* TODO: LP stub -- bl_lp.h removed; re-enable for post-ASIC low-power */
+/* TODO: LP stub -- reference lp header removed; re-enable for post-ASIC low-power */
 #if !defined(CFG_IPRO_WIFI_PS_ENABLE) && !defined(CFG_WIFI_PDS_RESUME)
 enum PSM_EVENT {
     PSM_EVENT_SCAN = 0,

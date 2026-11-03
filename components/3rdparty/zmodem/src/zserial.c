@@ -506,6 +506,9 @@ ZRESULT zm_await_header(ZHDR *hdr) {
       DEBUGF("Got ZDLE, awaiting type...\r\n");
       ZRESULT frame_type = zm_read_escaped();
 
+      if (frame_type == CANCELLED || frame_type == CLOSED) {
+          return frame_type;
+      }
       if (IS_ERROR(frame_type)) {
           DEBUGF("Got error reading frame type: 0x%04x\r\n", frame_type);
           continue;

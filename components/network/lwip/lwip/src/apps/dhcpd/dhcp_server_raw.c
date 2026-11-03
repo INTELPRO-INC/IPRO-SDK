@@ -243,7 +243,7 @@ dhcp_client_alloc(struct dhcp_server *dhcpserver, struct dhcp_msg *msg,
         node = dhcp_client_find_by_ip(dhcpserver, &opt[2]);
         if (node != NULL)
         {
-            //Fix http://jira.iprolab.com/browse/WIFI6-15
+            // Hand the address back only to the client that holds the lease.
             if (0 == memcmp(node->chaddr, msg->chaddr, msg->hlen)) {
                 return node;
             }

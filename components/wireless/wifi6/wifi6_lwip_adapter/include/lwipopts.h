@@ -85,7 +85,7 @@ extern int sys_current_is_tcpip(void);
 #define LWIP_DEBUG                    1
 #define LWIP_STATS_DISPLAY            1
 #define SOCKETS_DEBUG                 LWIP_DBG_OFF
-#ifdef BL616_DHCP_DEBUG
+#ifdef IPRO6_DHCP_DEBUG
 #define DHCP_DEBUG                    LWIP_DBG_ON
 #else
 #define DHCP_DEBUG                    LWIP_DBG_OFF

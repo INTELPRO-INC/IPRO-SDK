@@ -90,6 +90,8 @@ typedef struct {
 #define RNM_MSG_FLAG_TRANSPARENT (1 << 1)
     // flag ASYNC is used by server to notify client events such as STA_CONNECTED
 #define RNM_MSG_FLAG_ASYNC       (1 << 2)
+    // flag LOCAL is never transfered: a device-internal command, not acked
+#define RNM_MSG_FLAG_LOCAL       (1 << 3)
     uint16_t flags;
     uint16_t status;
     uint16_t msg_id;

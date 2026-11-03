@@ -18,7 +18,7 @@
 
 /**
  * @file usb_console.h
- * @brief Single-CDC-ACM USB console for the fall turnkey apps.
+ * @brief Single-CDC-ACM USB console shared by apps without a UART console.
  *
  * One USB CDC-ACM function that fully replaces the UART debug console:
  *   - printf / puts / putchar (and therefore IPRO_LOG) are redirected to
@@ -34,8 +34,8 @@
  * exposed UART.
  *
  * USB identity: VID/PID/serial are overridable per app via compile
- * definitions (USB_CONSOLE_VID / USB_CONSOLE_PID / USB_CONSOLE_PRODUCT_*),
- * so the neck and gateway enumerate as distinct devices.
+ * definitions (USB_CONSOLE_VID / USB_CONSOLE_PID / USB_CONSOLE_PRODUCT /
+ * USB_CONSOLE_SERIAL), so different apps enumerate as distinct devices.
  */
 
 #ifndef __USB_CONSOLE_H__

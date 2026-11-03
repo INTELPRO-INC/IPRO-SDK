@@ -60,7 +60,7 @@ ls /dev/cu.usbserial-*
 | CMake | 系統安裝 (macOS: `brew install cmake`) | 建置系統 |
 | Make | 系統自帶 | 建置入口 |
 | Python 3 | 系統自帶 | 串口監控工具 |
-| ipro_iot_tool_lite | `tools/ipro_iot_tool_lite/ipro_iot_tool_lite` | 韌體燒錄工具 (SDK 內建) |
+| IntelProCube 命令列工具 | `ipro_iot_tool_macos`（Linux：`ipro_iot_tool_linux`；Windows：`ipro_iot_tool.exe`），與 SDK 分開取得 | 韌體燒錄工具 |
 | serial_monitor.py | `tools/serial_monitor.py` | 串口監控工具 (SDK 內建，無需 pyserial) |
 
 ### 驗證環境
@@ -69,8 +69,8 @@ ls /dev/cu.usbserial-*
 # 確認交叉編譯器
 /opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-gcc --version
 
-# 確認燒錄工具存在
-ls -la tools/ipro_iot_tool_lite/ipro_iot_tool_lite
+# 確認燒錄工具在 PATH 上（或以 IPRO_FLASH_TOOL 指定路徑）
+which ipro_iot_tool_macos
 
 # 確認串口監控工具
 python3 tools/serial_monitor.py --help
@@ -134,12 +134,12 @@ python3 tools/serial_monitor.py /dev/cu.usbserial-2120 --send reboot_dl --timeou
 燒錄命令格式：
 
 ```bash
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite \
+ipro_iot_tool_macos \
     --chipname ipro7 \
     --port /dev/cu.usbserial-XXXX \
     --firmware apps/bluetooth/ble/ipro_throughput_test/build/build_out/ipro_throughput_test_IPRO7.bin \
     --baudrate 921600 \
-    --flash-pin 0x02
+    --chip-variant IPRO7
 ```
 
 ### 4.3 燒錄兩塊板子的完整流程
@@ -154,12 +154,12 @@ python3 tools/serial_monitor.py /dev/cu.usbserial-2120 --send reboot_dl --timeou
 sleep 2
 
 # 步驟 3: 燒錄
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite \
+ipro_iot_tool_macos \
     --chipname ipro7 \
     --port /dev/cu.usbserial-2120 \
     --firmware apps/bluetooth/ble/ipro_throughput_test/build/build_out/ipro_throughput_test_IPRO7.bin \
     --baudrate 921600 \
-    --flash-pin 0x02
+    --chip-variant IPRO7
 ```
 
 **Board 2 (Master)：**
@@ -172,15 +172,15 @@ python3 tools/serial_monitor.py /dev/cu.usbserial-2130 --send reboot_dl --timeou
 sleep 2
 
 # 步驟 3: 燒錄
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite \
+ipro_iot_tool_macos \
     --chipname ipro7 \
     --port /dev/cu.usbserial-2130 \
     --firmware apps/bluetooth/ble/ipro_throughput_test/build/build_out/ipro_throughput_test_IPRO7.bin \
     --baudrate 921600 \
-    --flash-pin 0x02
+    --chip-variant IPRO7
 ```
 
-燒錄成功會顯示進度條並完成，耗時約 10 秒。
+燒錄成功會顯示進度條並完成，耗時約 10 秒。工具即使燒錄失敗也會回傳 0，請以輸出中的 `[All Success]` 判斷成功。`--chip-variant` 選擇 flash pin：EVB 用 `IPRO7`，Reef（QFN56）用 `IPRO7AI`。
 
 ### 4.4 燒錄後重啟
 

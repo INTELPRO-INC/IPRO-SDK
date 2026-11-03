@@ -24,7 +24,9 @@
 #define __ETHERNET_PHY_H__
 
 #include "misc.h"
-#include "mii.h"
+/* mii.h (MII register definitions) is included only by the PHY driver that
+ * uses it (phy_rtl8201f.c); the EMAC HAL and the apps that include hal_emac.h
+ * do not need it. */
 
 typedef enum emac_phy_status {
     EMAC_PHY_STAT_EEROR,

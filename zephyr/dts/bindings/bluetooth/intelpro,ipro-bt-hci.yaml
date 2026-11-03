@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  IPRO7 BLE controller (RivieraWaves-derived, shipped as a prebuilt archive in
+  IPRO7 BLE controller (INTELPRO Bluetooth controller, shipped as a prebuilt archive in
   components/wireless/bluetooth/ipro_ble_controller/lib) exposed to the Zephyr
   Bluetooth host as an HCI driver. The H4 byte stream flows through the
   controller's in-memory HCI transport (hcitl); no UART is involved.

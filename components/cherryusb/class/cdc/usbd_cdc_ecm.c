@@ -19,13 +19,24 @@ static struct usbd_endpoint cdc_ecm_ep_data[3];
 #define CDC_ECM_MAX_PACKET_SIZE 64
 #endif
 
-static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_cdc_ecm_rx_buffer[CONFIG_CDC_ECM_ETH_MAX_SEGSZE];
+/* The OUT EP is armed one packet at a time at g_cdc_ecm_rx_data_length, so the
+ * RX buffer must hold a whole packet at every offset it is armed at: round the
+ * largest frame up to whole packets (1536 at FS and HS). */
+#define CDC_ECM_RX_BUFSZ \
+    (((CONFIG_CDC_ECM_ETH_MAX_SEGSZE / CDC_ECM_MAX_PACKET_SIZE) + 1) * CDC_ECM_MAX_PACKET_SIZE)
+
+static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_cdc_ecm_rx_buffer[CDC_ECM_RX_BUFSZ];
 static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_cdc_ecm_tx_buffer[CONFIG_CDC_ECM_ETH_MAX_SEGSZE];
 static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_cdc_ecm_notify_buf[16];
 
 volatile uint8_t *g_cdc_ecm_rx_data_buffer = NULL;
 volatile uint32_t g_cdc_ecm_rx_data_length = 0;
 volatile uint32_t g_cdc_ecm_tx_data_length = 0;
+
+/* Transfers that ran past the RX buffer without a short packet and were
+ * dropped (see cdc_ecm_bulk_out). Read by the application's diagnostics. */
+volatile uint32_t g_cdc_ecm_rx_overflow = 0;
+static volatile bool g_cdc_ecm_rx_discard = false;
 
 static volatile uint8_t g_current_net_status = 0;
 static volatile uint8_t g_cmd_intf = 0;
@@ -112,6 +123,7 @@ void cdc_ecm_notify_handler(uint8_t event, void *arg)
             g_cdc_ecm_rx_data_length = 0;
             g_cdc_ecm_tx_data_length = 0;
             g_cdc_ecm_rx_data_buffer = NULL;
+            g_cdc_ecm_rx_discard = false;
             break;
         case USBD_EVENT_CONFIGURED:
             usbd_ep_start_read(cdc_ecm_ep_data[CDC_ECM_OUT_EP_IDX].ep_addr, &g_cdc_ecm_rx_buffer[g_cdc_ecm_rx_data_length], CDC_ECM_MAX_PACKET_SIZE);
@@ -127,10 +139,28 @@ void cdc_ecm_bulk_out(uint8_t ep, uint32_t nbytes)
     g_cdc_ecm_rx_data_length += nbytes;
 
     if (nbytes < CDC_ECM_MAX_PACKET_SIZE) {
+        if (g_cdc_ecm_rx_discard) {
+            /* End of an over-long transfer whose head was dropped: discard it
+             * and frame again from the next packet. */
+            usbd_cdc_ecm_start_read_next_packet();
+            return;
+        }
         g_cdc_ecm_rx_data_buffer = g_cdc_ecm_rx_buffer;
         USB_LOG_DBG("rxlen:%d\r\n", g_cdc_ecm_rx_data_length);
         usbd_cdc_ecm_packet_recv_done((uint8_t *)g_cdc_ecm_rx_data_buffer, g_cdc_ecm_rx_data_length);
     } else {
+        /* No short packet within the largest frame: the stream lost a frame
+         * boundary (a dropped short packet, a coalesced FIFO read). Arming
+         * past the buffer would let the next packet overwrite whatever
+         * follows it in RAM, so drop everything up to the next short packet,
+         * reading it into the start of the buffer. */
+        if (g_cdc_ecm_rx_data_length + CDC_ECM_MAX_PACKET_SIZE > sizeof(g_cdc_ecm_rx_buffer)) {
+            if (!g_cdc_ecm_rx_discard) {
+                g_cdc_ecm_rx_overflow++;
+                g_cdc_ecm_rx_discard = true;
+            }
+            g_cdc_ecm_rx_data_length = 0;
+        }
         usbd_ep_start_read(ep, &g_cdc_ecm_rx_buffer[g_cdc_ecm_rx_data_length], CDC_ECM_MAX_PACKET_SIZE);
     }
 }
@@ -184,6 +214,7 @@ void usbd_cdc_ecm_start_read_next_packet(void)
 {
     g_cdc_ecm_rx_data_length = 0;
     g_cdc_ecm_rx_data_buffer = NULL;
+    g_cdc_ecm_rx_discard = false;
     usbd_ep_start_read(cdc_ecm_ep_data[CDC_ECM_OUT_EP_IDX].ep_addr, g_cdc_ecm_rx_buffer, CDC_ECM_MAX_PACKET_SIZE);
 }
 

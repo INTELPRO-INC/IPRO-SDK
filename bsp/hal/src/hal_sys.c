@@ -17,6 +17,7 @@
  */
 
 #include "hal_sys.h"
+#include "hal_aon_wdt.h"
 #include "hal_hbnram_mgnt.h"
 #include "hal_mtimer.h"
 #include "drv_aon.h"
@@ -160,9 +161,26 @@ void hal_reboot(void)
     }
 }
 
+void hal_reboot_full(void)
+{
+#if defined(CONFIG_AON_WDT_SUPPORT)
+    __disable_irq();
+    aon_wdt_init(10);   /* 2^11 cycles of the 32 kHz RC clock: about 60 ms */
+    while (1) {
+        /*empty dead loop*/
+    }
+#else
+    hal_reboot();
+#endif
+}
+
 void hal_reboot_download(void)
 {
     __disable_irq();
+    /* The AON watchdog keeps counting through this reset and the boot ROM's
+     * download mode never feeds it: left armed it would restart the chip in
+     * the middle of a flash (seen on the Reef with an 8 s watchdog). */
+    aon_wdt_disable();
     HBN_Set_User_Boot_Config(1);
     GLB_SW_POR_Reset();
     while (1) {
@@ -785,7 +803,7 @@ int hal_rc32k_measure_error_ppm(uint32_t window_us)
  * Uses CPU MTimer (XTAL32M) as the precision reference and sweeps the 4-bit
  * RC32K cap_sel (0..15) to find the value that minimizes |freq_error|.
  *
- * Reference flow: bl616 hal_pm.c pm_rc32k_auto_cal — same idea (compare RTC
+ * Reference flow: the reference HAL's RC32K auto-calibration — same idea (compare RTC
  * delta vs mtimer delta), but adapted to one-shot boot-time cap sweep
  * because IPRO7 cap_sel is coarse (only 16 codes, not a fine recal nudge).
  *

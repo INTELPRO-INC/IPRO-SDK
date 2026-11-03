@@ -50,9 +50,9 @@ rebuild: clean all
 #
 SERIAL_PORT ?= /dev/cu.usbserial-2120
 # IntelProCube v0.6.3 command-line flasher (ipro_iot_tool_macos / _linux / .exe).
-# It has no --flash-pin: flash_pin lives in
-# <IntelProCube dir>/chips/ipro7/eflash_loader/eflash_loader_cfg.ini.
+# CHIP_VARIANT selects the flash pin: IPRO7 (0x2) or IPRO7AI (0x9).
 FLASH_TOOL ?= $(IPRO_FLASH_TOOL)
+CHIP_VARIANT ?= IPRO7
 # Internal tool; not part of customer SDK packages.
 BOARD_TEST ?= $(IPRO_SDK_BASE)/tools/board_test.sh
 
@@ -61,6 +61,7 @@ flash: all
 	@test -n "$(FLASH_TOOL)" || { echo "Set IPRO_FLASH_TOOL (or FLASH_TOOL=) to the IntelProCube ipro_iot_tool binary"; exit 1; }
 	$(FLASH_TOOL) \
 		--chipname ipro7 \
+		--chip-variant $(CHIP_VARIANT) \
 		--port $(SERIAL_PORT) \
 		--firmware $$(ls build/build_out/*.bin | head -1) \
 		--baudrate 921600 2>&1 | tee build/flash.log

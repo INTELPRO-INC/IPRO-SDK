@@ -45,9 +45,16 @@ VERBOSE=0
 DEFCONFIG=""
 ACTIONS=()
 PROJECT_INPUT=""
-# IntelProCube v0.6.3 command-line flasher (no --flash-pin flag: flash_pin lives in
-# <tool dir>/chips/ipro7/eflash_loader/eflash_loader_cfg.ini). Set IPRO_FLASH_TOOL to
-# it, or put the IntelProCube directory on PATH.
+# --chip-variant for the flasher: -c, else $IPRO_CHIP_VARIANT, else from the board
+# in the project's config (get_chip_variant).
+CHIP_VARIANT="${IPRO_CHIP_VARIANT:-}"
+# --pt partition table for the flasher: -P, else $IPRO_FLASH_PT, else the tool's default.
+FLASH_PT="${IPRO_FLASH_PT:-}"
+# Flash download rate; independent of the app's console rate.
+FLASH_BAUD=921600
+# IntelProCube v0.6.3 command-line flasher. --chip-variant selects the flash pin
+# (IPRO7 = 0x2, IPRO7AI = 0x9). Set IPRO_FLASH_TOOL to it, or put the IntelProCube
+# directory on PATH.
 case "$(uname -s)" in
     Darwin) FLASH_TOOL_NAME="ipro_iot_tool_macos" ;;
     Linux)  FLASH_TOOL_NAME="ipro_iot_tool_linux" ;;
@@ -95,6 +102,10 @@ Options:
   -t, --timeout SEC    Monitor/test timeout (default: 30)
   -w, --wait-for PAT   Wait-for pattern (regex) for monitor
   -d, --defconfig FILE Use alternate defconfig (builds in build_<name>/)
+  -c, --chip-variant V Flash --chip-variant (default: \$IPRO_CHIP_VARIANT, else IPRO7AI
+                       for the IPRO7AI EVK / Reef configs, IPRO7 otherwise)
+  -P, --pt TABLE       Flash partition table: a .toml path, or a table name the tool
+                       knows (default: \$IPRO_FLASH_PT, else the tool's default)
   -j, --jobs N         Parallel make jobs
   -v, --verbose        Show full build output
   -l, --list           List available projects
@@ -106,7 +117,7 @@ Examples:
   ./build_freertos.sh build flash monitor ipro_ble_remote    # full workflow
   ./build_freertos.sh test ipro_unit_test                    # automated test
   ./build_freertos.sh size bluetooth/ble/ipro_ble_remote         # ELF size report
-  ./build_freertos.sh -d defconfig_xxx ipro_blecontroller_test  # build with defconfig
+  ./build_freertos.sh -d defconfig_reef ipro_ble_remote     # build with defconfig
   ./build_freertos.sh -l                                     # list all projects
 EOF
     exit 0
@@ -210,15 +221,45 @@ list_projects() {
     done < <(discover_projects)
 }
 
+# --- Project config values ---
+# The config file a build of project_dir uses: the -d defconfig, else .config.
+get_config_file() {
+    local project_dir="$1"
+    if [ -n "$DEFCONFIG" ]; then
+        echo "$project_dir/$DEFCONFIG"
+    else
+        echo "$project_dir/.config"
+    fi
+}
+
+# Console UART rate the firmware runs at (CONFIG_PLATFORM_UART_BAUDRATE, 115200 if unset).
+get_console_baud() {
+    local config baud
+    config="$(get_config_file "$1")"
+    baud="$(grep -m1 '^CONFIG_PLATFORM_UART_BAUDRATE=' "$config" 2>/dev/null | cut -d= -f2 || true)"
+    echo "${baud:-115200}"
+}
+
+# Flasher --chip-variant: IPRO7AI (flash pin 0x9) for the IPRO7AI EVK and Reef boards.
+get_chip_variant() {
+    if [ -n "$CHIP_VARIANT" ]; then
+        echo "$CHIP_VARIANT"
+        return
+    fi
+    local config
+    config="$(get_config_file "$1")"
+    if grep -qE '^CONFIG_IPRO7AI_(EVK|REEF)=y' "$config" 2>/dev/null; then
+        echo "IPRO7AI"
+    else
+        echo "IPRO7"
+    fi
+}
+
 # --- Get chip suffix and binary paths ---
 get_chip_suffix() {
     local project_dir="$1"
     local config
-    if [ -n "$DEFCONFIG" ]; then
-        config="$project_dir/$DEFCONFIG"
-    else
-        config="$project_dir/.config"
-    fi
+    config="$(get_config_file "$project_dir")"
     if [ -f "$config" ]; then
         local chip
         chip="$(grep -m1 '^CONFIG_CHIP=' "$config" 2>/dev/null | sed 's/CONFIG_CHIP="*\([^"]*\)"*/\1/' || true)"
@@ -262,11 +303,7 @@ get_binary_paths() {
 get_cross_compile() {
     local project_dir="$1"
     local config
-    if [ -n "$DEFCONFIG" ]; then
-        config="$project_dir/$DEFCONFIG"
-    else
-        config="$project_dir/.config"
-    fi
+    config="$(get_config_file "$project_dir")"
     # Default RISC-V toolchain
     local prefix="/opt/toolchain/riscv_ipro7/bin/riscv64-unknown-elf-"
     if [ -f "$config" ]; then
@@ -363,20 +400,33 @@ action_flash() {
     fi
 
     require_port || return 1
+    local console_baud variant
+    console_baud="$(get_console_baud "$project_dir")"
+    variant="$(get_chip_variant "$project_dir")"
     if [ -f "$SERIAL_MONITOR" ]; then
         info "Entering download mode..."
-        python3 "$SERIAL_MONITOR" "$SERIAL_PORT" --send reboot_dl --timeout 2 2>/dev/null || true
+        python3 "$SERIAL_MONITOR" "$SERIAL_PORT" --baud "$console_baud" --send reboot_dl --timeout 2 2>/dev/null || true
         sleep 2
     else
         warn "No serial monitor: put the board in download mode yourself (reboot_dl at the console, or the BOOT strap)"
     fi
 
-    info "Flashing ${BOLD}$(basename "$BIN_PATH")${RESET}..."
+    local flash_args=(--chipname ipro7 --chip-variant "$variant" --port "$SERIAL_PORT"
+                      --firmware "$BIN_PATH" --baudrate "$FLASH_BAUD")
+    if [ -n "$FLASH_PT" ]; then
+        # A file here is passed as an absolute path; anything else goes through
+        # as given (the tool also takes a table name under chips/ipro7/partition).
+        local pt="$FLASH_PT"
+        [ -f "$pt" ] && pt="$(cd "$(dirname "$pt")" && pwd)/$(basename "$pt")"
+        flash_args+=(--pt "$pt")
+    fi
+
+    info "Flashing ${BOLD}$(basename "$BIN_PATH")${RESET} (--chip-variant $variant${FLASH_PT:+, --pt $FLASH_PT})..."
     local start=$SECONDS
     # The tool exits 0 even when flashing fails; "[All Success]" is the verdict.
     local log
     log="$(mktemp)"
-    if "$FLASH_TOOL" --chipname ipro7 --port "$SERIAL_PORT" --firmware "$BIN_PATH" --baudrate 921600 2>&1 \
+    if "$FLASH_TOOL" "${flash_args[@]}" 2>&1 \
             | tee "$log" && grep -q "\[All Success\]" "$log"; then
         local dur=$(( SECONDS - start ))
         rm -f "$log"
@@ -413,7 +463,7 @@ require_port() {
 require_serial_monitor() {
     [ -f "$SERIAL_MONITOR" ] && return 0
     fail "Serial monitor not found: $SERIAL_MONITOR"
-    echo "  Open $SERIAL_PORT at 115200 8N1 with any terminal instead."
+    echo "  Open $SERIAL_PORT at the app's console rate (8N1) with any terminal instead."
     return 1
 }
 
@@ -421,9 +471,11 @@ action_monitor() {
     local project_dir="$1"
     require_serial_monitor || return 1
     require_port || return 1
-    info "Opening serial monitor on ${BOLD}$SERIAL_PORT${RESET}..."
+    local console_baud
+    console_baud="$(get_console_baud "$project_dir")"
+    info "Opening serial monitor on ${BOLD}$SERIAL_PORT${RESET} at $console_baud..."
 
-    local mon_args=("$SERIAL_PORT" "--timeout" "$TIMEOUT" "--send" "reboot")
+    local mon_args=("$SERIAL_PORT" "--baud" "$console_baud" "--timeout" "$TIMEOUT" "--send" "reboot")
     if [ -n "$WAIT_PATTERN" ]; then
         mon_args+=("--wait-for" "$WAIT_PATTERN")
     fi
@@ -463,7 +515,8 @@ action_test() {
     action_flash "$project_dir"
 
     info "Running tests (timeout: ${TIMEOUT}s)..."
-    local mon_args=("$SERIAL_PORT" "--timeout" "$TIMEOUT" "--send" "reboot" "--wait-for" "ALL TESTS PASSED|SOME TESTS FAILED")
+    local mon_args=("$SERIAL_PORT" "--baud" "$(get_console_baud "$project_dir")" "--timeout" "$TIMEOUT"
+                    "--send" "reboot" "--wait-for" "ALL TESTS PASSED|SOME TESTS FAILED")
 
     local output
     output="$(python3 "$SERIAL_MONITOR" "${mon_args[@]}" 2>&1)" || true
@@ -491,6 +544,8 @@ parse_args() {
             -t|--timeout) TIMEOUT="$2"; shift ;;
             -w|--wait-for) WAIT_PATTERN="$2"; shift ;;
             -d|--defconfig) DEFCONFIG="$2"; shift ;;
+            -c|--chip-variant) CHIP_VARIANT="$2"; shift ;;
+            -P|--pt)      FLASH_PT="$2"; shift ;;
             -j|--jobs)    JOBS="$2"; shift ;;
             -v|--verbose) VERBOSE=1 ;;
             build|clean|flash|monitor|size|test)

@@ -829,8 +829,8 @@
 #define RC_EZ23Q4_EDCA 0
 #endif
 
-#if !defined BL_RA_LOG_LEVEL
-#define BL_RA_LOG_LEVEL 0
+#if !defined IPRO_RA_LOG_LEVEL
+#define IPRO_RA_LOG_LEVEL 0
 #endif
 
 #if !defined CFG_HE_TB

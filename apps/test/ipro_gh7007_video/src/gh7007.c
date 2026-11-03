@@ -959,7 +959,7 @@ void gh7007_blit_end(void)
 /* rendering during the ~26 ms stream — this is what decouples render time */
 /* from stream time and pins ~30 fps.                                      */
 /*                                                                         */
-/* Landmines honored (from ipro7_pircam bench): peripheral-side burst MUST */
+/* Landmines honored (from earlier camera bench work): peripheral burst MUST */
 /* be single (INCR4 stalls on the 4-byte FIFO); request ID 7 per hal_dma.h */
 /* (drv_dma.h's enum 11 is stale); LLI nodes cleaned from D-cache before   */
 /* the engine reads them; frame buffer cleaned by the CALLER (PSRAM is     */
@@ -996,7 +996,7 @@ static __attribute__((aligned(16), section(".ocram_bss"))) dma_lli_ctrl_t s_stre
  * PSRAM frame buffer. Board-proven (lcd dmaprobe): identical channel setups
  * move data from an OCRAM source but hang forever on a PSRAM source (channel
  * Active=1, no progress) — this DMA cannot read the PSRAM address space in
- * the normal clock config (pircam only got PSRAM-source DMA working after
+ * the normal clock config (PSRAM-source DMA only worked on the bench after
  * re-clocking PSRAM onto BCLK, a system-wide change we won't make). The ISR
  * memcpy's the next row PSRAM->OCRAM (~640 B, a few us) before arming. */
 static __attribute__((aligned(16), section(".ocram_bss"))) uint8_t s_stream_rowbuf[GH_IN_WIDTH * 2];
@@ -1041,8 +1041,8 @@ static void gh_stream_arm_row(void)
     s_stream_lli.nextlli  = 0;
     s_stream_lli.cfg.WORD = 0;
     /* 32-BIT transfers, frameSize stays 8: dmaprobe2 proved 8-bit DMA writes
-     * to this FIFO get exactly ONE request grant then starve; pircam's proven
-     * config (and the CPU path's writel) are 32-bit stores. 640 B = 160 words. */
+     * to this FIFO get exactly ONE request grant then starve; the proven
+     * camera-bench config (and the CPU path's writel) are 32-bit stores. 640 B = 160 words. */
     s_stream_lli.cfg.bits.TransferSize = s_stream.row_bytes / 4;
     s_stream_lli.cfg.bits.SBSize = 0;                 /* SIZE_1 — the probe-proven combo */
     s_stream_lli.cfg.bits.DBSize = 0;                 /* FIFO side: single! */
@@ -1311,7 +1311,7 @@ static uint32_t gh_p2_arm64(int with_irq, int w32)
     }
     L1C_DCACHE_CLEAN_RANGE((uintptr_t)buf, sizeof(buf));
 
-    /* Re-init the channel with matching widths (pircam ran 32-bit). */
+    /* Re-init the channel with matching widths (the camera bench ran 32-bit). */
     DMA_Channel_Disable(DMA0_ID, GH_STREAM_DMA_CH);
     DMA_Channel_Cfg_Type cc = { 0 };
     cc.ch             = GH_STREAM_DMA_CH;
@@ -1413,7 +1413,7 @@ void gh7007_dma_probe2(void)
     printf("[P2] E isr delta = %u (1 = TC interrupt path GOOD)\r\n",
            (unsigned)(s_stream_isr_rows - isr0));
 
-    /* G: 32-BIT width, CS high — the pircam-proven configuration */
+    /* G: 32-BIT width, CS high — the bench-proven configuration */
     gh_cs(1); gh_p2_fifo_clear();
     src0 = gh_p2_arm64(0, 1);
     vTaskDelay(pdMS_TO_TICKS(5));
@@ -1458,7 +1458,7 @@ void gh7007_dma_probe2(void)
            (unsigned)(s_stream_isr_rows - isr0));
 
     /* CLOCK-RACE verdict: G repeated 3x at SPI 8 MHz vs 3x at 48 MHz.
-     * pircam's working bench ran 8 MHz; our G flip-flops at 48 MHz between
+     * The working camera bench ran 8 MHz; our G flip-flops at 48 MHz between
      * free-run and one-grant — classic request-pulse vs DMA-clock-domain
      * sampling race. Deterministic pass at 8 M + flaky at 48 M = silicon. */
     {

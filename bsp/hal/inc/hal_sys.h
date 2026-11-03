@@ -102,6 +102,11 @@ enum {
 /*============================ System Functions ===============================*/
 
 void hal_reboot(void);
+/* Reset the whole chip through the AON watchdog, the always-on domain included,
+ * which hal_reboot()'s power-on reset leaves as it was. About 60 ms slower; the
+ * next boot reports HAL_RST_REASON_AON_WDT. Without the AON watchdog
+ * (CONFIG_AON_WDT_SUPPORT) it is hal_reboot(). */
+void hal_reboot_full(void);
 void hal_reboot_download(void);
 /* Power-on reset into MEDIA boot, whatever the boot strap reads. */
 void hal_reboot_media(void);

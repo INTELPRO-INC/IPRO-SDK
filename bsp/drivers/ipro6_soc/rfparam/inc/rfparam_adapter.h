@@ -90,7 +90,7 @@ int32_t rfparam_get_cap_code_with_option(uint32_t base_addr, uint8_t *capcode_in
 uint32_t rfparam_tlv_base_addr_get();
 /* Explicitly set the RF TLV base (e.g. the XIP address of the "factory"
  * partition). The legacy auto-detection in rfparam_load() derives the base
- * from the CODE address, which only matches the BL616 memory map — on IPRO6
+ * from the CODE address, which only matches the reference memory map — on IPRO6
  * (code at 0x13xxxxxx) it always fails. When set, this override wins. */
 void rfparam_tlv_base_set(uint32_t addr);
 

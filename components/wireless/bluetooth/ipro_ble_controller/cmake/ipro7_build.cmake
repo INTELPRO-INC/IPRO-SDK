@@ -130,6 +130,21 @@ if(DEFINED CONFIG_IPRO_BLE_CTLR_32K_CORRECTED_DRIFT_PPM)
 else()
     list(APPEND IPRO_BLE_CTLR_GLOBAL_DEFS IPRO_BLE_CTLR_32K_CORRECTED_DRIFT_PPM=0)
 endif()
+# RAM sizing for the retained 64 KB of a MISC-off PDS. Archives keep the
+# defaults, so only a source build can change them:
+#   NON_RET_HEAP_SIZE     non-retention kernel heap (patch 0018: 5 KB, P-256 jobs)
+#   MSG_HEAP_SIZE         kernel message heap (upstream formula, patch 0018)
+#   TASK_STACK_SIZE       controller task stack (4 KB, arch_main.c)
+#   PDS_CYCLE_RING_DEPTH  per-PDS diagnostic rings (16, ipro_ble_ctlr_pds_snapshot.c)
+#   LINK_DIAG_S           bench console line every N s (ipro_ble_ctlr_link_diag.c)
+foreach(_knob NON_RET_HEAP_SIZE MSG_HEAP_SIZE TASK_STACK_SIZE PDS_CYCLE_RING_DEPTH LINK_DIAG_S)
+    if(DEFINED CONFIG_IPRO_BLE_CTLR_${_knob})
+        if(NOT CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD)
+            message(FATAL_ERROR "[ipro_ble_controller] CONFIG_IPRO_BLE_CTLR_${_knob} needs a source build")
+        endif()
+        list(APPEND IPRO_BLE_CTLR_GLOBAL_DEFS IPRO_BLE_CTLR_${_knob}=${CONFIG_IPRO_BLE_CTLR_${_knob}})
+    endif()
+endforeach()
 
 if(NOT DEFINED CONFIG_EM_SIZE)
     message(FATAL_ERROR "[ipro_ble_controller] CONFIG_EM_SIZE must match the IPRO7 hardware EM selection")
@@ -1224,6 +1239,7 @@ list(APPEND IPRO_BLE_CTLR_SRC
     ${IPRO_BLE_CTLR_PLF}/lowpower/ipro_ble_ctlr_lowpower.c
     ${IPRO_BLE_CTLR_PLF}/lowpower/ipro_ble_ctlr_pds_snapshot.c
     ${IPRO_BLE_CTLR_PLF}/lowpower/ipro_ble_ctlr_pds_link.c
+    ${IPRO_BLE_CTLR_PLF}/lowpower/ipro_ble_ctlr_link_diag.c
 )
 
 # ---------------------------------------------------------------------------

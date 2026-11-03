@@ -692,6 +692,48 @@ config DISABLE_EM_TCM_RET
 
       Say N unless you know your OCRAM can fit all TCM code.
 
+config OCRAM_NORET_SCRATCH_ONLY
+    bool "Keep all RAM state in the PDS-retained 64 KB (PDS with MISC off)"
+    default n
+    depends on IPRO7
+    help
+      IPRO7 flash builds with CONFIG_OCRAM_NORET_SPLIT=y and without
+      CONFIG_OCRAM_NORET_AS_RAM or PSRAM. A PDS with the MISC domain powered
+      off keeps only the front 64 KB of OCRAM (and the EM bank), so .data,
+      .bss, the heap and every task stack stay there; ocram_noret holds only
+      buffers no code reads across a PDS (OCRAM_NORET_SCRATCH_INPUTS), the
+      main/interrupt stack, and RAM code that the wake path never runs
+      (OCRAM_TCM_RELOAD_OBJECTS, copied back from flash by the first
+      hal_lp wakeup hook). Both lists are in
+      bsp/board/linker/configs/ipro7_flash.cmake. The noret leftover is not
+      given to the heap.
+
+      Needed before a connected-PDS policy without KEEP_MISC
+      (CONFIG_IPRO_PM_BLE_PDS_DOMAIN_POLICY, e.g. 0x59). The link fails if
+      the image does not fit or leaves less than
+      CONFIG_OCRAM_RETAINED_HEAP_MIN bytes of heap.
+
+config OCRAM_RETAINED_HEAP_MIN
+    int "Minimum heap left in the retained 64 KB (bytes)"
+    default 6144
+    depends on OCRAM_NORET_SCRATCH_ONLY
+    help
+      Link-time floor for the heap_5 region that remains in the front 64 KB
+      under CONFIG_OCRAM_NORET_SCRATCH_ONLY. Size it from the measured
+      minimum-ever free heap plus a margin.
+
+config HAL_LP_STACK_WORDS
+    int "IPRO7 hal_lp PDS entry/wake stack (32-bit words)"
+    depends on IPRO7
+    range 256 512
+    default 512
+    help
+      The stack hal_lp_enter() switches to before PDS and the wake path
+      (clock, XIP and PSRAM recovery) runs on. Leave it at 512 words (2 KB)
+      unless the retained 64 KB is short; the static worst case was about
+      0.4 KB in 2026-10 (CONFIG_FREERTOS_STACK_REPORT_S prints the measured
+      depth).
+
 endmenu
 
 #
@@ -729,6 +771,32 @@ config LDO_SUPPORT
 
       Say N for boards with DCDC circuit (default).
       Say Y for boards using LDO-only power supply.
+
+config BOARD_SYSCLK_DLL128M
+    bool "System clock DLL 128 MHz with the PLL off (BLE-only apps)"
+    default n
+    depends on IPRO7
+    help
+      IPRO7 EVB board config: HCLK 128 MHz, BCLK 64 MHz from the DLL, PLL
+      powered down at boot and kept down across PDS (hal_lp_restore_sys_clk).
+      BLE, RF, UART (XCLK) and the 64 MHz flash clock only need XTAL + DLL;
+      the PLL alone keeps several mA flowing while the CPU waits in WFI.
+      Peripherals clocked from the PLL (SDH on PLL 96M) stop.
+
+config BOARD_SYSCLK_XTAL
+    bool "System clock XTAL 32 MHz with the PLL off (BLE-only apps)"
+    default n
+    depends on IPRO7 && !BOARD_SYSCLK_DLL128M
+    help
+      As BOARD_SYSCLK_DLL128M, but HCLK = BCLK = 32 MHz straight from the
+      crystal and the flash on XCLK (32 MHz): a PDS wake restores an XTAL
+      root without the DLL and recovers XIP before the BLE restore powers
+      the DLL again.
+
+      Not for connected PDS (CONFIG_IPRO_PM_PDS_CONNECTED) yet: under this
+      root the HBN RTC counter restarts from 0 just before the PDS arm
+      (2026-10), so the wake comes about 22 s late and the link drops. Use
+      BOARD_SYSCLK_DLL128M there; HBN-only apps are fine.
 
 config SUPPORT_PURE_DCDC
     bool "Skip DCDC/LDO re-init on HBN wake (requires DCDC mode)"
@@ -839,6 +907,22 @@ config DMA_CHANNEL_ALLOCATOR
       Per-app opt-in: enable per project .config as each app is
       ported onto the allocator. Mixing modes across apps in one
       build is supported for migration.
+
+config SEC_ENG_HAL_V2
+    bool "SEC_ENG HAL v2 (hal_sec_*_v2)"
+    default n
+    help
+      Build the SEC_ENG HAL v2: SHA, AES, GHASH, P-256 PKA and TRNG
+      with relocatable contexts, per-call engine programming, error
+      returns and group0 claim, beside the v1 hal_sec_* API.
+
+config SEC_ENG_HAL_V2_CHUNK
+    int "SEC_ENG HAL v2 bytes per LINK job"
+    depends on SEC_ENG_HAL_V2
+    range 128 4096
+    default 256
+    help
+      Size of each per-block DMA scratch buffer; a multiple of 128.
 
 endmenu
 

@@ -27,10 +27,10 @@
 #define LP_FW_START_ADDR    0x23026800 // XXX duplicated
 #define LP_FW_MAX_SIZE      (37 * 1024)
 
-#ifndef BL_SDIO_RX_MAX_PORT_NUM
+#ifndef IPRO_SDIO_RX_MAX_PORT_NUM
 #define SDIO_RX_MAX_PORT_NUM   8
 #else
-#define SDIO_RX_MAX_PORT_NUM BL_SDIO_RX_MAX_PORT_NUM
+#define SDIO_RX_MAX_PORT_NUM IPRO_SDIO_RX_MAX_PORT_NUM
 #endif
 
 #define SDIO_RX_BUF_SIZE     2048

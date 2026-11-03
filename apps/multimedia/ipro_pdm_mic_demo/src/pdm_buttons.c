@@ -28,7 +28,7 @@
 
 #define TAG "PDM_BTN"
 
-/* Measured on the Zinwell AI Assistant board (2026-10-11): the V02 schematic labels read Power G5 /
+/* Measured on the AI Assistant reference board (2026-10-11): the V02 schematic labels read Power G5 /
  * Vol+ G6 / Vol- G7, but the Power key reads G7, Vol+ G5 and Vol- G6 - as `btn` in main.c has it. */
 #define BTN_POWER_PIN       7U
 #define BTN_VOL_UP_PIN      5U

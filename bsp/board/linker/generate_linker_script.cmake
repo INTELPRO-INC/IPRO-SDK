@@ -472,6 +472,37 @@ function(generate_linker_script)
         set(OCRAM_DATA_END_MARKER "")
     endif()
 
+    # CONFIG_OCRAM_NORET_SCRATCH_ONLY (configs/ipro7_flash.cmake): the audited
+    # scratch buffers leave .bss / .bss_ocram for ocram_noret. Emitted ahead of
+    # both because ld places an input section by its first matching statement.
+    set(OCRAM_RETAINED_ASSERTS "")
+    if(CONFIG_OCRAM_NORET_SCRATCH_ONLY)
+        if(NOT DEFINED OCRAM_NORET_SCRATCH_INPUTS)
+            message(FATAL_ERROR "CONFIG_OCRAM_NORET_SCRATCH_ONLY is defined for IPRO7 flash builds only")
+        endif()
+        string(JOIN "\n    " _noret_scratch ${OCRAM_NORET_SCRATCH_INPUTS})
+        set(OCRAM_BSS_SECTION "
+  /* CONFIG_OCRAM_NORET_SCRATCH_ONLY: buffers no code reads across a PDS.
+   * Lost when MISC is off; cleared at boot like the .bss they came from. */
+  .bss_noret_scratch (NOLOAD) : ALIGN(8)
+  {
+    PROVIDE( _bss_noret_scratch_start = . );
+    ${_noret_scratch}
+    . = ALIGN(8);
+    PROVIDE( _bss_noret_scratch_end = . );
+  } >ocram_noret
+${OCRAM_BSS_SECTION}")
+        set(OCRAM_RETAINED_ASSERTS "
+  /* CONFIG_OCRAM_NORET_SCRATCH_ONLY: heap_5 gets only the front-64 KB
+   * leftover, and nothing may sit in physical OCRAM the region counters
+   * do not see (the .nocache_* alias). */
+  ASSERT(__heap_ocram_size >= ${CONFIG_OCRAM_RETAINED_HEAP_MIN},
+         \"CONFIG_OCRAM_NORET_SCRATCH_ONLY: retained heap below CONFIG_OCRAM_RETAINED_HEAP_MIN\")
+  ASSERT(__nocache_total_size == 0,
+         \"CONFIG_OCRAM_NORET_SCRATCH_ONLY: .nocache_* sections are not supported\")
+")
+    endif()
+
     # Handle FPGA RAM as Heap configuration (IPRO6 specific)
     # When CONFIG_FPGA_RAM_AS_HEAP is enabled, the flash region (which is actually RAM
     # in FPGA environment) can provide additional heap space after code/data sections.
@@ -523,6 +554,18 @@ function(generate_linker_script)
    * truncates (R_RISCV_GPREL_I against an *ABS* symbol). */
   __heap_noret_end = ORIGIN(ocram_noret) + LENGTH(ocram_noret) ;
 ")
+        if(CONFIG_OCRAM_NORET_SCRATCH_ONLY)
+            # heap_5 keeps its free list inside the heap, so a heap region in
+            # wiped RAM corrupts every later malloc: no noret heap at all.
+            string(REPLACE
+                "__heap_noret_end = ORIGIN(ocram_noret) + LENGTH(ocram_noret) ;"
+                "__heap_noret_end = __heap_noret_start ; /* CONFIG_OCRAM_NORET_SCRATCH_ONLY: no noret heap */"
+                OCRAM_NORET_SECTION "${OCRAM_NORET_SECTION}")
+            string(REPLACE
+                "__heap_noret_size = ORIGIN(ocram_noret) + LENGTH(ocram_noret) - __heap_noret_start ;"
+                "__heap_noret_size = 0 ;"
+                OCRAM_NORET_SECTION "${OCRAM_NORET_SECTION}")
+        endif()
     else()
         set(OCRAM_NORET_MEMORY_REGION "  /* ocram_noret disabled */")
         set(OCRAM_NORET_SECTION "  /* ocram_noret section disabled */")
@@ -681,6 +724,35 @@ function(generate_linker_script)
   __ocram_tcmcode_end = .;
 ")
         endif()
+        # Ahead of .tcmcode so these objects' TCM code matches here first.
+        if(CONFIG_OCRAM_NORET_SCRATCH_ONLY)
+            # ATTR_TCM_RELOAD_SECTION / _CONST_SECTION (compiler/common.h)
+            set(_reload_in "    *(.tcm_code.reload.* .tcm_const.reload.*)\n")
+            foreach(_obj ${OCRAM_TCM_RELOAD_OBJECTS})
+                string(APPEND _reload_in "    ${_obj}(.tcm_code.* .tcm_const.* .sclock_rlt_code.* .sclock_rlt_const.*)\n")
+            endforeach()
+            set(TCMCODE_SECTION "
+  /* CONFIG_OCRAM_NORET_SCRATCH_ONLY: RAM code that never runs between a PDS
+   * wake and the hal_lp wakeup hooks. Lost when MISC is off; copied from
+   * flash at boot (early_section_copy) and by the first wakeup hook. */
+  .tcmcode_reload : ALIGN(8)
+  {
+${_reload_in}    . = ALIGN(8);
+  } >ocram_noret AT>ROM
+  PROVIDE( _tcm_reload_lma = LOADADDR(.tcmcode_reload) );
+  PROVIDE( _tcm_reload = ADDR(.tcmcode_reload) );
+  PROVIDE( _tcm_reload_end = ADDR(.tcmcode_reload) + SIZEOF(.tcmcode_reload) );
+${TCMCODE_SECTION}")
+            # The ECLIC vector table in .data_ocram needs 512-byte alignment:
+            # put .data_ocram first in the (512-aligned) retained region,
+            # largest alignment first, instead of padding after .tcmdata.
+            string(REPLACE "    *(.ocram_data)\n    *(.ocram_data.*)\n"
+                "    *(SORT_BY_ALIGNMENT(.ocram_data) SORT_BY_ALIGNMENT(.ocram_data.*))\n"
+                _data_first "${OCRAM_DATA_SECTION}")
+            string(REPLACE "  .tcmcode : ALIGN(8)" "${_data_first}\n  .tcmcode : ALIGN(8)"
+                TCMCODE_SECTION "${TCMCODE_SECTION}")
+            set(OCRAM_DATA_SECTION "")
+        endif()
 
         set(EM_TCM_RET_SECTION "")
         # Provide dummy symbols for startup code (LMA=VMA=0 skips copy)
@@ -827,6 +899,23 @@ function(generate_linker_script)
     PROVIDE( _sp = . );
   } >RAM
 ")
+        # The MSP stack serves main() and then interrupts (mscratch, see
+        # portasm.S); PDS is entered with interrupts masked, so nothing on it
+        # lives across a PDS and it need not be retained.
+        if(CONFIG_OCRAM_NORET_SCRATCH_ONLY)
+            set(STACK_SECTION "
+  /* CONFIG_OCRAM_NORET_SCRATCH_ONLY: MSP / interrupt stack, not retained */
+  .stack (NOLOAD) : ALIGN(16)
+  {
+    PROVIDE( __StackLimit = . );
+    PROVIDE( __StackBottom = . );
+    . += __TOT_STACK_SIZE;
+    . = ALIGN(16);
+    PROVIDE( __StackTop = . );
+    PROVIDE( _sp = . );
+  } >ocram_noret
+")
+        endif()
     endif()
 
     # Handle NVDS configuration

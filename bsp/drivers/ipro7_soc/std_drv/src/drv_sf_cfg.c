@@ -30,7 +30,7 @@ typedef struct
     const SPI_Flash_Cfg_Type *cfg;
 } Flash_Info_t;
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80DV = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80DV = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xef,
@@ -128,7 +128,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80DV = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_16DV = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_16DV = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xef,
@@ -226,7 +226,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_16DV = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80EW_16FW_32JW_32FW_32FV = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80EW_16FW_32JW_32FW_32FV = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xef,
@@ -324,7 +324,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Winb_80EW_16FW_3
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Issi = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Issi = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x9d,
@@ -422,7 +422,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Issi = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Md_40D = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Md_40D = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x51,
@@ -520,7 +520,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Md_40D = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_LQ08C_LE16C_LQ32D_WQ32E = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_LQ08C_LE16C_LQ32D_WQ32E = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xc8,
@@ -618,7 +618,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_LQ08C_LE16C_L
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q80E_Q16E = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q80E_Q16E = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xc8,
@@ -716,7 +716,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q80E_Q16E = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_WQ80E_WQ16E = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_WQ80E_WQ16E = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xc8,
@@ -814,7 +814,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_WQ80E_WQ16E =
     .qeData = 0x12,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q32C = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q32C = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xc8,
@@ -912,7 +912,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Gd_Q32C = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xC2,
@@ -1010,7 +1010,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic_1635F = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic_1635F = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xC2,
@@ -1108,7 +1108,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Mxic_1635F = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx40 = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx40 = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x0B,
@@ -1205,7 +1205,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx40 = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x0B,
@@ -1302,7 +1302,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Xtx = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q80L_Q80H_Q16H = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q80L_Q80H_Q16H = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x85,
@@ -1399,7 +1399,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q80L_Q80H_Q
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q32H = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q32H = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x85,
@@ -1496,7 +1496,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Puya_Q32H = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya40 = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya40 = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x68,
@@ -1594,7 +1594,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya40 = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x68,
@@ -1691,7 +1691,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Boya = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_FT_VQ80 = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_FT_VQ80 = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0xef,
@@ -1789,7 +1789,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_FT_VQ80 = {
     .qeData = 0,
 };
 
-static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Span_S25FL = {
+static const ATTR_TCM_RELOAD_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Span_S25FL = {
     .resetCreadCmd = 0xff,
     .resetCreadCmdSize = 3,
     .mid = 0x01,
@@ -1888,7 +1888,7 @@ static const ATTR_TCM_CONST_SECTION SPI_Flash_Cfg_Type flashCfg_Span_S25FL = {
 };
 
 
-static const ATTR_TCM_CONST_SECTION Flash_Info_t flashInfos[] = {
+static const ATTR_TCM_RELOAD_CONST_SECTION Flash_Info_t flashInfos[] = {
     {
         .jedecID = 0x1440ef,
         .name = "Winb_80DV_08_33",
@@ -2216,7 +2216,7 @@ void ATTR_TCM_SECTION SF_Cfg_Deinit_Ext_Flash_Gpio(uint8_t extFlashPin)
     }
 }
 
-int ATTR_TCM_SECTION SF_Cfg_Get_Flash_Cfg_Need_Lock(uint32_t flashID, SPI_Flash_Cfg_Type *pFlashCfg)
+int ATTR_TCM_RELOAD_SECTION SF_Cfg_Get_Flash_Cfg_Need_Lock(uint32_t flashID, SPI_Flash_Cfg_Type *pFlashCfg)
 {
     uint32_t i;
     uint8_t buf[sizeof(SPI_Flash_Cfg_Type) + 8];

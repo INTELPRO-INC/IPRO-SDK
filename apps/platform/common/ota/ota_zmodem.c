@@ -48,6 +48,7 @@
 #include "drv_glb.h"
 #include "drv_uart.h"
 #include "zmodem.h"
+#include "zreceive.h"
 #include "ota_common.h"
 
 /* GPIO28 -> UART sig 4, GPIO29 -> UART sig 5 (sig = gpio % 8). See board.c. */
@@ -90,88 +91,23 @@ static void console_pads_to_uart0(void)
     GLB_UART_Fun_Sel_Swap(OTA_ZM_SIG_RX, GLB_UART_SIG_FUN_UART0_RXD);
 }
 
-/* ---- zmodem receive state machine (silent: pads are on UART1, no printf) ----
- * Reuses the component's protocol primitives; data goes to ota_sink(). Returns
- * 0 on a completed transfer (ZFIN), negative otherwise. Our zm_send (UART)
- * never fails, so header replies aren't checked. */
-static int zmodem_receive(void)
+/* ---- zmodem sink: data to ota_sink(), position ota_recv_len() ---- */
+static int ota_zm_write(void *ctx, const uint8_t *data, uint32_t len)
 {
-    uint8_t  rzr_buf[4];
-    uint16_t result, count;
-    ZHDR hdr;
-
-    /* lrzsz `sz` auto-starts the remote receiver by sending "rz\r" first */
-    if (zm_await("rz\r", (char *)rzr_buf, sizeof(rzr_buf)) != OK)
-        return -1;
-
-    while (true) {
-        result = zm_await_header(&hdr);
-        if (result == CANCELLED || result == CLOSED)
-            return -2;                  /* remote cancelled, or idle timeout */
-        if (IS_ERROR(result)) {         /* noise / bad CRC -> ask to resend  */
-            zm_send_pos_hdr(ZNAK, ota_recv_len());
-            continue;
-        }
-
-        switch (hdr.type) {
-        case ZRQINIT:
-            zm_send_flags_hdr(ZRINIT, CANOVIO | CANFC32, 0, 0, 0);
-            continue;
-
-        case ZSINIT:
-            zm_send_pos_hdr(ZACK, ota_recv_len());
-            continue;
-
-        case ZFILE:
-            /* filename subpacket -- we get size from the OTA header, ignore */
-            count  = OTA_ZM_DATA_BUF;
-            result = zm_read_data_block(s_data_buf, &count);
-            if (result == CANCELLED || result == CLOSED)
-                return -2;
-            if (!IS_ERROR(result))
-                zm_send_pos_hdr(ZRPOS, ota_recv_len());
-            continue;
-
-        case ZDATA:
-            while (true) {
-                count  = OTA_ZM_DATA_BUF;
-                result = zm_read_data_block(s_data_buf, &count);
-                if (result == CANCELLED || result == CLOSED)
-                    return -2;
-                if (IS_ERROR(result)) {
-                    /* bad subpacket: ask sender to resume from our position */
-                    zm_send_pos_hdr(ZRPOS, ota_recv_len());
-                    break;
-                }
-                /* count includes a trailing framing byte -> data is count-1 */
-                if (count > 0 && ota_sink(s_data_buf, count - 1) != 0)
-                    return -4;
-
-                if (result == GOT_CRCE) {
-                    break;                  /* end of frame, header follows  */
-                } else if (result == GOT_CRCG) {
-                    continue;               /* streaming, more data follows  */
-                } else if (result == GOT_CRCQ || result == GOT_CRCW) {
-                    zm_send_pos_hdr(ZACK, ota_recv_len());   /* ACK subpacket */
-                    if (result == GOT_CRCW)
-                        break;
-                }
-            }
-            continue;
-
-        case ZEOF:
-            zm_send_flags_hdr(ZRINIT, CANOVIO | CANFC32, 0, 0, 0);
-            continue;
-
-        case ZFIN:
-            zm_send_pos_hdr(ZFIN, 0);
-            return 0;                       /* transfer complete             */
-
-        default:
-            continue;                       /* ignore unknown header types   */
-        }
-    }
+    (void)ctx;
+    return ota_sink(data, len);
 }
+
+static uint32_t ota_zm_pos(void *ctx)
+{
+    (void)ctx;
+    return ota_recv_len();
+}
+
+static const struct zm_rx_sink ota_zm_sink = {
+    .write = ota_zm_write,
+    .pos   = ota_zm_pos,
+};
 
 int cmd_ota_zmodem(int argc, char **argv)
 {
@@ -214,7 +150,7 @@ int cmd_ota_zmodem(int argc, char **argv)
     /* Hand the console pads to UART1 @2M, run zmodem, then ALWAYS hand them
      * back to UART0 @115200 -- success or failure. No printf in between. */
     console_pads_to_uart1();
-    rc = zmodem_receive();
+    rc = zm_receive_file(s_data_buf, OTA_ZM_DATA_BUF, &ota_zm_sink);
     if (rc == 0)
         rc = ota_sink_flush();
     console_pads_to_uart0();

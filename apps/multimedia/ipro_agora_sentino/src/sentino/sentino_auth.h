@@ -26,7 +26,7 @@
  * @brief Device triple for Sentino MQTT authentication
  *
  * Per rlink v2 spec:
- *   uuid   -- device identifier (e.g. "rn014ebe0C20E122")
+ *   uuid   -- device identifier, issued with the triple (e.g. "rn0123456789ABCD")
  *   secret -- device secret (32-char hex string)
  *   pid    -- product ID / model string
  */

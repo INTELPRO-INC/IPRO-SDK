@@ -63,7 +63,7 @@ typedef struct {
     uint16_t type;
     uint16_t len; // type + len + payload
     uint8_t payload[];
-} __attribute__((packed)) bl602_sdio_msg_t;
+} __attribute__((packed)) ipro_sdio_msg_t;
 
 typedef struct {
     void *arg;

@@ -178,6 +178,63 @@ menu "Controller Configuration"
           behavior/profile selector, not just extra log text. Debug applications and diagnostic library
           variants must opt in explicitly.
 
+    config IPRO_BLE_CTLR_NON_RET_HEAP_SIZE
+        int "ipro_ble_controller non-retention kernel heap (bytes)"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        range 656 5120
+        default 5120
+        help
+          Leave unset for the archive default (5 KB, sized for the controller's
+          P-256 public-key and DHKey jobs). The Zephyr host port computes
+          P-256 itself (TinyCrypt), so that heap then holds only HCI transport
+          buffers; 656 is the RivieraWaves upstream size. ke_malloc() falls
+          back to the other kernel heaps when one is full. Source builds only.
+
+    config IPRO_BLE_CTLR_MSG_HEAP_SIZE
+        int "ipro_ble_controller kernel message heap (bytes)"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        range 1024 16384
+        help
+          Leave unset for the RivieraWaves formula, which assumes every
+          activity (5 for link1_periph) and five HCI commands in flight at
+          once, doubled for fragmentation (5 KB). A one-link peripheral uses
+          far less; size it from the ke heap watermarks that
+          CONFIG_FREERTOS_STACK_REPORT_S prints. ke_malloc() falls back to the
+          other kernel heaps, but a heap-wide shortage resets the controller.
+          Source builds only.
+
+    config IPRO_BLE_CTLR_PDS_CYCLE_RING_DEPTH
+        int "ipro_ble_controller per-PDS diagnostic ring depth"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        range 1 16
+        default 16
+        help
+          History depth of the 18 connected-PDS diagnostic rings read over
+          CCI (4 bytes per entry each). A power of two. 1 keeps only the last
+          cycle and saves about 1 KB of RAM. Source builds only.
+
+    config IPRO_BLE_CTLR_LINK_DIAG_S
+        int "Bench: ipro_ble_controller link line on the console every N seconds"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        default 0
+        help
+          Zero builds nothing. Otherwise a FreeRTOS timer prints the
+          connection's event, RX (sync/CRC/ok), timing, channel-map, instant
+          and PDS-gate counters every N seconds, and the last 32 non-empty RX
+          PDUs when the controller reports a disconnect. Each line keeps the
+          CPU awake for its UART time. Source builds only.
+
+    config IPRO_BLE_CTLR_TASK_STACK_SIZE
+        int "ipro_ble_controller task stack (bytes)"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        range 2048 8192
+        default 4096
+        help
+          Leave unset for the archive default (4 KB). The connected-PDS
+          snapshot and restore run on this task, and interrupts nest on it.
+          Size it from a measured high-water mark
+          (CONFIG_FREERTOS_STACK_REPORT_S). Source builds only.
+
     config IPRO7_BLE_HOTCODE
         bool "Run the IPRO7 BLE data path from OCRAM"
         depends on BT_CTLR_IPRO && IPRO7
@@ -263,6 +320,21 @@ menu "Controller Configuration"
           have no XTAL32K populated. The controller then skips the XTAL probe
           and directly selects/calibrates RC32K, reducing long-interval PDS
           validation noise without changing other applications.
+
+    config IPRO_BLE_CTLR_32K_SKIP_CAL
+        bool "Skip the 32 kHz qualification and RC32K calibration at boot"
+        depends on BT_CTLR_IPRO && IPRO7 && IPRO_BLE_CTLR_FORCE_SOURCE_BUILD
+        depends on !IPRO_PM_PDS_CONNECTED
+        default n
+        help
+          For applications that never run platform PDS on a link, e.g. one
+          that hibernates (HBN) between short connections: no anchor is ever
+          timed on the sleep clock, so the RC32K calibration walk and the
+          residual measurement (about 4.4 s on the EVB, paid on every boot)
+          buy nothing. RC32K stays on its efuse trim and the controller
+          publishes the RC32K drift floor. Connected PDS needs the
+          calibration (build error with CONFIG_IPRO_PM_PDS_CONNECTED).
+          Source builds only.
 
     config IPRO_BLE_CTLR_32K_CORRECTED_DRIFT_PPM
         int "Published LPCLK drift after RC32K residual compensation (ppm)"
@@ -1055,7 +1127,7 @@ menu "Host Stack Options"
         depends on IPRO6
         help
           Enable Classic Bluetooth (BR/EDR) support.
-          Only available on IPRO6 (BL616L-based) which has a full
+          Only available on IPRO6, which has a full
           BR/EDR + BLE combo controller.
 
 endmenu

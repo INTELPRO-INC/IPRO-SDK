@@ -17,4 +17,15 @@ config UVC_RPS
 	  RPS_EMBED_MODEL as well to link the model into the image.
 	  Build: make -C apps/multimedia/ipro7_uvc_cam DEFCONFIG=defconfig_reef_rps
 
+config UVC_TEACH
+	bool "IPRO AI Studio Teach classifier on the stream (IPRO7AI Reef)"
+	depends on IPRO7AI_REEF && AI_SUPPORT && !UVC_RPS
+	help
+	  Runs a classifier trained in IPRO AI Studio's Teach page on the
+	  centred box of every 640x360 frame and draws the result around the
+	  box (never inside it: Studio crops the box from this stream as
+	  training data). The model and its labels are read from the mfg
+	  partition. Set by apps/ai/ipro_reef_teach (image mode), which
+	  builds these sources; this app has no Teach build.
+
 endmenu

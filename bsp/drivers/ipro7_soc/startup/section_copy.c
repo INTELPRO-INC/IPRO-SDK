@@ -75,6 +75,13 @@ extern char _bss_ocram_start[], _bss_ocram_end[];
  * the second retention region in the last 16 KB of OCRAM. */
 extern char _bss_ocram_high_start[] __attribute__((weak));
 extern char _bss_ocram_high_end[]   __attribute__((weak));
+/* Weak — only defined under CONFIG_OCRAM_NORET_SCRATCH_ONLY: TCM code and
+ * scratch .bss moved to ocram_noret (the wakeup hook re-copies the code). */
+extern char _tcm_reload_lma[] __attribute__((weak));
+extern char _tcm_reload[]     __attribute__((weak));
+extern char _tcm_reload_end[] __attribute__((weak));
+extern char _bss_noret_scratch_start[] __attribute__((weak));
+extern char _bss_noret_scratch_end[]   __attribute__((weak));
 extern char _data_lma[], _data[], _edata[];
 extern char __bss_start[], _end[];
 extern char _bss_psram_start[], _bss_psram_end[];
@@ -168,6 +175,12 @@ void early_section_copy(void)
     clear_section(                _bss_ocram_start, _bss_ocram_end);
     if (_bss_ocram_high_start && _bss_ocram_high_end) {
         clear_section(_bss_ocram_high_start, _bss_ocram_high_end);
+    }
+    if (_tcm_reload_lma && _tcm_reload && _tcm_reload_end) {
+        copy_section(_tcm_reload_lma, _tcm_reload, _tcm_reload_end);
+    }
+    if (_bss_noret_scratch_start && _bss_noret_scratch_end) {
+        clear_section(_bss_noret_scratch_start, _bss_noret_scratch_end);
     }
 
 #if defined(CONFIG_USE_PSRAM)

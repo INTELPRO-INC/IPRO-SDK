@@ -318,7 +318,7 @@ int ATTR_TCM_SECTION SFlash_Chip_Erase(SPI_Flash_Cfg_Type *flashCfg)
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION SFlash_Sector_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t secNum)
+int ATTR_TCM_RELOAD_SECTION SFlash_Sector_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t secNum)
 {
     uint32_t cnt = 0;
     SF_Ctrl_Cmd_Cfg_Type flashCmd;
@@ -354,7 +354,7 @@ int ATTR_TCM_SECTION SFlash_Sector_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t 
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION SFlash_Blk32_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t blkNum)
+int ATTR_TCM_RELOAD_SECTION SFlash_Blk32_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t blkNum)
 {
     uint32_t cnt = 0;
     SF_Ctrl_Cmd_Cfg_Type flashCmd;
@@ -389,7 +389,7 @@ int ATTR_TCM_SECTION SFlash_Blk32_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t b
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION SFlash_Blk64_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t blkNum)
+int ATTR_TCM_RELOAD_SECTION SFlash_Blk64_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t blkNum)
 {
     SF_Ctrl_Cmd_Cfg_Type flashCmd;
     uint32_t cnt = 0;
@@ -424,7 +424,7 @@ int ATTR_TCM_SECTION SFlash_Blk64_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t b
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION SFlash_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t startaddr, uint32_t endaddr)
+int ATTR_TCM_RELOAD_SECTION SFlash_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t startaddr, uint32_t endaddr)
 {
     uint32_t len = 0;
     uint32_t eraseLen = 0;
@@ -462,7 +462,7 @@ int ATTR_TCM_SECTION SFlash_Erase(SPI_Flash_Cfg_Type *flashCfg, uint32_t startad
     return SUCCESS;
 }
 
-int ATTR_TCM_SECTION SFlash_Program(SPI_Flash_Cfg_Type *flashCfg,
+int ATTR_TCM_RELOAD_SECTION SFlash_Program(SPI_Flash_Cfg_Type *flashCfg,
                                             SF_Ctrl_IO_Type ioMode, uint32_t addr, uint8_t *data, uint32_t len)
 {
     uint8_t *const flashCtrlBuf = (uint8_t *)SF_CTRL_BUF_BASE;
@@ -570,7 +570,7 @@ void ATTR_TCM_SECTION SFlash_GetUniqueId(uint8_t *data, uint8_t idLen)
     arch_memcpy(data, flashCtrlBuf, idLen);
 }
 
-void ATTR_TCM_SECTION SFlash_GetJedecId(SPI_Flash_Cfg_Type *flashCfg, uint8_t *data)
+void ATTR_TCM_RELOAD_SECTION SFlash_GetJedecId(SPI_Flash_Cfg_Type *flashCfg, uint8_t *data)
 {
     uint8_t *const flashCtrlBuf = (uint8_t *)SF_CTRL_BUF_BASE;
     uint8_t cmd, dummyClks;
@@ -741,7 +741,7 @@ int ATTR_TCM_SECTION SFlash_Restore_From_Powerdown(SPI_Flash_Cfg_Type *pFlashCfg
     return stat;
 }
 
-void ATTR_TCM_SECTION SFlash_SetBurstWrap(SPI_Flash_Cfg_Type *flashCfg)
+void ATTR_TCM_RELOAD_SECTION SFlash_SetBurstWrap(SPI_Flash_Cfg_Type *flashCfg)
 {
     uint8_t *const flashCtrlBuf = (uint8_t *)SF_CTRL_BUF_BASE;
     uint8_t cmd, dummyClks;
@@ -773,7 +773,7 @@ void ATTR_TCM_SECTION SFlash_SetBurstWrap(SPI_Flash_Cfg_Type *flashCfg)
     SF_Ctrl_SendCmd(&flashCmd);
 }
 
-void ATTR_TCM_SECTION SFlash_DisableBurstWrap(SPI_Flash_Cfg_Type *flashCfg)
+void ATTR_TCM_RELOAD_SECTION SFlash_DisableBurstWrap(SPI_Flash_Cfg_Type *flashCfg)
 {
     uint8_t *const flashCtrlBuf = (uint8_t *)SF_CTRL_BUF_BASE;
     uint8_t cmd, dummyClks;

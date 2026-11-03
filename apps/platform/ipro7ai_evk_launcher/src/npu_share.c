@@ -23,33 +23,28 @@
 
 #include "npu_share.h"
 
-#include <FreeRTOS.h>
-#include <semphr.h>
-
 #include <iproai_core.h>
-#include <iproai_def.h>
+#include <iproai_def.h>      /* IPROAI_Model_t: the loaded sections */
 #include "hal_npu.h"
-
-static SemaphoreHandle_t s_lock;
+#include "ipro_ai.h"         /* ipro_ai_npu_lock: the one NPU lock in the image */
 
 int npu_share_init(void)
 {
-    if (!s_lock) {
-        s_lock = xSemaphoreCreateMutex();
-    }
-    return s_lock ? 0 : -1;
+    return ipro_ai_init() == IPRO_AI_OK ? 0 : -1;
 }
 
-void npu_share_begin(const struct iproai_net_info_t *net, uint32_t ext_addr)
+void npu_share_begin(iproai_model_hdl_t hdl, uint32_t ext_addr)
 {
-    if (s_lock) {
-        xSemaphoreTake(s_lock, portMAX_DELAY);
-    }
-    if (net) {
-        /* What iproai_npu_initCfg() wrote for this model at load time; the
-         * other model's load overwrote it. */
-        hal_npu_set_net_param((uint8_t)net->unsign_input, (uint8_t)net->relu_n,
-                              (uint8_t)net->use_tflite, (uint32_t)net->mode);
+    ipro_ai_npu_lock();
+    if (hdl) {
+        /* what iproai_npu_initCfg() wrote for this model at load time, as the
+         * runtime's port does before every run (ipro_ai_port_ipro7.c) */
+        const IPROAI_Model_t *md = (const IPROAI_Model_t *)hdl;
+        hal_npu_layer_setup(md->inst.npu.inst_buf, md->inst.npu.weights_buf, md->inst.npu.bias_buf,
+                            md->inst.npu.mult_shift_buf);
+        hal_npu_set_input_buffer(md->buffer, md->net->patch_size);
+        hal_npu_set_net_param((uint8_t)md->net->unsign_input, (uint8_t)md->net->relu_n,
+                              (uint8_t)md->net->use_tflite, (uint32_t)md->net->mode);
     }
     if (ext_addr) {
         NPU_Img_Ext_Addr_Cfg(ext_addr);
@@ -58,7 +53,15 @@ void npu_share_begin(const struct iproai_net_info_t *net, uint32_t ext_addr)
 
 void npu_share_end(void)
 {
-    if (s_lock) {
-        xSemaphoreGive(s_lock);
-    }
+    ipro_ai_npu_unlock();
+}
+
+void npu_share_load_begin(void)
+{
+    ipro_ai_npu_lock();
+}
+
+void npu_share_load_end(void)
+{
+    ipro_ai_npu_unlock();
 }

@@ -46,6 +46,10 @@ sdk_ifndef(CONFIG_BT_TX_PROCESSOR_STACK_SIZE 1024)
 sdk_ifndef(CONFIG_BT_RX_STACK_SIZE 2048)
 # Zephyr system work queue emulated by port/kernel.c (static stack, bytes).
 sdk_ifndef(CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE 2048)
+# Controller-to-host HCI RX task of port/hci_ipro.c (heap stack, bytes).
+sdk_ifndef(CONFIG_IPRO_BT_HCI_RX_STACK_SIZE 2048)
+# Static TCB slots for port/kernel.c work queues.
+sdk_ifndef(CONFIG_IPRO_BT_WORKQ_SLOTS 6)
 if(CONFIG_BT_SMP)
     # The SDK consumes .config directly rather than resolving Zephyr's Kconfig
     # defaults. Preserve upstream's default: authenticated I/O capabilities
@@ -631,6 +635,9 @@ if(NOT DEFINED CONFIG_BT_ATT_PREPARE_COUNT)
     set(CONFIG_BT_ATT_PREPARE_COUNT 0)
 endif()
 
+# ATT PDU buffers (att_pool); a low-rate link can trade them for RAM.
+sdk_ifndef(CONFIG_BT_ATT_TX_COUNT 10)
+
 if(CONFIG_BT_AUDIO)
     if(NOT DEFINED CONFIG_BT_AUDIO_LOG_LEVEL)
         set(CONFIG_BT_AUDIO_LOG_LEVEL 3)
@@ -982,6 +989,8 @@ __component_add_compile_definitions(
     -DCONFIG_BT_RECV_WORKQ_BT=1
     -DCONFIG_BT_RX_STACK_SIZE=${CONFIG_BT_RX_STACK_SIZE}
     -DCONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE=${CONFIG_IPRO_BT_SYS_WORKQ_STACK_SIZE}
+    -DCONFIG_IPRO_BT_HCI_RX_STACK_SIZE=${CONFIG_IPRO_BT_HCI_RX_STACK_SIZE}
+    -DCONFIG_IPRO_BT_WORKQ_SLOTS=${CONFIG_IPRO_BT_WORKQ_SLOTS}
     -DCONFIG_BT_RX_PRIO=6
     -DCONFIG_BT_DEVICE_NAME=\"${CONFIG_BT_DEVICE_NAME}\"
     -DCONFIG_BT_DEVICE_APPEARANCE=0
@@ -1006,7 +1015,7 @@ __component_add_compile_definitions(
     -DCONFIG_BT_MAX_PAIRED=${CONFIG_BT_MAX_PAIRED}
     -DCONFIG_BT_L2CAP_TX_BUF_COUNT=${CONFIG_BT_L2CAP_TX_BUF_COUNT}
     -DCONFIG_BT_RPA_TIMEOUT=${CONFIG_BT_RPA_TIMEOUT}
-    -DCONFIG_BT_ATT_TX_COUNT=10
+    -DCONFIG_BT_ATT_TX_COUNT=${CONFIG_BT_ATT_TX_COUNT}
     -DCONFIG_BT_ATT_PREPARE_COUNT=${CONFIG_BT_ATT_PREPARE_COUNT}
     -DCONFIG_BT_SMP_MIN_ENC_KEY_SIZE=16
     -DCONFIG_ASSERT=1

@@ -30,27 +30,34 @@ output frames.
 
 ```bash
 make -C apps/platform/ipro7ai_evk_demo
-# or: ./build_freertos.sh ipro7ai_evk_demo build flash monitor
 
-tools/ipro_iot_tool_lite/ipro_iot_tool_lite --chipname ipro7 \
-    --port /dev/cu.usbserial-2120 --baudrate 921600 --flash-pin 0x02 \
+# IntelProCube command-line tool (obtained separately from the SDK). The EVK
+# needs --chip-variant IPRO7AI; the tool exits 0 even on failure, so look for
+# [All Success].
+ipro_iot_tool_macos --chipname ipro7 --chip-variant IPRO7AI \
+    --port /dev/cu.usbserial-XXXX --baudrate 921600 \
     --firmware apps/platform/ipro7ai_evk_demo/build/build_out/ipro7ai_evk_demo_IPRO7.bin
 
-python3 tools/serial_monitor.py /dev/cu.usbserial-2120
+python3 tools/serial_monitor.py /dev/cu.usbserial-XXXX --baud 921600
 ```
 
-Console + shell are on the platform UART at 115200. The app initialises the
+Console + shell are on the platform UART: **921600** baud with the default
+`.config`, 115200 with the `config_*` variants below. The app initialises the
 panel and draws colour bars on boot, so a correctly wired module shows first
 light without typing anything.
 
 ## Build variants — AI and Bluetooth cannot share this SoC's OCRAM
 
-`.config` is a copy of one of these files. Switch with:
+The default `.config` is the SD video kiosk of `config_video` with autoplay
+off and the console at 921600 baud. The variants (all at 115200) are built
+either in place or into their own `build_<name>/` directory:
 
 ```bash
+make DEFCONFIG=config_bt                        # -> build_config_bt/
 cp config_bt    .config && make clean && make   # Bluetooth + LE Audio
 cp config_ai    .config && make clean && make   # AI/NPU
 cp config_video .config && make clean && make   # SD video kiosk, no radio
+cp config_autoplay .config && make clean && make # config_bt + clip autoplay at power-on
 ```
 
 | | flash | OCRAM | Camera | AI | BT |
@@ -470,7 +477,7 @@ New stack on both sides:
 
 | | Component | Config |
 |---|---|---|
-| Controller | `ipro_ble_controller` — IPRO BLE controller, H4 byte-stream HCI | `CONFIG_BT_CTLR_IPRO=y`, `CONFIG_IPRO_BLE_CTLR_FORCE_SOURCE_BUILD=1`, `LIB="link1"`, `FEATURE="bt54_iso2"` |
+| Controller | `ipro_ble_controller` — IPRO BLE controller, H4 byte-stream HCI | `CONFIG_BT_CTLR_IPRO=y`, `LIB="link1"`, `FEATURE="bt54_iso2"` (prebuilt archive) |
 | Host | `ipro_bt_host` — upstream Zephyr v4.4.0 | `CONFIG_BT_HOST_IPRO_V44=y` |
 
 Headers are `<zephyr/bluetooth/...>`, **not** the old `<bluetooth/...>` of
@@ -650,7 +657,7 @@ Both are clean integer ratios, so neither introduces scaler distortion.
 
 **⚠ The multimedia AHB clock must be un-gated before ANY ISP register write.**
 `GLB_PER_Clock_UnGate(GLB_AHB_CLOCK_MM)` — every working camera app in the SDK
-does this first (`uvc_isp.c:883`, `mc_camera.c:952`, `pircam_isp.c:725`).
+does this first (for example `uvc_isp.c` in `ipro7_uvc_cam`).
 Without it the failure is silent and very misleading: SCCB is on I2C0, a
 different clock domain, so the sensor still probes and resets perfectly, and
 `isp_init()` still returns success — but every write into the MM domain is

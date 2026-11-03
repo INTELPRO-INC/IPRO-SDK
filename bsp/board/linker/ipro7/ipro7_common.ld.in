@@ -231,8 +231,10 @@ SECTIONS
 
   ASSERT(__hbn_code_end <= ORIGIN(hbnram) + 0x400,
          "HBN LP firmware exceeds fixed 1KB region")
-  ASSERT(__hbn_noinit_end <= ORIGIN(hbnram) + 0xf00,
-         "HBN noinit exceeds IPRO7 reserved region")
+  /* +0xee0..+0xeef = OTA trial record, +0xefc = CLK32K override
+   * (hal_hbnram_mgnt.h HAL_HBNRAM_OTA_TRIAL_* / HAL_HBNRAM_CLK32K_OVR_*). */
+  ASSERT(__hbn_noinit_end <= ORIGIN(hbnram) + 0xee0,
+         "HBN noinit runs into the fixed OTA trial record / CLK32K word")
 
 @OCRAM_DATA_SECTION@
 @OCRAM_BSS_SECTION@
@@ -398,7 +400,7 @@ SECTIONS
   PROVIDE( __heap_start = __heap_ocram_start );
   PROVIDE( __heap_size = __heap_ocram_size );
   PROVIDE( __heap_end = __heap_ocram_end );
-
+@OCRAM_RETAINED_ASSERTS@
   /* Non-cacheable RAM information */
   PROVIDE( __nocache_ram_addr = __nocache_ram_start );
   PROVIDE( __nocache_ram_size = __nocache_total_size );

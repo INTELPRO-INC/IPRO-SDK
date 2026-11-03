@@ -156,9 +156,26 @@
 
 #define XTAL_TYPE                      EXTERNAL_XTAL_32M
 #define BOARD_CLK_ROOT_SOURCE_MACRO    GLB_DLL_XTAL_32M
+
+/* BLE-only apps can leave the PLL off (CONFIG_BOARD_SYSCLK_DLL128M / _XTAL): BLE, RF, UART
+ * (XCLK) and the 64 MHz flash clock (a DLL tap) need only XTAL + DLL, and the powered PLL
+ * alone keeps several mA flowing while the CPU sits in WFI. SDH (PLL 96M) has no clock then. */
+#if defined(CONFIG_BOARD_SYSCLK_XTAL)
+#define BOARD_CLK_SYS_CLK_MACRO        GLB_SYS_CLK_XTAL
+#define BOARD_CLK_HCLK_DIV             0      /* HCLK = 32 MHz */
+#define BOARD_CLK_BCLK_DIV             0      /* BCLK = 32 MHz */
+#define BOARD_CLK_PLL_ON               0
+#elif defined(CONFIG_BOARD_SYSCLK_DLL128M)
+#define BOARD_CLK_SYS_CLK_MACRO        GLB_SYS_CLK_DLL128M
+#define BOARD_CLK_HCLK_DIV             0      /* HCLK = 128 MHz */
+#define BOARD_CLK_BCLK_DIV             1      /* BCLK = 64 MHz */
+#define BOARD_CLK_PLL_ON               0
+#else
 #define BOARD_CLK_SYS_CLK_MACRO        GLB_SYS_CLK_PLL192M
 #define BOARD_CLK_HCLK_DIV             0      /* HCLK = SYS_CLK / (div + 1) */
 #define BOARD_CLK_BCLK_DIV             1      /* BCLK = HCLK   / (div + 1) */
+#define BOARD_CLK_PLL_ON               1
+#endif
 
 /**
  * Initialize system clock (root source and PLL).
@@ -196,10 +213,22 @@ static inline int board_system_clock_already_at_target(void)
 #define BOARD_SYSTEM_CLOCK_INIT() \
     do { \
         if (!board_system_clock_already_at_target()) { \
-            GLB_Set_System_CLK(BOARD_CLK_ROOT_SOURCE_MACRO, BOARD_CLK_SYS_CLK_MACRO); \
+            GLB_Set_System_CLK_Ex(BOARD_CLK_ROOT_SOURCE_MACRO, BOARD_CLK_SYS_CLK_MACRO, \
+                                  BOARD_CLK_PLL_ON, 1); \
+        } else if (!(BOARD_CLK_PLL_ON)) { \
+            GLB_Power_Off_PLL(); \
         } \
         GLB_Set_System_CLK_Div(BOARD_CLK_HCLK_DIV, BOARD_CLK_BCLK_DIV); \
+        BOARD_SF_CLK_INIT(); \
     } while(0)
+
+/* XTAL root: flash on XCLK as well. A PDS wake restores an XTAL root without the DLL
+ * (hal_lp_restore_sys_clk) and recovers XIP before the BLE restore powers the DLL again. */
+#if defined(CONFIG_BOARD_SYSCLK_XTAL)
+#define BOARD_SF_CLK_INIT()  GLB_Set_SF_CLK(1, GLB_SFLASH_CLK_XCLK, 0)
+#else
+#define BOARD_SF_CLK_INIT()  do { } while (0)
+#endif
 
 /**
  * Initialize MTimer to run at the current XCLK frequency.

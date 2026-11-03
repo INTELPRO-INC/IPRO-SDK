@@ -1,0 +1,3 @@
+__component_add_subdirectory_ifdef(CONFIG_PSA_SPE spm)
+__component_add_subdirectory_ifdef(CONFIG_PSA_CLIENT client)
+__component_add_subdirectory_ifdef(CONFIG_PSA_SEC_ENG_ACCEL accel)

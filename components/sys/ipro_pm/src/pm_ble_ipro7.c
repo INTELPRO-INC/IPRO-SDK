@@ -44,6 +44,7 @@
 #include <generated/autoconf.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <timers.h>
@@ -75,6 +76,16 @@
  * restore <= 8.7 ms, post-PDS tick proof ~1 ms, grant-to-sleep latency). */
 #ifndef CONFIG_IPRO_PM_BLE_EXEC_WAKE_US
 #define CONFIG_IPRO_PM_BLE_EXEC_WAKE_US 12000
+#endif
+/* Domain policy of the controller's connected PDS (hal_pm.h bits): RF and
+ * baseband kept, BLE core powered down, MISC powered, clocked and out of
+ * reset (UART and all of OCRAM). */
+#ifndef CONFIG_IPRO_PM_BLE_PDS_DOMAIN_POLICY
+#define CONFIG_IPRO_PM_BLE_PDS_DOMAIN_POLICY                                                                   \
+    (PM_PDS_BLE_CTLR_DOMAIN_POLICY_CONNECTED_BASELINE | PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_MISC_LIVE)
+#endif
+#ifndef CONFIG_IPRO_PM_BLE_PDS_POLICY_SWEEP_S
+#define CONFIG_IPRO_PM_BLE_PDS_POLICY_SWEEP_S 60
 #endif
 
 
@@ -118,6 +129,28 @@ volatile uint32_t ipro_pm_ble_recovered;
 volatile uint32_t ipro_pm_ble_reject_hci;
 volatile uint32_t ipro_pm_ble_reject_prepare;
 volatile uint32_t ipro_pm_ble_backoffs;
+
+#if defined(CONFIG_IPRO_PM_BLE_HBN_STATS)
+/* Bench: the counters mirrored to HBN RAM, which a reset that keeps power
+ * (RESET pin, watchdog, hal_reboot) leaves alone, for PDS runs where UART0
+ * cannot be read (MISC off). pm_ble_init() prints the previous boot's copy. */
+#define PM_BLE_HBN_STATS_MAGIC UINT32_C(0x504d4253) /* "PMBS" */
+static volatile uint32_t s_hbn_stats[6] __attribute__((section(".hbn_noinit"), used, aligned(4)));
+
+static void pm_ble_hbn_stats_update(void)
+{
+    s_hbn_stats[1] = ipro_pm_ble_grants;
+    s_hbn_stats[2] = ipro_pm_ble_cycles;
+    s_hbn_stats[3] = ipro_pm_ble_recovered;
+    s_hbn_stats[4] = ipro_pm_ble_failures;
+    s_hbn_stats[5] = ipro_pm_ble_backoffs;
+    s_hbn_stats[0] = PM_BLE_HBN_STATS_MAGIC;
+}
+#else
+static inline void pm_ble_hbn_stats_update(void)
+{
+}
+#endif
 
 
 static pm_part_state_t pm_ble_pds_state(void)
@@ -188,6 +221,89 @@ uint32_t ipro_pm_ble_last_window_us(void)
     return s_window_us;
 }
 
+#if defined(CONFIG_IPRO_PM_BLE_DEADLINE_DIAG)
+/* Bench: whose RTOS deadline sized an offered window shorter than the
+ * controller's.  Filled with interrupts masked (pre-sleep revalidate). */
+#define PM_BLE_DL_SLOTS 8U
+
+typedef struct {
+    const char *name;
+    uint32_t count;
+    uint32_t min_ms;
+    uint32_t max_ms;
+} pm_ble_dl_slot_t;
+
+static pm_ble_dl_slot_t s_dl[PM_BLE_DL_SLOTS];
+static uint32_t s_dl_offers;
+static uint32_t s_dl_overflow;
+
+static void pm_ble_deadline_note(uint32_t rtos_hus, uint32_t fresh_hus)
+{
+    TickType_t wake = portMAX_DELAY;
+    TaskHandle_t owner;
+    const char *name;
+    uint32_t ms;
+
+    s_dl_offers++;
+    if (rtos_hus >= fresh_hus) {
+        return;
+    }
+    owner = xTaskGetNextUnblockOwner(ipro_ble_ctlr_controller_task_handle(), &wake);
+    name = (owner != NULL) ? pcTaskGetName(owner) : "(none)";
+    if ((owner != NULL) && (owner == xTimerGetTimerDaemonTaskHandle())) {
+        const char *timer = pcTimerGetNextExpiryName(NULL);
+
+        name = (timer != NULL) ? timer : "(timer task)";
+    }
+    ms = (uint32_t)(wake - xTaskGetTickCount()) * (uint32_t)portTICK_PERIOD_MS;
+    if ((owner == NULL) || (ms > (rtos_hus / 2000U) + 2U)) {
+        name = "(clamp)"; /* the radio WFI clamp, not a task */
+        ms = rtos_hus / 2000U;
+    }
+    for (uint32_t i = 0U; i < PM_BLE_DL_SLOTS; i++) {
+        pm_ble_dl_slot_t *slot = &s_dl[i];
+
+        if (slot->name == NULL) {
+            slot->name = name;
+            slot->min_ms = ms;
+            slot->max_ms = ms;
+        }
+        if (slot->name == name) {
+            slot->count++;
+            slot->min_ms = (ms < slot->min_ms) ? ms : slot->min_ms;
+            slot->max_ms = (ms > slot->max_ms) ? ms : slot->max_ms;
+            return;
+        }
+    }
+    s_dl_overflow++;
+}
+
+void ipro_pm_ble_deadline_diag_dump(void)
+{
+    pm_ble_dl_slot_t copy[PM_BLE_DL_SLOTS];
+    uint32_t offers;
+    uint32_t overflow;
+
+    taskENTER_CRITICAL();
+    for (uint32_t i = 0U; i < PM_BLE_DL_SLOTS; i++) {
+        copy[i] = s_dl[i];
+        s_dl[i] = (pm_ble_dl_slot_t){ 0 };
+    }
+    offers = s_dl_offers;
+    overflow = s_dl_overflow;
+    s_dl_offers = 0U;
+    s_dl_overflow = 0U;
+    taskEXIT_CRITICAL();
+
+    printf("pm deadline | offers %lu", (unsigned long)offers);
+    for (uint32_t i = 0U; (i < PM_BLE_DL_SLOTS) && (copy[i].name != NULL); i++) {
+        printf(" | %s %lu (%lu..%lu ms)", copy[i].name, (unsigned long)copy[i].count,
+               (unsigned long)copy[i].min_ms, (unsigned long)copy[i].max_ms);
+    }
+    printf(" | overflow %lu\r\n", (unsigned long)overflow);
+}
+#endif
+
 static pm_offer_t pm_ble_offer(uint32_t rtos_hus, uint32_t part_hus)
 {
     uint32_t token = ipro_ble_ctlr_pds_candidate_token;
@@ -218,6 +334,9 @@ static pm_offer_t pm_ble_offer(uint32_t rtos_hus, uint32_t part_hus)
     /* joint window minus the wake and restore budget the controller spends
      * after the sleep; another participant's deadline (a Thread CSL window, a
      * data poll) shortens it */
+#if defined(CONFIG_IPRO_PM_BLE_DEADLINE_DIAG)
+    pm_ble_deadline_note(rtos_hus, fresh_hus);
+#endif
     sleep_us = pm_ble_size_sleep(rtos_hus, fresh_hus, part_hus, ipro_ble_ctlr_pds_reserve_us(),
                                  CONFIG_IPRO_PM_BLE_EXEC_WAKE_US);
     if (sleep_us < IPRO_PM_BLE_MIN_SLEEP_US) {
@@ -259,6 +378,14 @@ static const pm_participant_t s_ble_participant = {
 
 void pm_ble_init(void)
 {
+#if defined(CONFIG_IPRO_PM_BLE_HBN_STATS)
+    if (s_hbn_stats[0] == PM_BLE_HBN_STATS_MAGIC) {
+        printf("ipro_pm: previous boot: grants %lu cycles %lu recovered %lu failures %lu backoffs %lu\r\n",
+               (unsigned long)s_hbn_stats[1], (unsigned long)s_hbn_stats[2], (unsigned long)s_hbn_stats[3],
+               (unsigned long)s_hbn_stats[4], (unsigned long)s_hbn_stats[5]);
+    }
+    s_hbn_stats[0] = 0U;
+#endif
     s_last_committed_generation = 0U;
     s_last_rejected_generation = 0U;
     s_consecutive_failures = 0U;
@@ -351,6 +478,7 @@ void ipro_ble_ctlr_app_pds_recovered(void)
     ipro_pm_ble_recovered++;
     s_consecutive_failures = 0U;
     s_backoff_ms = IPRO_PM_BLE_BACKOFF_MIN_MS;
+    pm_ble_hbn_stats_update();
 }
 
 /* Controller task, last point before the native sleep of a connected PDS
@@ -390,6 +518,7 @@ void ipro_ble_ctlr_app_pds_link_stuck(uint32_t links)
 void ipro_ble_ctlr_app_pds_recovery_failed(uint32_t reason)
 {
     ipro_pm_ble_failures++;
+    pm_ble_hbn_stats_update();
     pm_core_pds_failed(reason);
     pm_ble_txn_abandon();
     pm_core_devices_resume_early();
@@ -513,6 +642,92 @@ static void pm_ble_profile_set(bool pds)
     ipro_pm_ble_profile_pds = pds ? 1U : 0U;
 }
 
+#if defined(CONFIG_IPRO_PM_BLE_PDS_POLICY_SWEEP)
+/* Bench: step the connected-PDS domain policy through the configured list
+ * ("ff,7f,ff/1b": hex policy words, "/code" also sets the VDD14 DCDC output
+ * code) so one capture measures every variant.  Each step opens with a WFI
+ * hold, a marker in the current trace; the last entry stays. */
+#include "drv_aon.h"
+
+#define PM_BLE_SWEEP_MAX       16U
+#define PM_BLE_SWEEP_MARKER_MS 1500U
+
+static uint32_t s_sweep_policy[PM_BLE_SWEEP_MAX];
+static int16_t s_sweep_vsel[PM_BLE_SWEEP_MAX];
+static uint32_t s_sweep_count;
+static uint32_t s_sweep_step;
+static TimerHandle_t s_sweep_timer;
+static ipro_pm_reason_t s_sweep_marker;
+
+static void pm_ble_sweep_parse(void)
+{
+    const char *p = CONFIG_IPRO_PM_BLE_PDS_POLICY_SWEEP;
+    char *end;
+
+    while ((*p != '\0') && (s_sweep_count < PM_BLE_SWEEP_MAX)) {
+        uint32_t policy = (uint32_t)strtoul(p, &end, 16);
+
+        if (end == p) {
+            p++; /* separator */
+            continue;
+        }
+        s_sweep_policy[s_sweep_count] = policy;
+        s_sweep_vsel[s_sweep_count] = -1;
+        p = end;
+        if (*p == '/') {
+            s_sweep_vsel[s_sweep_count] = (int16_t)strtoul(p + 1, &end, 16);
+            p = end;
+        }
+        s_sweep_count++;
+    }
+}
+
+static void pm_ble_sweep_apply(void)
+{
+    uint32_t i = s_sweep_step;
+
+    pm_pds_ble_ctlr_domain_policy_set(s_sweep_policy[i]);
+    if (s_sweep_vsel[i] >= 0) {
+        (void)AON_Set_DCDC14_Top_0((uint8_t)s_sweep_vsel[i], 0x3);
+    }
+    ipro_pm_hold_for_ms(s_sweep_marker, PM_BLE_SWEEP_MARKER_MS);
+    printf("pm sweep %lu/%lu: policy 0x%03lx vdd14 %d\r\n", (unsigned long)(i + 1U),
+           (unsigned long)s_sweep_count, (unsigned long)s_sweep_policy[i], (int)s_sweep_vsel[i]);
+}
+
+/* Timer task: the next step. */
+static void pm_ble_sweep_next(TimerHandle_t timer)
+{
+    if ((s_sweep_step + 1U) >= s_sweep_count) {
+        (void)xTimerStop(timer, 0U);
+        return;
+    }
+    s_sweep_step++;
+    pm_ble_sweep_apply();
+}
+
+/* First link in the PDS profile: the sweep starts (once per boot). */
+static void pm_ble_sweep_start(void)
+{
+    if (s_sweep_timer != NULL) {
+        return;
+    }
+    pm_ble_sweep_parse();
+    if (s_sweep_count == 0U) {
+        return;
+    }
+    s_sweep_marker = ipro_pm_reason_register("sweep", IPRO_PM_MODE_WFI);
+    s_sweep_timer = xTimerCreate("pm_sweep", pdMS_TO_TICKS(CONFIG_IPRO_PM_BLE_PDS_POLICY_SWEEP_S * 1000U), pdTRUE,
+                                 NULL, pm_ble_sweep_next);
+    if ((s_sweep_timer != NULL) && (xTimerStart(s_sweep_timer, 0U) == pdPASS)) {
+        s_sweep_step = 0U;
+        pm_ble_sweep_apply();
+    }
+}
+#else
+#define pm_ble_sweep_start() ((void)0)
+#endif
+
 /* Slow loop: a link goes to the PDS profile when its connection interval
  * leaves room for a PDS cycle that pays for itself. */
 static volatile uint32_t s_link_interval_us;
@@ -532,6 +747,9 @@ static void pm_ble_profile_eval(uint16_t interval, uint16_t latency, uint16_t ti
     /* with slave latency the controller wakes every (latency + 1) intervals */
     s_link_interval_us = pds ? ((uint32_t)interval * 1250U * ((uint32_t)latency + 1U)) : 0U;
     pm_ble_profile_set(pds);
+    if (pds) {
+        pm_ble_sweep_start();
+    }
 }
 
 static int pm_ble_params_request_conn(struct bt_conn *conn, uint32_t idle_ms)
@@ -721,8 +939,7 @@ int ipro_pm_ble_controller_init(unsigned int task_priority)
 
     /* connected-BLE PDS domain profile and measured RTC wake timing; only
      * consulted when the controller actually enters PDS */
-    pm_pds_ble_ctlr_domain_policy_set(PM_PDS_BLE_CTLR_DOMAIN_POLICY_CONNECTED_BASELINE |
-                                      PM_PDS_BLE_CTLR_DOMAIN_POLICY_KEEP_MISC_LIVE);
+    pm_pds_ble_ctlr_domain_policy_set(CONFIG_IPRO_PM_BLE_PDS_DOMAIN_POLICY);
     hal_lp_set_timing_policy(HAL_LP_TIMING_POLICY_EXACT_US_TO_RTC | HAL_LP_TIMING_POLICY_PDS_WAKE_DELAY_VALID,
                              1021U);
     err = ipro_ble_ctlr_controller_init(task_priority);

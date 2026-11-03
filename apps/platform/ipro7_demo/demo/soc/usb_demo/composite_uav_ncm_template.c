@@ -582,7 +582,7 @@ static void ncm_rx_task(void *arg)
          * clear halt) the bulk_in callback never fires, leaving
          * g_ncm_tx_data_length > 0 forever.  All subsequent flushes
          * return -USB_ERR_BUSY, dropping TCP ACKs and ARP replies.
-         * 50 ms timeout matches miniclaw's proven configuration. */
+         * 50 ms is the bench-proven timeout. */
         usbd_cdc_ncm_tx_recover_stale(50);
 
         /* RX stale recovery: detect "lost" state where EP_RDY=0,

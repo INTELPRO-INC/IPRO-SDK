@@ -37,7 +37,6 @@
  *
  * Examples:
  *   apps/bluetooth/esl/sig_esl_common/sig_esl_pawr_cfg.h  (SIG ESL pair)
- *   apps/turnkey/robust/.../phm_pawr_cfg.h                 (PHM pair)
  *
  * Apps that don't ship a cfg header fall back to the 4-sub × 1-slot
  * legacy layout defined below — same as the SDK has always used. */
@@ -149,7 +148,7 @@ extern "C" {
  *   interval      = 800  (1000 ms)
  *   32 subevents, subevent_interval = 24 (30 ms)
  *   response_slot_delay = 12 (15 ms) — RF turnaround; host uses evt+1 retry
- *   response_slot_spacing = 8 (10 ms) — fits 66-byte PHM payload at 1Mbps
+ *   response_slot_spacing = 8 (10 ms) — fits a 66-byte sensor payload at 1Mbps
  *   4 response slots per subevent (push model: up to 4 sensors per subevent)
  *
  * Budget per subevent: indication(~0.5ms) + delay(15ms) + 4×slot(40ms) = 55.5ms < 30ms
@@ -158,10 +157,10 @@ extern "C" {
 
 /* PAwR sizing — DEPLOYMENT-SPECIFIC defaults.
  *
- * Each ESL family (SIG pricetag, PHM sensor, IMU streamer, …) has its
+ * Each ESL family (SIG pricetag, vibration sensor, IMU streamer, …) has its
  * own optimal sizing, so every constant here is `#ifndef`-guarded.
  * The defaults below correspond to the legacy 4-subevent layout used
- * by the older ipro_esl_* apps and the LP-spike PHM bring-up.
+ * by the older ipro_esl_* apps and the low-power sensor bring-up.
  *
  * To use a different sizing in your app, define the constants BEFORE
  * including esl_defs.h (typically via a per-app cfg header that you

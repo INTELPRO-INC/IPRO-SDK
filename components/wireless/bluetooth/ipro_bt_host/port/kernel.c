@@ -25,7 +25,12 @@
 
 struct k_work_q k_sys_work_q;
 
-#define IPRO_WORKQ_STATIC_SLOTS 6U
+/* Static TCBs for lazily started work queues (an LE host runs three: system,
+ * BT RX, TX processor); CONFIG_IPRO_BT_WORKQ_SLOTS from the build. */
+#ifndef CONFIG_IPRO_BT_WORKQ_SLOTS
+#define CONFIG_IPRO_BT_WORKQ_SLOTS 6
+#endif
+#define IPRO_WORKQ_STATIC_SLOTS ((size_t)CONFIG_IPRO_BT_WORKQ_SLOTS)
 /* Zephyr's system work queue (bt_sys_work). Size in bytes from the build
  * (ipro_bt_host/CMakeLists.txt); the AIC8800 BR/EDR transport needs more than
  * the LE-only default. */

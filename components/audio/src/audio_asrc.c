@@ -160,19 +160,19 @@ void audio_asrc_ctl_init(audio_asrc_ctl_t *c, int32_t target, int32_t max_ppm)
 {
     c->target = target;
     c->max_x100 = max_ppm * 100;
-    c->level_q8 = target << 8;
+    c->level_q8 = target * 256;     /* Q8; a shift of a negative level is undefined */
     c->primed = false;
 }
 
 int32_t audio_asrc_ctl_update(audio_asrc_ctl_t *c, int32_t level)
 {
     if (!c->primed) {
-        c->level_q8 = level << 8;
+        c->level_q8 = level * 256;
         c->primed = true;
     } else {
-        c->level_q8 += ((level << 8) - c->level_q8) >> CTL_SMOOTH_SHIFT;
+        c->level_q8 += ((level * 256) - c->level_q8) >> CTL_SMOOTH_SHIFT;
     }
-    int32_t err_q8 = c->level_q8 - (c->target << 8);
+    int32_t err_q8 = c->level_q8 - (c->target * 256);
     int32_t trim = (int32_t)(((int64_t)err_q8 * CTL_GAIN_X100_PER_SAMPLE) / 256);
     if (trim > c->max_x100) {
         trim = c->max_x100;

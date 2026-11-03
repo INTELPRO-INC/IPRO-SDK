@@ -1,6 +1,13 @@
 # IPRO7 UVC Camera Application CMakeLists.txt
+#
+# The camera pipeline (uvc.c, uvc_isp.c, uvc_draw.c, uvc_iq_sc101iot.c) lives in
+# the Edge AI Teach firmware's image/ folder since 2026-11-01, where it is also
+# built for the Reef's image Teach mode; this app builds it as a USB camera
+# (EVB preview with person detection, Reef OV5640, Reef rock-paper-scissors).
+set(PIPE_DIR ${CMAKE_SOURCE_DIR}/apps/ai/ipro_reef_teach/image)
 
 __component_add_include_dirs(.)
+__component_add_include_dirs(${PIPE_DIR})   # main.c includes uvc_isp.h too
 
 target_compile_options(app PRIVATE -Werror)
 
@@ -11,7 +18,7 @@ target_compile_options(app PRIVATE -Werror)
 # package ships that component as libisp_algorithm.a without its .c files.
 if (CONFIG_MM_SUPPORT)
     target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/uvc_isp.c
+        ${PIPE_DIR}/uvc_isp.c
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/firmware_cs.c
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/firmware_ct.c
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/firmware_defog.c
@@ -25,7 +32,7 @@ if (CONFIG_MM_SUPPORT)
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/img_proc.c
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/img_utils.c
         ${CMAKE_SOURCE_DIR}/components/isp_firmware/src/isp_comm_sns.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/uvc_iq_sc101iot.c
+        ${PIPE_DIR}/uvc_iq_sc101iot.c
         ${CMAKE_SOURCE_DIR}/components/sensor/sc101iot.c
     )
 
@@ -40,7 +47,7 @@ endif()
 # USB UVC streaming (USB Video Class)
 if (CONFIG_CHERRYUSB_DEVICE_VIDEO)
     target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/uvc.c
+        ${PIPE_DIR}/uvc.c
     )
 endif()
 
@@ -50,12 +57,14 @@ endif()
 #   CONFIG_UVC_RPS  rock-paper-scissors game drawn into the stream (uvc_rps.c,
 #                   IPRO7AI Reef). The classifier, the game and the model are
 #                   the EVK app's (apps/ai/ipro7ai_evk_rps) - one copy, two boards.
+#   Image Teach (CONFIG_UVC_TEACH) is built only in apps/ai/ipro_reef_teach.
 if (CONFIG_AI_SUPPORT)
     if (CONFIG_UVC_RPS)
         set(RPS_APP_DIR ${CMAKE_SOURCE_DIR}/apps/ai/ipro7ai_evk_rps)
         set(EVK_BOARD_DIR ${CMAKE_SOURCE_DIR}/components/board/ipro7ai_evk)
         target_sources(app PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/uvc_rps.c
+            ${PIPE_DIR}/uvc_draw.c
             ${RPS_APP_DIR}/src/rps_model.c
             ${RPS_APP_DIR}/src/rps_game.c
             ${EVK_BOARD_DIR}/src/font5x7.c

@@ -15,7 +15,6 @@ osource "components/sys/Kconfig"
 osource "components/wireless/Kconfig"
 
 # AI/NPU Acceleration
-osource "components/ai/Kconfig"
 
 # Boot Loader Components (app_header envelope, etc.)
 osource "components/boot/Kconfig"
@@ -28,6 +27,9 @@ osource "components/cherryusb/Kconfig"
 
 # Cryptography Library
 osource "components/crypto/Kconfig"
+
+# PSA (Platform Security Architecture)
+osource "components/psa/Kconfig"
 
 # File System
 osource "components/fs/Kconfig"
@@ -63,7 +65,6 @@ osource "components/cmsis_dap/Kconfig"
 osource "components/utils/Kconfig"
 
 # Matter (Project CHIP)
-osource "components/matter/Kconfig"
 
 # ISP Modules
 osource "components/isp_firmware/Kconfig"
@@ -71,13 +72,10 @@ osource "components/isp_firmware/Kconfig"
 # JSON Utilities (always available, no config needed)
 
 # HTTP Client (connection pool, TLS, multipart)
-osource "components/http_client/Kconfig"
 
 # AI Client (agent, providers)
-osource "components/ai_client/Kconfig"
 
 # Telegram Client (Bot API)
-osource "components/telegram_client/Kconfig"
 
 # Audio Framework (capture + output)
 osource "components/audio/Kconfig"

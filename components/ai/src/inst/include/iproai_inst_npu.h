@@ -24,6 +24,27 @@
 
 IPROAI_Status_e iproai_npu_inst_decode_layer(iproai_model_hdl_t hdl);
 IPROAI_ProcStatus_e iproai_npu_inference();
+
+/* Bounded NPU completion (CONFIG_AI_NPU_TIMEOUT_MS): health of the one completion path
+ * every NPU client shares. */
+typedef struct {
+    uint32_t completed;            /* segments that signalled done */
+    uint32_t timeouts;
+    uint32_t recoveries;           /* block resets */
+    uint32_t refused;              /* runs refused while faulted */
+    uint32_t timeout_ms;           /* the configured default */
+    uint16_t consecutive_timeouts;
+    uint8_t  faulted;
+} iproai_npu_health_t;
+
+/* 0 restores CONFIG_AI_NPU_TIMEOUT_MS. Set it under the NPU lock, for the run that follows. */
+void iproai_npu_set_timeout_ms(uint32_t ms);
+uint32_t iproai_npu_get_timeout_ms(void);
+void iproai_npu_get_health(iproai_npu_health_t *h);
+/* Reset the block again and accept runs. The supported recovery from a fault is a restart. */
+void iproai_npu_clear_fault(void);
+/* Why the last run failed in the NPU (TIMEOUT or FAULTED), and forget it; NO_ERROR if not. */
+IPROAI_Status_e iproai_npu_take_error(void);
 IPROAI_Status_e iproai_npu_stop(void);
 IPROAI_Status_e iproai_npu_initCfg(iproai_model_hdl_t hdl);
 IPROAI_Status_e iproai_npu_release(iproai_model_hdl_t hdl);

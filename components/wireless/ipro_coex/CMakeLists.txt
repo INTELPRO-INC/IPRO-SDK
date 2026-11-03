@@ -1,6 +1,6 @@
 # WiFi/BT coexistence (PTA arbiter).
 #
-# Ported from bl_iot_sdk components/network/wifi_bt_coex. Same shape: public
+# Ported from the reference SDK components/network/wifi_bt_coex. Same shape: public
 # API + per-chip register backend + shared timing context + console command.
 # It replaces three independent sets of hardcoded PTA magic numbers that used
 # to live in macsw's hal_machw.c, the wifi6 CLI, and the 802.15.4 HAL.

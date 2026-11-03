@@ -54,7 +54,7 @@ make -C apps/test/ipro_pio_sdh_test
 ```
 - Console/log/shell 走 USB CDC(VID 0x1209 / PID 0x7014);UART 變體 = 關閉 .config 的 CherryUSB 區塊
 - 板上需有 `ipro7_uboot_boot2`(app 帶 BOOT_APP_HEADER;stock boot2 開不起來)
-- 燒錄:UART `ipro_iot_tool_lite --flash-pin 0x9`(arduino 板)或 USB 1200-touch
+- 燒錄:UART 用 IntelProCube 命令列工具加 `--chip-variant IPRO7AI`(arduino 板,flash pin 0x9)或 USB 1200-touch
 
 ## 客戶用法(3 步跑分)
 

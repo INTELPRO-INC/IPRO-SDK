@@ -379,7 +379,7 @@ static int cmd_mpu_hires(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------ */
-/* Shell: mpu_phm — PHM vibration analysis (2kHz, 1s window)         */
+/* Shell: mpu_vib — vibration analysis (2kHz, 1s window)             */
 /* ------------------------------------------------------------------ */
 
 /* Separate per-axis buffers for vib_compute (PSRAM) */
@@ -387,7 +387,7 @@ static int16_t s_ax_buf[HIRES_BUF_SIZE] __attribute__((section(".psram_data")));
 static int16_t s_ay_buf[HIRES_BUF_SIZE] __attribute__((section(".psram_data")));
 static int16_t s_az_buf[HIRES_BUF_SIZE] __attribute__((section(".psram_data")));
 
-static int phm_collect_one_second(void)
+static int vib_collect_one_second(void)
 {
     int total = 0;
     mpu6500_fifo_reset();
@@ -410,7 +410,7 @@ static int phm_collect_one_second(void)
     return total;
 }
 
-static int cmd_mpu_phm(int argc, char **argv)
+static int cmd_mpu_vib(int argc, char **argv)
 {
     if (!s_initialized) {
         IPRO_LOGW(TAG, "Not initialized — run mpu_init first");
@@ -442,14 +442,14 @@ static int cmd_mpu_phm(int argc, char **argv)
         return -1;
     }
 
-    printf("PHM monitoring: %d Hz, %ds%s\r\n",
+    printf("Vibration monitoring: %d Hz, %ds%s\r\n",
            actual_rate, seconds, csv_mode ? " (CSV)" : "");
 
     if (csv_mode)
         vib_print_csv_header();
 
     for (int sec = 0; sec < seconds; sec++) {
-        int n = phm_collect_one_second();
+        int n = vib_collect_one_second();
         if (n < 0) {
             IPRO_LOGE(TAG, "Collection error at sec %d", sec + 1);
             mpu6500_fifo_stop();
@@ -469,7 +469,7 @@ static int cmd_mpu_phm(int argc, char **argv)
     }
 
     mpu6500_fifo_stop();
-    printf("PHM Done.\r\n");
+    printf("Vibration done.\r\n");
     return 0;
 }
 
@@ -501,7 +501,7 @@ SHELL_CMD_EXPORT_ALIAS(cmd_mpu_read,     mpu_read,     Read accel+gyro+temp);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_raw,      mpu_raw,      Read raw 16-bit values);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_stream,   mpu_stream,   Stream N samples);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_hires,   mpu_hires,    2kHz FIFO sampling);
-SHELL_CMD_EXPORT_ALIAS(cmd_mpu_phm,    mpu_phm,     PHM vibration analysis);
+SHELL_CMD_EXPORT_ALIAS(cmd_mpu_vib,    mpu_vib,     Vibration analysis);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_accel_fs, mpu_accel_fs, Set accel full-scale);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_gyro_fs,  mpu_gyro_fs,  Set gyro full-scale);
 SHELL_CMD_EXPORT_ALIAS(cmd_mpu_sleep,    mpu_sleep,    Enter sleep mode);
@@ -526,7 +526,7 @@ static void main_task(void *pvParameters)
     printf("  mpu_accel_fs <0-3>      — 2/4/8/16g\r\n");
     printf("  mpu_gyro_fs <0-3>       — 250/500/1000/2000\r\n");
     printf("  mpu_hires [seconds]     — 2kHz FIFO (default 10s)\r\n");
-    printf("  mpu_phm [seconds] [-csv] — PHM features\r\n");
+    printf("  mpu_vib [seconds] [-csv] — vibration features\r\n");
     printf("  mpu_sleep / mpu_wake\r\n");
     printf("========================================\r\n");
 

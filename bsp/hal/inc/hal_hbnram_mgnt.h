@@ -246,6 +246,17 @@ typedef struct {
 #define HAL_HBNRAM_CLK32K_OVR_OFFSET    (HAL_HBNRAM_RESERVED_OFFSET + HAL_HBNRAM_RESERVED_SIZE - 4)
 #define HAL_HBNRAM_CLK32K_OVR_ADDR      (HBN_RAM_BASE + HAL_HBNRAM_CLK32K_OVR_OFFSET)
 
+/* A/B OTA trial record (an application's USB A/B update, 2026-10-20): 16 B at a FIXED address
+ * near the top of the IPRO7 reserved window, below the CLK32K override word.
+ * Fixed because the image that arms a trial and the image that checks it are
+ * different builds, so it cannot be a linker-placed .hbn_noinit variable.
+ * ipro7_common.ld.in keeps .hbn_noinit below it. IPRO6 has WLCAL there. */
+#if !(defined(CONFIG_IPRO6) || defined(IPRO6))
+#define HAL_HBNRAM_OTA_TRIAL_OFFSET     0xEE0
+#define HAL_HBNRAM_OTA_TRIAL_SIZE       0x10
+#define HAL_HBNRAM_OTA_TRIAL_ADDR       (HBN_RAM_BASE + HAL_HBNRAM_OTA_TRIAL_OFFSET)
+#endif
+
 /*
  * Region: iot2lp_para (lp_fw <-> full firmware wake parameters)
  * - Shared params for the standalone lp_fw Stage-1 image (DTIM wake path).
@@ -310,6 +321,13 @@ typedef struct {
 
 #if (HAL_HBNRAM_RESERVED_END > HAL_HBNRAM_IOT2LP_OFFSET)
 #error "HBN RAM layout error: RESERVED overlaps with IOT2LP"
+#endif
+
+#if defined(HAL_HBNRAM_OTA_TRIAL_OFFSET)
+#if (HAL_HBNRAM_OTA_TRIAL_OFFSET < HAL_HBNRAM_RESERVED_OFFSET + 4) || \
+    (HAL_HBNRAM_OTA_TRIAL_OFFSET + HAL_HBNRAM_OTA_TRIAL_SIZE > HAL_HBNRAM_CLK32K_OVR_OFFSET)
+#error "HBN RAM layout error: OTA_TRIAL outside the reserved window / over CLK32K_OVR"
+#endif
 #endif
 
 #if defined(HAL_HBNRAM_WLCAL_OFFSET)

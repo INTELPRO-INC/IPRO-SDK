@@ -14,14 +14,14 @@ bench: every stage, counter and knob is a shell command.
 
 ## 1. Build both images
 
-Two chips, two images. Run both from the SDK root.
+Two chips, two images.
+
+- **IPRO6S device (the radio)** runs the `ipro6_if_wifi` firmware
+  (`defconfig_ipro6_sdio`), from the SDK root:
+  `make -C apps/platform/ipro6_if_wifi DEFCONFIG=defconfig_ipro6_sdio`.
+- **IPRO7 host (this app)**, from the SDK root:
 
 ```bash
-# IPRO6S device (the radio)
-./build_freertos.sh -d defconfig_ipro6_sdio build ipro6_if_wifi
-#   -> apps/platform/ipro6_if_wifi/build_ipro6_sdio/build_out/ipro6_if_wifi_IPRO6.bin
-
-# IPRO7 host (this app)
 ./build_freertos.sh build ipro7_sdio_wifi
 #   -> apps/platform/ipro7_sdio_wifi/build/build_out/ipro7_sdio_wifi_IPRO7.bin
 ```
@@ -39,7 +39,7 @@ cd <flashtool>/ && ./ipro_iot_tool_macos --chipname ipro6 \
     --config chips/ipro6/conf/iot.toml --skip-ota
 #   IPRO7 console:  ipro6_rst      # power-cycle back into the new firmware
 
-# IPRO7: the CMSIS-DAP probe is the reset/download line - see the ipro7-probe skill
+# IPRO7: put it in download mode first (shell `reboot_dl`, or the board's BOOT/RESET)
 cd <flashtool>/ && ./ipro_iot_tool_macos --chipname ipro7 \
     --config chips/ipro7/conf/iot.toml --skip-ota
 ```
@@ -55,7 +55,7 @@ bridge by itself, about 600 ms after reset.
 ### The customer path (one command)
 
 ```
-ipronet_up INTELPRO-LAB02 20210101
+ipronet_up <ssid> <psk>
 ```
 
 This is exactly the minimal program from `ipronet_host.h`: `ipronet_start()`
@@ -68,7 +68,7 @@ waits for it to boot) followed by `ipronet_connect()`. `ipronet_down` is
 ```
 ipro6_rst                                 # power-cycle the device explicitly
 ipro6s_probe                              # ipronet_start() without a power-cycle: init -> enum -> setup -> rx_start -> HELLO -> GET_MAC -> ZCEN3 -> iproeth0 up
-ipro6s_connect INTELPRO-LAB02 20210101    # host drives assoc + DHCP on the device
+ipro6s_connect <ssid> <psk>               # host drives assoc + DHCP on the device
 ```
 
 `ipro6s_net_up` is no longer needed: `start()` brings `iproeth0` up. What a
@@ -85,7 +85,10 @@ The MAC line is the GET_MAC handshake — `iproeth0` takes the device's STA MAC,
 it is never hardcoded here. The IP line arrives asynchronously afterwards
 (`IP_UPDATE_IND`), so `ipro6s_connect` returning is not yet "ready"; wait for it.
 
-Then the link is a normal netif — `iperf -c <server>` to measure it.
+Then the link is a normal lwIP netif. The `iperf` shell command
+(`iperf -c <server>`) comes from the optional `esp_iperf` component
+(`CONFIG_COMPONENTS_IPERF_ENABLE=y`), which is not part of the public SDK
+package; without it, measure with your own lwIP socket client.
 
 ## Troubleshooting the first minute
 

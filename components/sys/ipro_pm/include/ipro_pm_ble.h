@@ -93,6 +93,10 @@ typedef struct {
 /** Snapshot of the BLE backend counters. */
 void ipro_pm_ble_diag_get(ipro_pm_ble_diag_t *out);
 
+/** Bench (CONFIG_IPRO_PM_BLE_DEADLINE_DIAG): print and clear whose RTOS
+ *  deadline shortened offered PDS windows. */
+void ipro_pm_ble_deadline_diag_dump(void);
+
 #ifdef __cplusplus
 }
 #endif

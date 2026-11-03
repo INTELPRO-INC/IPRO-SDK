@@ -1,2 +1,0 @@
-# Example application source files
-    fhost_example.c

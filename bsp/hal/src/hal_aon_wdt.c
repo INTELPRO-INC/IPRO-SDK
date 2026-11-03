@@ -35,6 +35,21 @@ void aon_wdt_init(uint8_t mask_bit)
 #endif
 }
 
+uint8_t aon_wdt_mask_for_seconds(uint32_t seconds, uint32_t *actual_s)
+{
+    uint8_t mask = AON_WDT_TIMEOUT_2S;
+    uint32_t s = 2u;
+
+    while (s < seconds && mask < AON_WDT_TIMEOUT_64S) {
+        mask++;
+        s *= 2u;
+    }
+    if (actual_s) {
+        *actual_s = s;
+    }
+    return mask;
+}
+
 void aon_wdt_feed(void)
 {
 #if defined(CONFIG_AON_WDT_SUPPORT)

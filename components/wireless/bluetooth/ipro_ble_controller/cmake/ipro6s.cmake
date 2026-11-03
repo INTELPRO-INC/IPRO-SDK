@@ -458,7 +458,7 @@ foreach(src ${HCI_SOURCES})
     __component_add_sources(${src})
 endforeach()
 
-# Link Layer - BLE.  The BL616D reference treats CFG_BLE_EMB and CFG_BT_EMB
+# Link Layer - BLE.  The reference controller build treats CFG_BLE_EMB and CFG_BT_EMB
 # as independent build axes; do not compile the BLE LL into a Classic-only
 # archive merely because both modes share the scheduler and HCI modules.
 if(CONFIG_BTDM_BLE_ENABLE)

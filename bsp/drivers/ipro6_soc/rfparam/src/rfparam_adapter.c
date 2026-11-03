@@ -667,7 +667,7 @@ int8_t rfparam_load(struct wl_param_t *param)
 
 }
 
-#ifdef BL_PSM_RFPARAM
+#ifdef IPRO_PSM_RFPARAM
 
 static void parse_string(char* str, void* arr, int max_len, const char* type) {
     char* tok = strtok(str, ",");

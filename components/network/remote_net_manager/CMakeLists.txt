@@ -16,3 +16,5 @@ endif()
 __component_add_sources(src/rnm_user_ext.c)
 
 __component_add_compile_definitions(-DCFG_IPRO_WIFI)
+# AP vif MAC = STA MAC with byte 5 bit 0 flipped (wifi_mgmr_ext.c)
+__component_add_compile_definitions(-DWIFI_MGMR_AP_MAC_SPLIT)

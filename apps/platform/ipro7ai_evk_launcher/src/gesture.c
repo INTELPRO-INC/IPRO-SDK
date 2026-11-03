@@ -310,7 +310,7 @@ static void gesture_task(void *arg)
         }
         TickType_t t0 = xTaskGetTickCount();
         uint32_t ext = feed(addr);
-        npu_share_begin(s_net, ext);
+        npu_share_begin(s_hdl, ext);
         TickType_t tw = xTaskGetTickCount();          /* how long the detector held it */
         IPROAI_Status_e st = iproai_startCompute(s_hdl);
         npu_share_end();
@@ -379,7 +379,12 @@ int gesture_init(void)
         s_fail = "NO RAM FOR QUEUES";
         return -1;
     }
-    if (load_model() != 0) {
+    int rc_load;
+    npu_share_load_begin();              /* the load writes the NPU registers */
+    imgBuffer = (char *)(uintptr_t)(s_frame - 4u);
+    rc_load = load_model();
+    npu_share_load_end();
+    if (rc_load != 0) {
         return -1;
     }
     s_stats.free_heap = (uint32_t)xPortGetFreeHeapSize();

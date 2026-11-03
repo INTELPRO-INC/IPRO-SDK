@@ -38,11 +38,17 @@ cable works; by hand it is hold **SW1** (BOOT), tap **SW2** (RESET).
 
 ## Before powering up
 
-| Jumper | Setting |
+On the V4.0 board (silkscreen "IPRO7AI REEF EVK V4.0"):
+
+| Switch / jumper | Setting |
 |---|---|
-| JP1 | VDDIO1: 1-2 = 3.3 V, 2-3 = 2.8 V. **JP1 must be fitted**, or the VDDIO1 bank (camera, USB, BOOT) is unpowered. |
-| JP2 | 1-2 (3V3 from the buck). R40 0R is the same link; fit one. |
-| JP3 | 1-2 = SD_VDD always on. 2-3 = switched by GPIO14 — use this with the IPRO6S_FIN so `fin cycle` works. |
+| SW7 | CAM: the camera pins go to the camera connector (GPIO routes them to the J_IO header instead). |
+| SW8 | PWR for normal use; MEAS only with a current meter or a 3.3 V supply on JP2. |
+| JP3 | ON = SD_VDD always on. GPIO = switched by GPIO14; use this with the IPRO6S_FIN so `fin cycle` works. |
+
+On the earlier V3.0 board: JP1 must be fitted (VDDIO1 1-2 = 3.3 V, or the
+camera, USB and BOOT bank is unpowered), JP2 on 1-2, and JP3 on 2-3 for the
+IPRO6S_FIN.
 
 Power is USB-C only. The WS2812 and the class-D amplifier run from VBUS, so
 a current-limited bench supply on 3V3 alone leaves the LED and speaker dead.
@@ -73,6 +79,8 @@ spk on | spk off | spk stop | spk status
 mic rec <pdm|headset|aux> <s>  record up to 10 s at 16 kHz into PSRAM
 mic play [hp]                  play it back (+20 dB make-up by default)
 mic loop <src> [sec] [hp]      live monitor; omit sec for "until mic stop"
+mic sdrec <src> <name> <s>     record up to 2 h to sd:/rec/<name>.wav (LED red while it runs)
+mic usb <src>                  USB microphone on the board's own USB-C until `mic stop` (LED red)
 mic gain <db> | mic ch <0|1> | mic stop | mic status
 
 sd status | sd mount | sd ls [path] | sd test | sd unmount
@@ -104,7 +112,7 @@ hp                             read the jack-detect level on GPIO26
 | Keys | SW1 41 (**active high**), SW3 10, SW4 27, SW5 11 | Polled at 10 ms, 30 ms debounce. SW3/SW5 are released while AUX-IN captures. |
 | Speaker | DAC A GPIO23 → PAM8302A, SD# GPIO25 | Enable is **active high**; the board header's `BOARD_SPK_EN_ACTIVE 1` is honoured by `audio_output_dac.c`. Gain 30 V/V — the demo defaults to 20 % amplitude. |
 | Headphone | same DAC → TLV9061 → J2 (PJ-342, OMTP) | Always connected; `hp` in a command just mutes the amp. Detect GPIO26 LOW = plugged. |
-| PDM mic | CLK 16, DATA 17 | MSM261DGT003 on 3V3, L/R = GND → left slot (`mic ch 1` to try the other). |
+| PDM mic | CLK 16, DATA 17 | MSM261DGT003 on 3V3, L/R = GND → left slot (`mic ch 1` to try the other). Runs at about 15,872 Hz, not 16,000; `mic sdrec` writes the measured rate into the WAV header; `mic usb` converts to the host's 16,000 Hz (`audio_asrc` holding the UAC queue). |
 | Headset mic | AIN7 (GPIO13) +, AIN6 (GPIO12) − | Differential AUADC, 24 dB PGA. Bias 2.2 k to 3V3 on the jack. |
 | AUX-IN | AIN4 (GPIO10) L, AIN5 (GPIO11) R | Single-ended, 6 dB PGA, left channel only in this demo. |
 | SD slot | 28–33 on SDH_0, DET 15, PWR 14 | 4-bit FatFS at `sd:`. DET low = seated. PWR low = on (reset default). |
@@ -162,7 +170,10 @@ If the camera does not stream, these are the things to check:
 ## Wi-Fi and RTSP (`defconfig_wifi_ipro6s`)
 
 The IPRO6S_FIN is an SDIO slave on the card slot's six lines, powered from
-SD_VDD. With JP3 on 2-3, `fin cycle` power-cycles it through GPIO14. The
+SD_VDD. It runs the IPRO6S `ipro6_if_wifi` firmware (SDIO profile):
+`make -C apps/platform/ipro6_if_wifi DEFCONFIG=defconfig_ipro6_sdio`. With JP3 on 2-3
+(GPIO on the V4.0 board), `fin cycle` power-cycles it through
+GPIO14. The
 `defconfig_wifi_ipro6s` build adds the host side (`components/network/ipronet_host`
 over SDIO, lwIP) and an RTSP MJPEG stream of the camera
 (`components/network/rtsp_server`):

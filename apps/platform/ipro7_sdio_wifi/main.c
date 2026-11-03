@@ -521,7 +521,8 @@ static int cmd_ipro6s_girq(int argc, char **argv)
 /* Counters                                                            */
 /* ------------------------------------------------------------------ */
 
-/* Throughput testing uses the SDK's esp_iperf component, which registers a
+/* Throughput testing uses the optional esp_iperf component (not part of the
+ * public SDK package; CONFIG_COMPONENTS_IPERF_ENABLE), which registers a
  * standard `iperf` shell command (BSD sockets, reliable interval report):
  *   host RX:  iperf -s -u   (or TCP: iperf -s)   on this DUT; peer = iperf -c <host> ...
  *   host TX:  iperf -c <peer> -u -b <rate> -t <secs>   (peer = iperf -s ...) */
