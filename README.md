@@ -52,7 +52,7 @@ At the end of this section the Reef runs the out-of-box firmware
 | Console cable | a 3.3 V USB-to-UART adapter with an SH1.0 6-pin plug for U6, or the IPRO Debug Probe |
 | Host | macOS or Linux with a bash shell |
 | RISC-V toolchain | from INTELPRO, not part of the SDK (GCC 14, rv32imafc / ilp32f) |
-| IntelProCube v0.6.3 | the flash tool, from INTELPRO, not part of the SDK: `ipro_iot_tool_macos` or `ipro_iot_tool_linux` |
+| IntelProCube 0.7.0.1 | the flash tool, not part of the SDK: download it from [github.com/INTELPRO-INC/ipro-cube](https://github.com/INTELPRO-INC/ipro-cube/releases); `ipro_iot_tool_macos` (Apple silicon) or `ipro_iot_tool_linux` (x86-64) |
 | CMake >= 3.15, GNU make, Python >= 3.8 | Zephyr builds need CMake >= 3.20 |
 
 ### 2. Install the host tools
@@ -89,19 +89,38 @@ the prefix from `CROSS_COMPILE` (environment or command line), then from
 `CONFIG_CROSS_COMPILE` in the application's `.config`, then from the default
 path above.
 
-Unpack IntelProCube to a directory of your choice (`<ICUBE>` below). Its
-command-line tool is run from that directory, because it reads its chip files
-from `chips/`.
+Download IntelProCube 0.7.0.1 from
+[its GitHub releases](https://github.com/INTELPRO-INC/ipro-cube/releases),
+check it and extract it to a new folder:
+
+```bash
+# macOS (Apple silicon)
+curl -LO https://github.com/INTELPRO-INC/ipro-cube/releases/download/v0.7.0.1/IntelProCube-0.7.0.1-macos-arm64.tar.gz
+shasum -a 256 IntelProCube-0.7.0.1-macos-arm64.tar.gz
+# c3a8bf7eca2a48c3f9bf40c3241ddf6aec5155688f2a92f40a84cc47f7633bc4
+mkdir -p ~/ipro && tar xzf IntelProCube-0.7.0.1-macos-arm64.tar.gz -C ~/ipro
+
+# Linux (x86-64)
+curl -LO https://github.com/INTELPRO-INC/ipro-cube/releases/download/v0.7.0.1/IntelProCube-0.7.0.1-linux-x64.tar.gz
+sha256sum IntelProCube-0.7.0.1-linux-x64.tar.gz
+# efc5765ca402d0af00b42489dd61a74481531875b871517af5c0bca9d7387df9
+mkdir -p ~/ipro && tar xzf IntelProCube-0.7.0.1-linux-x64.tar.gz -C ~/ipro
+```
+
+This gives `~/ipro/IntelProCube` (`<ICUBE>` below). If you download the macOS
+package with a browser, run `xattr -d com.apple.quarantine` on it before
+extracting, or macOS stops the programs inside. The command-line tool is run
+from `<ICUBE>`, because it reads its chip files from `chips/`.
 
 ### 3. Get the SDK
 
-Download `IPRO-SDK-V2.2.0.tar.gz` from the release page, compare its checksum
+Download `IPRO-SDK-V2.2.1.tar.gz` from the release page, compare its checksum
 with the one published there, and unpack it:
 
 ```bash
-shasum -a 256 IPRO-SDK-V2.2.0.tar.gz      # Linux: sha256sum
-tar xzf IPRO-SDK-V2.2.0.tar.gz
-cd IPRO-SDK-V2.2.0
+shasum -a 256 IPRO-SDK-V2.2.1.tar.gz      # Linux: sha256sum
+tar xzf IPRO-SDK-V2.2.1.tar.gz
+cd IPRO-SDK-V2.2.1
 cat VERSION.txt
 ```
 
@@ -774,9 +793,28 @@ make -C apps/platform/ipro6_if_wifi DEFCONFIG=defconfig_ipro6_sdio    # builds i
 
 A plain `make` uses `.config`, which is a copy of the first defconfig. A new
 configuration must keep the Wi-Fi options of one of these defconfigs and its
-`CONFIG_WIRELESS_LIB_VARIANT`; the archives exist only for those. IPRO6S
-images are flashed with `--chipname ipro6`; `build_freertos.sh flash` handles
-IPRO7 only.
+`CONFIG_WIRELESS_LIB_VARIANT`; the archives exist only for those.
+
+IPRO6S images are flashed with IntelProCube 0.7.0.1 or later and
+`--chipname ipro6`; `build_freertos.sh flash` handles IPRO7 only. On the
+IPRO6S EVK (2 MB flash) with an IPRO Debug Probe, flash through the probe's
+UART port, the one whose name ends in `02`:
+
+```bash
+cd <ICUBE>
+./ipro_iot_tool_macos --chipname ipro6 --chip-variant IPRO6S \
+    --port /dev/cu.usbmodemXXXX02 --baudrate 2000000 \
+    --pt chips/ipro6/partition/partition_cfg_fw_direct.toml \
+    --firmware <SDK>/apps/platform/ipro6_demo/build_ipro6_lpwifi/build_out/ipro6_demo_IPRO6.bin
+```
+
+The tool enters download mode through the probe and resets the chip after
+flashing; only `[All Success]` at the end means success.
+`partition_cfg_fw_direct.toml` puts the firmware at flash address 0x0 without
+boot2. Images flashed with IntelProCube 0.7.0 do not boot on the 2 MB IPRO6S.
+The console runs at 115200 baud; type `stack_wifi`, then `wifi_scan`. The
+[IPRO6S page](https://intelpro-inc.github.io/ipro-sdk-docs/en/hardware/chips/ipro6s/#flashing)
+of the SDK documentation walks through it step by step.
 
 The DTIM low-power firmware runs from OCRAM while the main core sleeps. It
 ships as an image, `bsp/hal/lp_framework/ipro6/prebuilt/ipro6_lpfw.bin`, which
@@ -882,4 +920,4 @@ port in this SDK, and using AOSL on devices sold to end users (Powered by AOSL).
 The AOSL core is not part of the SDK; fetch it from
 https://github.com/AgoraIO-Community/aosl as shown above.
 
-**SDK version**: IPRO-SDK-V2.2.0 (2026-11-03)
+**SDK version**: IPRO-SDK-V2.2.1 (2026-11-10)

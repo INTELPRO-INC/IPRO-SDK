@@ -1,7 +1,7 @@
 # IPRO BLE Remote on the IPRO7AI Reef - A/B OTA layout, 2 MB flash, with boot2.
 #
 # Layout:
-#   0x000000  boot2      64K   IntelProCube chips/ipro7/builtin_imgs/boot2_v0.5.2/ipro_boot2_IPRO7_v0.5.2.bin
+#   0x000000  boot2      64K   IntelProCube chips/ipro7/builtin_imgs/boot2_v0.6.0/ipro_boot2_IPRO7_v0.6.0.bin
 #   0x010000  PT0/PT1     4K + 4K
 #   0x012000  FW  A[0]  824K   execute slot, boot2 unpacks OTA packages here
 #   0x0E0000  FW  A[1]  512K   OTA staging: the phone writes the .xz.ota package here

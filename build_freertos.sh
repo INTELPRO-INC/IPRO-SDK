@@ -52,9 +52,9 @@ CHIP_VARIANT="${IPRO_CHIP_VARIANT:-}"
 FLASH_PT="${IPRO_FLASH_PT:-}"
 # Flash download rate; independent of the app's console rate.
 FLASH_BAUD=921600
-# IntelProCube v0.6.3 command-line flasher. --chip-variant selects the flash pin
-# (IPRO7 = 0x2, IPRO7AI = 0x9). Set IPRO_FLASH_TOOL to it, or put the IntelProCube
-# directory on PATH.
+# IntelProCube 0.7.x (github.com/INTELPRO-INC/ipro-cube) command-line flasher.
+# --chip-variant selects the flash pin (IPRO7 = 0x2, IPRO7AI = 0x9). Set
+# IPRO_FLASH_TOOL to it, or put the IntelProCube directory on PATH.
 case "$(uname -s)" in
     Darwin) FLASH_TOOL_NAME="ipro_iot_tool_macos" ;;
     Linux)  FLASH_TOOL_NAME="ipro_iot_tool_linux" ;;

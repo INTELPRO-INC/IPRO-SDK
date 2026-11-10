@@ -727,19 +727,20 @@ make -C apps/bluetooth/ble/ipro_ble_remote DEFCONFIG=defconfig_reef
 
 # --chip-variant IPRO7AI：Reef（QFN56）的 flash pin。工具失敗時也回傳 0，請看輸出有沒有 [All Success]
 ipro_iot_tool_macos --chipname ipro7 --chip-variant IPRO7AI --port /dev/cu.usbmodemXXXX --baudrate 921600 \
-    --boot2 <IntelProCube>/chips/ipro7/builtin_imgs/boot2_v0.5.2/ipro_boot2_IPRO7_v0.5.2.bin \
+    --boot2 <IntelProCube>/chips/ipro7/builtin_imgs/boot2_v0.6.0/ipro_boot2_IPRO7_v0.6.0.bin \
     --pt apps/bluetooth/ble/ipro_ble_remote/partition_cfg_2M_remote_ab.toml \
     --firmware apps/bluetooth/ble/ipro_ble_remote/build_reef/build_out/ipro_ble_remote_IPRO7.bin
 ```
 
-開機訊息會先出現 `[BOOT2] IPRO7 Boot2 v0.5.2`，然後從 FW A（0x12000）啟動 App。
+開機訊息會先出現 `[BOOT2] IPRO7 Boot2 v0.6.0`，然後從 FW A（0x12000）啟動 App。
 
 ### BLE OTA
 
 `partition_cfg_2M_remote_ab.toml`：FW A 0x12000（824 KB，執行區）、FW B 0xE0000（512 KB，OTA 套件暫存區）。App 把手機送來的 `.xz.ota` 套件寫進 FW B、驗 CRC32、切換分割區後重開；boot2 驗套件的 SHA256，通過後才抹除 FW A 並解壓寫入，再從 FW A 開機。套件驗證失敗時 boot2 進 USB 救援模式，不會變磚。
 
 ```bash
-# 產生套件（需要 IntelProCube 命令列工具：IPRO_FLASH_TOOL 指向它，或放在 PATH 裡）
+# 產生套件（需要 IntelProCube 命令列工具：IPRO_FLASH_TOOL 指向它，或放在 PATH 裡；
+# boot2 自動用工具內最高版本，0.7.x 為 v0.6.0，要指定其他版本設 IPRO_BOOT2）
 IPRO_FLASH_TOOL=<IntelProCube>/ipro_iot_tool_macos sh apps/bluetooth/ble/ipro_ble_remote/tools/make_reef_ota.sh
 # -> build_reef/build_out/ipro_ble_remote_reef.xz.ota（約 345 KB）
 

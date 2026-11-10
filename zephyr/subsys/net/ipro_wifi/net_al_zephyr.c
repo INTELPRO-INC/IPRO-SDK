@@ -52,6 +52,8 @@ extern int eloop_event_commit(int type, const char *inbuf, int inlen, int discar
 BUILD_ASSERT(NET_AL_ZEPHYR_TX_HEADROOM >= NET_AL_TX_HEADROOM,
 	     "TX headroom below the SDK's NET_AL_TX_HEADROOM");
 #define NX_NB_L2_FILTER 2
+/* Largest L2 frame handed to wpa_supplicant (l2_packet_receive buffer) */
+#define L2_RX_FRAME_MAX 500
 #define VIF_MAX 2
 #define ETH_HDR_LEN 14
 
@@ -266,9 +268,22 @@ void net_al_input(net_al_rx_t net_buf, void *payload, net_al_if_t net_if, uint16
 
 	for (int i = 0; i < NX_NB_L2_FILTER; i++) {
 		if (l2_filter[i].net_if == n && l2_filter[i].ethertype == ethertype) {
-			if (eloop_event_commit(ELOOP_EVT_WPA_L2_DATA, (const char *)frame,
-					       frame_len, 0)) {
+			/* [socket][frame]: the socket tells l2_packet which interface owns it */
+			uint8_t *msg = NULL;
+
+			if (frame_len <= L2_RX_FRAME_MAX) {
+				msg = rtos_malloc(1 + frame_len);
+			}
+			if (msg == NULL) {
 				LOG_WRN("L2 frame 0x%04x dropped", ethertype);
+			} else {
+				msg[0] = (uint8_t)i;
+				memcpy(&msg[1], frame, frame_len);
+				if (eloop_event_commit(ELOOP_EVT_WPA_L2_DATA, (const char *)msg,
+						       frame_len + 1, 0)) {
+					LOG_WRN("L2 frame 0x%04x dropped", ethertype);
+				}
+				rtos_free(msg);
 			}
 			free_fn(net_buf);
 			return;
@@ -717,18 +732,17 @@ int net_l2_socket_create(net_al_if_t net_if, uint16_t ethertype)
 	}
 	l2_filter[free_slot].net_if = net_if;
 	l2_filter[free_slot].ethertype = ethertype;
-	return 0;
+	/* The slot is the socket: received frames carry it, delete takes it back */
+	return free_slot;
 }
 
-int net_l2_socket_delete(void)
+int net_l2_socket_delete(int sock)
 {
-	for (int i = 0; i < NX_NB_L2_FILTER; i++) {
-		if (l2_filter[i].net_if != NULL) {
-			l2_filter[i].net_if = NULL;
-			return 0;
-		}
+	if (sock < 0 || sock >= NX_NB_L2_FILTER || l2_filter[sock].net_if == NULL) {
+		return -1;
 	}
-	return -1;
+	l2_filter[sock].net_if = NULL;
+	return 0;
 }
 
 /* ---- IP configuration (net_al_ext) --------------------------------------- */

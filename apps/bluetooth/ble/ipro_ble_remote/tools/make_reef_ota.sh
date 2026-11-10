@@ -25,8 +25,13 @@
 # build_freertos.sh uses (ipro_iot_tool_macos, ipro_iot_tool_linux or
 # ipro_iot_tool.exe); unset, the tool is looked up in PATH.
 #
-# The package payload is the tool's combined image (whole_img.bin: IPNP
-# bootheader, boot2 and the partition_cfg_2M_remote_ab.toml layout),
+# The tool's --build needs a boot2 image: the highest
+# chips/ipro7/builtin_imgs/boot2_v*/ipro_boot2_IPRO7_v*.bin it ships (public
+# IntelProCube 0.7.x: v0.6.0), or IPRO_BOOT2=<file>. The script prints the one
+# it uses. boot2 is not in the package: v0.5.2 and v0.6.0 give the same payload.
+#
+# The package payload is the tool's whole_img.bin (the firmware behind its
+# 4 KB IPNP bootheader, built for the partition_cfg_2M_remote_ab.toml layout),
 # XZ-compressed by tools/create_ota.py with the 32 KB dictionary boot2's
 # decoder takes. --chip-variant IPRO7AI is the Reef's variant; the tool also
 # records that variant's flash_pin in its eflash_loader_cfg.ini, so pass the
@@ -54,12 +59,30 @@ PYTHON=$(command -v python3 || command -v python || true)
 [ -n "$PYTHON" ] || { echo "python3 not found" >&2; exit 1; }
 [ -f "$BIN" ] || { echo "build first: make -C apps/bluetooth/ble/ipro_ble_remote DEFCONFIG=defconfig_reef" >&2; exit 1; }
 
+# Highest boot2 version: "x.y.z path" lines sorted numerically by component.
+if [ -n "$IPRO_BOOT2" ]; then
+    BOOT2=$IPRO_BOOT2
+else
+    BOOT2=$(for f in "$CUBE"/chips/ipro7/builtin_imgs/boot2_v*/ipro_boot2_IPRO7_v*.bin; do
+                [ -f "$f" ] || continue
+                v=${f##*_v}
+                echo "${v%.bin} $f"
+            done | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1 | cut -d' ' -f2-)
+fi
+if [ -z "$BOOT2" ] || [ ! -f "$BOOT2" ]; then
+    echo "boot2 image not found: ${IPRO_BOOT2:-$CUBE/chips/ipro7/builtin_imgs/boot2_v*/ipro_boot2_IPRO7_v*.bin}" >&2
+    echo "set IPRO_BOOT2 to an ipro_boot2_IPRO7_v*.bin" >&2
+    exit 1
+fi
+BOOT2=$(cd "$(dirname "$BOOT2")" && pwd)/$(basename "$BOOT2")
+echo "boot2: $BOOT2"
+
 # The tool exits 0 even when the build fails; a finished build logs its
 # partition check of whole_img.bin.
 LOG=$(mktemp)
 trap 'rm -f "$LOG"' EXIT
 (cd "$CUBE" && "$TOOL" --chipname ipro7 --chip-variant IPRO7AI --build \
-    --boot2 "$CUBE/chips/ipro7/builtin_imgs/boot2_v0.5.2/ipro_boot2_IPRO7_v0.5.2.bin" \
+    --boot2 "$BOOT2" \
     --pt "$APP/partition_cfg_2M_remote_ab.toml" --firmware "$BIN") > "$LOG" 2>&1
 if ! grep -q "PT Check: whole_img.bin" "$LOG"; then
     cat "$LOG" >&2
