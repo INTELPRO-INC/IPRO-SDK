@@ -18,9 +18,9 @@
 #======================================================================
 
 """
-Create OTA package for IPRO7 boot2 OTA.
+Create OTA package for boot2 OTA (IPRO7, IPRO6).
 
-Format (matches the IPRO7 boot2 / ipro_iot_tool):
+Format (matches boot2 / IntelProCube; the same for every chip):
   [0-15]    Magic: "IPRO_OTA_Ver1.0\\0"
   [16-19]   Type:  "XZ  " or "RAW "
   [20-23]   Payload length (LE)
@@ -37,11 +37,15 @@ Format (matches the IPRO7 boot2 / ipro_iot_tool):
 
 IMPORTANT: Input must be the combined FW image (with bootheader, starts with
 "IPNP" magic), NOT the raw .bin from SDK build. Use the whole_img.bin generated
-by ipro_iot_tool (in chips/ipro7/img_create_iot/whole_img.bin).
+by IntelProCube --build (chips/<chip>/img_create_iot/whole_img.bin).
 
 Usage:
   python3 create_ota.py <whole_img.bin> [--raw] [-o output.ota]
   python3 create_ota.py /path/to/iprocube/chips/ipro7/img_create_iot/whole_img.bin
+  python3 create_ota.py /path/to/iprocube/chips/ipro6/img_create_iot/whole_img.bin --hw-ver IPRO6_M_V1.0
+
+For IPRO6 give --hw-ver IPRO6_M_V1.0: boot2 and ipro_ota do not check it, but the
+host-mode RNM OTA of ipro6_if_wifi accepts only a package whose HW version starts with IPRO6.
 
 By default creates XZ compressed OTA. Use --raw for uncompressed.
 """
@@ -155,12 +159,12 @@ def create_ota_header(payload, use_xz, hw_ver="IPRO7_HW_v1.1", fw_ver="OTA_V1.0.
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create IPRO7 OTA package")
+    parser = argparse.ArgumentParser(description="Create a boot2 OTA package (IPRO7, IPRO6)")
     parser.add_argument("input", help="Input firmware binary (.bin)")
     parser.add_argument("--raw", action="store_true", help="No compression (RAW)")
     parser.add_argument("-o", "--output", help="Output file (default: <input>.xz.ota or <input>.ota)")
     parser.add_argument("--hw-ver", default="IPRO7_HW_v1.1",
-                        help="HW version string (informational; boot2 does not check it)")
+                        help="HW version string (boot2 does not check it; IPRO6: IPRO6_M_V1.0)")
     parser.add_argument("--fw-ver", default="OTA_V1.0.0", help="FW version string")
     parser.add_argument("--sign-key", help="ECDSA P-256 private key (PEM) — adds the "
                         "signature block; keep the key OUTSIDE the repo")
@@ -201,7 +205,7 @@ def main():
         print("WARNING: Input does not start with IPNP bootheader magic.")
         print("  OTA payload must be the combined FW image (whole_img.bin),")
         print("  not the raw .bin from SDK build.")
-        print("  Use: iprocube/chips/ipro7/img_create_iot/whole_img.bin")
+        print("  Use: iprocube/chips/<ipro7|ipro6>/img_create_iot/whole_img.bin")
         sys.exit(1)
 
     if args.raw:

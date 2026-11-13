@@ -1,8 +1,0 @@
-# Written by IPRO Workbench so that clangd (code completion, errors in the editor) reads the
-# RISC-V GCC build: the vendor -march/-mtune are not clang's, so they become the base ISA.
-# Edit it and it is kept; delete it and IPRO Workbench writes it again.
-CompileFlags:
-  Remove: [-march=*, -mtune=*, -mcpu=*, -fstrict-volatile-bitfields]
-  Add: [-march=rv32imafc, -mabi=ilp32f]
-Diagnostics:
-  Suppress: [drv_unknown_argument, drv_unsupported_opt_for_target, drv_unsupported_option_argument]

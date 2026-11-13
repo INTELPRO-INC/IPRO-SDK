@@ -69,11 +69,43 @@ board, a Mac kept the old table: its write to the control characteristic
 failed with "the handle is invalid", and the same firmware under a new address
 took the package. On macOS, turn Bluetooth off and on.
 
+## IPRO6 / IPRO6S
+
+The component and `ota_uart` build for IPRO6 unchanged. `apps/platform/ipro6_demo`
+`defconfig_ipro6_lpwifi_ota` is the Wi-Fi station of `defconfig_ipro6_lpwifi`
+with this component and `ota_uart` on the console UART (UART0, GPIO28/29: the
+port the IPRO Debug Probe and IntelProCube use).
+
+1. Build it:
+
+       make -C apps/platform/ipro6_demo DEFCONFIG=defconfig_ipro6_lpwifi_ota
+
+2. Flash it with boot2 and IntelProCube's 2 MB table, which has a second FW
+   slot (IntelProCube 0.7.0.1 or later; older versions lay the table out at
+   0x10000, where the firmware's own table writes would land in FW slot A):
+
+       IntelProCube --chipname ipro6 --boot2 chips/ipro6/builtin_imgs/boot2_v0.6.0/ipro_boot2_IPRO6_v0.6.0.bin \
+           --pt chips/ipro6/partition/partition_cfg_2M.toml --firmware <app>/build_ipro6_lpwifi_ota/build_out/ipro6_demo_IPRO6.bin ...
+
+   IPRO Workbench does this when that table is chosen on the Partition Table page.
+
+3. Make the package from IntelProCube's `--build` image with the IPRO6
+   hardware version:
+
+       python3 tools/create_ota.py <IntelProCube>/chips/ipro6/img_create_iot/whole_img.bin --hw-ver IPRO6_M_V1.0 --fw-ver <version>
+
+4. Send it with `ota_uart` from the probe's UART, not from a USB CDC console.
+
+The 2 MB table gives FW slot A 1200 KB and slot B 736 KB, so the firmware
+(with its 4 KB header) can be up to about 1.2 MB. An image of Wi-Fi with BLE
+does not fit; it needs 4 MB flash.
+
 ## Users
 
 - `apps/bluetooth/ble/ipro_ble_remote` (`defconfig_reef`): the BLE service and
   the UART command of this component. `include/ota_service.h` forwards to
   `ipro_ota_ble.h`.
+- `apps/platform/ipro6_demo` (`defconfig_ipro6_lpwifi_ota`): the UART command on IPRO6.
 - `apps/platform/common/ota/ota_zmodem.c`, `ota_usb.c` (UART, USB CDC): the sink.
 - `apps/platform/common/ota/ota_common.[ch]`, `ota_sig.[ch]` are forwarding
   files for applications that still add the old paths to their sources.

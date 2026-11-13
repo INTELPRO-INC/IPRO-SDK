@@ -114,13 +114,13 @@ from `<ICUBE>`, because it reads its chip files from `chips/`.
 
 ### 3. Get the SDK
 
-Download `IPRO-SDK-V2.3.0.tar.gz` from the release page, compare its checksum
+Download `IPRO-SDK-V2.3.1.tar.gz` from the release page, compare its checksum
 with the one published there, and unpack it:
 
 ```bash
-shasum -a 256 IPRO-SDK-V2.3.0.tar.gz      # Linux: sha256sum
-tar xzf IPRO-SDK-V2.3.0.tar.gz
-cd IPRO-SDK-V2.3.0
+shasum -a 256 IPRO-SDK-V2.3.1.tar.gz      # Linux: sha256sum
+tar xzf IPRO-SDK-V2.3.1.tar.gz
+cd IPRO-SDK-V2.3.1
 cat VERSION.txt
 ```
 
@@ -923,4 +923,4 @@ port in this SDK, and using AOSL on devices sold to end users (Powered by AOSL).
 The AOSL core is not part of the SDK; fetch it from
 https://github.com/AgoraIO-Community/aosl as shown above.
 
-**SDK version**: IPRO-SDK-V2.3.0 (2026-11-13)
+**SDK version**: IPRO-SDK-V2.3.1 (2026-11-14)
