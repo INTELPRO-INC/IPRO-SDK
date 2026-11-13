@@ -340,9 +340,10 @@ __component_add_sources(plf/refip/src/driver/la/la_mem_mac.c)
 __component_add_sources(plf/refip/src/driver/time/nx_time.c)
 __component_add_sources(plf/refip/src/driver/button/button.c)
 __component_add_sources(plf/refip/src/driver/led/led.c)
-if(NOT IPRO_SDK_UNDER_ZEPHYR)
-# CSI capture is driven from the SDK shell only; its 12 KB OCRAM buffer is
-# better spent on the Zephyr port's RAM-resident hot path.
+if(NOT IPRO_SDK_UNDER_ZEPHYR AND NOT CONFIG_PHY_LPFW)
+# CSI capture is driven from the SDK shell only; its 6 KB WiFi RAM buffer is
+# better spent on the Zephyr port's RAM-resident hot path. The beacon-RX LP
+# firmware has no CSI interrupt hook.
 __component_add_sources(plf/refip/src/driver/csidma/csidma_cli.c)   # SDK shell + FreeRTOS queues
 __component_add_sources(plf/refip/src/driver/csidma/csidma.c)
 __component_add_sources(plf/refip/src/driver/csidma/csidata.c)

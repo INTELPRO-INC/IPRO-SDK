@@ -1,0 +1,37 @@
+# How IPRO Workbench's Sensor Dashboard shows what this application prints.
+# The board prints lines of name:value pairs (see main.c); each name below is one of them.
+title: IPRO7AI Sensor Tag
+groups:
+  - title: Acceleration
+    unit: g
+    range: [-2, 2]
+    decimals: 3
+    chart: true
+    tilt: { x: ax, y: ay, z: az }
+    values:
+      - { name: ax, label: X }
+      - { name: ay, label: Y }
+      - { name: az, label: Z }
+  - title: Rotation
+    unit: dps
+    range: [-250, 250]
+    decimals: 1
+    chart: true
+    values:
+      - { name: gx, label: X }
+      - { name: gy, label: Y }
+      - { name: gz, label: Z }
+  - title: Board
+    values:
+      - { name: temp, label: Temperature, unit: "°C", decimals: 1 }
+      - { name: batt, label: Battery, unit: "%", range: [0, 100], show: bar }
+      - { name: vbat, label: Battery voltage, unit: V, decimals: 3 }
+      - { name: btn, label: Button, show: lamp }
+controls:
+  - { label: Beep, send: beep 200 }
+  - { label: Green LED on, send: led green on }
+  - { label: Green LED off, send: led green off }
+  - { label: 10 lines a second, send: rate 10 }
+  - { label: 50 lines a second, send: rate 50 }
+  - { label: Stop the stream, send: stream off }
+  - { label: Start the stream, send: stream on }

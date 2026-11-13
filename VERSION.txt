@@ -1,7 +1,7 @@
 IPRO SDK Release
 ========================================
-IPRO7: IPRO-SDK-V2.2.1
-IPRO6: IPRO-SDK-V2.2.1
+IPRO7: IPRO-SDK-V2.3.0
+IPRO6: IPRO-SDK-V2.3.0
 
-Release Date: 2026-11-10
-Base Commit: d3c9ac31c
+Release Date: 2026-11-13
+Base Commit: db22fb508

@@ -22,6 +22,7 @@
  */
 #include "hal_clock.h"
 #include "hal_uart.h"
+#include "drv_uart.h"
 #include "drv_glb.h"
 #include "drv_gpio.h"
 #include "drv_glb_gpio.h"
@@ -236,8 +237,23 @@ void board_init(void)
     board_pin_mux_init();
 }
 
+int board_get_debug_uart_index(void);
+
 void plt_show_cg_info(void)
 {
+    uint32_t idle = 0;
+
+    /* The same line the IPRO7 BSP prints first: the mark of a boot on the
+     * console, and what a host matches against the image it flashed. */
+    MSG("Build:%s,%s\r\n", __TIME__, __DATE__);
+
+    /* ipro6_demo and the applications made from it bring UART0 up a second
+     * time right after platform_init(), which drops whatever is still in the
+     * TX FIFO: without this wait the line never reaches the console. 28 bytes
+     * take 2.5 ms at 115200; the loop gives up long before a second. */
+    for (uint32_t spins = 0; spins < 2000000u && idle < 2000u; spins++) {
+        idle = (UART_GetTxBusBusyStatus(board_get_debug_uart_index()) == SET) ? 0u : idle + 1u;
+    }
 }
 
 int board_get_debug_uart_index(void)

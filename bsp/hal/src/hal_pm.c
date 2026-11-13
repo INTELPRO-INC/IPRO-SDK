@@ -1962,24 +1962,12 @@ void ATTR_TCM_SECTION pm_pds_resleep(uint32_t sleep_time)
     pm_pds_xtal_policy_apply(&pdsCfgLevel15);
     PDS_Default_Level_Config(&pdsCfgLevel15, sleep_time);
 
-    /* JTAG park probe (debug scaffold 2026-08-04): `lp mw 0x2104FFD8
-     * 0x504152NN` parks resleep cycle NN of the session HERE — everything is
-     * armed and PDS_Default_Level_Config has run, but with cpuWfiMask=1 the
-     * power-down waits for a WFI that never comes, so the core spins alive
-     * and JTAG can dump the exact armed state a stranding entry would have
-     * taken into PDS. Set the WDT opt-out (0x2104FFF4=0xD15AB1ED) on park
-     * legs or the 2 s wake-path catcher reaps the park. OCRAM words FFD4/FFD8
-     * sit just above the trace-ring buffer (ends 0x2104FFCF). */
-    /* Flag scheme (the cnt-matching selector never engaged — under
-     * investigation): with 0x2104FFD8 == 0xB10BAAAA EVERY resleep parks here
-     * unless the skip token 0x2104FFDC equals the current cycle count. JTAG
-     * walker: halt the spin, dump, write FFDC = cnt, resume — this cycle
-     * enters PDS, the next one parks again. The stranding cycle's armed
-     * state is then the last successful dump. */
-    /* Snapshot what THIS context actually reads from the park flag — the
-     * park has never engaged even with the flag verified in RAM, so record
-     * the observed value for the autopsy (0x2104FFD0, free word between the
-     * trace-ring buffer end and the cycle counter). */
+    /* cpuWfiMask=1: the START write above gates the core within a few
+     * instructions, so the code below runs only when PDS refuses the
+     * start; the WFI then parks the core until a wake source. */
+    /* JTAG park: 0x2104FFD8 == 0xB10BAAAA spins here unless 0x2104FFDC
+     * equals the cycle count (0x2104FFD4); 0x2104FFD0 records the flag
+     * value read. Engages only on a refused start (see above). */
     *(volatile uint32_t *)0x2104FFD0u = *(volatile uint32_t *)0x2104FFD8u;
 
     while (*(volatile uint32_t *)0x2104FFD8u == 0xB10BAAAAu &&

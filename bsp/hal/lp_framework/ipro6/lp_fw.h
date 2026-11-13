@@ -550,6 +550,10 @@ typedef struct {
  * chunking is unchanged -- one WFI per LP_FW_POLL_STEP_US, so a WFI that
  * returns immediately degrades to today's spin, never hangs. */
 #define LP_FW_CLK_WFI_WAIT    0x200u
+/* [15:12] run vcore, PLL lock to listen gate (0.6 V + 50 mV/code);
+ * 0 = off. Set at cold boot from CONFIG_LP_FW_RUN_VCORE. */
+#define LP_FW_CLK_RUN_VCORE_POS  12u
+#define LP_FW_CLK_RUN_VCORE_MSK  (0xFu << LP_FW_CLK_RUN_VCORE_POS)
 
 /* Flag bit inside clk_mcu_div: hold mac_core at its 60 MHz boot default
  * (wlp1_cfg0[27:24]=1, 240/4) across the beacon wait instead of the blob's
@@ -728,9 +732,9 @@ typedef struct {
  * 128 B from there to the bootrom's brom_param region at 0x1104FE80 (ROM ld
  * reserves 0x100 B; the BPRM+FCFG+SPI_Flash_Cfg_Type push actually writes
  * ~0x74 B on every full boot — see ipro6_demo/main.c BROM_PARAM_NC_ADDR).
- * Also note the ring body overlaps the ROM's eflash_loader_logbuf
- * (0x1104F590-FD90, written during download flows only) — harmless because
- * both the ring and the loader die across any full boot anyway. */
+ * The ring body overlaps the ROM eflash_loader_logbuf (0x1104F590-FD90):
+ * the BROM logs into it on PDS wakes and its heap starts at 0x1104FD90,
+ * so F590-FDFF words outside the ring and the knob page can change. */
 #define LP_BCN_RING_ADDR    0x2104F800u
 /* 0x600 -> 0x5A0 (depth 46 -> 42): the freed tail 0x2104FDA0-FDFF hosts the
  * wake-witness snapshot slots (wlp1/speed-witness/CFG0 x6/CFG8). Their first
@@ -911,17 +915,13 @@ typedef struct {
 
 #define LP_FW_TRACK_MIN_GUARD_US   20000u   /* now -> armed-wake minimum (races PDS below ~3ms) */
 #define LP_FW_TRACK_WAKE_LATE_MAX_US 40000u /* sane bound on the learned wake latency */
-/* Cold-boot default for rx_lead_us (tracking RX-window lead). 1000 since
- * 2026-08-26 (ladder v3 + 30-min soak): with the LATEPT full-path learn ON
- * by default the tracker delivers t_wait ~ rx_lead + AP delay, and rung
- * 1000 measured loss 0.66% vs shipped-3000 controls 2.11-6.20% with the
- * ring all-green (700 = estimator stability edge, 500 = thrash; see
- * measurements/2026-08-26_lead_ladder_v3/). VALID ONLY with the LATEPT
- * default: without the full-path learn, 1000 sits under the ~2.5 ms wake
- * path and every wake lands late (the v1 ladder's 27.7%-loss cliff).
- * `lp track <us>` still overrides at runtime; `lp track 0` turns tracking
- * off. */
-#define LP_FW_TRACK_RX_LEAD_DEFAULT_US 1000u
+/* XTAL32K rx_lead_us default; RC32K: LP_FW_TRACK_RX_LEAD_RC32K_US.
+ * Requires the LATEPT full-path learn. `lp track <us>` overrides. */
+#ifdef CONFIG_LP_AGGRESSIVE
+#define LP_FW_TRACK_RX_LEAD_DEFAULT_US 720u
+#else
+#define LP_FW_TRACK_RX_LEAD_DEFAULT_US 740u
+#endif
 
 /* Measure the wake latency directly: the tracker stamps the absolute RTC-us it
  * MEANT to wake at (armed_wake_rtc_us), the blob reads the RTC on its very
@@ -954,16 +954,28 @@ typedef struct {
  *    restored on every WAKE exit in lpfw_core_clk_to_xclk(), skipped while
  *    rx_listen_park is armed (the gate blocks NEW CCI sessions)
  *  - CFG8 spare-tap thin at PLL-up + top-of-wait re-thin (-3.6 mA)
- *  - listen window only: vcore code 7 (0.95 V, -7.0 mA), lna_bm 6->4
+ *  - listen window only: LP_FW_LISTENGATE_VCORE_CODE, lna_bm 6->4
  *    (-1.7), adc_ti off (-1.3), CRM CLKGATEPHYFCTRL0 b27 off (-1.0) --
  *    undone at EVERY wait exit before the clock speed-up (the vcore nibble
  *    is PDS-retained HBN_GLB; a missed undo runs the next wake's 240 MHz
  *    init undervolted)
- * vcore code 6 hung the part on record and must never be configured. */
+ * vcore code 6 hung a part on record: CONFIG_LP_AGGRESSIVE only. */
+/* CONFIG_LP_AGGRESSIVE: DCDCLG sel 1, listen vcore 6, XWVC code 4 on
+ * the crystal wait, T3T bits 0xC. A written knob still wins. */
+#ifdef CONFIG_LP_AGGRESSIVE
+#define LP_FW_DCDCLG                1
+#define LP_AGGRESSIVE_T3T_BITS      0x10Cu
+#define LP_AGGRESSIVE_XWVC_CODE     4u
+#endif
+
 #ifndef LP_FW_LISTENGATE
 #define LP_FW_LISTENGATE            1
 #endif
-#define LP_FW_LISTENGATE_VCORE_CODE 7u           /* HBN_GLB[19:16], 0.95 V */
+#ifdef CONFIG_LP_AGGRESSIVE
+#define LP_FW_LISTENGATE_VCORE_CODE 6u
+#else
+#define LP_FW_LISTENGATE_VCORE_CODE 0xAu
+#endif
 #define LP_FW_LISTENGATE_CGEN0_ADDR 0x30000580u
 #define LP_FW_LISTENGATE_CGEN0_KEEP 0x00000063u  /* ocram|wram|cci|uart0 */
 #define LP_FW_LISTENGATE_CGEN0_RST  0x07FFFFFFu  /* register reset value */
@@ -1000,9 +1012,13 @@ typedef struct {
  * whole-standby AND t2+t3 forms of the same depth are REJECTED (PDS-entry
  * brown-out A/B 2026-09-05, t2+t3 resleep hang 2026-09-06); only t3 runs low. */
 #ifndef LP_FW_DCDCLG
-#define LP_FW_DCDCLG            1
+#define LP_FW_DCDCLG            0
 #endif
+#ifdef CONFIG_LP_AGGRESSIVE
+#define LP_FW_DCDCLG_LISTEN_SEL 1u
+#else
 #define LP_FW_DCDCLG_LISTEN_SEL 15u    /* [4:0], 25 mV/step: 15 = 1.5 V */
+#endif
 #define LP_FW_DCDCLG_SETTLE_US  100u   /* rail-raise settle before vcore/speed-up.
                                         * 150->100 qualified 2026-09-01 (A/B: 100 us
                                         * loss 0/430 == its bracket; 50 us had one
@@ -1096,6 +1112,35 @@ typedef struct {
 #endif
 #define LP_FW_POLLX_MAGIC        0x7A57u
 
+/* POLLSTEP (knob, default off): beacon-poll step in us = [15:0] when
+ * [31:16] == LP_FW_POLLSTEP_MAGIC, else LP_FW_POLL_STEP_US. */
+#define LP_FW_POLLSTEP_KNOB_ADDR 0x2104FD78u
+#define LP_FW_POLLSTEP_MAGIC     0x7C50u
+
+/* LGX (knob, default off): with [31:16] == LP_FW_LGX_MAGIC, non-zero
+ * [12:8] replaces LP_FW_DCDCLG_LISTEN_SEL for the listen window. */
+#define LP_FW_LGX_KNOB_ADDR      0x2104FD7Cu
+#define LP_FW_LGX_MAGIC          0x7C51u
+
+/* PLLX (knob, default off): with [31:16] == LP_FW_PLLX_MAGIC and bit4,
+ * LDO15RF vout_sel = [10:8], vout_trim = [15:12] for the listen window
+ * (undo restores the entry values). */
+#define LP_FW_PLLX_KNOB_ADDR     0x2104FD80u
+#define LP_FW_PLLX_MAGIC         0x7C52u
+/* Listen-vcore witness (bench, retained): FD84 = applies, FD88 =
+ * applies whose run vcore read < 0xA ([31:8] count, [3:0] last code).
+ * FD8C = 0x7C53<us>: delay after the undo vcore raise. */
+#define LP_FW_VCW_ADDR           0x2104FD84u
+#define LP_FW_VCW_BAD_ADDR       0x2104FD88u
+#define LP_FW_VCS_KNOB_ADDR      0x2104FD8Cu
+#define LP_FW_VCS_MAGIC          0x7C53u
+
+/* PLL_SLOW (build option, default 0): 1 = the ROM PLL bring-up
+ * GLB_Power_On_XTAL_And_PLL_CLK, 0 = the fast one. */
+#ifndef LP_FW_PLL_SLOW
+#define LP_FW_PLL_SLOW          0
+#endif
+
 /* RXB2 (knob, default off): force MAC RX buffer 2 DISABLED in the LP rxl
  * init. The LP layout gives buffer 2 a 4-byte stub (rxl_hwdesc.c
  * rxl_hwdesc_env_para) yet passes the HW's current disable bit through --
@@ -1141,7 +1186,9 @@ typedef struct {
                                             * puts a beacon inside a 110 ms window, and a
                                             * miss there just costs another 110 ms. */
 #define LP_FW_TRKW_UNTRACKED     0xFFFFu   /* trk_armed_extra_us: not a tracked hop */
-#define LP_FW_TRKW_MARGIN_CAP_US 1000u     /* adaptive margin on top of EXTRA_MS (12 -> 4 -> 1 ms) */
+#define LP_FW_TRKW_MARGIN_CAP_US 3500u     /* adaptive margin on top of EXTRA_MS: reaches a
+                                            * beacon deferred behind a neighbour AP's
+                                            * 1 Mbps beacon (~2.7 ms) */
 
 /* CCIMUX (knob, default off; bench diagnostics): re-arm the S_CCI pad mux on
  * GPIO10-13 at every RX arm so a host-side non-halting CCI session survives
@@ -1360,6 +1407,7 @@ static inline void lp_fw_track_learn_wake(volatile iot2lp_para_t *para,
 }
 #define LP_FW_TRACK_PPM_CLAMP      150000   /* |sane| RC32K error, ppm */
 #define LP_FW_TRACK_EXTRA_CLAMP_US 20000    /* max per-beacon TX-delay excess */
+#define LP_FW_TRACK_OFFSET_RISE_US 5        /* max baseline rise per sample */
 #define LP_FW_TRACK_PPM_DELAY_GUARD_US 1000 /* AP contention is not clock drift */
 #define LP_FW_TRACK_POLL_EXTRA_MS  15u      /* converged poll cap beyond lead */
 /* CRM clock stage (PRODUCT path since 2026-08-18): the blob RMWs field
@@ -1519,7 +1567,9 @@ static inline void lp_fw_track_learn_wake(volatile iot2lp_para_t *para,
 #define LP_FW_LOSS_REALIGN_EVERY    20u
 #define LP_FW_LOSS_LATE_FROM        3u       /* misses that add no pad */
 #define LP_FW_LOSS_LATE_STEP_US     1000u    /* late pad 1, 2, 3 ms then holds */
-#define LP_FW_LOSS_LATE_CAP_US      1000u    /* (was 3000) RTC drift over a streak is ~50 ppm x 20 s = 1 ms */
+#define LP_FW_LOSS_LATE_CAP_US      3000u    /* RTC drift over a streak is ~1 ms; the rest
+                                              * reaches an AP that switched to its deferred
+                                              * phase (~2.7 ms behind a neighbour's beacon) */
 #define LP_FW_LOSS_REALIGN_LATE_US  105000u  /* one beacon interval + 2.6 ms */
 
 /* --- Per-sleep-clock DTIM parameters (2026-09-13) ---
@@ -2013,6 +2063,7 @@ static inline int lp_fw_track_update(volatile iot2lp_para_t *para,
      * the DTIM interval here poisoned the window with k*bcn_int garbage
      * whenever a non-DTIM beacon was caught (dtim10: ~35% tracked loss,
      * anchor never converged — HW-measured 2026-07-21). */
+    uint32_t warm_before = para->bcn_delay_sliding_win_status >= 4u;
     para->bcn_delay_sliding_win_buff[para->bcn_delay_sliding_win_point] = delay;
     para->bcn_delay_sliding_win_point =
         (para->bcn_delay_sliding_win_point + 1u) % win_size;
@@ -2021,7 +2072,10 @@ static inline int lp_fw_track_update(volatile iot2lp_para_t *para,
     }
 
     /* offset = 2nd-smallest of the window (tolerates one bad sample) once a
-     * few samples exist; plain minimum before that. */
+     * few samples exist; plain minimum before that. After the sample that
+     * warms the window it falls at once but rises at most
+     * LP_FW_TRACK_OFFSET_RISE_US per sample: a contention-delayed phase of
+     * the AP stays an excess, not the baseline. */
     {
         int32_t min1 = (int32_t)0x7FFFFFFF, min2 = (int32_t)0x7FFFFFFF;
         uint32_t n = para->bcn_delay_sliding_win_status;
@@ -2030,7 +2084,14 @@ static inline int lp_fw_track_update(volatile iot2lp_para_t *para,
             if (v < min1) { min2 = min1; min1 = v; }
             else if (v < min2) { min2 = v; }
         }
-        para->bcn_delay_offset = (n >= 4u) ? min2 : min1;
+        if (n < 4u) {
+            para->bcn_delay_offset = min1;
+        } else if (!warm_before) {
+            para->bcn_delay_offset = min2;
+        } else {
+            int32_t cap = para->bcn_delay_offset + (int32_t)LP_FW_TRACK_OFFSET_RISE_US;
+            para->bcn_delay_offset = (min2 < cap) ? min2 : cap;
+        }
     }
 
     /* this beacon's excess delay beyond the baseline: subtracted from the

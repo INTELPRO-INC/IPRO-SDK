@@ -126,6 +126,10 @@ _start:
 
     .size _start, . - _start
 
+/* Empty (or 0 without the ld section) when no param getter is linked */
+.weak __boot2_param_save_start
+.weak __boot2_param_save_end
+
 .type __init_common, @function
 __init_common:
     /* ===== Startup Stage 3 ===== */
@@ -135,7 +139,12 @@ __init_common:
      * Boot2 passes parameters in OCRAM which may be overwritten
      * during the data section copy below.
      */
-    /*call Boot2_Param_Save*/
+    la a0, __boot2_param_save_start
+    la a1, __boot2_param_save_end
+    bgeu a0, a1, 3f
+    lw t0, 0(a0)
+    jalr t0
+3:
 
     /*
      * Load text section from CODE ROM to CODE RAM

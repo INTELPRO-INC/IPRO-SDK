@@ -31,6 +31,8 @@
 #include "drv_psram.h"
 #endif
 #include "soc_base.h"
+#include "boot2_param.h"
+#include "utils_crc.h"
 //#include "drv_tzc_sec.h"
 
 
@@ -45,7 +47,6 @@
 #define PARTITION_FW_PART_HEADER_SIZE   (0x1000)
 //TODO use header file from project
 #define FW_XIP_ADDRESS                  (0x23000000)
-#define PARTITION_TABLE_PARAM_ADDR      (0x21010000)
 
 static struct {
     uint8_t partition_active_idx;
@@ -381,36 +382,113 @@ void hal_boot2_init_efuse(void)
     hal_boot2_get_efuse_cfg(&g_efuse_cfg);
 }
 
+static int hal_boot2_is_ptable_valid(const PtTable_Stuff_Config *pt)
+{
+    uint32_t entries_len;
+
+    if (pt->ptTable.magicCode != PT_MAGIC_CODE ||
+        pt->ptTable.entryCnt == 0 ||
+        pt->ptTable.entryCnt > PT_ENTRY_MAX) {
+        return 0;
+    }
+    if (utils_crc32((uint8_t *)&pt->ptTable, sizeof(PtTable_Config) - 4) !=
+        pt->ptTable.crc32) {
+        return 0;
+    }
+    entries_len = pt->ptTable.entryCnt * sizeof(PtTable_Entry_Config);
+    return utils_crc32((uint8_t *)&pt->ptEntries[0], entries_len) == pt->crc32;
+}
+
+/* Reads one PT; the entries CRC lands in pt->crc32 like the flash layout */
+static int hal_boot2_read_ptable_from_flash(uint32_t addr, PtTable_Stuff_Config *pt)
+{
+    uint32_t entries_len;
+
+    memset(pt, 0, sizeof(*pt));
+    if (flash_read(addr, (uint8_t *)&pt->ptTable, sizeof(PtTable_Config)) != SUCCESS) {
+        return 0;
+    }
+    if (pt->ptTable.magicCode != PT_MAGIC_CODE ||
+        pt->ptTable.entryCnt == 0 ||
+        pt->ptTable.entryCnt > PT_ENTRY_MAX) {
+        return 0;
+    }
+    entries_len = pt->ptTable.entryCnt * sizeof(PtTable_Entry_Config);
+    if (flash_read(addr + sizeof(PtTable_Config), (uint8_t *)&pt->ptEntries[0],
+                   entries_len) != SUCCESS ||
+        flash_read(addr + sizeof(PtTable_Config) + entries_len,
+                   (uint8_t *)&pt->crc32, sizeof(pt->crc32)) != SUCCESS) {
+        return 0;
+    }
+    return hal_boot2_is_ptable_valid(pt);
+}
+
+/* Same choice as boot2: the valid table with the higher age, PT0 on a tie */
+static int hal_boot2_load_ptable_from_flash(void)
+{
+    static PtTable_Stuff_Config pt1;
+    PtTable_Stuff_Config *pt0 = &ipro_partition_table.table;
+    int valid0 = hal_boot2_read_ptable_from_flash(PT_TABLE0_ADDRESS, pt0);
+    int valid1 = hal_boot2_read_ptable_from_flash(PT_TABLE1_ADDRESS, &pt1);
+
+    if (valid1 && (!valid0 || pt1.ptTable.age > pt0->ptTable.age)) {
+        memcpy(pt0, &pt1, sizeof(pt1));
+        ipro_partition_table.partition_active_idx = PT_TABLE_ID_1;
+    } else if (valid0) {
+        ipro_partition_table.partition_active_idx = PT_TABLE_ID_0;
+    } else {
+        memset(&ipro_partition_table, 0, sizeof(ipro_partition_table));
+        return -EIO;
+    }
+    return 0;
+}
+
+static void hal_boot2_load_ptable_from_param(const Boot2_Param_Type *param)
+{
+    PtTable_Stuff_Config *pt = &ipro_partition_table.table;
+    uint16_t cnt = param->ptTable.entryCnt;
+
+    _Static_assert(sizeof(Boot2_PtTable_Config) == sizeof(PtTable_Config),
+                   "param and hal PT config differ");
+    _Static_assert(sizeof(Boot2_PtTable_Entry) == sizeof(PtTable_Entry_Config),
+                   "param and hal PT entry differ");
+
+    memset(&ipro_partition_table, 0, sizeof(ipro_partition_table));
+    ipro_partition_table.partition_active_idx = (uint8_t)param->activeID;
+    memcpy(&pt->ptTable, &param->ptTable, sizeof(pt->ptTable));
+    memcpy(&pt->ptEntries[0], &param->ptEntries[0], cnt * sizeof(pt->ptEntries[0]));
+    pt->crc32 = param->ptEntriesCrc32;
+}
+
 int hal_boot2_init(void)
 {
+    Boot2_Param_Type *param = Boot2_Param_Get();
+    SPI_Flash_Cfg_Type *param_cfg = Boot2_Param_Get_Flash_Cfg();
 
     hal_boot2_get_efuse_cfg(&g_efuse_cfg);
 
-    memcpy(&ipro_partition_table, (void *)PARTITION_TABLE_PARAM_ADDR+4, sizeof(ipro_partition_table));   
-    /* A BootROM-direct image has no boot2 handoff. Do not interpret stale
-     * SRAM as a partition table or reinitialize the live XIP flash from it. */
-    if (ipro_partition_table.table.ptTable.magicCode != PT_MAGIC_CODE ||
-        ipro_partition_table.partition_active_idx > 1 ||
-        ipro_partition_table.table.ptTable.entryCnt >
-            sizeof(ipro_partition_table.table.ptEntries) /
-                sizeof(ipro_partition_table.table.ptEntries[0])) {
-        memset(&ipro_partition_table, 0, sizeof(ipro_partition_table));
+    /* Takes the boot2 param cfg, else the bootheader cfg; XIP stays live */
+    if (flash_init() != SUCCESS) {
+        printf("flash init fail!!!\r\n");
+    }
+    printf("Flash cfg from %s\r\n", param_cfg != NULL ? "boot2 param" : "flash detect");
+
+    if (param != NULL) {
+        hal_boot2_load_ptable_from_param(param);
+        printf("PT from boot2 param\r\n");
+    } else if (hal_boot2_load_ptable_from_flash() == 0) {
+        printf("PT from flash (boot2 param invalid)\r\n");
+    } else {
+        printf("No valid partition table\r\n");
         return -ENOENT;
     }
+
     printf("Active Partition[%u], Size %d Bytes\r\n",
             ipro_partition_table.partition_active_idx,
             sizeof(PtTable_Config) + sizeof(PtTable_Entry_Config) * ipro_partition_table.table.ptTable.entryCnt + 4
     );
     _dump_partition();
-#if 0
-    hal_flash_config_update(PARTITION_TABLE_PARAM_ADDR + (*(uint32_t *)PARTITION_TABLE_PARAM_ADDR));
-#else
-    if (flash_init() != SUCCESS) {
-        printf("flash init fail!!!\r\n");
-    }
-
     showFlashInfo();
-#endif
 
     return 0;
 }

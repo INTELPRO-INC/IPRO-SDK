@@ -34,6 +34,12 @@ CONFIG_PARTITION=y
 # Bonds are not persisted (same as the EVB image).
 # CONFIG_EASYFLASH4 is not set
 CONFIG_IPRO_BLE_REMOTE_OTA=y
+# The OTA core checks the received package (header, SHA-256) before boot2 is told to install it.
+CONFIG_IPRO_OTA=y
+# The OTA GATT service 0xFF60, from the same component.
+CONFIG_IPRO_OTA_BLE=y
+# The same package over the console UART: the ota_uart shell command (IPRO Workbench sends it).
+CONFIG_IPRO_OTA_UART=y
 
 CONFIG_ENABLE_NVDS=y
 CONFIG_CFG_NVDS=y

@@ -27,6 +27,15 @@ config WIFI6
     help
       Enable Wi-Fi 6 (802.11ax) wireless connectivity support.
 
+config CSIDMA_CLI
+    bool "Enable Wi-Fi CSI capture shell commands"
+    depends on WIFI6 && !PHY_LPFW
+    help
+      Adds the csidma_* shell commands that capture the channel state
+      information of received frames through the CSI DMA, per transmitter
+      address or for every received frame (ring mode, where only HT/HE SU
+      frames carry an estimate), and print it on the console.
+
 config PHY_CLI
     bool "Enable PHY/RF test CLI (phyrf bring-up)"
     help

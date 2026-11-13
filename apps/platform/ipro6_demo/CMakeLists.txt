@@ -284,7 +284,13 @@ endif()
 if (CONFIG_DEMO_LOWPOWER AND CONFIG_IPRO6)
     set(LPFW_DIR ${CMAKE_SOURCE_DIR}/apps/platform/ipro6_lpfw)
     if(EXISTS ${LPFW_DIR}/Makefile)
-        set(LPFW_BIN ${LPFW_DIR}/build/ipro6_lpfw.bin)
+        if(CONFIG_LP_AGGRESSIVE)
+            set(LPFW_AGGRESSIVE y)
+            set(LPFW_BIN ${LPFW_DIR}/build_aggressive/ipro6_lpfw.bin)
+        else()
+            set(LPFW_AGGRESSIVE "")
+            set(LPFW_BIN ${LPFW_DIR}/build/ipro6_lpfw.bin)
+        endif()
 
         # ALWAYS re-enter the sub-make; do NOT try to list the blob's sources here.
         # The old form was an add_custom_command(OUTPUT ...) whose DEPENDS named only
@@ -300,7 +306,7 @@ if (CONFIG_DEMO_LOWPOWER AND CONFIG_IPRO6)
         # ${LPFW_BIN}'s mtime moves only on a real relink, which is exactly what
         # OBJECT_DEPENDS below needs to re-assemble the .incbin.
         add_custom_target(ipro6_lpfw_image ALL
-            COMMAND make -C ${LPFW_DIR} CROSS=${CROSS_COMPILE}
+            COMMAND make -C ${LPFW_DIR} CROSS=${CROSS_COMPILE} LP_AGGRESSIVE=${LPFW_AGGRESSIVE}
             BYPRODUCTS ${LPFW_BIN}
             COMMENT "Building standalone lp_fw Stage-1 image -> ${LPFW_BIN}"
             VERBATIM

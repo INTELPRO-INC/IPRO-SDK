@@ -18,13 +18,13 @@
 
 /**
  * @file boot2_param.h
- * @brief Boot2 parameter handling for IPRO7
+ * @brief Boot2 parameter handling for IPRO6
  *
- * The bootrom passes parameters to the application via a specific memory region.
- * This module saves these parameters before LMA to VMA copy (which would overwrite them)
- * and provides APIs to access the saved parameters.
+ * ipro_boot2 passes parameters to the FW in OCRAM at BOOT2_PARAM_SRC_ADDR.
+ * Boot2_Param_Save() copies the raw bytes before the LMA to VMA copy (which
+ * overwrites them); the getters parse and CRC-check the copy on first use.
  *
- * Parameters passed by bootrom:
+ * Parameters passed by boot2:
  * - Partition table (active ID + entries)
  * - Flash configuration (SPI_Flash_Cfg_Type)
  */
@@ -52,13 +52,20 @@
 #define BOOT2_PARAM_BUFFER_SIZE         1024
 
 /**
- * @brief Boot2 parameter source address in OCRAM
+ * @brief Boot2 parameter address in OCRAM
  *
- * This is where bootrom stores the parameters.
- * Located at the start of tcm_ocram_ret region (0x11010000).
- * Cached address (0x1xxxxxxx), non-cached would be (0x2xxxxxxx).
+ * Non-cache alias of 0x11010000. Boot2 writes and the FW reads through it,
+ * so neither side depends on the dcache state at the boot2 -> FW jump.
  */
-#define BOOT2_PARAM_SRC_ADDR            0x11010000
+#ifndef BOOT2_PARAM_SRC_ADDR
+#define BOOT2_PARAM_SRC_ADDR            0x21010000
+#endif
+
+/**
+ * @brief Raw bytes Boot2_Param_Save() copies: the stream for PT_ENTRY_MAX
+ *        entries (24 + 16 * 36 + 4 + 8 + 84 = 696 B), rounded up to 8.
+ */
+#define BOOT2_PARAM_RAW_SIZE            704
 
 /**
  * @brief Partition table config structure

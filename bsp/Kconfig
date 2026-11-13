@@ -180,6 +180,46 @@ config LP_RAILGATE_DCDC18_SEL
       fed from DCDC18 and its dropout margin collapses on wake transients),
       which is why the range stops at 16.
 
+config LP_AON_WDT
+    bool "AON watchdog over the DTIM PDS loop"
+    depends on WIFI_LP_APP_SUPPORT && IPRO6
+    default n
+    help
+      Start the AON watchdog at each PDS entry from full FW, kick it at
+      every PDS wake, stop it when the session returns to full FW. A
+      part parked by a refused PDS start resets after the timeout.
+
+config LP_AON_WDT_MASK_BIT
+    int "AON watchdog timeout: 2^(n+1) / 32768 s"
+    depends on LP_AON_WDT
+    range 12 20
+    default 17
+
+config LP_FW_RUN_VCORE
+    bool "Lower the core voltage from the PLL lock to the listen gate"
+    depends on WIFI_LP_APP_SUPPORT && IPRO6
+    select LP_AON_WDT
+    default n
+    help
+      Screened or demo parts only. One upward 50 mV step per wake; a
+      refused PDS start (about 1 in 3000 resleeps) is recovered by the
+      AON watchdog.
+
+config LP_FW_RUN_VCORE_CODE
+    int "Run vcore code (0.6 V + 50 mV/code)"
+    depends on LP_FW_RUN_VCORE
+    range 9 9
+    default 9
+
+config LP_AGGRESSIVE
+    bool "Aggressive LP settings (DCDCLG listen rail, listen vcore 6, XWVC 4)"
+    depends on WIFI_LP_APP_SUPPORT && IPRO6 && LP_AON_WDT
+    default n
+    help
+      evb1 demo only: other parts wedge with the DCDCLG listen rail.
+      Builds the LP blob with these settings and sets the XTAL32K
+      RX lead default to 720 us.
+
 config IPRO_WIFI_PS
     bool "WiFi datapath resume across PDS (macsw key RAM / MAC HW re-program)"
     depends on WIFI_LP_APP_SUPPORT

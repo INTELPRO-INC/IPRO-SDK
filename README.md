@@ -1,7 +1,7 @@
 # IPRO SDK
 
 **Embedded development kit for the INTELPRO IPRO7, IPRO7AI and IPRO6S RISC-V
-SoCs: FreeRTOS and Zephyr, Bluetooth 5.4 with LE Audio, Wi-Fi 6, and
+SoCs: FreeRTOS and Zephyr, Bluetooth 5.4 with LE Audio, Wi-Fi, and
 on-device AI.**
 
 The reference board in this guide is the **IPRO7AI Reef EVK V4.0**. Every
@@ -26,7 +26,7 @@ https://intelpro-inc.github.io/ipro-sdk-docs/ (Traditional Chinese).
 | | IPRO7 / IPRO7AI | IPRO6S |
 |---|---|---|
 | Core | RISC-V RV32IMAFC + DSP extensions | RISC-V RV32IMAFC + DSP extensions |
-| Radio | BLE 5.4, LE Audio (ISO), IEEE 802.15.4 | Wi-Fi 6 |
+| Radio | BLE 5.4, LE Audio (ISO), IEEE 802.15.4 | Wi-Fi |
 | Wi-Fi | external radio, e.g. an IPRO6S over SDIO | on-chip |
 | NPU / ISP | IPRO7AI | - |
 | RTOS | FreeRTOS V11, Zephyr v4.4.0 | FreeRTOS V11 |
@@ -114,13 +114,13 @@ from `<ICUBE>`, because it reads its chip files from `chips/`.
 
 ### 3. Get the SDK
 
-Download `IPRO-SDK-V2.2.1.tar.gz` from the release page, compare its checksum
+Download `IPRO-SDK-V2.3.0.tar.gz` from the release page, compare its checksum
 with the one published there, and unpack it:
 
 ```bash
-shasum -a 256 IPRO-SDK-V2.2.1.tar.gz      # Linux: sha256sum
-tar xzf IPRO-SDK-V2.2.1.tar.gz
-cd IPRO-SDK-V2.2.1
+shasum -a 256 IPRO-SDK-V2.3.0.tar.gz      # Linux: sha256sum
+tar xzf IPRO-SDK-V2.3.0.tar.gz
+cd IPRO-SDK-V2.3.0
 cat VERSION.txt
 ```
 
@@ -581,6 +581,7 @@ Contact INTELPRO for the hardware.
 | `ipro7ai_evk_launcher` | IPRO7AI EVK | camera, LCD, microphone and speaker in one image, pages switched by hand gestures on the NPU |
 | `ipro7ai_evk_person_detect` | IPRO7AI EVK | camera preview with YOLOv8 person / pet boxes from the NPU |
 | `ipro7ai_evk_rps` | IPRO7AI EVK | rock-paper-scissors against an int8 CNN on the NPU (model and training scripts included) |
+| `ipro7ai_sensor_tag_demo` | IPRO7AI Sensor Tag | IMU, fuel gauge, button, LEDs and buzzer; 20 lines a second of `name:value` over the board's own USB, laid out by `dashboard.yaml` in IPRO Workbench's Sensor Dashboard |
 | `ipro7_sdio_wifi` | IPRO7 EVB | SDIO host for an IPRO6S Wi-Fi radio: lwIP netif `iproeth0`, DHCP, iperf |
 | `ipro_ble_transparent` | IPRO7 EVB | transparent data pipe over BLE with an AT-style interface |
 | `ipro_ble_hid_keyboard` | IPRO7 EVB | HID over GATT keyboard |
@@ -596,8 +597,8 @@ Contact INTELPRO for the hardware.
 | `ipro_pio_sdh_test`, `ipro_sdio_probe`, `ipro_atbm_probe` | IPRO7 EVB | PIO SD host, SDIO bring-up, ATBM6162 SDIO Wi-Fi probe |
 | `ipro_lp_test` | IPRO7 EVB | PDS entry/exit and wake sources |
 | `ipro_unit_test` | IPRO7 EVB | unit tests for the HAL and the shared components |
-| `ipro6_demo` | IPRO6S EVB | Wi-Fi 6 station / soft-AP; `defconfig_ipro6_lpwifi` adds DTIM power save, `defconfig_ipro6_lp` is the low-power demo |
-| `ipro6_if_wifi` | IPRO6S EVB, FIN card | Wi-Fi 6 bridge to a host over SDIO (`defconfig_ipro6_sdio`) or USB (`defconfig_ipro6_usb`) |
+| `ipro6_demo` | IPRO6S EVB | Wi-Fi station / soft-AP; `defconfig_ipro6_lpwifi` adds DTIM power save, `defconfig_ipro6_lp` is the low-power demo |
+| `ipro6_if_wifi` | IPRO6S EVB, FIN card | Wi-Fi bridge to a host over SDIO (`defconfig_ipro6_sdio`) or USB (`defconfig_ipro6_usb`) |
 | `ipro6_fmac` | IPRO6S EVB | FullMAC firmware for a Linux cfg80211 host (`defconfig_ipro6_fmac`) and its flash loader (`defconfig_ipro6_fmac_loader`); the Linux driver is not part of this package |
 
 `ipro7_jpeg_decode/.config` and `ipro7_uvc_cam/.config` build the same
@@ -678,8 +679,8 @@ apps/               Application projects (each with .config + CMakeLists.txt + M
 components/         Middleware and libraries
   wireless/bluetooth/ipro_bt_host          Bluetooth host (Zephyr 4.4)
   wireless/bluetooth/ipro_ble_controller   Bluetooth controller (prebuilt archives)
-  wireless/macsw                           Wi-Fi 6 MAC (prebuilt archive)
-  wireless/wifi6                           Wi-Fi 6 upper layers: fhost, wpa_supplicant, lwIP adapter
+  wireless/macsw                           Wi-Fi MAC (prebuilt archive)
+  wireless/wifi6                           Wi-Fi upper layers: fhost, wpa_supplicant, lwIP adapter
   wireless/rf                              RF drivers (prebuilt archives)
   ai/                                      NPU inference engine (libai.a + headers)
   network/                                 lwIP 2.1.2, SDIO Wi-Fi host (ipronet_host), RTSP server, network utilities
@@ -701,7 +702,7 @@ tools/              Serial monitor, OTA packager, browser Teach, Zephyr scripts,
 ### Prebuilt libraries
 
 A few components are provided as prebuilt archives with their public
-headers rather than as source: the Bluetooth controller, the Wi-Fi 6 MAC,
+headers rather than as source: the Bluetooth controller, the Wi-Fi MAC,
 the RF drivers, the low-power framework, the AI engine, the ISP algorithms,
 the LC3 codec and the third-party Agora RTC SDK. The build picks them up
 automatically; nothing has to be configured to use them. Debug information is
@@ -766,7 +767,7 @@ IPRO7 has no on-chip Wi-Fi. The package carries four ways to add it:
 | AIC8800 | SDIO (prebuilt vendor archive) | `components/wireless/wifi_aic8800`; `ipro_agora_sentino/config_evk` |
 | ESP32 | UART AT commands | `components/network/esp32_wifi_at`; `ipro7_demo` (`CONFIG_ESP32_WIFI_AT`) |
 
-### Wi-Fi 6 (IPRO6S)
+### Wi-Fi (IPRO6S)
 
 ```conf
 CONFIG_WIFI6=y
@@ -880,6 +881,8 @@ crystal trim `CONFIG_IPRO7_XTAL_CAPCODE` to 95 unless the `.config` sets it.
 | Build script | `build_freertos.sh` | Build / clean / flash / monitor / size / test front end for every project |
 | Serial monitor | `tools/serial_monitor.py` | Console reader (`--baud`, `--send`, `--wait-for`, `--log`), used by `build_freertos.sh` and `tools/zephyr/`; not an interactive terminal |
 | OTA packager | `tools/create_ota.py` | OTA package from IntelProCube's whole image (`chips/ipro7/img_create_iot/whole_img.bin`) |
+| USB downloader | `tools/ipro_dl.py` | Flashes a board through boot2's USB downloader (`ipro7ai_sensor_tag_demo`); Python standard library only |
+| OTA component | `components/sys/ipro_ota/` | Package check shared by every transport: OTA over the console UART (`ota_uart`) and the BLE OTA service; see its README |
 | Browser Teach | `tools/teach_web/` | Image Teach in Chrome or Edge for `ipro_reef_teach` (`serve.py`) |
 | Teach payload | `apps/ai/ipro_reef_teach/mfg_payload.py` | Builds the `mfg` payload (mode + voice model) for `ipro_reef_teach` |
 | Reef BLE OTA | `apps/bluetooth/ble/ipro_ble_remote/tools/` | `make_reef_ota.sh` (OTA image), `reef_ota.py` (push over BLE); `ipro_remote_demo.apk` Android demo |
@@ -920,4 +923,4 @@ port in this SDK, and using AOSL on devices sold to end users (Powered by AOSL).
 The AOSL core is not part of the SDK; fetch it from
 https://github.com/AgoraIO-Community/aosl as shown above.
 
-**SDK version**: IPRO-SDK-V2.2.1 (2026-11-10)
+**SDK version**: IPRO-SDK-V2.3.0 (2026-11-13)

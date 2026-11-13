@@ -1,0 +1,52 @@
+config IPRO_OTA
+    bool "OTA core (boot2 packages)"
+    default n
+    help
+      The OTA core every transport shares: it stages a boot2 OTA package
+      (tools/create_ota.py) in the FW partition's second slot, checks its
+      header and SHA-256, and switches the partition table so boot2 installs
+      it on the next boot. Transports (BLE, UART zmodem, USB CDC, HTTP) only
+      move the bytes. Needs a partition table with a second FW slot, and boot2.
+
+      A per-app build does not apply select/default: set this in the
+      application's .config.
+
+config IPRO_OTA_SIGNATURE
+    bool "Signed OTA packages (ECDSA P-256)"
+    depends on IPRO_OTA
+    default n
+    help
+      Build the signature block reader and verifier (ipro_ota_sig.h).
+      Needs mbedTLS with ECDSA and SHA-256.
+
+config IPRO_OTA_UART
+    bool "OTA over the console UART (ota_uart shell command)"
+    depends on IPRO_OTA && SHELL
+    default n
+    help
+      A shell command that receives an OTA package in checked frames on the
+      console UART and applies it (ipro_ota_uart.h). A host tool sends the
+      package: IPRO Workbench's OTA Package page does. Needs no second UART
+      and no baud rate change.
+
+config IPRO_OTA_BLE
+    bool "OTA over BLE (GATT service 0xFF60)"
+    depends on IPRO_OTA && BLUETOOTH_LE_ENABLE
+    default n
+    help
+      The OTA GATT service (ipro_ota_ble.h): control 0xFF61 (START, END,
+      ABORT, VERIFY, REBOOT), data 0xFF62 (numbered packets, written without
+      response), status 0xFF63 (read, notify). It stages a boot2 OTA package
+      in FW slot B, sector by sector, and asks the OTA core to check it before
+      the partition table is switched. The application calls
+      ota_service_init() and ota_service_register_zephyr() after bt_enable(),
+      and ota_service_set_conn() from its connection callbacks.
+
+config IPRO_OTA_BLE_RAW_IMAGE
+    bool "Slot B takes a firmware image, not a package"
+    depends on IPRO_OTA_BLE
+    default n
+    help
+      For a layout without boot2's unpacking: the transfer is a firmware
+      image, only its CRC32 is checked, and the FW entry gets its length.
+      Leave it off with boot2 and an OTA package (.xz.ota).

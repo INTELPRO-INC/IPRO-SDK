@@ -25,8 +25,11 @@
 #include "hal_flash.h"
 #include "compiler/common.h"
 #include <generated/autoconf.h>
-#ifdef CONFIG_IPRO7
+#if defined(CONFIG_IPRO7) || defined(CONFIG_IPRO6)
 #include "boot2_param.h"
+#endif
+#if defined(CONFIG_IPRO6)
+#include "utils_crc.h"
 #endif
 
 static uint32_t g_jedec_id = 0;
@@ -218,6 +221,25 @@ static int ATTR_TCM_SECTION flash_config_init(SPI_Flash_Cfg_Type *p_flash_cfg, u
     return ret;
 }
 
+#if defined(CONFIG_IPRO6)
+/* Reads the bootheader FCFG block at flash offset 8 in command mode */
+static int flash_cfg_from_bootheader(SPI_Flash_Cfg_Type *cfg)
+{
+    uint8_t buf[4 + sizeof(SPI_Flash_Cfg_Type) + 4];
+    uint32_t crc;
+
+    if (flash_read(8, buf, sizeof(buf)) != SUCCESS || memcmp(buf, "FCFG", 4) != 0) {
+        return ERROR;
+    }
+    memcpy(&crc, buf + 4 + sizeof(SPI_Flash_Cfg_Type), sizeof(crc));
+    if (utils_crc32(buf + 4, sizeof(SPI_Flash_Cfg_Type)) != crc) {
+        return ERROR;
+    }
+    memcpy(cfg, buf + 4, sizeof(SPI_Flash_Cfg_Type));
+    return SUCCESS;
+}
+#endif
+
 int ATTR_TCM_SECTION flash_init(void)
 {
     int ret = ERROR;
@@ -232,14 +254,33 @@ int ATTR_TCM_SECTION flash_init(void)
     SPI_Flash_Cfg_Type *boot2FlashCfg = Boot2_Param_Get_Flash_Cfg();
     if (boot2FlashCfg != NULL) {
         memcpy(&g_flash_cfg, boot2FlashCfg, sizeof(SPI_Flash_Cfg_Type));
+#if defined(CONFIG_IPRO6)
+        /* ipro6 latches no JEDEC id: read it from the flash, XIP stays live */
+        flash_read_jedec_id((uint8_t *)&jedec_id);
+        g_jedec_id = jedec_id & 0xFFFFFF;
+        g_flash_cfg.mid = g_jedec_id & 0xFF;
+#else
         g_flash_cfg.mid = readl(0x30000078) & 0xFF;
         g_jedec_id = readl(0x30000078) & 0xFFFFFF;
+#endif
         return SUCCESS;
     }
     printf("boot2 flash cfg not available, falling back to detection\r\n");
 #endif
 
     /* Fall back to flash detection */
+#if defined(CONFIG_IPRO6)
+    /*
+     * ipro6: cfg from the bootheader and id from the flash, both read in
+     * command mode, so the live XIP setup is kept as it is.
+     */
+    if (flash_cfg_from_bootheader(&g_flash_cfg) == SUCCESS) {
+        flash_read_jedec_id((uint8_t *)&jedec_id);
+        g_jedec_id = jedec_id & 0xFFFFFF;
+        g_flash_cfg.mid = g_jedec_id & 0xFF;
+        return SUCCESS;
+    }
+#endif
     cpu_global_irq_disable();
     SF_Cfg_Get_Flash_Cfg_Need_Lock_Ext(0, &g_flash_cfg);
     cpu_global_irq_enable();

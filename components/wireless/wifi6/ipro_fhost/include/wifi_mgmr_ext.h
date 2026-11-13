@@ -232,6 +232,8 @@ typedef struct wifi_mgmr_ap_params {
     bool isolation;
     /// Beacon interval in TU
     int bcn_interval;
+    /// 2.4 GHz HT40 only: keep 40 MHz despite overlapping BSSes (off by default)
+    bool ht_no_overlap_check;
     /// Additional vendor specific elements for Beacon and Probe Response frames
     /// a hexdump of the raw information elements (id+len+payload for one or more elements),
     //  the maximum length supported is MAX_AP_VENDOR_ELEMENTS_LEN,

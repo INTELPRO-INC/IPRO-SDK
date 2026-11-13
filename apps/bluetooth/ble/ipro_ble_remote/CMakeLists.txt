@@ -36,8 +36,9 @@ if(CONFIG_SHELL)
     target_sources(app PRIVATE src/app/remote_cli.c)
 endif()
 
-if(CONFIG_IPRO_BLE_REMOTE_OTA)
-    target_sources(app PRIVATE src/services/ota_service.c)
+# The OTA service (0xFF60) is the SDK's: components/sys/ipro_ota with CONFIG_IPRO_OTA_BLE.
+if(CONFIG_IPRO_BLE_REMOTE_OTA AND NOT CONFIG_IPRO_OTA_BLE)
+    message(FATAL_ERROR "CONFIG_IPRO_BLE_REMOTE_OTA needs CONFIG_IPRO_OTA=y and CONFIG_IPRO_OTA_BLE=y")
 endif()
 
 # IPRO7AI Reef: the board's drivers come from the reef demo (one copy in the

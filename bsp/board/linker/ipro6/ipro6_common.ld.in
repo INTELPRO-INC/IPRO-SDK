@@ -80,6 +80,11 @@ SECTIONS
     *(.rodata .rodata.*)
 
     . = ALIGN(4);
+    __boot2_param_save_start = .;
+    *(.boot2_param_save)
+    __boot2_param_save_end = .;
+
+    . = ALIGN(4);
     _version_info_section_start = .;
     KEEP(*(.version.*))
     _version_info_section_end = .;
@@ -426,6 +431,13 @@ SECTIONS
     PROVIDE( __StackTop = . );
     __freertos_irq_stack_top = .;
   } > ram_tcm
+
+  /* Boot2_Param_Save() runs on this stack and copies into
+   * .nocache_noinit_ram before .data/.bss init; neither may cover the
+   * 704 B of boot2 parameters at 0x11010000. */
+  ASSERT(_sp <= 0x11010000 ||
+         __nocache_noinit_start - __NOCACHE_ADDR_OFFSET >= 0x11010000 + 704,
+         "startup stack or nocache noinit overlaps the boot2 parameters")
 
 @NVDS_SECTION@
 

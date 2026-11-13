@@ -15,7 +15,7 @@
  * Copyright (C) IPRO SDK 2025
  */
 
-#include "ota_service.h"
+#include "../include/ipro_ota_ble.h"
 #include "ipro_log.h"
 
 #include <string.h>
@@ -40,6 +40,7 @@
 
 // HAL includes for flash and boot management
 #include "hal_boot2.h"
+#include "../include/ipro_ota.h"   /* the OTA core: the package is checked before the switch */
 #include "hal_flash.h"
 #include "hal_sys.h"
 #include "soc_base.h"
@@ -171,6 +172,8 @@ typedef struct {
  ****************************************************************************************
  */
 
+/* ota_switch_partition(): the slot does not hold an OTA package. */
+#define OTA_SWITCH_NOT_A_PACKAGE   (-2)
 static int ota_switch_partition(void);
 static void ota_update_packet_size_from_mtu(uint16_t mtu);
 static uint32_t crc32_calculate(uint32_t crc, const uint8_t *data, uint32_t length);
@@ -316,6 +319,44 @@ BT_GATT_SERVICE_DEFINE(ota_svc,
  ****************************************************************************************
  */
 
+/*
+ * Slot B is erased sector by sector, each one right before its first write.
+ * Erasing the whole image at START kept the flash busy for the length of a
+ * supervision timeout: a 4 KB sector erase stalls the link for its duration,
+ * and with only a short pause between them a central with a 720 ms timeout
+ * (macOS) dropped the connection whenever the slot held an earlier package.
+ * Spread out like this, an erase comes once per 4 KB of received data.
+ * A sector is erased once per transfer: a later write to it (a retransmitted
+ * packet after a partial flush) only adds bits.
+ */
+#define OTA_SECTOR_SIZE     OTA_FLASH_BUFFER_SIZE
+#define OTA_MAX_SECTORS     ((1024u * 1024u) / OTA_SECTOR_SIZE)
+static uint8_t g_sector_erased[OTA_MAX_SECTORS / 8];
+
+static void ota_sectors_reset(void)
+{
+    memset(g_sector_erased, 0, sizeof(g_sector_erased));
+}
+
+static int ota_sector_write(uint32_t addr, const uint8_t *data)
+{
+    uint32_t index = (addr - g_ota_ctx.backup_partition_addr) / OTA_SECTOR_SIZE;
+
+    if (index >= OTA_MAX_SECTORS) {
+        return -1;
+    }
+    if (!(g_sector_erased[index / 8] & (1u << (index % 8)))) {
+        int ret = flash_erase(addr, OTA_SECTOR_SIZE);
+        if (ret != 0) {
+            IPRO_LOGE(LOG_TAG, "Flash erase failed at 0x%08lx: %d", addr, ret);
+            ota_set_status(OTA_STATUS_ERROR, OTA_ERR_ERASE_FAILED, 0);
+            return ret;
+        }
+        g_sector_erased[index / 8] |= (uint8_t)(1u << (index % 8));
+    }
+    return flash_write(addr, (uint8_t *)data, OTA_SECTOR_SIZE);
+}
+
 static void ota_flash_buffer_init(void)
 {
     if (g_flash_buffer.data != NULL) {
@@ -366,7 +407,7 @@ static int ota_flash_buffer_add_packet(uint16_t seq_number, const uint8_t *data,
         }
 
         if (flush_ret == 1 && g_flash_buffer.received_count > 0) {
-            int ret = flash_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data, OTA_FLASH_BUFFER_SIZE);
+            int ret = ota_sector_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data);
             if (ret != 0) {
                 IPRO_LOGE(LOG_TAG, "[OTA] Sector write failed: %d", ret);
                 return -1;
@@ -437,7 +478,7 @@ static int ota_flash_buffer_flush_if_complete(void)
         return 1;
     }
 
-    int ret = flash_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data, OTA_FLASH_BUFFER_SIZE);
+    int ret = ota_sector_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data);
     if (ret != 0) {
         IPRO_LOGE(LOG_TAG, "[OTA] Sector write failed: %d", ret);
         return -1;
@@ -462,7 +503,7 @@ static int ota_flash_buffer_flush_final(void)
         return 0;
     }
 
-    int ret = flash_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data, OTA_FLASH_BUFFER_SIZE);
+    int ret = ota_sector_write(g_flash_buffer.sector_base_addr, g_flash_buffer.data);
     if (ret != 0) {
         IPRO_LOGE(LOG_TAG, "[OTA] Final sector write failed: %d", ret);
         return -1;
@@ -522,40 +563,9 @@ static void ota_task(void *param)
     while (1) {
         if (xQueueReceive(g_ota_cmd_queue, &cmd, portMAX_DELAY) == pdTRUE) {
             if (cmd.cmd == OTA_TASK_CMD_ERASE) {
-                IPRO_LOGI(LOG_TAG, "[OTA] Erasing %lu KB...", cmd.size / 1024);
-
-                #define ERASE_CHUNK_SIZE (4 * 1024)
-                uint32_t remaining = cmd.size;
-                uint32_t offset = 0;
-                uint8_t last_reported_pct = 0;
-                bool error = false;
-
-                while (remaining > 0 && !error) {
-                    uint32_t chunk = remaining > ERASE_CHUNK_SIZE ? ERASE_CHUNK_SIZE : remaining;
-                    uint32_t addr = cmd.addr + offset;
-
-                    int ret = flash_erase(addr, chunk);
-                    if (ret != 0) {
-                        IPRO_LOGE(LOG_TAG, "Flash erase failed at 0x%08lx: %d", addr, ret);
-                        ota_set_status(OTA_STATUS_ERROR, OTA_ERR_ERASE_FAILED, 0);
-                        error = true;
-                        break;
-                    }
-
-                    offset += chunk;
-                    remaining -= chunk;
-
-                    uint8_t pct = (uint8_t)((offset * 100) / cmd.size);
-                    if (pct >= last_reported_pct + 25 || remaining == 0) {
-                        IPRO_LOGI(LOG_TAG, "[OTA] Erase: %d%%", pct);
-                        last_reported_pct = pct;
-                    }
-
-                    /* let the link run between sector erases */
-                    vTaskDelay(pdMS_TO_TICKS(10));
-                }
-
-                if (!error) {
+                /* Nothing is erased here any more: see ota_sector_write(). */
+                ota_sectors_reset();
+                {
                     crc32_init_table();
                     ota_flash_buffer_init();
                     g_ota_ctx.active = true;
@@ -630,9 +640,10 @@ static void ota_task(void *param)
                     IPRO_LOGI(LOG_TAG, "[OTA] CRC32 OK! Switching partition...");
                     ota_set_status(OTA_STATUS_READY, OTA_ERR_NONE, 100);
 
-                    if (ota_switch_partition() != 0) {
+                    int switched = ota_switch_partition();
+                    if (switched != 0) {
                         IPRO_LOGE(LOG_TAG, "[OTA] Partition switch failed");
-                        ota_set_status(OTA_STATUS_ERROR, OTA_ERR_UPDATE_FAILED, 100);
+                        ota_set_status(OTA_STATUS_ERROR, switched == OTA_SWITCH_NOT_A_PACKAGE ? OTA_ERR_VERIFY_FAILED : OTA_ERR_UPDATE_FAILED, 100);
                         ota_reset_context();
                     } else {
                         IPRO_LOGI(LOG_TAG, "[OTA] Ready to reboot");
@@ -679,11 +690,27 @@ static int ota_switch_partition(void)
         return -1;
     }
 
-#if defined(CONFIG_IPRO7AI_REEF)
-    /* The Reef image runs under boot2 (partition_cfg_2M_remote_ab.toml): the
-     * slot holds an OTA package that boot2 checks and unpacks by its own
-     * header, so the entry length is not used. */
+#if !defined(CONFIG_IPRO_OTA_BLE_RAW_IMAGE)
+    /* The image runs under boot2 (an A/B table such as
+     * partition_cfg_2M_remote_ab.toml): the slot holds an OTA package that boot2
+     * checks and unpacks by its own header, so the entry length is not used. */
     pt_entry.len = 0;
+    {
+    /* The CRC32 only says the bytes arrived as sent. Before boot2 is told to
+     * install them, the OTA core checks that they are a package: its header,
+     * and the SHA-256 of the payload read back from the slot. A firmware .bin
+     * sent by mistake stops here instead of at the next boot. */
+    ret = ota_validate_flash(g_ota_ctx.backup_partition_addr, g_ota_ctx.firmware_size);
+    if (ret != OTA_PKG_OK) {
+        IPRO_LOGE(LOG_TAG, "[OTA] Not an installable OTA package (%d): %s", ret,
+                  ret == OTA_PKG_BAD_MAGIC ? "no IPRO_OTA header - send the .xz.ota, not the .bin" :
+                  ret == OTA_PKG_BAD_TYPE ? "not XZ" :
+                  ret == OTA_PKG_BAD_LENGTH ? "length differs from the header" :
+                  ret == OTA_PKG_BAD_SHA ? "SHA-256 mismatch" : "could not be read");
+        return OTA_SWITCH_NOT_A_PACKAGE;
+    }
+    IPRO_LOGI(LOG_TAG, "[OTA] Package header and SHA-256 OK");
+    }
 #else
     pt_entry.len = g_ota_ctx.firmware_size;
 #endif
@@ -794,9 +821,8 @@ static int ota_handle_start_cmd(const uint8_t *data, uint16_t length)
     g_ota_ctx.backup_partition_addr = backup_addr;
     g_ota_ctx.backup_partition_size = backup_size;
 
-    /* Erase only what the image needs: every 4 KB sector erase stalls the
-     * XIP CPU, and a whole 824 KB slot took the link past its supervision
-     * timeout on the IPRO7AI Reef. */
+    /* The task only prepares the transfer: each sector of slot B is erased
+     * right before its first write (ota_sector_write). */
     ota_task_cmd_t erase_cmd = {
         .cmd = OTA_TASK_CMD_ERASE,
         .addr = backup_addr,
@@ -1018,8 +1044,9 @@ static int ota_handle_reboot_cmd(void)
     }
 
     if (g_ota_ctx.status == OTA_STATUS_READY) {
-        if (ota_switch_partition() != 0) {
-            ota_set_status(OTA_STATUS_ERROR, OTA_ERR_PARTITION, 100);
+        int switched = ota_switch_partition();
+        if (switched != 0) {
+            ota_set_status(OTA_STATUS_ERROR, switched == OTA_SWITCH_NOT_A_PACKAGE ? OTA_ERR_VERIFY_FAILED : OTA_ERR_PARTITION, 100);
             return -1;
         }
     }

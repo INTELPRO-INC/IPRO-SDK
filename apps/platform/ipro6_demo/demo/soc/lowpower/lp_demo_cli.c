@@ -1291,8 +1291,9 @@ static int cmd_lp(int argc, char **argv)
         volatile iot2lp_para_t *para = IOT2LP_PARA;
         if (argc >= 3) {
             uint32_t v = (uint32_t)atoi(argv[2]);
-            para->clk_mcu_div = v & (0x7u | LP_FW_CLK_MAC60 |
-                                      LP_FW_CLK_SUPPLY_LOW | LP_FW_CLK_WFI_WAIT);
+            para->clk_mcu_div = (para->clk_mcu_div & LP_FW_CLK_RUN_VCORE_MSK) |
+                                (v & (0x7u | LP_FW_CLK_MAC60 |
+                                      LP_FW_CLK_SUPPLY_LOW | LP_FW_CLK_WFI_WAIT));
         }
         printf("[LP] clkdiv: %lu -> wait CPU %lu MHz, supply %s, %s, %s\r\n",
                (unsigned long)para->clk_mcu_div,

@@ -42,6 +42,7 @@
 #include "hal_pm.h"             /* pm_pds_resleep */
 #include "hal_hbnram_mgnt.h"    /* hal_lp_is_fastboot_wakeup / wake context */
 #include "lp_fw.h"              /* iot2lp_para_t, IOT2LP_PARA, decision/cycle defs */
+#include "lp_aon_wdt.h"
 #include "drv_uart.h"
 #include "drv_glb.h"
 #include "drv_hbn.h"
@@ -1186,10 +1187,16 @@ int ATTR_TCM_SECTION hal_lp_stage1_hook(void)
     uint32_t wr_saved = *wr_dcdc & 0x1Fu;
     *wr_dcdc = (*wr_dcdc & ~0x1Fu) | (CONFIG_LP_WAKERAIL_DCDC18_SEL & 0x1Fu);
 #endif
+#ifdef CONFIG_LP_AON_WDT
+    lp_aon_stamp('B', 0u);
+#endif
     int decision = ((int (*)(void))(uintptr_t)LPFW_RUN_ADDR)();
 
     if (decision == LP_FW_DECISION_SLEEP) {
         lp_trace_putc('S');   /* wake-trace: re-entering PDS */
+#ifdef CONFIG_LP_AON_WDT
+        lp_aon_stamp('S', 1u);
+#endif
 #ifdef CONFIG_LP_WAKERAIL
         /* Standby rail back BEFORE the PDS entry: the next PDS-exit surge
          * must run at 1.8 V. Rising edge needs no settle -- only the
@@ -1377,11 +1384,22 @@ void lp_demo_app_init(void)
     IOT2LP_PARA->trk_cand_rtc_lo = 0u;
     IOT2LP_PARA->trk_armed_extra_us = (uint16_t)LP_FW_TRKW_UNTRACKED;   /* first wake polls wide */
     /* C2 live-lead state words (retained scratch): a cold boot must not
-     * inherit a stale or POR-garbage live lead. The knob word itself is
-     * magic-gated and stays. */
+     * inherit a stale or POR-garbage live lead. */
     *(volatile uint32_t *)LP_FW_TRKC2_STATE_ADDR  = 0u;
     *(volatile uint32_t *)LP_FW_TRKC2_STREAK_ADDR = 0u;
-    IOT2LP_PARA->clk_mcu_div = LP_FW_CLK_WAIT_DEFAULT;
+    /* Bench knob page: a random word at cold boot could match a magic. */
+    for (uint32_t a = 0x2104FD00u; a < 0x2104FE00u; a += 4u) {
+        *(volatile uint32_t *)a = 0u;
+    }
+#ifdef CONFIG_LP_AON_WDT
+    printf("[LP] aon stamp 0x%08lx\r\n", (unsigned long)LP_AON_STAMP);
+    LP_AON_STAMP = 0u;
+#endif
+    IOT2LP_PARA->clk_mcu_div = LP_FW_CLK_WAIT_DEFAULT
+#ifdef CONFIG_LP_FW_RUN_VCORE
+        | ((uint32_t)CONFIG_LP_FW_RUN_VCORE_CODE << LP_FW_CLK_RUN_VCORE_POS)
+#endif
+        ;
     /* LDO11 retention voltage (build option): rt=6 (0.90 V) saves ~12-16 uA
      * of PDS floor vs the silicon default 10; qualified bench-wide since
      * 2026-08-10. HBN_GLB is PDS-retained, so once per cold boot covers the

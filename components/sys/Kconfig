@@ -51,6 +51,8 @@ config COMPONENTS_CLI_CMD_ENABLE
       This is the old AliOS-based CLI. Consider using SHELL instead.
 
 source "components/sys/ipro_event/Kconfig"
+
+source "components/sys/ipro_ota/Kconfig"
 source "components/sys/ipro_pm/Kconfig"
 source "components/sys/usb_console/Kconfig"
 

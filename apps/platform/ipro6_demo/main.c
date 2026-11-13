@@ -78,6 +78,8 @@ IPRO_EVENT_DECLARE_BASE(WIFI_EVENT);
 
 /* HAL headers */
 #include "hal_boot2.h"
+#include "hal_flash.h"
+#include "boot2_param.h"
 #include "hal_sys.h"
 #include "hal_timer.h"
 #include "hal_uart.h"
@@ -108,6 +110,31 @@ IPRO_EVENT_DECLARE_BASE(WIFI_EVENT);
 #include "drv_hbn.h"   /* HBN_BASE, HBN_RSV0_OFFSET */
 #endif
 
+/* One line for the bench: where the PT and flash cfg came from */
+static void report_boot2_handoff(void)
+{
+    Boot2_Param_Type *param = Boot2_Param_Get();
+    SPI_Flash_Cfg_Type *cfg = NULL;
+    uint32_t cfg_len = 0;
+    PtTable_Entry_Config fw;
+    uint32_t id = flash_get_jedecid();
+
+    flash_get_cfg((uint8_t **)&cfg, &cfg_len);
+
+    /* flash_get_jedecid() is MSB first; print it in the 0x1640ef order */
+    id = ((id & 0xFF) << 16) | (id & 0xFF00) | ((id >> 16) & 0xFF);
+    printf("boot2 handoff %s: PT%u cnt %u, flash cfg %s ioMode 0x%02x, "
+           "jedec 0x%06lx, FW %s\r\n",
+           param != NULL ? "OK" : "FALLBACK",
+           (unsigned)hal_boot2_get_active_partition(),
+           param != NULL ? (unsigned)param->ptTable.entryCnt : 0u,
+           Boot2_Param_Get_Flash_Cfg() != NULL ? "param" : "bootheader",
+           (unsigned)cfg->ioMode,
+           (unsigned long)id,
+           hal_boot2_get_active_entries(PT_ENTRY_FW_CPU0, &fw) == 0 ? "found" : "missing");
+}
+
+#ifdef CONFIG_SHELL
 /*
  * Bootrom flash config test - read from brom_param region in OCRAM.
  *
@@ -196,7 +223,6 @@ static void test_brom_flash_cfg(void)
     printf("=== End Flash Config Test ===\r\n\r\n");
 }
 
-#ifdef CONFIG_SHELL
 static void cmd_brom_param(int argc, char **argv)
 {
     (void)argc;
@@ -1027,12 +1053,10 @@ int main(void)
     lp_demo_app_init();
 #endif
 
-#ifdef FPGA
-    hal_boot2_init();
-#endif
-
-    /* test: dump bootrom flash config passed via OCRAM */
-    test_brom_flash_cfg();
+    /* PT and flash cfg from the boot2 param block, else from flash */
+    if (hal_boot2_init() == 0) {
+        report_boot2_handoff();
+    }
 
     /* P3: the SMID SDIO-WiFi device bridge now runs under the scheduler, started
      * by the `sdiowifi` shell command (hostrouter_init -> sdiowifi_mgmr_start).
