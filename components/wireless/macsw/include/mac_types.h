@@ -120,48 +120,8 @@ enum mac_chan_bandwidth
 /// max number of channels in the 5 GHZ band
 #define MAC_DOMAINCHANNEL_5G_MAX 28
 
-/// Channel Flag
-enum mac_chan_flags
-{
-    /// Cannot initiate radiation on this channel
-    CHAN_NO_IR = CO_BIT(0),
-    /// Channel is not allowed
-    CHAN_DISABLED = CO_BIT(1),
-    /// Radar detection required on this channel
-    CHAN_RADAR = CO_BIT(2),
-};
-
-/// Primary Channel definition
-struct mac_chan_def
-{
-    /// Frequency of the channel (in MHz)
-    uint16_t freq;
-    /// RF band (@ref mac_chan_band)
-    uint8_t band;
-    /// Additional information (@ref mac_chan_flags)
-    uint8_t flags;
-    /// Max transmit power allowed on this channel (dBm)
-    int8_t tx_power;
-};
-
-/// Operating Channel
-struct mac_chan_op
-{
-    /// Band (@ref mac_chan_band)
-    uint8_t band;
-    /// Channel type (@ref mac_chan_bandwidth)
-    uint8_t type;
-    /// Frequency for Primary 20MHz channel (in MHz)
-    uint16_t prim20_freq;
-    /// Frequency center of the contiguous channel or center of Primary 80+80 (in MHz)
-    uint16_t center1_freq;
-    /// Frequency center of the non-contiguous secondary 80+80 (in MHz)
-    uint16_t center2_freq;
-    /// Max transmit power allowed on this channel (dBm)
-    int8_t tx_power;
-    /// Additional information (@ref mac_chan_flags)
-    uint8_t flags;
-};
+// mac_chan_flags, mac_chan_def, mac_chan_op
+#include "mac_chan.h"
 
 /// Cipher suites
 enum mac_cipher_suite

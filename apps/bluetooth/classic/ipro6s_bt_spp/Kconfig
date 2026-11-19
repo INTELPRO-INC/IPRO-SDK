@@ -1,0 +1,23 @@
+menu "IPRO6S SPP example"
+
+config BT_DEVICE_NAME
+    string "Bluetooth device name"
+    default "IPRO6S-SPP"
+    help
+      Name a phone or computer shows when it searches for Bluetooth devices.
+
+config BT_COD
+    hex "Class of Device"
+    default 0x001f00
+    help
+      Class of Device sent in inquiry responses. 0x001f00 is
+      "Uncategorized"; phones list the board as a generic device.
+
+config APP_SPP_MTU
+    int "RFCOMM MTU (bytes)"
+    default 256
+    range 23 1008
+    help
+      Largest payload of one RFCOMM frame in either direction.
+
+endmenu

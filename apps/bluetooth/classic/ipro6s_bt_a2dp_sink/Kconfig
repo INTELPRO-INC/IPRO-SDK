@@ -1,0 +1,34 @@
+menu "IPRO6S A2DP sink example"
+
+config BT_DEVICE_NAME
+    string "Bluetooth device name"
+    default "IPRO6S-Speaker"
+    help
+      Name a phone or computer shows when it searches for Bluetooth devices.
+
+config BT_COD
+    hex "Class of Device"
+    default 0x240414
+    help
+      Class of Device sent in inquiry responses. 0x240414 is
+      Audio/Video - Loudspeaker with the Audio and Rendering service bits,
+      so phones list the board as a speaker.
+
+config APP_I2S_OUTPUT
+    bool "Play decoded audio on I2S"
+    default y
+    help
+      Decode SBC and send 16-bit PCM to the I2S port (master, standard
+      I2S, 16-bit slots) for an external I2S DAC or amplifier. Without it
+      the app still receives and decodes the stream and reports it.
+
+config APP_I2S_PIN_BASE
+    int "First GPIO of the I2S group"
+    default 0
+    depends on APP_I2S_OUTPUT
+    help
+      The I2S signals follow the GPIO number modulo 4: BCLK on base,
+      FS on base + 1, DO on base + 3. base must be a multiple of 4.
+      0 puts them on the EVK's H1 header (GPIO0, GPIO1, GPIO3).
+
+endmenu

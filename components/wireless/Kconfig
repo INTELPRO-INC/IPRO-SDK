@@ -192,6 +192,7 @@ config OPENTHREAD_ENABLE
       for IoT devices.
 
 if OPENTHREAD_ENABLE
+    osource "components/wireless/thread/Kconfig"
 endif
 
 # IPRO6S BLE controller compatibility configuration.  The historical BTDM

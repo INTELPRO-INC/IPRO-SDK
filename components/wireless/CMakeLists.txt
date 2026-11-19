@@ -8,6 +8,7 @@ add_subdirectory(ipro_ble_lib)
 endif()
 
 if(CONFIG_IEEE802154_ENABLE)
+add_subdirectory(ieee802154)
 endif()
 
 if(CONFIG_COMPONENTS_IPRO_INTERCOM_ENABLE)
@@ -17,6 +18,7 @@ if(CONFIG_ZIGBEE_STACK)
 endif()
 
 if(CONFIG_OPENTHREAD_ENABLE)
+add_subdirectory(thread)
 endif()
 
 if(CONFIG_COEX_BZ)

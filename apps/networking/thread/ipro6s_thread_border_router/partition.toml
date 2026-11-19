@@ -1,0 +1,41 @@
+# BootROM-direct IPRO6S image; factory and Thread settings remain separate.
+[pt_table]
+address0 = 0x1FE000
+address1 = 0x1FF000
+version = 2
+
+[[pt_entry]]
+type = 16
+name = "FW"
+device = 0
+address0 = 0
+size0 = 0x1F0000
+address1 = 0
+size1 = 0
+len = 0
+header = 1
+security = 1
+
+[[pt_entry]]
+type = 6
+name = "factory"
+device = 0
+address0 = 0x1F0000
+size0 = 0x8000
+address1 = 0
+size1 = 0
+len = 0
+header = 0
+security = 0
+
+[[pt_entry]]
+type = 2
+name = "PSM"
+device = 0
+address0 = 0x1F8000
+size0 = 0x6000
+address1 = 0
+size1 = 0
+len = 0
+header = 0
+security = 0

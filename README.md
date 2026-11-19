@@ -26,7 +26,7 @@ https://intelpro-inc.github.io/ipro-sdk-docs/ (Traditional Chinese).
 | | IPRO7 / IPRO7AI | IPRO6S |
 |---|---|---|
 | Core | RISC-V RV32IMAFC + DSP extensions | RISC-V RV32IMAFC + DSP extensions |
-| Radio | BLE 5.4, LE Audio (ISO), IEEE 802.15.4 | Wi-Fi |
+| Radio | BLE 5.4, LE Audio (ISO), IEEE 802.15.4 | Wi-Fi, Bluetooth LE 5.4 + Classic (BR/EDR) |
 | Wi-Fi | external radio, e.g. an IPRO6S over SDIO | on-chip |
 | NPU / ISP | IPRO7AI | - |
 | RTOS | FreeRTOS V11, Zephyr v4.4.0 | FreeRTOS V11 |
@@ -114,13 +114,13 @@ from `<ICUBE>`, because it reads its chip files from `chips/`.
 
 ### 3. Get the SDK
 
-Download `IPRO-SDK-V2.3.1.tar.gz` from the release page, compare its checksum
+Download `IPRO-SDK-V2.4.0.tar.gz` from the release page, compare its checksum
 with the one published there, and unpack it:
 
 ```bash
-shasum -a 256 IPRO-SDK-V2.3.1.tar.gz      # Linux: sha256sum
-tar xzf IPRO-SDK-V2.3.1.tar.gz
-cd IPRO-SDK-V2.3.1
+shasum -a 256 IPRO-SDK-V2.4.0.tar.gz      # Linux: sha256sum
+tar xzf IPRO-SDK-V2.4.0.tar.gz
+cd IPRO-SDK-V2.4.0
 cat VERSION.txt
 ```
 
@@ -536,6 +536,8 @@ dropped); the application's `.config` is left as it is.
 | `ipro7_jpeg_decode` | `make -C apps/multimedia/ipro7_jpeg_decode DEFCONFIG=defconfig_reef` | JPEG to RGB565 / RGB888 in software (TJpgDec); IPRO7's MJPEG block encodes only | **921600** | - |
 | `ipro_ai_link` | `make -C apps/test/ipro_ai_link DEFCONFIG=defconfig_reef` | board side of IPRO AI Studio "Run on board": models and inputs from `sd:/` | 115200 | - |
 | `ipro_agora_sentino` | `make -C apps/multimedia/ipro_agora_sentino` | Sentino cloud voice: BLE provisioning, Wi-Fi through the FIN card, Agora RTC | 115200 | needs the AOSL core, a Sentino device triple and the FIN-card firmware, see below |
+| `ipro7_uart_rcp` | `make -C apps/networking/thread/ipro7_uart_rcp DEFCONFIG=defconfig_reef` | OpenThread RCP: the 802.15.4 radio of the IPRO6S Thread Border Router, Spinel over UART1 on J_IO pins 13 / 15 | 115200 | `--pt partition_cfg_2M.toml`; leave the microSD slot empty |
+| `ipro_thread_ftd_cli` | `make -C apps/networking/thread/ipro_thread_ftd_cli DEFCONFIG=defconfig_reef` | Thread router / end device with the OpenThread CLI (`ot ...`); the Thread device of the Border Router demo | 115200 | `--pt partition_cfg_2M.toml` |
 
 `ipro_reef_teach` is flashed and used as described in
 [IPRO AI Teach](#ipro-ai-teach).
@@ -600,6 +602,9 @@ Contact INTELPRO for the hardware.
 | `ipro6_demo` | IPRO6S EVB | Wi-Fi station / soft-AP; `defconfig_ipro6_lpwifi` adds DTIM power save, `defconfig_ipro6_lp` is the low-power demo |
 | `ipro6_if_wifi` | IPRO6S EVB, FIN card | Wi-Fi bridge to a host over SDIO (`defconfig_ipro6_sdio`) or USB (`defconfig_ipro6_usb`) |
 | `ipro6_fmac` | IPRO6S EVB | FullMAC firmware for a Linux cfg80211 host (`defconfig_ipro6_fmac`) and its flash loader (`defconfig_ipro6_fmac_loader`); the Linux driver is not part of this package |
+| `ipro6s_thread_border_router` | IPRO6S EVK + Reef V4 (RCP) | Thread Border Router: OpenThread host (Thread 1.4) with an external RCP over UART, Wi-Fi backbone, Border Routing, mDNS / SRP, Border Agent (`defconfig_evk`); its README walks through the three-board demo |
+| `ipro6s_bt_spp` | IPRO6S EVK | Classic Bluetooth Serial Port Profile: echo server for a phone or a computer (`defconfig_evk`) |
+| `ipro6s_bt_a2dp_sink` | IPRO6S EVK | Classic Bluetooth speaker: A2DP sink, SBC decoded to I2S, AVRCP play / pause / next / previous and track title (`defconfig_evk`) |
 
 `ipro7_jpeg_decode/.config` and `ipro7_uvc_cam/.config` build the same
 applications for the IPRO7AI EVK and the IPRO7 EVB.
@@ -703,8 +708,8 @@ tools/              Serial monitor, OTA packager, browser Teach, Zephyr scripts,
 
 A few components are provided as prebuilt archives with their public
 headers rather than as source: the Bluetooth controller, the Wi-Fi MAC,
-the RF drivers, the low-power framework, the AI engine, the ISP algorithms,
-the LC3 codec and the third-party Agora RTC SDK. The build picks them up
+the RF drivers, the IEEE 802.15.4 MAC, the low-power framework, the AI
+engine, the ISP algorithms, the LC3 codec and the third-party Agora RTC SDK. The build picks them up
 automatically; nothing has to be configured to use them. Debug information is
 stripped from the archives; symbol names are kept so map files and `nm` still
 work.
@@ -753,8 +758,28 @@ bt_enable(bt_ready_cb);   /* with CONFIG_BT_SETTINGS: settings_load_subtree("bt"
 ```
 
 `ipro_ble_remote` is the reference for GATT and, in `defconfig_reef`, BLE
-OTA. The IPRO6S Bluetooth controller is not part of this package; the IPRO6S
-applications here are Wi-Fi only.
+OTA.
+
+**IPRO6S.** The same host drives the IPRO6S controller, which adds Classic
+Bluetooth (BR/EDR: SDP, RFCOMM / SPP, A2DP, AVRCP) to LE 5.4. Its archives are
+`libipro_ble_controller_ipro6s_link<N>_br[_release].a`, selected by
+`CONFIG_BTDM_*` keys (`CONFIG_BTDM_ENABLE`, `CONFIG_BTDM_BLE_ENABLE`,
+`CONFIG_BTDM_BT_ENABLE`, `CONFIG_BTDM_MAX_ACL_CONNECTIONS`; `CONFIG_BTDM_DEBUG`
+selects the debug profile). The controller carries one BR/EDR link. Start it
+as `ipro6s_bt_spp` and `ipro6s_bt_a2dp_sink` do (`bt_classic_common.c`):
+bring the shared 2.4 GHz front end up for Bluetooth, `btdm_init()`, then
+`hci_driver_ipro_ble_ctlr_init()` and `bt_enable()`.
+
+### Thread (OpenThread)
+
+OpenThread (Thread 1.4, BSD-3) ships as source in
+`components/wireless/thread/openthread`, with the FreeRTOS platform port in
+`openthread_port`. On IPRO7 the radio is the on-chip 802.15.4 MAC
+(`components/wireless/ieee802154`, a prebuilt archive with public headers);
+on IPRO6S the Thread stack drives an external radio co-processor over a
+Spinel UART. `ipro6s_thread_border_router`, `ipro7_uart_rcp` and
+`ipro_thread_ftd_cli` form a complete Border Router setup; Zephyr has its own
+OpenThread samples (see [Zephyr RTOS](#zephyr-rtos)).
 
 ### Wi-Fi (IPRO7)
 
@@ -784,9 +809,11 @@ with one of these defconfigs:
 
 | Application | Defconfigs |
 |---|---|
-| `ipro6_demo` | `defconfig_ipro6_lpwifi`, `defconfig_ipro6_lp` |
+| `ipro6_demo` | `defconfig_ipro6_lpwifi`, `defconfig_ipro6_lp`, `defconfig_ipro6_lpwifi_ota` |
 | `ipro6_if_wifi` | `defconfig_ipro6_sdio`, `defconfig_ipro6_usb`, `defconfig_ipro6_lp` |
 | `ipro6_fmac` | `defconfig_ipro6_fmac`, `defconfig_ipro6_fmac_loader` |
+| `ipro6s_thread_border_router` | `defconfig_evk` |
+| `ipro6s_bt_spp`, `ipro6s_bt_a2dp_sink` | `defconfig_evk` (the RF archive only: no Wi-Fi) |
 
 ```bash
 make -C apps/platform/ipro6_if_wifi DEFCONFIG=defconfig_ipro6_sdio    # builds in build_ipro6_sdio/
@@ -923,4 +950,4 @@ port in this SDK, and using AOSL on devices sold to end users (Powered by AOSL).
 The AOSL core is not part of the SDK; fetch it from
 https://github.com/AgoraIO-Community/aosl as shown above.
 
-**SDK version**: IPRO-SDK-V2.3.1 (2026-11-14)
+**SDK version**: IPRO-SDK-V2.4.0 (2026-11-19)

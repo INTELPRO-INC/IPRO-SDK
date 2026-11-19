@@ -1,0 +1,378 @@
+# OpenThread Configuration
+
+menu "OpenThread Configuration"
+
+choice OPENTHREAD_DEVICE_TYPE
+    prompt "OpenThread Device Type"
+    default OPENTHREAD_FTD
+    help
+      Select the OpenThread device type.
+
+config OPENTHREAD_FTD
+    bool "Full Thread Device (FTD)"
+    help
+      Build OpenThread as a Full Thread Device (FTD).
+      
+      FTDs maintain routing tables, can act as routers and leaders,
+      and provide full Thread functionality including routing capabilities.
+      Suitable for mains-powered devices or devices with ample resources.
+
+config OPENTHREAD_MTD
+    bool "Minimal Thread Device (MTD)"
+    help
+      Build OpenThread as a Minimal Thread Device (MTD).
+      
+      MTDs are end devices that cannot route packets for other devices.
+      They consume less power and memory, suitable for battery-powered
+      sleepy end devices.
+
+config OPENTHREAD_RADIO
+    bool "Radio Co-processor (RCP)"
+    help
+      Build OpenThread as a Radio Co-processor (RCP).
+      
+      RCP mode offloads the 802.15.4 radio operations to a separate
+      processor, with the Thread stack running on a host processor.
+
+endchoice
+
+config THREAD_RADIO_SPINEL
+    bool "Use an external UART RCP for the Thread radio"
+    depends on IPRO6 && OPENTHREAD_FTD
+    default n
+
+config THREAD_RCP_UART_DIAGNOSTICS
+    bool "Host Spinel UART RX diagnostic counters"
+    depends on THREAD_RADIO_SPINEL
+    default n
+    help
+      Collect RX byte, ring-drop and decoder-result counters for transport
+      acceptance tests. Adds a read-only spinel_rx_stats command when SHELL
+      is enabled. Counters wrap at 32 bits; poll and accumulate unsigned
+      deltas externally. Does not change ring capacity or recovery policy.
+      Intended for a separate measurement profile, not enabled by default.
+
+config THREAD_RCP_UART_FAULT_INJECTION
+    bool "Test-only host-to-RCP HDLC fault injection"
+    depends on THREAD_RADIO_SPINEL && THREAD_RCP_UART_DIAGNOSTICS && SHELL
+    default n
+    help
+      Enable the spinel_fault CLI in an isolated acceptance-test image.
+      Inactive at boot; an explicit start corrupts one encoded TX frame in
+      every ten for at most 300 seconds. Seed selects the deterministic
+      phase. Status and stop preserve counters. Never enable for delivery.
+
+config THREAD_RCP_UART_FRAME_LOG
+    bool "Log each host Spinel UART frame (diagnostics only)"
+    depends on THREAD_RADIO_SPINEL
+    default n
+    help
+      Log each frame's length, receive status, Spinel header, command and
+      property id at INFO level. Property values are never logged (they
+      include MAC keys). This adds work to the radio transport path and
+      should be disabled for normal operation and performance measurements.
+      Transport counters and response-timeout warnings remain available
+      when disabled.
+
+config THREAD_RCP_DEVICE_UART_DIAGNOSTICS
+    bool "RCP device UART diagnostic counters"
+    depends on IPRO7 && OPENTHREAD_RADIO
+    default n
+    help
+      Record RCP UART read, ring drop, decoder input and TX submission counts.
+      Adds read-only rcp_uart_stats when SHELL is enabled. These are not HDLC
+      success/CRC counters. Use an isolated test profile; no recovery changes.
+
+config THREAD_RCP_SOFTWARE_TIMING
+    bool "RCP software TX security and microsecond TX scheduling"
+    depends on IPRO7 && OPENTHREAD_RADIO
+    default n
+    help
+      Reserves TIMER0 channel 1 for OpenThread microsecond alarms.
+
+if OPENTHREAD_RADIO || THREAD_RADIO_SPINEL
+
+config THREAD_RCP_UART_PORT
+    int "RCP UART port"
+    range 1 1
+    default 1
+
+config THREAD_RCP_UART_TX_PIN
+    int "RCP UART TX GPIO"
+    range 0 31
+    default 23 if THREAD_RADIO_SPINEL
+    default 13
+
+config THREAD_RCP_UART_RX_PIN
+    int "RCP UART RX GPIO"
+    range 0 31
+    default 24 if THREAD_RADIO_SPINEL
+    default 14
+
+config THREAD_RCP_UART_BAUD
+    int "RCP UART baud rate"
+    default 1000000
+
+config THREAD_RCP_RESET_GPIO
+    int "RCP reset GPIO (-1: not wired)"
+    depends on THREAD_RADIO_SPINEL
+    range -1 31
+    default -1
+    help
+      GPIO wired to the RCP's active-low reset. OpenThread first sends a
+      Spinel stack reset, which a hung RCP never processes; with this pin the
+      host then pulses the reset and waits for the RCP's reset notification.
+      Without it, an RCP that stops answering stops OpenThread (see
+      ot_rcp_health.h). The pin is driven low for THREAD_RCP_RESET_PULSE_MS,
+      then released to an input with pull-up.
+
+config THREAD_RCP_RESET_PULSE_MS
+    int "RCP reset pulse (ms)"
+    depends on THREAD_RADIO_SPINEL
+    range 1 1000
+    default 20
+
+config THREAD_RCP_BOOT_PLATFORM_RESET
+    bool "Reboot the RCP with a Spinel platform reset at host start"
+    depends on THREAD_RADIO_SPINEL
+    default y
+    help
+      OpenThread only sends a Spinel stack reset, which leaves the RCP's
+      radio driver and RF firmware as they were, so a host reboot does not
+      clear an RCP whose radio is wedged. At start the host first sends a
+      platform reset (the RCP reboots its MCU) and waits for the RCP's reset
+      notification, up to THREAD_RCP_BOOT_RESET_WAIT_MS.
+
+config THREAD_RCP_BOOT_RESET_WAIT_MS
+    int "Wait for the RCP after the start-up platform reset (ms)"
+    depends on THREAD_RCP_BOOT_PLATFORM_RESET
+    range 100 10000
+    default 3000
+
+config THREAD_RCP_CSL_ACCURACY_PPM
+    int "CSL parent clock accuracy advertised to children (ppm, 0 = ask the RCP)"
+    depends on THREAD_RADIO_SPINEL
+    range 0 255
+    default 0
+    help
+      Sent to CSL children in the CSL Clock Accuracy TLV; a child widens its
+      receive window by elapsed time x (this + its own accuracy). OpenThread's
+      default is the worst case (255). Set it only for a characterised board.
+
+config THREAD_RCP_CSL_UNCERTAINTY_10US
+    int "CSL parent transmit timing uncertainty advertised to children (x10 us, 0 = ask the RCP)"
+    depends on THREAD_RADIO_SPINEL
+    range 0 255
+    default 0
+
+config THREAD_RCP_FLAP_MAX_RESETS
+    int "RCP resets in 5 minutes before OpenThread is stopped"
+    depends on THREAD_RADIO_SPINEL
+    range 2 1000
+    default 10
+    help
+      OpenThread retries a request for as long as each RCP recovery
+      succeeds, so an RCP that recovers and then fails again at the same
+      step loops inside that request forever while Thread is unusable.
+      More host-initiated RCP resets than this within 5 minutes stop
+      OpenThread (ot_rcp_health.h), which lets the application's policy act.
+
+endif
+
+config OPENTHREAD_CLI
+    bool "Enable OpenThread CLI"
+    default y
+    help
+      Enable OpenThread Command Line Interface for interactive control
+      and debugging of the Thread stack.
+
+config OPENTHREAD_COMMISSIONER
+    bool "Enable Commissioner"
+    depends on OPENTHREAD_FTD
+    default y
+    help
+      Enable Thread Commissioner role, which allows devices to
+      authenticate and commission new devices onto the Thread network.
+
+config OPENTHREAD_JOINER
+    bool "Enable Joiner"
+    default y
+    help
+      Enable Thread Joiner role, which allows devices to be
+      commissioned onto a Thread network by a Commissioner.
+
+config OPENTHREAD_DHCP6_CLIENT
+    bool "Enable DHCPv6 Client"
+    default y
+    help
+      Enable DHCPv6 client functionality for automatic IPv6
+      address configuration.
+
+config OPENTHREAD_DHCP6_SERVER
+    bool "Enable DHCPv6 Server"
+    depends on OPENTHREAD_FTD
+    default y
+    help
+      Enable DHCPv6 server functionality to provide IPv6 addresses
+      to other devices on the network.
+
+config OPENTHREAD_DNS_CLIENT
+    bool "Enable DNS Client"
+    default y
+    help
+      Enable DNS client functionality for domain name resolution.
+
+config OPENTHREAD_BORDER_ROUTER
+    bool "Enable Border Router"
+    depends on OPENTHREAD_FTD
+    default n
+    help
+      Enable Border Router functionality to connect Thread network
+      to other IP networks (e.g., Wi-Fi, Ethernet).
+
+config THREAD_WIFI_BORDER_ROUTER
+    bool "Wi-Fi infrastructure port for Thread Border Routing Manager"
+    depends on OPENTHREAD_FTD && WIFI6 && FREERTOS_SUPPORT
+    select OPENTHREAD_BORDER_ROUTER
+    select OPENTHREAD_ECDSA_ENABLE
+    select OPENTHREAD_BORDER_AGENT_ENABLE
+    select IPV6
+    default n
+    help
+      Enable the upstream routing manager and the app-supplied Wi-Fi ND hook.
+      Also enable built-in mDNS and the SRP advertising proxy. The application
+      must supply infrastructure, IPv6 forwarding, and mDNS socket ports.
+
+config THREAD_BR_PACKET_TRACE
+    bool "IPRO6S BR bounded packet metadata trace"
+    depends on THREAD_WIFI_BORDER_ROUTER && SHELL
+    default n
+    help
+      Enable the diagnostic packet ring and console snapshot for ICMP Echo
+      and Matter UDP headers. Disabled for delivery builds to reclaim RAM.
+      No application payload is recorded. Enable only for packet-path tests.
+
+config THREAD_BR_LAN_MANAGEMENT
+    bool "Authenticated LAN management for BLE provisioned BR"
+    depends on THREAD_BR_BLE_MANAGEMENT && !MATTER_ENABLE
+    default n
+    help
+      Advertise a pinned TLS management service over mDNS. Its device-specific
+      authorization token and certificate pin are transferred only over L4 BLE.
+
+config THREAD_BR_BLE_MANAGEMENT
+    bool "IPRO6S BR authenticated BLE management"
+    depends on THREAD_WIFI_BORDER_ROUTER && IPRO6
+    depends on BLUETOOTH_LE_ENABLE && BTDM_ENABLE && BT_PERIPHERAL
+    depends on BT_SMP && BT_ECC && BT_SETTINGS && BT_SMP_APP_PAIRING_ACCEPT
+    default n
+    help
+      Enable the Android BR management GATT service with authenticated Secure
+      Connections, a locally opened initial pairing window, and persistent
+      bonds. Independent of the BR's optional Matter accessory server.
+
+config THREAD_BR_BLE_STACK_WORDS
+    int "BR BLE management worker stack (32-bit words)"
+    depends on THREAD_BR_BLE_MANAGEMENT
+    range 1024 4096
+    default 2048
+    help
+      Stack for the BR management worker, separate from Bluetooth Host and
+      Controller tasks. Validate pairing and management command high-water
+      marks before reducing this value for a delivery profile.
+
+config THREAD_BR_BLE_DEMO_PAIRING
+    bool "Demo BLE pairing without the BR console"
+    depends on THREAD_BR_BLE_MANAGEMENT && BT_APP_PASSKEY && BT_KEYS_OVERWRITE_OLDEST
+    default n
+    help
+      For demos where nobody operates the BR console: pairing is always
+      allowed (no br_ble_open), the passkey is THREAD_BR_BLE_DEMO_PASSKEY
+      (told to the presenter instead of shown on the console), and a newly
+      paired phone replaces the previous bond. Anyone in radio range who
+      knows the passkey can take over the BR -- never enable this in a
+      delivery build.
+
+config THREAD_BR_BLE_DEMO_PASSKEY
+    int "Demo BLE pairing passkey"
+    depends on THREAD_BR_BLE_DEMO_PAIRING
+    range 0 999999
+    default 123456
+
+config THREAD_BR_AUTOMATIC_BACKBONE
+    bool "Manage BR backbone readiness automatically"
+    depends on THREAD_WIFI_BORDER_ROUTER
+    default n
+    help
+      Follow Wi-Fi/Thread forwarding readiness when enabling the Backbone
+      Router. Supports an explicit deployment Domain Prefix without running
+      a Matter accessory server on the BR. Leave disabled for manual BBR CLI
+      bring-up. Does not enable DHCPv6 PD, NAT64, or a Matter server.
+
+config THREAD_BR_NAT64
+    bool "Enable BR IPv4 translation (experimental)"
+    depends on THREAD_WIFI_BORDER_ROUTER
+    select THREAD_BR_UPSTREAM_DNS
+    default n
+    help
+      Enable the OpenThread NAT64 translator and border-routing prefix policy,
+      with the application's private lwIP NAPT transport. Requires enabled
+      firmware resource and board validation before deployment.
+
+config THREAD_BR_NAT64_MAX_MAPPINGS
+    int "BR NAT64 endpoint and NAPT flow limits"
+    depends on THREAD_BR_NAT64
+    range 1 128
+    default 32
+    help
+      Bound the OT endpoint translation pool and the private NAPT flow table.
+      An endpoint can use multiple flows, so these are separate limits.
+
+config THREAD_BR_UPSTREAM_DNS
+    bool "Enable BR upstream DNS transport (experimental)"
+    depends on THREAD_WIFI_BORDER_ROUTER
+    default n
+    help
+      Forward non-local DNS queries through the Wi-Fi resolver using the
+      application's UDP transport and TCP fallback.
+
+config THREAD_BR_DNS64
+    bool "Enable BR DNS64 synthesis (experimental)"
+    depends on THREAD_BR_UPSTREAM_DNS
+    default n
+    help
+      Synthesize IPv6 answers using the current Thread NAT64 Network Data.
+      The elected translator may be supplied by another Border Router.
+
+config OPENTHREAD_DUA_ENABLE
+    bool "Enable Domain Unicast Address registration client"
+    depends on !OPENTHREAD_RADIO
+    default n
+    help
+      Generate and register a local DUA from the Thread Domain Prefix.
+      This is separate from a Backbone Router's remote DUA ND proxy.
+
+config OPENTHREAD_PING_SENDER
+    bool "Enable ICMPv6 ping sender (ot ping CLI)"
+    default y
+    help
+      Enable the OpenThread ping sender so the `ot ping <addr>` CLI
+      command works. OT-side define is OPENTHREAD_CONFIG_PING_SENDER_ENABLE.
+      Costs ~3 KB flash. Disable for size-tight builds.
+
+config OPENTHREAD_UDP_FORWARD
+    bool "Enable UDP Forward"
+    default n
+    help
+      Enable UDP forwarding capability.
+
+config OT_FREERTOS_ENABLE
+    int
+    default 1
+    help
+      Enable FreeRTOS integration for OpenThread.
+
+# Include platform-specific OpenThread configuration
+rsource "openthread_port/Kconfig"
+
+endmenu

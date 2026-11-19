@@ -1,0 +1,311 @@
+menu "OpenThread Configuration"
+    depends on COMPONENTS_THREAD_ENABLE
+
+config OPENTHREAD_LOG_LEVEL
+    int "OpenThread Log Level"
+    range 0 5
+    default 1
+    help
+        0 = None, 1 = Critical, 2 = Warning, 3 = Note, 4 = Info, 5 = Debug
+        Set to 1 (Critical) for production to save ~8-10KB
+
+config OPENTHREAD_NUM_MESSAGE_BUFFERS
+    int "Number of message buffers"
+    range 16 128
+    default 44
+    help
+        Number of message buffers for OpenThread
+
+config OPENTHREAD_MESSAGE_BUFFER_SIZE
+    int "Message buffer size"
+    range 64 256
+    default 128
+    help
+        Size of each message buffer in bytes
+
+config OPENTHREAD_6LOWPAN_REASSEMBLY_TIMEOUT
+    int "6LoWPAN reassembly timeout between fragments (s)"
+    range 1 3
+    default 2
+    help
+        Time a partly reassembled 6LoWPAN datagram waits for its next
+        fragment. OpenThread drops it at its 1 s time tick, so the delay a
+        datagram survives is this value to this value + 1 s. Thread 1.4.1
+        3.3 (Table 3-6 row 5.3) requires 2-4 s for a fragment-to-fragment
+        timeout: 2 or 3. The embedding video stream apps use 1 to free a
+        stalled reassembly sooner; that is not conformant.
+
+config OPENTHREAD_IP6_MAX_DATAGRAM_LENGTH
+    int "Largest IPv6 datagram (bytes)"
+    range 1280 2000
+    default 1280
+    help
+        Thread's IPv6 MTU is 1280 (Thread 1.4.1 3.3, Table 3-6 row 4): an
+        end device keeps 1280, so it never puts a larger datagram on the
+        mesh. Unset, a Wi-Fi border router gets 1700 (room for the MPL
+        tunnel around a 1280 B backbone multicast). The embedding video
+        stream apps send 1648 B datagrams and set 1700.
+
+config OPENTHREAD_CLI_MAX_LINE_LENGTH
+    int "CLI maximum line length"
+    range 128 512
+    default 256
+    help
+        Maximum command line length for OpenThread CLI
+
+menu "Network Features"
+
+config OPENTHREAD_MLR_ENABLE
+    bool "Multicast Listener Registration client"
+    default n
+    help
+      Register subscribed multicast groups with the Primary Backbone Router.
+
+config OPENTHREAD_IP6_SLAAC_ENABLE
+    bool "Enable IPv6 SLAAC"
+    default n
+    help
+        Enable IPv6 Stateless Address Auto-Configuration
+        Disable to save ~5-8KB
+
+config OPENTHREAD_TMF_NETDATA_SERVICE_ENABLE
+    bool "Enable TMF Network Data Service"
+    default y
+    help
+        Enable Thread Management Framework Network Data Service
+
+endmenu # Network Features
+
+menu "Security Features"
+
+config OPENTHREAD_ECDSA_ENABLE
+    bool "Enable ECDSA"
+    default n
+    help
+        Enable ECDSA support
+        Disable to save ~15KB
+
+config OPENTHREAD_SRP_CLIENT_ENABLE
+    bool "Enable SRP Client"
+    select OPENTHREAD_ECDSA_ENABLE
+    default n
+    help
+        Enable Service Registration Protocol Client
+        Disable to save ~20KB
+
+endmenu # Security Features
+
+menu "Radio Configuration"
+
+config OPENTHREAD_RADIO_COEX_ENABLE
+    bool "Enable Radio Coexistence"
+    default n
+    help
+        Enable coexistence with other radios (BLE, WiFi)
+
+config OT_HEARTBEAT_MS
+    int "OpenThread task safety-net heartbeat (ms, 0 = none)"
+    range 0 600000
+    default 1500
+    help
+        The OpenThread task wakes on every event; the heartbeat only bounds
+        a missed notification.  Each heartbeat is an RTOS deadline that ends
+        a deep-sleep window: low-power builds use a long one (e.g. 30000).
+
+config IPRO_PM_THREAD
+    bool "Platform PDS between radio activity (ipro_pm)"
+    default n
+    depends on IPRO_PM && IEEE802154_ENABLE && !THREAD_RADIO_SPINEL
+    select IPRO_PM_IDLE_PDS
+    help
+        Register the 802.15.4 radio with ipro_pm: the idle task enters
+        PDS31 while the radio has nothing to do (a SED between data polls,
+        an SSED between CSL sample windows), sized to the next microsecond
+        alarm; the MAC configuration is written back after the SoC reset
+        of the PDS and the RF is warmed up again.  A device with its
+        receiver on while idle (MED, router) stays at WFI.  Replaces
+        CONFIG_THREAD_LP_SLEEP.  With BLE connected PDS (IPRO_PM_PDS_CONNECTED)
+        the controller runs the PDS and the radio sleeps in it.
+        Raw per-app .config builds must also set CONFIG_IPRO_PM_IDLE_PDS=y
+        and CONFIG_IPRO_PM_TIMEBASE=y.
+
+config IPRO_PM_THREAD_WAKE_LEAD_US
+    int "CPU back before the microsecond alarm (us)"
+    default 1000
+    depends on IPRO_PM_THREAD
+
+config IPRO_PM_THREAD_RF_RESTORE
+    bool "Warm the RF up after a PDS that powered it down"
+    default y
+    depends on IPRO_PM_THREAD
+
+config IPRO_PM_THREAD_ALIGN
+    bool "Line Thread's periodic radio work up with the BLE link (experimental)"
+    default n
+    depends on IPRO_PM_THREAD
+    help
+      With a BLE link in the PDS profile the controller runs one PDS per
+      connection interval; a Thread deadline in the middle of it cuts that
+      PDS short and the rest of the interval is spent at WFI.  An SSED
+      gets its CSL period set to an integer fraction of the connection
+      interval and its sample phase moved to just after the connection
+      event (the parent learns it from the data poll that follows); the
+      application's period comes back when the link goes.
+
+      Measured worse than leaving it alone (2026-09-28, SSED CSL 1 s, BLE
+      1005 ms): 30-36 % PDS unaligned, 0-8 % aligned.  The window has no
+      room before the anchor (the controller spends the time after its
+      wake on the restore) and a PDS entry the controller is granted a
+      few ms after the event is refused or released.  It needs the
+      controller to publish a fresh window after an early wake (more than
+      one PDS per interval).
+
+config IPRO_PM_THREAD_ALIGN_SED
+    bool "Also move a SED's data polls onto BLE wakes"
+    default n
+    depends on IPRO_PM_THREAD_ALIGN
+    help
+      Poll at every k-th BLE wake (k = round(poll period / interval)),
+      OpenThread's own poll timer pushed half an interval later as the
+      fallback.  Measured worse than OpenThread's own schedule (SED 1 s
+      poll, BLE 1005 ms: 34-37 % vs 71-75 % PDS), so off.
+
+config OPENTHREAD_MAC_CSL_RECEIVER_ENABLE
+    bool "Enable CSL Receiver"
+    default n
+    help
+        Enable Coordinated Sampled Listening (requires microsecond timer)
+
+endmenu # Radio Configuration
+
+menu "MLE Configuration"
+
+config OPENTHREAD_MLE_MAX_CHILDREN
+    int "Maximum number of children"
+    range 0 64
+    default 16
+    help
+        Maximum number of child devices this router can have
+
+config OPENTHREAD_MLE_IP_ADDRS_PER_CHILD
+    int "IP addresses per child"
+    range 1 16
+    default 4
+    help
+        Maximum number of IP addresses per child device
+
+endmenu # MLE Configuration
+
+menu "Application Features"
+
+config OPENTHREAD_COAP_API_ENABLE
+    bool "Enable CoAP API"
+    default n
+    help
+        Enable Constrained Application Protocol API
+
+config OPENTHREAD_COAP_SECURE_API_ENABLE
+    bool "Enable Secure CoAP API"
+    default n
+    help
+        Enable secure CoAP (DTLS) API
+
+config OPENTHREAD_BORDER_AGENT_ENABLE
+    bool "Enable Border Agent"
+    default n
+    help
+        Enable Thread Border Agent functionality
+
+config OPENTHREAD_SNTP_CLIENT_ENABLE
+    bool "Enable SNTP Client"
+    default n
+    help
+        Enable Simple Network Time Protocol client
+
+config OPENTHREAD_UDP_FORWARD_ENABLE
+    bool "Enable UDP Forward"
+    default n
+    help
+        Enable UDP forwarding for applications
+
+config OPENTHREAD_TIME_SYNC_ENABLE
+    bool "Enable Time Synchronization"
+    default n
+    help
+        Enable network time synchronization
+
+endmenu # Application Features
+
+menu "Commissioner and Joiner"
+
+config OPENTHREAD_COMMISSIONER
+    bool "Enable Commissioner"
+    default n
+    help
+        Enable Thread Commissioner role
+
+config OPENTHREAD_JOINER
+    bool "Enable Joiner"
+    default n
+    help
+        Enable Thread Joiner functionality
+
+endmenu # Commissioner and Joiner
+
+menu "DHCP6 and DNS"
+
+config OPENTHREAD_DHCP6_CLIENT
+    bool "Enable DHCP6 Client"
+    default n
+    help
+        Enable DHCPv6 client
+
+config OPENTHREAD_DHCP6_SERVER
+    bool "Enable DHCP6 Server"
+    default n
+    help
+        Enable DHCPv6 server
+
+config OPENTHREAD_DNS_CLIENT
+    bool "Enable DNS Client"
+    default n
+    help
+        Enable DNS client functionality
+
+endmenu # DHCP6 and DNS
+
+menu "MAC Features"
+
+config OPENTHREAD_MAC_FILTER_ENABLE
+    bool "Enable MAC Filter"
+    default n
+    help
+        Enable MAC address filtering
+
+config OPENTHREAD_MAC_HW_RETRANSMIT
+    bool "MAC frame retries in the lmac154 hardware (legacy)"
+    default n
+    help
+      By default OpenThread retransmits unacknowledged frames itself, with
+      a random delay before each retry, and the lmac154 gets a retry count
+      of 0. The hardware retry loop keeps the MAC in its ACK-wait state,
+      which drops every frame the peer sends meanwhile; under two-way
+      traffic both nodes then lose each other's frames (bench 2026-09-24:
+      256 B two-way pings 83-86 % -> 100 %). Set this to go back to
+      hardware retries.
+
+config OPENTHREAD_MAC_RETRY_SUCCESS_HISTOGRAM_ENABLE
+    bool "Enable MAC Retry Histogram"
+    default n
+    help
+        Enable MAC retry success histogram statistics
+
+config OPENTHREAD_CLI_TCP_ENABLE
+    bool "Enable TCP CLI"
+    default n
+    help
+        Enable TCP commands in CLI (requires compatible mbedTLS)
+
+endmenu # MAC Features
+
+endmenu # OpenThread Configuration

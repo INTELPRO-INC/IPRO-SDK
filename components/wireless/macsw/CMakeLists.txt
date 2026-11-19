@@ -61,6 +61,12 @@ __component_add_private_include_dirs(plf_build_reg)
 # Use PRIVATE so this define does NOT leak to wifi6 and other consumers
 __component_add_private_compile_options(-DMACSW_INTERNAL)
 
+# fhost builds: SM scan and join scan dwell 110 ms per channel.
+# FMAC builds keep the LMAC default picked from the channel flags.
+if(NOT CONFIG_IPRO6_FMAC)
+    __component_add_private_compile_definitions(-DSM_SCAN_DURATION_US=110000)
+endif()
+
 # WiFi datapath resume across PDS (CONFIG_IPRO_WIFI_PS, lpwifi carrier build).
 # Enables the ported keyram save/restore + mm_ps_init + rwnxl_resume_wifi datapath
 # so the full FW can re-program the MAC HW after a lp_fw WIFI-wake. PRIVATE: the

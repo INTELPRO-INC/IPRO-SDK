@@ -1,0 +1,45 @@
+config IPRO_THREAD_FTD_CLI
+    bool "IPRO Thread FTD CLI Application"
+    default n
+    help
+        Enable IPRO Thread FTD CLI application.
+        This application provides a Full Thread Device with CLI interface.
+
+if IPRO_THREAD_FTD_CLI
+
+config THREAD_FTD_CLI_TASK_PRIORITY
+    int "Thread FTD CLI task priority"
+    default 5
+    help
+        Priority of the Thread FTD CLI task.
+
+config THREAD_FTD_CLI_TASK_STACK_SIZE
+    int "Thread FTD CLI task stack size"
+    default 4096
+    help
+        Stack size of the Thread FTD CLI task in bytes.
+
+config THREAD_AUTO_START
+    bool "Auto start Thread network"
+    default y
+    help
+        Automatically start the Thread network interface on boot.
+
+config THREAD_CSL_PERIOD_US
+    int "CSL receiver period at boot (us, 0 = none)"
+    default 0
+    depends on OPENTHREAD_MAC_CSL_RECEIVER_ENABLE
+    help
+        CSL period applied before Thread starts, so a synchronized sleepy
+        end device (mode -) comes back from a reset as a CSL receiver: OT
+        keeps the CSL period and timeout only in RAM (the `csl` CLI), so
+        without this a reset SSED restores its child link as a plain SED
+        while the parent still sends to it in CSL slots (Thread 1.4.1
+        4.6.4: after reset an SSED re-establishes CSL synchronization).
+
+config THREAD_CSL_TIMEOUT_S
+    int "CSL synchronized timeout at boot (s, 0 = OpenThread default)"
+    default 0
+    depends on OPENTHREAD_MAC_CSL_RECEIVER_ENABLE
+
+endif # IPRO_THREAD_FTD_CLI
